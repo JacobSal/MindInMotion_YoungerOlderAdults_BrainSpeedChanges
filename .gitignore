@@ -2,6 +2,7 @@
 *.mat
 *.set
 *.fdt
+*.log
 **.DS_Store
 
 # .gitignore folders
@@ -9,5 +10,5 @@
 **/submodules
 **/_data
 **/__archive
-
-
+**/_test
+**/Job*
