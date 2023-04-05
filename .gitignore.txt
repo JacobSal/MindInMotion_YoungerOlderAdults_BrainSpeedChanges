@@ -1,0 +1,13 @@
+# .gitignore files
+*.mat
+*.set
+*.fdt
+**.DS_Store
+
+# .gitignore folders
+**/TEST
+**/submodules
+**/_data
+**/__archive
+
+
