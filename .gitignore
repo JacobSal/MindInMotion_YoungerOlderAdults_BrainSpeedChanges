@@ -4,6 +4,7 @@
 *.fdt
 *.log
 **.DS_Store
+*.asv
 
 # .gitignore folders
 **/TEST
