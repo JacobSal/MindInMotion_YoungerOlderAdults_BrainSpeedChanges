@@ -1,6 +1,7 @@
 #!/bin/sh
-SUBJ_DIR="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/24022023_OA_prep"
-REGEXP_SUBJ_DIR="$SUBJ_DIR/*/clean/*.sh"
+SUBJ_DIR="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/07042023_OA_prep_verified"
+# REGEXP_SUBJ_DIR="$SUBJ_DIR/*/clean/*.sh"
+REGEXP_SUBJ_DIR="$SUBJ_DIR/*/amica/*.sh"
 
 for f in $REGEXP_SUBJ_DIR
 do

@@ -126,10 +126,14 @@ end
 %- Calculate Connectivity
 switch CNCTANL_TOOLBOX
     case 'sift'
-        [ALLEEG] = cnctanl_connMeas(ALLEEG,conn_components,CONN_METHODS,fPath,...
+        [TMPEEG] = cnctanl_connMeas(ALLEEG,conn_components,CONN_METHODS,fPath,...
             'FREQS',FREQS,...
             'WINDOW_LENGTH',WINDOW_LENGTH,...
             'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
+        for trial_i = 1:length(ALLEEG)
+            ALLEEG(trial_i).CAT = TMPEEG(trial_i).CAT;
+        end
+        clear TMPEEG
     case'bsmart'
         slide_step_size = ceil(WINDOW_STEP_SIZE*ALLEEG(1).srate);
         slide_win_len = ceil(WINDOW_LENGTH*ALLEEG(1).srate);

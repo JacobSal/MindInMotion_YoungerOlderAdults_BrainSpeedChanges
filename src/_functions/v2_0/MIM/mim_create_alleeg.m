@@ -16,7 +16,7 @@ tmp = strsplit(path,';');
 b1 = regexp(tmp,'eeglab','end');
 b2 = tmp(~cellfun(@isempty,b1));
 PATH_EEGLAB = b2{1}(1:b1{1});
-fprintf('EEGLAB path: %s',PATH_EEGLAB);
+fprintf('EEGLAB path: %s\n',PATH_EEGLAB);
 %- set default paths for boundary element head model
 PATH_EEGLAB_BEM  = [PATH_EEGLAB filesep 'plugins' filesep 'dipfit' filesep 'standard_BEM' filesep];
 MNI_MRI = [PATH_EEGLAB_BEM filesep 'standard_mri.mat'];
@@ -53,6 +53,11 @@ errorMsg = 'Value must be of format {CHAR1,CHAR2,...}. Session label for each fP
 sess_validFcn = @(x) assert((ischar(x{1}) && iscell(x) && length(x) == length(fNames) || isempty(x)), errorMsg);
 %- save eeg 
 SAVE_EEG = false;
+%- CHANLOCS_FPATHS
+CHANLOCS_FPATHS = {};
+errorMsg = 'Value must be of format {CHAR1,CHAR2,...}. Full file paths for chanlocs (e.g., /path/to/subject/dir/chanlocs.mat)';
+cfp_validFcn = @(x) assert((ischar(x{1}) && iscell(x) && length(x) == length(fNames) || isempty(x)), errorMsg);
+
 %## Define Parser
 p = inputParser;
 %## REQUIRED
@@ -66,6 +71,7 @@ addOptional(p,'groups',GROUPS,grp_validFcn);
 addOptional(p,'sessions',SESSIONS,sess_validFcn);
 %## PARAMETER
 addParameter(p,'SAVE_EEG',SAVE_EEG,@islogical);
+addParameter(p,'CHANLOCS_FPATHS',CHANLOCS_FPATHS,cfp_validFcn);
 parse(p,fNames,fPaths,subjectNames,save_dir,varargin{:});
 %## SET DEFAULTS
 %- OPTIONALS
@@ -74,6 +80,7 @@ conditions          = p.Results.conditions;
 groups              = p.Results.groups;
 sessions            = p.Results.sessions;
 bool_save_eeg       = p.Results.SAVE_EEG;
+chanlocs_fPaths     = p.Results.CHANLOCS_FPATHS;
 %% ===================================================================== %%
 %## CREATE STUDY
 fprintf(1,'==== Creating Study ====\n')
@@ -122,6 +129,8 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
         EEG = pop_dipfit_settings(EEG,'coordformat','MNI','coord_transform',COORD_TRANSFORM_MNI,...
                 'hdmfile',MNI_VOL,'mrifile',MNI_MRI,'chanfile',MNI_CHAN_1005);
         %}
+        
+        %## Check Filese
         tmp = [];
         if ~isfield(EEG.dipfit,'coord_transform')
             EEG.dipfit.coord_transform = COORD_TRANSFORM_MNI;
@@ -149,6 +158,34 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
         end
         EEG.dipfit.comment = tmp;
     end
+    %% Update EEG channel location again %has to update chanloc for dipfit
+    tmp = load(chanlocs_fPaths{subj_i});
+    chanlocs_new = tmp.chanlocs_new;
+    getchanlocs_new = tmp.getchanlocs_new;
+    nodatchans_new = tmp.nodatchans_new;
+    % update the EEG electrode locations
+    % Be cautious that not all electrodes are EEG
+    % Sanity check: if we have 120 electrodes digitized
+    disp(['Found total ',num2str(length(chanlocs_new)),' electrodes']);
+    for p = 1:length(chanlocs_new)
+        elec_idx = find(strcmpi(chanlocs_new(p).labels,{EEG.chanlocs(:).labels}));
+        if ~isempty(elec_idx)
+            % update all available fields
+            EEG.chanlocs(elec_idx).X = chanlocs_new(p).X;
+            EEG.chanlocs(elec_idx).Y = chanlocs_new(p).Y;
+            EEG.chanlocs(elec_idx).Z = chanlocs_new(p).Z;
+            EEG.chanlocs(elec_idx).theta = chanlocs_new(p).theta;
+            EEG.chanlocs(elec_idx).radius = chanlocs_new(p).radius;
+            EEG.chanlocs(elec_idx).sph_theta = chanlocs_new(p).sph_theta;
+            EEG.chanlocs(elec_idx).sph_phi = chanlocs_new(p).sph_phi;
+        end
+    end
+    % Add fiducials location 
+    if isempty(EEG.chaninfo.nodatchans)
+        EEG.chaninfo.nodatchans = nodatchans_new;
+    end
+    EEG = eeg_checkchanlocs(EEG); % check the consistency of the chanloc structure
+    %%
     try 
         EEG.dipfit.model;
     catch e
@@ -175,7 +212,8 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
     if bool_save_eeg
         [EEG] = pop_saveset(EEG,'savemode','twofiles',...
             'filename',fName,...
-            'filepath',fPath);
+            'filepath',fPath,...
+            'version','7.3');
     end
     ALLEEG{subj_i} = EEG; 
 end
@@ -201,3 +239,22 @@ end
 ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
 end
 
+%% HELPER SCRIPT
+%## TRANSFER CHANLOCS DATA FROM R:\ TO M:\
+%{
+BAD_SUBJS = {}; %{'NH3004','NH3009'};
+R_MIND_IN_MOTION_DIR = 'R:\Ferris-Lab\share\MindInMotion\Data';
+M_MIND_IN_MOTION_DIR = [DATA_DIR filesep DATA_SET]; %'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset'
+%- Loop through directory
+for group_i = 1:size(SUBJ_PICS,2)
+    for subj_i = 1:length(SUBJ_PICS{group_i})
+        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'HeadScan' filesep 'CustomElectrodeLocations.mat'];
+        folder_to = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'EEG' filesep 'HeadScan'];
+        delete(folder_to)
+        if ~exist(folder_to,'dir');
+            mkdir(folder_to);
+        end
+        copyfile(file_from,folder_to);
+    end
+end
+%}

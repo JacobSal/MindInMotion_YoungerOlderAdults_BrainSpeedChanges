@@ -123,7 +123,8 @@ OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET];
 %% ===================================================================== %%
 %## PROCESSING PARAMS
 %- datetime override
-dt = '24022023_OA_prep';
+% dt = '24022023_OA_prep'
+dt = '07042023_OA_prep_verified';
 %## PATH & TEMP STUDY NAME
 %- hard define
 RUN_AMICA = false;
@@ -216,7 +217,7 @@ for group_i = 1:size(SUBJ_PICS,2)
 end
 %}
 %% HELPER SCRIPT
-
+%{
 EMAIL_CHAR = 'jsalminen@ufl.edu';
 LOOP_VAR = 1:length(fPaths);
 avg_ref_pca_reduction = 1; % length({'EEG'})
@@ -246,3 +247,4 @@ for subj_i = LOOP_VAR
         fprintf('run this on unix\n');
     end
 end
+%}

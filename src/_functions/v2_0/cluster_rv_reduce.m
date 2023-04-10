@@ -1,4 +1,4 @@
-function [STUDY,comps_store,comps_rej] = cluster_ica_reduce(STUDY,varargin)
+function [STUDY,comps_store,comps_rej] = cluster_rv_reduce(STUDY,ALLEEG,varargin)
 %CLUSTER_ICA_REDUCE Summary of this function goes here
 %   Detailed explanation goes here
 %   IN: 
@@ -20,9 +20,10 @@ tic
 p = inputParser;
 %## REQUIRED
 addRequired(p,'STUDY',@isstruct);
+addRequired(p,'ALLEEG',@isstruct);
 %## OPTIONAL
 %## PARAMETER
-parse(p,STUDY,varargin{:});
+parse(p,STUDY,ALLEEG,varargin{:});
 %## SET DEFAULTS
 %- OPTIONALS
 %- PARAMETER
@@ -58,11 +59,10 @@ for cluster_i = 2:length(STUDY.cluster)
     STUDY.cluster(cluster_i).sets = tmpsets;
     STUDY.cluster(cluster_i).comps = out;
     %-
-    STUDY.cluster(end+1).sets   = tmps;
-    STUDY.cluster(end).comps    = tmpc;
-    STUDY.cluster(end).name     = sprintf('Outlier Cls %i',cluster_i);
-    STUDY.cluster(end).parent   = 'Outliercluster';
-    STUDY.cluster(end).parent   = STUDY.cluster(cluster_i).parent;
+    STUDY.cluster(end+1).sets = tmps;
+    STUDY.cluster(end).comps = tmpc;
+    STUDY.cluster(end).name = sprintf('Outlier clust_%i',cluster_i);
+    STUDY.cluster(end).parent = STUDY.cluster(cluster_i).parent;
     STUDY.cluster(end).algorithm = {'minimum of sifted brain independent components'};
 end
 %- parentcluster alterations

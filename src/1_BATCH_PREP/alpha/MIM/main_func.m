@@ -76,7 +76,7 @@ mim_config.ICC.params.extraTime_pre= 1; % 2023-1-10 Ryan said use 1 (2-MiM_confi
 mim_config.ICC.params.extraTime_post = 1; %MiM_config.ICC.params.extraTime_pre; %wider window for stats
 %- ICanClean Muscle parameters
 mim_config.ICC_muscle.params = mim_config.ICC.params;
-mim_config.ICC_muscle.params.rhoSqThres_source = 0.9;%with 4sec window, 0.9 is too high, 0 bad sources get removed...- -(EMG without highpass filter)
+mim_config.ICC_muscle.params.rhoSqThres_source = 0.4;%with 4sec window, 0.9 is too high, 0 bad sources get removed...- -(EMG without highpass filter)
 %- ICanClean Canonical Correlation Analysis parameters
 lagAmount_samples = 1;
 CCA_Rsq_thres = 0.2;%default 0.2
@@ -260,6 +260,8 @@ EEG.filename = sprintf('%s_merged_raw',subj_char);
 %         'savemode','twofiles');        
 % end
 toc
+%%
+
 %% ===================================================================== %%
 %## SCRIPT PART 2
 tic

@@ -135,68 +135,34 @@ end
 %- statistics
 STAT_ALPHA = 0.05;
 %- datetime override
-dt = '16032023_OA_subset';
+% dt = '16032023_OA_subset';
 % dt = '23032023_OA_subset';
+dt = '04062023_MIM_OA_subset_N85_speed_terrain';
 %- hard define
 % load_trials = {'0p25'};
 % load_trials = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-load_trials = {'0p25','0p5','0p75','1p0'};
+% load_trials = {'0p25','0p5','0p75','1p0'};
 % load_trials = {'flat','low','med','high'}; 
 %- soft define
 subjinfDir = [SUBJINF_DIR filesep sprintf('%s',dt)];
-save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep '_figs'];
+save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
-%% ===================================================================== %%
-%## LOAD STUDIES && ALLEEGS
-if exist('SLURM_POOL_SIZE','var')
-    POOL_SIZE = min([SLURM_POOL_SIZE,length(load_trials)*4]);
-else
-    POOL_SIZE = 1;
-end
-STUDIES = cell(1,length(load_trials));
-ALLEEGS = cell(1,length(load_trials));
-%- Create STUDY & ALLEEG structs
-parfor (cond_i = 1:length(load_trials),POOL_SIZE)
-    study_fName = sprintf('%s_MIM_study',load_trials{cond_i});
-    if ~exist([load_dir filesep study_fName '.study'],'file')
-        error('ERROR. study file does not exist');
-    else
-        if ~ispc
-            [tmpS,tmpA] = pop_loadstudy('filename',[study_fName '_UNIX.study'],'filepath',load_dir);
-        else
-            [tmpS,tmpA] = pop_loadstudy('filename',[study_fName '.study'],'filepath',load_dir);
-        end
-    end
-end
-%%
-% clear all;close all;
-% eeglab
-% addpath 'M:\liu.chang1\scripts\MiM_HY'
-% MiM_HY_config_params;
-folder_name = 'EMG_HP5std_iCC0p65_iCCEMG0p4_ChanRej0p7_TimeRej0p4_winTol10';
-process_output_folder_Dipfit = ['M:\liu.chang1\STUDY-preprocess-HY_202212\',folder_name];
-
 output_folder = [save_dir filesep 'ic_rejection_crit']; 
 if ~exist(output_folder,'dir')
     mkdir(output_folder)
 end
-%not include data with no custom electrode location
-%%
-for n = [1:length(all_subjStr)]
-    runAllCriteria = 1;
-    subjStr = all_subjStr{n}
-    try
-        filename_set = [subjStr,'_cleanEEG_',folder_name,'_ICA_ICLabel_dipfit_fem.set'];
-        EEG = pop_loadset('filename',filename_set,'filepath',fullfile(process_output_folder_Dipfit,subjStr));
-    catch 
-        filename_set = [subjStr,'_cleanEEG_',folder_name,'ICA_ICLabel_dipfit_fem.set'];
-        EEG = pop_loadset('filename',filename_set,'filepath',fullfile(process_output_folder_Dipfit,subjStr));
-    end
-    mkdir(fullfile(output_folder,subjStr,'Figures'))
+%% ===================================================================== %%
+subj_list = [SUBJ_PICS{:}];
+runAllCriteria = 1;
+for subj_i = 1:length(subj_list)
+    subj_str = subj_list{subj_i};
+    %- Load EEG
+    EEG = pop_loadset('filename',sprintf('%s_allcond_ICA_TMPEEG.set',subj_str),'filepath',[save_dir filesep subj_str filesep 'ICA']);
+    mkdir([output_folder filesep subj_str])
     
     if runAllCriteria
         %% Crteria 1: Count brain components based on ICLabel
@@ -289,7 +255,7 @@ for n = [1:length(all_subjStr)]
         stem(numICs,lsfit(:,1)); hold on;
         stem(numICs(lsfit(:,1)> slope_thres),lsfit(lsfit(:,1)> slope_thres,1),'r');
         ylabel('slope')
-        saveas(gcf,fullfile(output_folder,subjStr,'Figures',['spectral stem.jpg']))
+        saveas(gcf,fullfile(output_folder,subj_str,'Figures',['spectral stem.jpg']))
 
         c = (othercolor('RdBu4'));%my personal color scheme
         % Log-log plot - retained
@@ -321,7 +287,7 @@ for n = [1:length(all_subjStr)]
         xlim([1 70]);
         legend(cellstr(num2str(ICs_keep_brain_spec)),'Location','eastoutside');
         legend box off
-        saveas(gcf,fullfile(output_folder,subjStr,'Figures',['Keep potential brain components_spectral.jpg']))
+        saveas(gcf,fullfile(output_folder,subj_str,'Figures',['Keep potential brain components_spectral.jpg']))
 
         fig_PSD3 = figure('color','w');
         for i0 = 1:length(ICs_spec_dump)
@@ -338,7 +304,7 @@ for n = [1:length(all_subjStr)]
         legend(cellstr(num2str(ICs_spec_dump)),'Location','eastoutside');
         legend box off
     %     saveas(gcf,fullfile(save_IC_Rejection_folder,subjStr,'Figures',['potential brain components_spectral_',subDirNum,'.fig']))
-        saveas(gcf,fullfile(output_folder,subjStr,'Figures',['Dump potential brain components_spectral.jpg']))
+        saveas(gcf,fullfile(output_folder,subj_str,'Figures',['Dump potential brain components_spectral.jpg']))
         %}
 
         %% Criteria 4: Scalp topographs and dipole location (if outside the brain or not)
@@ -395,7 +361,7 @@ for n = [1:length(all_subjStr)]
         Output_ICRejection.IC_all_eye = IC_all_eye;
         Output_ICRejection.Cleaning_Params = EEG.etc.Params;
 
-        fileName = fullfile(output_folder,subjStr,[subjStr,'_ICRej.mat']);
+        fileName = fullfile(output_folder,subj_str,[subj_str,'_ICRej.mat']);
         save(fileName,'Output_ICRejection');
 
         % Figure
@@ -408,8 +374,8 @@ for n = [1:length(all_subjStr)]
         stem(numICs,IC_all_brain);title(['brain: ',num2str(sum(IC_all_brain == 8))]);ylabel('Keep: score');
         stem(numICs(IC_all_muscle>=2),IC_all_brain(IC_all_muscle>=2),'r');
         xlabel('IC number');legend('','flag muscle');
-        mkdir(fullfile(output_folder,subjStr,'Figures'));
-        saveas(gcf,fullfile(output_folder,subjStr,'Figures',['IC_score.jpg']))
+        mkdir(fullfile(output_folder,subj_str,'Figures'));
+        saveas(gcf,fullfile(output_folder,subj_str,'Figures',['IC_score.jpg']))
 
         c = (othercolor('RdBu4'));%my personal color scheme
         % Log-log plot - retained
@@ -443,7 +409,7 @@ for n = [1:length(all_subjStr)]
         xlim([1 70]);
         legend(cellstr(num2str(IC_powpow)),'Location','eastoutside');
         legend box off
-        saveas(gcf,fullfile(output_folder,subjStr,'Figures',['KEEP IC PSD.jpg']))
+        saveas(gcf,fullfile(output_folder,subj_str,'Figures',['KEEP IC PSD.jpg']))
         
         summed_scores_to_keep = sum(classifications(:,1),2);
         titles_FEM = {};
@@ -453,11 +419,11 @@ for n = [1:length(all_subjStr)]
         end
         bemobil_plot_patterns_CL(EEG.icawinv,EEG.chanlocs,'chan_to_plot',find(IC_all_brain >= 8)','weights',summed_scores_to_keep,...
             'fixscale',0,'minweight',0.75,'titles',titles_FEM);
-        saveas(gcf,fullfile(output_folder,subjStr,'Figures',['potential brain components_allcritera_customElectrode','.fig']))
-        saveas(gcf,fullfile(output_folder,subjStr,'Figures',['potential brain components_allcritera_customElectrode','.jpg']))
+        saveas(gcf,fullfile(output_folder,subj_str,'Figures',['potential brain components_allcritera_customElectrode','.fig']))
+        saveas(gcf,fullfile(output_folder,subj_str,'Figures',['potential brain components_allcritera_customElectrode','.jpg']))
 
     else
-        load(fullfile(output_folder,subjStr,[subjStr,'_ICRej.mat']));
+        load(fullfile(output_folder,subj_str,[subj_str,'_ICRej.mat']));
         IC_all_brain = Output_ICRejection.IC_all_brain;
     end
 %     keyboard
@@ -483,7 +449,7 @@ for n = [1:length(all_subjStr)]
             [ALLEEG, EEG_powpow, CURRENTSET] = eeg_store(ALLEEG, EEG_powpow , 0);
             eeglab redraw
             Plot35IcPushbutton_powpow(EEG_powpow,length(IC_powpow),IC_powpow)
-            saveas(gcf,fullfile(output_folder,subjStr,['powpowcat.fig']))
+            saveas(gcf,fullfile(output_folder,subj_str,['powpowcat.fig']))
         end
     end
     % eeglab redraw

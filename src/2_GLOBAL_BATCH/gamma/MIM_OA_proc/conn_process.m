@@ -62,7 +62,9 @@ setWorkspace
 %% PARPOOL SETUP
 if ~ispc
 %     eeg_options;
-    pop_editoptions('option_parallel',0,'option_storedisk',0);
+    % see. eeg_optionsbackup.m for all eeglab options.
+    pop_editoptions('option_parallel',0,'option_storedisk',1,...
+        'option_saveversion6',0,'option_cachesize',1000,'option_savetwofiles',1);
     disp(['SLURM_JOB_ID: ', getenv('SLURM_JOB_ID')]);
     disp(['SLURM_CPUS_ON_NODE: ', getenv('SLURM_CPUS_ON_NODE')]);
     %## allocate slurm resources to parpool in matlab
@@ -76,13 +78,14 @@ if ~ispc
     % pp.NumThreads = 1;
     fprintf('Number of workers: %i\n',pp.NumWorkers);
     fprintf('Number of threads: %i\n',pp.NumThreads);
-    %- make meta data directory for slurm
+    %- make meta data dire1ory for slurm
     mkdir([run_dir filesep getenv('SLURM_JOB_ID')])
     pp.JobStorageLocation = strcat([run_dir filesep], getenv('SLURM_JOB_ID'));
     %- create your p-pool (NOTE: gross!!)
     pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
 else
-    pop_editoptions('option_parallel',0,'option_storedisk',1);
+    pop_editoptions('option_parallel',0,'option_storedisk',1,...
+        'option_saveversion6',0,'option_cachesize',1000,'option_savetwofiles',1);
     SLURM_POOL_SIZE = 1;
 end
 %% ================================================================= %%
@@ -129,9 +132,9 @@ SUBJ_3NHMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
 SUBJ_PICS = {SUBJ_2HMA,SUBJ_3NHMA};
 GROUP_NAMES = {'H2000''s','H3000''s'};
 % SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3HMA),1:length(SUBJ_3NHMA)}; % JACOB,SAL(02/23/2023)
-SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3NHMA)}; 
-% N_SUBS = 5;
-% SUBJ_ITERS = {get_unique_randi(length(SUBJ_2HMA),N_SUBS,1)',get_unique_randi(length(SUBJ_3NHMA),N_SUBS,1)'};
+% SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3NHMA)}; 
+N_SUBS = 1;
+SUBJ_ITERS = {get_unique_randi(length(SUBJ_2HMA),N_SUBS,1)',get_unique_randi(length(SUBJ_3NHMA),N_SUBS,1)'};
 %- Subject Picks
 % SUBJ_PICS = {SUBJ_YNG,SUBJ_HMA,SUBJ_NMA}; % CHANG,LIU(07/25/2022)
 % SUBJ_ITERS = {[],1:length(SUBJ_HMA),1:length(SUBJ_NMA)}; % CHANG,LIU(07/25/2022)
@@ -141,6 +144,7 @@ SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3NHMA)};
 % OUTSIDE_DATA_SUFFIX = 'ICA_ICLabel_dipfit_templateElec';% CHANG,LIU(07/25/2022)
 % OUTSIDE_DATA_SUFFIX = 'ICA_ICLabel_dipfit_fem'; % CHANG,LIU(07/25/2022)
 OA_PREP_FPATH = '24022023_OA_prep'; % JACOB,SAL(02/23/2023)
+% OA_PREP_FPATH = '07042023_OA_prep_verified'; % JACOB,SAL(04/10/2023)
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
 %## CONVERT PATHS
 if DO_UNIX
@@ -195,7 +199,11 @@ params.PAD_RATIO = 2;
 % dt = '16032023_OA_subset'; % OA (03/22/2023) JS
 % dt = '02042023_OA_subset';
 % dt = '31032023_OA_subset_randi';
-dt = '04052023_OA_subset';
+% dt = '04052023_OA_subset';    
+% dt = '04052023_MIM_OA_subset_N85_speed_terrain';
+% dt = '04062023_MIM_OA_subset_N85_speed_terrain';
+% dt = '04092023_MIM_OA_subset_N85_speed_terrain';
+dt = '04102023_OA_subset_randi';
 %## PATH & TEMP STUDY NAME
 %- hard define
 DO_CONN_ANL = false;
@@ -222,8 +230,7 @@ sessions        = cell(1,length([SUBJ_ITERS{:}]));
 subjectNames    = cell(1,length([SUBJ_ITERS{:}]));
 fNames          = cell(1,length([SUBJ_ITERS{:}]));
 fPaths          = cell(1,length([SUBJ_ITERS{:}]));
-dip_chn_fPath   = cell(1,length([SUBJ_ITERS{:}]));
-dip_chn_fName   = cell(1,length([SUBJ_ITERS{:}]));
+chanlocs_fPaths   = cell(1,length([SUBJ_ITERS{:}]));
 stack_iter = 0;
 for group_i = 1:length(SUBJ_ITERS)
     sub_idx = SUBJ_ITERS{group_i}; %1:2; %1:length(SUBJ_PICS{GROUP_INT}); %1:2;
@@ -231,10 +238,13 @@ for group_i = 1:length(SUBJ_ITERS)
     cnt = stack_iter + 1;
     %## Assigning paths for .set, headmodel,& channel file
     for subj_i = sub_idx
+        %- ICA fPaths
         fPaths{cnt} = [OUTSIDE_DATA_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'clean'];
 %         fPaths{cnt} = [load_dir filesep SUBJ_PICS{group_i}{subj_i} filesep 'ICA'];
         tmp = dir([fPaths{cnt} filesep '*.set']);
         fNames{cnt} = tmp.name;
+        %- Chanlocs fPaths
+        chanlocs_fPaths{cnt} = [DATA_DIR filesep DATA_SET filesep SUBJ_PICS{group_i}{subj_i} filesep 'EEG' filesep 'HeadScan' filesep 'CustomElectrodeLocations.mat'];
         %- Prints
         fprintf('==== Subject %s Paths ====\n',SUBJ_PICS{group_i}{subj_i})
         fprintf('ICA Exists: %i\n',exist([fPaths{cnt} filesep fNames{cnt}],'file')>1)
@@ -261,7 +271,8 @@ if ~exist([save_dir filesep study_fName_1 '.study'],'file') %|| true
     fprintf(1,'\n==== CLUSTERING SUBJECT DATA ====\n');
     [ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
                         conditions,groups,sessions,...
-                        'SAVE_EEG',SAVE_EEG);
+                        'SAVE_EEG',SAVE_EEG,...
+                        'CHANLOCS_FPATHS',chanlocs_fPaths);
     %- NOTES: spec_mode, 'psd' does not work.
     [MAIN_ALLEEG,MAIN_STUDY] = eeglab_cluster(ALLEEG,...
                         study_fName_1,save_dir,...
@@ -292,26 +303,40 @@ if ~exist([save_dir filesep study_fName_2 '.study'],'file')
             MAIN_ALLEEG(subj_i).icaact = (MAIN_ALLEEG(subj_i).icaweights*MAIN_ALLEEG(subj_i).icasphere)*MAIN_ALLEEG(subj_i).data(MAIN_ALLEEG(subj_i).icachansind,:);
         end
     end
+    
+    %## PCA reduction algorithm
+%     [tmps,tmpa,~,outliers] = cluster_pca_reduce(MAIN_STUDY,MAIN_ALLEEG); %## DEBUG
+    [MAIN_STUDY,MAIN_ALLEEG,~,~] = cluster_pca_reduce(MAIN_STUDY,MAIN_ALLEEG);
+    %## ICA reduction algorithm
+%     [tmpS,comps_out,comps_rej] = cluster_ica_reduce(MAIN_STUDY); %## DEBUG
+%     [MAIN_STUDY,~,~] = cluster_ica_reduce(MAIN_STUDY);
     %## ADD ANATOMICAL LABELS
     [~, atlas_cell] = add_anatomical_labels(MAIN_STUDY,MAIN_ALLEEG);
     MAIN_STUDY.etc.add_anatomical_labels = atlas_cell;
-    %## PCA reduction algorithm
-%     [MAIN_STUDY,MAIN_ALLEEG,~,outliers] = cluster_pca_reduce(MAIN_STUDY,MAIN_ALLEEG);
-    %## ICA reduction algorithm
-    [MAIN_STUDY,~] = cluster_ica_reduce(MAIN_STUDY);
+    %## SAVE STUDY
+%     [MAIN_STUDY,MAIN_ALLEEG] = eeglab_save_study(MAIN_STUDY,MAIN_ALLEEG,...
+%                                             'recued_comp_pca_study',save_dir);
     [MAIN_STUDY,MAIN_ALLEEG] = eeglab_save_study(MAIN_STUDY,MAIN_ALLEEG,...
                                             study_fName_2,save_dir);
     %## Extract components for each cluster & subject
     comps_out = zeros(length(MAIN_STUDY.cluster),length(MAIN_ALLEEG));
+    main_clusts = [];
     for clus_i = 2:length(MAIN_STUDY.cluster)
-        sets_i = MAIN_STUDY.cluster(clus_i).sets;
-        for j = 1:length(sets_i)
-            comps_out(clus_i,sets_i(j)) = MAIN_STUDY.cluster(clus_i).comps(j);
+        if ~contains(MAIN_STUDY.cluster(clus_i).name,'Outlier')
+            sets_i = MAIN_STUDY.cluster(clus_i).sets;
+            main_clusts = [main_clusts, clus_i];
+            for j = 1:length(sets_i)
+                comps_out(clus_i,sets_i(j)) = MAIN_STUDY.cluster(clus_i).comps(j);
+            end
         end
     end
+    idx = find(~all(comps_out == 0,2));
+    idx = [1; idx];
+    comps_out = comps_out(idx,:);
     if all(comps_out==0)
         error('STUDY cluster information not generated');
     end
+    
 else
     fprintf(1,'\n==== LOADING REDUCED COMPONENTS STUDY DATA ====\n');
     if ~ispc
@@ -322,12 +347,19 @@ else
     fprintf(1,'\n==== DONE: LOADING REDUCED COMPONENTS STUDY DATA ====\n');
     %## Extract components for each cluster & subject
     comps_out = zeros(length(MAIN_STUDY.cluster),length(MAIN_ALLEEG));
+    main_clusts = [];
     for clus_i = 2:length(MAIN_STUDY.cluster)
-        sets_i = MAIN_STUDY.cluster(clus_i).sets;
-        for j = 1:length(sets_i)
-            comps_out(clus_i,sets_i(j)) = MAIN_STUDY.cluster(clus_i).comps(j);
+        if ~contains(MAIN_STUDY.cluster(clus_i).name,'Outlier')
+            sets_i = MAIN_STUDY.cluster(clus_i).sets;
+            main_clusts = [main_clusts, clus_i];
+            for j = 1:length(sets_i)
+                comps_out(clus_i,sets_i(j)) = MAIN_STUDY.cluster(clus_i).comps(j);
+            end
         end
     end
+    idx = find(~all(comps_out == 0,2));
+    idx = [1; idx];
+    comps_out = comps_out(idx,:);
     if all(comps_out==0)
         error('STUDY cluster information not generated');
     end
@@ -338,8 +370,10 @@ plot_fNames = {'allDipPlot_top','allDipPlot_sagittal','allDipPlot_coronal','allS
 plot_chk = cellfun(@(x) ~exist([save_dir filesep sprintf('%s.jpg',x)],'file'),plot_fNames);
 if any(plot_chk) && false
     fprintf('==== Making Dipole Plots ====\n');
-    [~] = std_dipplot(MAIN_STUDY,MAIN_ALLEEG,'clusters',2:length(MAIN_STUDY.cluster),...
-            'mode','multicolor','figure','on');
+%     [~] = std_dipplot(MAIN_STUDY,MAIN_ALLEEG,'clusters',2:length(MAIN_STUDY.cluster),...
+%             'mode','multicolor','figure','on');
+    [~] = std_dipplot(MAIN_STUDY,MAIN_ALLEEG,'clusters',main_clusts,...
+                'mode','multicolor','figure','on');
     fig_i = get(groot,'CurrentFigure');
     saveas(fig_i,[save_dir filesep sprintf('allDipPlot_top.jpg')]);
     view([45,0,0])
@@ -368,8 +402,8 @@ if any(plot_chk) && false
                                         'recompute','on',...
                                         'spec','on',...
                                         'specparams',...
-                                        {'specmode',SPEC_MODE,'freqfac',4,...
-                                        'freqrange',FREQ_LIMITS});
+                                        {'specmode',params.SPEC_MODE,'freqfac',4,...
+                                        'freqrange',params.FREQ_LIMITS});
     specMin = 10;
     specMax = 45;
     std_specplot(MAIN_STUDY,MAIN_ALLEEG,'clusters',2:length(MAIN_STUDY.cluster),'ylim',[specMin,specMax],'freqrange',[1,65]);
@@ -386,6 +420,7 @@ if any(plot_chk) && false
     fig_i = get(groot,'CurrentFigure');
 %     saveas(fig_i,[save_dir filesep sprintf('allTopoPlot.fig')]);
     saveas(fig_i,[save_dir filesep sprintf('allTopoPlot.jpg')]);
+    close all
     %## POP VIEW PROPS
     if ~exist([save_dir filesep 'component_props'],'dir')
         mkdir([save_dir filesep 'component_props']);
@@ -398,9 +433,10 @@ if any(plot_chk) && false
                 pop_prop_extended(MAIN_ALLEEG(subj_i),0,comps_clust,NaN,...
                 {'freqrange',[1 65],'freqfac',4,'limits',[1,60,-30,0]});
                 fig = gcf;
+                fig.Title = sprintf('cluster%i_%s_viewprops_ic%i.fig',cluster_i,MAIN_ALLEEG(subj_i).subject,comps_clust);
                 fig.Position = [500 300 920 480]; 
                 hold off;
-                savefig(fig,[save_dir filesep 'component_props' filesep sprintf('%i_%s_viewprops_co%i_cl%i.fig',cluster_i,MAIN_ALLEEG(subj_i).subject,comps_clust,cluster_i)]);
+                savefig(fig,[save_dir filesep 'component_props' filesep sprintf('cluster%i_%s_viewprops_ic%i.fig',cluster_i,MAIN_ALLEEG(subj_i).subject,comps_clust)]);
                 close fig
             end
         end
@@ -428,13 +464,13 @@ SUFFIX_PATH_EPOCHED = 'EPOCHED';
 % clear MAIN_ALLEEG
 %% GENERATE EPOCH MAIN FUNC
 %## PARFOR LOOP
-% parfor (subj_i = LOOP_VAR,POOL_SIZE)
-for subj_i = LOOP_VAR
+parfor (subj_i = LOOP_VAR,POOL_SIZE)
+% for subj_i = LOOP_VAR
 % for subj_i = 4
     %## INITIATE VARS
     %## LOAD EEG DATA
-    EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
     fprintf('Running subject %s\n',EEG.subject)
+    EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
     %- Recalculate ICA Matrices && Book Keeping
     EEG = eeg_checkset(EEG,'loaddata');
     if isempty(EEG.icaact)
@@ -443,16 +479,16 @@ for subj_i = LOOP_VAR
     end
     %## PARSE TRIALS
     fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED];
-    fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[params.params.TRIAL_TYPES{:}]);
+    fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[params.TRIAL_TYPES{:}]);
     %- parse
-    if exist([fPath filesep fName],'file')
-            fNames_out{subj_i} = fName;
-            fPaths_out{subj_i} = fPath;
-            ALLEEG = pop_loadset('filename',fName,'filepath',fPath);
-            tmp{subj_i} = ALLEEG;
+    if exist([fPath filesep fName],'file') %&& false
+        fNames_out{subj_i} = fName;
+        fPaths_out{subj_i} = fPath;
+        ALLEEG = pop_loadset('filename',fName,'filepath',fPath);
+        tmp{subj_i} = ALLEEG;
     else
         try
-            ALLEEG = mim_parse_trials(EEG,params.TRIAL_TYPES,params.OVERRIDE_DIPFIT);
+            ALLEEG = mim_parse_trials(EEG,params.TRIAL_TYPES,params.EPOCH_TIME_LIMITS);
             %## Save EEG
     %         for trial_i = 1:length(ALLEEG)
     %             out_fPath = [save_dir filesep ALLEEG(trial_i).subject filesep SUFFIX_PATH_EPOCHED filesep sprintf('cond_%s',TRIAL_TYPES{trial_i})];
@@ -466,18 +502,17 @@ for subj_i = LOOP_VAR
     %         end
             %## SAVE ONE BIG EEG FILE
             ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
-            ALLEEG.condition = [TRIAL_TYPES{:}];
             %- assign a new name
-            ALLEEG.filepath = fPath;
-            if ~exist(ALLEEG.filepath,'dir')
-                mkdir(ALLEEG.filepath)
+            if ~exist(fPath,'dir')
+                mkdir(fPath)
             end
-            ALLEEG.filename = fName;
-
-            ALLEEG.etc.epoch.epoch_limits   = params.OVERRIDE_DIPFIT; 
+%             ALLEEG.urevent = []; % might be needed
+            ALLEEG.etc.epoch.epoch_limits   = params.EPOCH_TIME_LIMITS; 
             [ALLEEG] = pop_saveset(ALLEEG,'savemode','twofiles',...
-                    'filename',ALLEEG.filename,...
-                    'filepath',ALLEEG.filepath);
+                    'filename',fName,...
+                    'filepath',fPath,...
+                    'version','7.3');
+%             par_save(ALLEEG,ALLEEG.filepath,ALLEEG.filename)
             fNames_out{subj_i} = {ALLEEG.filename};
             fPaths_out{subj_i} = {ALLEEG.filepath};
             tmp{subj_i} = ALLEEG;
@@ -485,6 +520,7 @@ for subj_i = LOOP_VAR
             rmv_subj(subj_i) = 1;
             rmv_subj_chars{subj_i} = EEG.subject;
             EEG.timewarp = struct([]);
+            EEG.urevent = [];
             tmp{subj_i} = EEG;
             fprintf(['error. identifier: %s\n',...
                      'error. %s\n',...
@@ -501,7 +537,7 @@ if DO_CONN_ANL
     parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
 %     for subj_i = LOOP_VAR
         %## INITIATE VARS
-        ALLEEG = cell(1,length(params.TRIAL_TYPES));
+%         ALLEEG = cell(1,length(params.TRIAL_TYPES));
         %- Parse out components
         components = comps_out(:,subj_i);
         components = sort(components(components ~= 0));
@@ -520,34 +556,38 @@ if DO_CONN_ANL
         
         ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
         %}
-        ALLEEG = pop_loadset('filepath',fPaths_out{subj_i}{1},'filename',fNames_out{subj_i}{1});
-        %- Recalculate ICA Matrices && Book Keeping
-        ALLEEG = eeg_checkset(ALLEEG,'loaddata');
-        if isempty(ALLEEG.icaact)
-            fprintf('%s) Recalculating ICA activations\n',ALLEEG.subject);
-            ALLEEG.icaact = (ALLEEG.icaweights*ALLEEG.icasphere)*ALLEEG.data(ALLEEG.icachansind,:);
-        end
-        try
-%             fprintf('Running subject %s\n',ALLEEG(1).subject)
-            fprintf('Running subject %s\n',ALLEEG.subject)
-            %## RUN MAIN_FUNC
-            [ALLEEG] = main_func_v2(ALLEEG,save_dir,components,...
-                'SAVE_EEG',SAVE_EEG,...
-                'CONN_METHODS',params.CONN_METHODS,... %
-                'FREQS',params.CONN_FREQS,...
-                'CNCTANL_TOOLBOX',params.CNCTANL_TOOLBOX,... 
-                'DO_BOOTSTRAP',DO_BOOTSTRAP,...
-                'DO_PHASE_RND',DO_PHASE_RND,...
-                'WINDOW_LENGTH',params.WINDOW_LENGTH,...
-                'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
-            tmp{subj_i} = ALLEEG;
-        catch e
-            rmv_subj(subj_i) = 1;
-            rmv_subj_chars{subj_i} = EEG.subject;
-            tmp{subj_i} = [];
-            fprintf(['error. identifier: %s\n',...
-                     'error. %s\n',...
-                     'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+        if ~isempty(fPaths_out{subj_i})
+            EEG = pop_loadset('filepath',fPaths_out{subj_i}{1},'filename',fNames_out{subj_i}{1});
+            %- Recalculate ICA Matrices && Book Keeping
+            EEG = eeg_checkset(EEG,'loaddata');
+            if isempty(EEG.icaact)
+                fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+                EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+            end
+            try
+    %             fprintf('Running subject %s\n',ALLEEG(1).subject)
+                fprintf('Running subject %s\n',EEG.subject)
+                %## RUN MAIN_FUNC
+                [tmp] = main_func_v2(EEG,save_dir,components,...
+                    'SAVE_EEG',SAVE_EEG,...
+                    'CONN_METHODS',params.CONN_METHODS,... %
+                    'FREQS',params.CONN_FREQS,...
+                    'CNCTANL_TOOLBOX',params.CNCTANL_TOOLBOX,... 
+                    'DO_BOOTSTRAP',params.DO_BOOTSTRAP,...
+                    'DO_PHASE_RND',params.DO_PHASE_RND,...
+                    'WINDOW_LENGTH',params.WINDOW_LENGTH,...
+                    'WINDOW_STEP_SIZE',params.WINDOW_STEP_SIZE);
+%                 pop_mergeset();
+                EEG.CAT = tmp.CAT;
+                tmp{subj_i} = EEG;
+            catch e
+                rmv_subj(subj_i) = 1;
+                rmv_subj_chars{subj_i} = EEG.subject;
+                tmp{subj_i} = EEG;
+                fprintf(['error. identifier: %s\n',...
+                         'error. %s\n',...
+                         'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+            end
         end
     end
 end
@@ -581,7 +621,7 @@ end
 tmp_alleeg = cellfun(@(x) [[]; x], tmp);
 %## CREATE NEW STUDY STRUCTURED
 [tmp_study, tmp_alleeg] = std_editset(MAIN_STUDY,tmp_alleeg,...
-                            'rmclust','on',...
+                            'rmclust','off',...
                             'addchannellabels','on',...
                             'name',study_fName,...
                             'commands',{'remove',find(rmv_subj)});

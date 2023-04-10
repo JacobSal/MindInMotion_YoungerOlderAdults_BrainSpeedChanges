@@ -4,8 +4,8 @@
 #SBATCH --mail-user=jsalminen@ufl.edu # Where to send mail
 #SBATCH --nodes=1 # Use one node
 #SBATCH --ntasks=1 # Run a single task
-#SBATCH --cpus-per-task=25 # Number of CPU cores per task
-#SBATCH --mem-per-cpu=40000mb# Total memory limit
+#SBATCH --cpus-per-task=20 # Number of CPU cores per task
+#SBATCH --mem-per-cpu=30000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
 #SBATCH --time=16:00:00 # Time limit hrs:min:sec
 #SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/MIM_OA_proc/%j_MIM_OA_conn_batch.log # Standard output

@@ -153,8 +153,9 @@ if DO_DIPOLE_REJECTION
 %             ICLclass(:,5),ICLclass(:,6),ICLclass(:,7),...
 %             'VariableNames',{'ComponentNumber','ResidualVariance','ICLabel_pBrain','ICLabel_pMuscle',...
 %             'ICLabel_pEye','ICLabel_pHeart','ICLabel_pLineNoise','ICLabel_pChannelNoise','ICLabel_pOther'});
-         ALLEEG(subj_i).reject.gcompreject = tmp_rej;
+         ALLEEG(subj_i).reject.gcompreject = ~(goodRV & goodICLabel);
          ALLEEG(subj_i).reject.rejmanual = 'yes';
+         ALLEEG(subj_i) = pop_subcomp(ALLEEG(subj_i),tmp_rej,0,0);
     end
 %     STUDY.preclust = [];
 %     STUDY.cluster.sets = set_list_keep;
@@ -235,7 +236,7 @@ fprintf('\n');
 % STUDY = std_movecomp(STUDY,ALLEEG, from_cluster, to_cluster, comps);
 %## KEEP TRACK OF REJECTED COMPS
 STUDY.urcluster = STUDY.cluster;
-STUDY.urcluster(end).name = sprintf('rvcrit%0.2f_iclabelcrit_Brain%i_rejected_comps',RV_BRAIN_CRIT,ICLABEL_BRAIN_CRIT);
+STUDY.urcluster(end+1).name = sprintf('rvcrit%0.2f_iclabelcrit_Brain%i_rejected_comps',RV_BRAIN_CRIT,ICLABEL_BRAIN_CRIT);
 STUDY.urcluster(end).parent = '';
 STUDY.urcluster(end).sets = set_list_rej;
 STUDY.urcluster(end).comps = comp_list_rej;
@@ -243,8 +244,16 @@ STUDY.urcluster(end).comps = comp_list_rej;
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG); 
 %% SAVE STUDY && CONVERT ALLEEG PATHS TO UNIX
 %## ROBUST SAVE STUDY
+for subj_i = 1:length(ALLEEG)
+    ALLEEG(subj_i).etc.full_setfile.filename = ALLEEG(subj_i).filename;
+    ALLEEG(subj_i).etc.full_setfile.filepath = ALLEEG(subj_i).filepath;
+    ALLEEG(subj_i).filename = sprintf('%s_%s_ICA_TMPEEG',ALLEEG(subj_i).subject,'reducedcomps');
+    ALLEEG(subj_i) = pop_saveset('filename',ALLEEG(subj_i).filename,'filepath',ALLEEG(subj_i).filepath);
+end
+[STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG); 
 [STUDY,ALLEEG] = eeglab_save_study(STUDY,ALLEEG,...
-                                    studyName,studyDir);
+                                    studyName,studyDir,...
+                                    'RESAVE_DATASETS','on');
 end
 %% ===================================================================== %%
 %## FUNCTIONS
