@@ -1,16 +1,15 @@
-% Additional IC Rejection after the initial pass for healthy young adults
-% Chang Liu - 2022-09-15
-% Using powpowcat
-%   Project Title: Run a graph analysis for multiple subjects
-%
-%   Code Designer: Jacob salminen, Chang Liu, Ryan Downey
+%%% =================================================================== %%%
+% IDENTIFY BRAIN-LIKE COMPONENTS
+%%% =================================================================== %%%
+%   Code Designer: Jacob salminen, Chang Liu
 %
 %   Version History --> See details at the end of the script.
 %   Current Version:  v1.0.20220103.0
 %   Previous Version: n/a
-%   Summary: 
+%   Summary: The following script is to identify potential brain components
+%   for the Mind-In-Motion study
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_test/3_paper_MIM_HOA/run_alleeg_spectral_run.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/1_ic_validation/MIM/run_ic_rejection_crit.sh
 
 %{
 %## RESTORE MATLAB
@@ -21,19 +20,14 @@ close all;
 clearvars
 %}
 %% Initialization
-%## TIME
+%- TIC
 tic
-%% REQUIRED SETUP 4 ALL SCRIPTS
 %- DATE TIME
 dt = datetime;
 dt.Format = 'ddMMyyyy';
 %- VARS
 USER_NAME = 'jsalminen'; %getenv('username');
 fprintf(1,'Current User: %s\n',USER_NAME);
-%- CD
-% cfname_path    = mfilename('fullpath');
-% cfpath = strsplit(cfname_path,filesep);
-% cd(cfpath);
 %% PATH TO YOUR GITHUB REPO
 %- GLOBAL VARS
 REPO_NAME = 'par_EEGProcessing';
@@ -41,32 +35,30 @@ REPO_NAME = 'par_EEGProcessing';
 if strncmp(computer,'PC',2)
     DO_UNIX = false;
     PATH_EXT = 'M';
+    PATH_ROOT = ['M:' filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 else  % isunix
     DO_UNIX = true;
     PATH_EXT = 'dferris';
-end
-%## DEBUG: PATHROOT OVERRIDE
-if DO_UNIX
     PATH_ROOT = [filesep 'blue' filesep 'dferris',...
         filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
-else
-    PATH_ROOT = ['M:' filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 end
 %% SETWORKSPACE
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '3_ANALYZE' filesep '1_ic_validation'];
+run_dir = [source_dir filesep '3_ANALYZE' filesep '1_ic_validation' filesep 'MIM'];
 %- addpath for local folder
 addpath(source_dir)
 addpath(run_dir)
 %- set workspace
 global ADD_CLEANING_SUBMODS
-ADD_CLEANING_SUBMODS = true;
+ADD_CLEANING_SUBMODS = false;
 setWorkspace
 %% PARPOOL SETUP
 if ~ispc
 %     eeg_options;
-    pop_editoptions('option_parallel',0,'option_storedisk',1);
+    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
+    'option_single', 1, 'option_memmapdata', 0, 'option_parallel', 0,...
+    'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
     disp(['SLURM_JOB_ID: ', getenv('SLURM_JOB_ID')]);
     disp(['SLURM_CPUS_ON_NODE: ', getenv('SLURM_CPUS_ON_NODE')]);
     %## allocate slurm resources to parpool in matlab
@@ -98,6 +90,13 @@ DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 SUBJINF_DIR = [DATA_DIR filesep DATA_SET filesep '_subjinf'];
 %## DATASET SPECIFIC
+%- MIND IN MOTION (SUBSET (07/25/2022)
+% SUBJ_YNG = {'H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1020',...
+%     'H1022','H1024','H1026','H1027','H1033','H1034'};
+% SUBJ_HMA = {'H2002', 'H2010', 'H2015', 'H2017', 'H2020', 'H2021', 'H2022', 'H2023',...
+%     'H2025', 'H2026', 'H2034', 'H2059', 'H2062', 'H2082', 'H2095'};
+% SUBJ_NMA = {'NH3008', 'NH3043', 'NH3055', 'NH3059', 'NH3069', ...
+%     'NH3070', 'NH3074', 'NH3086', 'NH3090', 'NH3104', 'NH3105', 'NH3106', 'NH3112', 'NH3114'};
 %- MIND IN MOTION (SUBSET (03/10/2023)
 SUBJ_NORUN = {'H2012_FU', 'H2013_FU', 'H2018_FU', 'H2020_FU', 'H2021_FU',...
             'H3024_Case','H3029_FU','H3039_FU','H3063_FU','NH3021_Case', 'NH3023_Case','NH3025_Case', 'NH3030_FU',...
@@ -110,39 +109,31 @@ SUBJ_2HMA = {'H2017', 'H2010', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
     'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2036', 'H2037', 'H2038',...
     'H2039', 'H2041', 'H2042', 'H2052', 'H2059', 'H2062', 'H2072', 'H2082',...
     'H2090', 'H2095', 'H2111', 'H2117'};
-SUBJ_3HMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
-    'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120'}; % JACOB,SAL(02/23/2023)
-SUBJ_3NHMA = {'NH3006', 'NH3007', 'NH3008', 'NH3010',...
+% SUBJ_3HMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
+%     'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120'}; % JACOB,SAL(02/23/2023)
+SUBJ_3NHMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
+    'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120',...
+    'NH3006', 'NH3007', 'NH3008', 'NH3010',...
     'NH3021', 'NH3025', 'NH3026',...
     'NH3030', 'NH3036',...
     'NH3041', 'NH3043', 'NH3051', 'NH3054', 'NH3055', 'NH3056', 'NH3058',...
     'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
     'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
     'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
-%- trial types
-% TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
-TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %- Subject Picks
-SUBJ_PICS = {SUBJ_2HMA,SUBJ_3HMA,SUBJ_3NHMA};
-GROUP_NAMES = {'H2000''s','H3000''s','NH3000''s'};
-SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3HMA),1:length(SUBJ_3NHMA)}; % JACOB,SAL(02/23/2023)
-%- Subject Picks
-%- Subject Directory Information
-OA_PREP_FPATH = '24022023_OA_prep'; % JACOB,SAL(02/23/2023)
-OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
-%## CONVERT PATHS
-if DO_UNIX
-    OUTSIDE_DATA_DIR = convertPath2UNIX(OUTSIDE_DATA_DIR);
-else
-    OUTSIDE_DATA_DIR = convertPath2Drive(OUTSIDE_DATA_DIR);
-end
+% SUBJ_PICS = {SUBJ_2HMA,SUBJ_3HMA,SUBJ_3NHMA};
+SUBJ_PICS = {SUBJ_2HMA,SUBJ_3NHMA};
+GROUP_NAMES = {'H2000''s','H3000''s'};
+% SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3HMA),1:length(SUBJ_3NHMA)}; % JACOB,SAL(02/23/2023)
+SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3NHMA)}; 
 %% ===================================================================== %%
 %## PROCESSING PARAMS
 %- statistics
 STAT_ALPHA = 0.05;
 %- datetime override
-dt = '16032023_OA_subset';
+% dt = '16032023_OA_subset';
 % dt = '23032023_OA_subset';
+dt = '04092023_MIM_OA_subset_N85_speed_terrain';
 %- hard define
 % load_trials = {'0p25'};
 % load_trials = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
@@ -150,46 +141,65 @@ load_trials = {'0p25','0p5','0p75','1p0'};
 % load_trials = {'flat','low','med','high'}; 
 %- soft define
 subjinfDir = [SUBJINF_DIR filesep sprintf('%s',dt)];
-save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep '_figs'];
+save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep '_figs' filesep 'ic_rejection_crit'];
 load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
 %% ===================================================================== %%
-% clear all;close all
-% MiM_HY_config_params;
-
-for n = 1
-    eeglab
-    subjStr = all_subjStr{n}    
-    disp('load IC rejection result...'),
-    load(fullfile(process_output_folder_IC_Rej ,[subjStr,'_ICRej.mat']))
-    EEG = pop_loadset(fullfile(process_output_folder_Dipfit,subjStr,[subjStr,'_dipfit_standardBEM_warp_align.set']));
+if exist('SLURM_POOL_SIZE','var')
+    POOL_SIZE = min([SLURM_POOL_SIZE,length(subj_list)]);
+else
+    POOL_SIZE = 1;
+end
+subj_list = [SUBJ_PICS{:}];
+RUN_ALL_CRITERIA = true;
+RUN_POWPOWCAT = true;
+for subj_i = 53:length(subj_list)
+% parfor (subj_i = 1:length(subj_list),POOL_SIZE)
+    subj_str = subj_list{subj_i};
+    %- Load EEG
+    EEG = pop_loadset('filename',sprintf('%s_allcond_ICA_TMPEEG.set',subj_str),'filepath',[load_dir filesep subj_str filesep 'ICA']);
+    out_fPath = [save_dir filesep subj_str];
+    if ~exist(out_fPath,'dir')
+        mkdir(out_fPath)
+    end
+    if RUN_ALL_CRITERIA
+       crit = mim_reject_ics(EEG,out_fPath);
+       close all;
+    else
+        tmp = load([out_fPath filesep sprintf('%s_ICRej.mat',subj_str)]);
+        Output_ICRejection = tmp.Output_ICRejection;
+        IC_all_brain = Output_ICRejection.IC_all_brain;
+    end
     %% Last check Criteria 5: PowPow Cat Cross-Frequency Power-Power Coupling Analysis: A Useful Cross-Frequency Measure to Classify ICA-Decomposed EEG
     % It takes a long time to run. should pick only the ones that are
     % classified as 'brain'
     % %powpowcat parameters
-    runPowPowCat = 1;
-    if runPowPowCat
+    %{
+    if RUN_POWPOWCAT
         upperFreqLimit = 100; %Frequency in Hz
         inputDataType = 2; %1, electrode data; 2, ICA time series
         methodType = 2;%1, Pearson's correlation; 2, Speaman's correlation
-        numIterations = 1000;
-        IC_powpow = find(Output_ICRejection.IC_all_brain >= 8);
+        numIterations = [];
+        IC_powpow = find(IC_all_brain >= 8);
         fprintf('PowPowCAT parameters:\n upperFreqLimit= %i Hz\n inputDataType = ICs\n methodType= Spearman''s correlation (non-parametric)\n numIterations = %i\n',upperFreqLimit,numIterations);
         %run PowPowCAT
         % make a copy of EEG for powpowcat processing only
         if ~isempty(IC_powpow)
             EEG_powpow = EEG;
             EEG_powpow.icaact = EEG_powpow.icaact(IC_powpow,:);
-            EEG_powpow = calc_PowPowCAT(EEG_powpow, upperFreqLimit, inputDataType, methodType, numIterations);
+            EEG_powpow = calc_PowPowCAT_CL(EEG_powpow, upperFreqLimit, inputDataType, methodType, numIterations);%CL version does not run stats
             EEG_powpow.setname = 'powpowcat';
             [ALLEEG, EEG_powpow, CURRENTSET] = eeg_store(ALLEEG, EEG_powpow , 0);
             eeglab redraw
-            Plot35IcPushbutton_powpow(EEG_powpow,length(IC_powpow))
-            mkdir(fullfile(process_output_folder_IC_Rej,subjStr));
-            saveas(gcf,fullfile(process_output_folder_IC_Rej(1:end-7),subjStr,['powpowcat.fig']))
+            Plot35IcPushbutton_powpow(EEG_powpow,length(IC_powpow),IC_powpow)
+            saveas(gcf,[out_fPath filesep spsubj_str,['powpowcat.fig']))
         end
     end
+    %}
+    %- SAVE IC_rejection 
+%     EEG = pop_saveset(EEG,'filepath',EEG.filepath,'filename',sprintf('%s_IC_rej.set',EEG.subject));
 end
+

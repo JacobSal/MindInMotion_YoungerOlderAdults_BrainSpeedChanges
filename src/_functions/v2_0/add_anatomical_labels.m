@@ -39,9 +39,14 @@ parse(p,STUDY,ALLEEG,varargin{:});
 [STUDY, ~] = std_centroid(STUDY,ALLEEG,1:length(STUDY.cluster),'dipole');
 atlas = ft_read_atlas([FIELDTRIP_PATH filesep 'template' filesep 'atlas' filesep 'aal' filesep 'ROI_MNI_V4.nii']);
 %- extract centroid locations
-dipfit_roi = [STUDY.cluster(1:end).centroid];
-dipfit_roi = [dipfit_roi.dipole];
-dipfit_roi = cat(1,dipfit_roi.posxyz);
+centroids = [STUDY.cluster(1:end).centroid];
+centroids = [centroids.dipole];
+tmp_i = find(isnan([centroids.rv]));
+for i = tmp_i
+    centroids(i).posxyz = [0,0,0];
+    centroids(i).momxyz = [0,0,0];
+end
+dipfit_roi = cat(1,centroids.posxyz);
 %- params
 atlas_name = cell(size(dipfit_roi,1),2);
 for i = 2:length(STUDY.cluster)

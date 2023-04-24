@@ -1,4 +1,4 @@
-function [ALLEEG] = mim_parse_trials(EEG,trial_names,epoch_limits,varargin)
+function [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,trial_names,epoch_limits,varargin)
 %MIM_PARSE_TRIALS Summary of this function goes here
 %   This is a CUSTOM function
 %   IN: 
@@ -57,6 +57,7 @@ SLIDING_WINDOW_ONLY = p.Results.SLIDING_WINDOW_ONLY;
 %% ===================================================================== %%
 %- empty ALLEEG structure for repopulating
 ALLEEG = cell(1,length(trial_names)); 
+timewarp_struct = cell(1,length(trial_names));
 % fprintf(1,'\n==== %s: EPOCHING SUBJECT TRIALS ====\n',EEG.subject);
 for trial_i = 1:length(trial_names)
     fprintf(1,'\n==== %s: Processing trial %s ====\n',EEG.subject,trial_names{trial_i});
@@ -77,6 +78,7 @@ for trial_i = 1:length(trial_names)
         %- GAIT TIMEWARP: MIM specific function
         TMP_EEG = eeglab_gait_timewarp_epoch(EEG,trial_names{trial_i},epoch_limits);
         TMP_EEG.etc.epoch.parse_var = 'gait_timewarp';
+        timewarp_struct{trial_i} = TMP_EEG.timewarp;
     end
     %## Update EEG structure
     TMP_EEG.condition = trial_names{trial_i};

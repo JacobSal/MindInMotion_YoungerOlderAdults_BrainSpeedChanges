@@ -11,48 +11,136 @@
 %   By default, std_ersp will use the median of all subject's
 %   timewarp.latencies(:,:) as 'timewarpms' unless individual subject 
 %   warpto is indiciated using 'timewarpms', 'subject tw matrix'
+%   Code Designer: Jacob salminen, Chang Liu
+%
+%   Version History --> See details at the end of the script.
+%   Current Version:  v1.0.20230417.0
+%   Previous Version: n/a
+%   Summary: The following script is to identify potential brain components
+%   for the Mind-In-Motion study
 
-close all;clear all;
-% Edit eeg_options.m file
-pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
-    'option_single', 1, 'option_memmapdata', 0, ...
-    'option_computeica', 1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
-subDirStudy = 2;
-rmpath 'R:\Ferris-Lab\share\MindInMotion\eeglab2020_0\plugins\Fieldtrip-lite20210601'
-addpath 'R:\Ferris-Lab\share\MindInMotion\fieldtrip-master'
-ft_defaults
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/2_ic_clustering/MIM/run_ic_clustering.sh
 
-% --------------- SETUP PATH ----------------------
-Process_Imagined = 0;
-folder_name = 'EMG_HP5std_iCC0p65_iCCEMG0p4_ChanRej0p7_TimeRej0p4_winTol10'
-Study_folder = folder_name;
-filepath = 'STUDY-preprocess-HY_202212';
-studyname = [folder_name,'.study'];
-MiM_HY_config_params;
-
-load_folder = fullfile('M:\liu.chang1\',filepath, folder_name);brain_score = 8;
-save_study_folder = fullfile('M:\liu.chang1\',filepath,folder_name,'BATCH-3-Epoch'); 
-save_epoch_folder = fullfile('M:\liu.chang1\',filepath,folder_name,'BATCH-3-Epoch');    
-load_IC_rej = fullfile('M:\liu.chang1\',filepath,folder_name,'Summary');    
-    
-% mkdir(fullfile(save_study_folder,num2str(subDirStudy)));
-
-%% Load STUDY
-load_study = 1
-if load_study
-   tic
-   [STUDY, ALLEEG] = pop_loadstudy('filename', [studyname], 'filepath', save_study_folder); 
-   for i = 1:length(ALLEEG)
-       ALLEEG(i).dipfit.coordformat = 'MNI';
-       ALLEEG(i).dipfit.mrifile = 'R:\Ferris-Lab\share\MindInMotion\eeglab2020_0\plugins\dipfit4.3\standard_BEM\standard_mri.mat';
-       ALLEEG(i).dipfit.hdmfile = 'R:\Ferris-Lab\share\MindInMotion\eeglab2020_0\plugins\dipfit4.3\standard_BEM\standard_vol.mat';
-   end
-   toc
+%{
+%## RESTORE MATLAB
+% WARNING: restores default pathing to matlab 
+restoredefaultpath;
+clc;
+close all;
+clearvars
+%}
+%% Initialization
+%- TIC
+tic
+%- DATE TIME
+dt = datetime;
+dt.Format = 'ddMMyyyy';
+%- VARS
+USER_NAME = 'jsalminen'; %getenv('username');
+fprintf(1,'Current User: %s\n',USER_NAME);
+%% PATH TO YOUR GITHUB REPO
+%- GLOBAL VARS
+REPO_NAME = 'par_EEGProcessing';
+%- determine OS
+if strncmp(computer,'PC',2)
+    DO_UNIX = false;
+    PATH_EXT = 'M';
+    PATH_ROOT = ['M:' filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
+else  % isunix
+    DO_UNIX = true;
+    PATH_EXT = 'dferris';
+    PATH_ROOT = [filesep 'blue' filesep 'dferris',...
+        filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 end
-temp = dir(fullfile(load_folder,'*H*'));
-temp = temp(~contains({temp.name},'BATCH'));
-all_subjStr = {temp(:).name};
-%% SET PARAMS
+%% SETWORKSPACE
+%- define the directory to the src folder
+source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
+run_dir = [source_dir filesep '3_ANALYZE' filesep '2_ic_clustering' filesep 'MIM'];
+%- addpath for local folder
+addpath(source_dir)
+addpath(run_dir)
+%- set workspace
+global ADD_CLEANING_SUBMODS
+ADD_CLEANING_SUBMODS = false;
+setWorkspace
+%% PARPOOL SETUP
+if ~ispc
+%     eeg_options;
+    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
+    'option_single', 1, 'option_memmapdata', 0, 'option_parallel', 0,...
+    'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
+    disp(['SLURM_JOB_ID: ', getenv('SLURM_JOB_ID')]);
+    disp(['SLURM_CPUS_ON_NODE: ', getenv('SLURM_CPUS_ON_NODE')]);
+    %## allocate slurm resources to parpool in matlab
+    %- get cpu's on node and remove a few for parent script.
+    SLURM_POOL_SIZE = str2double(getenv('SLURM_CPUS_ON_NODE'));
+    %- create cluster
+    pp = parcluster('local');
+    %- Number of workers for processing (NOTE: this number should be higher
+    %then the number of iterations in your for loop)
+    % pp.NumWorkers = POOL_SIZE-3;
+    % pp.NumThreads = 1;
+    fprintf('Number of workers: %i\n',pp.NumWorkers);
+    fprintf('Number of threads: %i\n',pp.NumThreads);
+    %- make meta data directory for slurm
+    mkdir([run_dir filesep getenv('SLURM_JOB_ID')])
+    pp.JobStorageLocation = strcat([run_dir filesep], getenv('SLURM_JOB_ID'));
+    %- create your p-pool (NOTE: gross!!)
+    pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
+else
+    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
+    'option_single', 1, 'option_memmapdata', 0, 'option_parallel', 0,...
+    'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
+    SLURM_POOL_SIZE = 1;
+end
+%% ================================================================= %%
+%## PATHS
+%- hardcode data_dir
+DATA_SET = 'MIM_dataset';
+DATA_DIR = [source_dir filesep '_data'];
+%- path for local data
+STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
+SUBJINF_DIR = [DATA_DIR filesep DATA_SET filesep '_subjinf'];
+%## DATASET SPECIFIC
+%- MIND IN MOTION (SUBSET (07/25/2022)
+% SUBJ_YNG = {'H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1020',...
+%     'H1022','H1024','H1026','H1027','H1033','H1034'};
+% SUBJ_HMA = {'H2002', 'H2010', 'H2015', 'H2017', 'H2020', 'H2021', 'H2022', 'H2023',...
+%     'H2025', 'H2026', 'H2034', 'H2059', 'H2062', 'H2082', 'H2095'};
+% SUBJ_NMA = {'NH3008', 'NH3043', 'NH3055', 'NH3059', 'NH3069', ...
+%     'NH3070', 'NH3074', 'NH3086', 'NH3090', 'NH3104', 'NH3105', 'NH3106', 'NH3112', 'NH3114'};
+%- MIND IN MOTION (SUBSET (03/10/2023)
+SUBJ_NORUN = {'H2012_FU', 'H2013_FU', 'H2018_FU', 'H2020_FU', 'H2021_FU',...
+            'H3024_Case','H3029_FU','H3039_FU','H3063_FU','NH3021_Case', 'NH3023_Case','NH3025_Case', 'NH3030_FU',...
+            'NH3068_FU', 'NH3036_FU', 'NH3058_FU'};
+SUBJ_MISSING_TRIAL_DATA = {'H2012','H2018','H3024','NH3002', 'NH3004','NH3009',...
+    'NH3023','NH3027', 'NH3028', 'NH3129', 'NH3040'};
+
+SUBJ_2HMA = {'H2017', 'H2010', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
+    'H2020', 'H2021', 'H2022', 'H2023',...
+    'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2036', 'H2037', 'H2038',...
+    'H2039', 'H2041', 'H2042', 'H2052', 'H2059', 'H2062', 'H2072', 'H2082',...
+    'H2090', 'H2095', 'H2111', 'H2117'};
+% SUBJ_3HMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
+%     'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120'}; % JACOB,SAL(02/23/2023)
+SUBJ_3NHMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
+    'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120',...
+    'NH3006', 'NH3007', 'NH3008', 'NH3010',...
+    'NH3021', 'NH3025', 'NH3026',...
+    'NH3030', 'NH3036',...
+    'NH3041', 'NH3043', 'NH3051', 'NH3054', 'NH3055', 'NH3056', 'NH3058',...
+    'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
+    'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
+    'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
+%- Subject Picks
+% SUBJ_PICS = {SUBJ_2HMA,SUBJ_3HMA,SUBJ_3NHMA};
+SUBJ_PICS = {SUBJ_2HMA,SUBJ_3NHMA};
+GROUP_NAMES = {'H2000''s','H3000''s'};
+% SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3HMA),1:length(SUBJ_3NHMA)}; % JACOB,SAL(02/23/2023)
+SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3NHMA)}; 
+%% ===================================================================== %%
+%## PROCESSING PARAMS
+%- timewarping params
 TW = 1; %Time warping option
 preclust = 1; %1 - precluster study; 0 - no preclustering
 clust = 1; %1 - precluster study; 0 - no preclustering
@@ -63,11 +151,12 @@ precompute_spec_scalp = 1;
 erspComp='light'; %'light' - quicker computation; 'full' - with usual parameters (takes longer)
 showClusterPlotGUI=1; %1 - show cluster plot gui at end; 0 - don't show it (and clear study)
 
-groupmedian_timewarpms = 1 ;%NJacobsen; warp each subject's
-%                           tw matrix to the entire group's median event
-%                           latencies [1=ON], or use individual subject's
-%                           median event latencies [0=OFF]. TW must be ON
-%                           for this setting to do anything
+groupmedian_timewarpms = 1 ;
+%NOTE: (NJacobsen); warp each subject's
+%tw matrix to the entire group's median event
+%latencies [1=ON], or use individual subject's
+%median event latencies [0=OFF]. TW must be ON
+%for this setting to do anything
 clustering_weights.dipoles = 5;
 clustering_weights.scalp = 5;
 clustering_weights.ersp = 0;
@@ -79,6 +168,53 @@ do_multivariate_data = 1;
 clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
     '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
     '_spec_',num2str(clustering_weights.spec)];
+%- datetime override
+dt = '04092023_MIM_OA_subset_N85_speed_terrain';
+%- hard define
+% load_trials = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+load_trials = {'0p25','0p5','0p75','1p0'};
+% load_trials = {'flat','low','med','high'}; 
+%- soft define
+subjinfDir = [SUBJINF_DIR filesep sprintf('%s',dt)];
+save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep '_figs' filesep 'ic_rejection_crit'];
+load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
+%- create new study directory
+if ~exist(save_dir,'dir')
+    mkdir(save_dir);
+end
+%% ===================================================================== %%
+% --------------- SETUP PATH ----------------------
+Process_Imagined = 0;
+folder_name = 'EMG_HP5std_iCC0p65_iCCEMG0p4_ChanRej0p7_TimeRej0p4_winTol10'
+Study_folder = folder_name;
+filepath = 'STUDY-preprocess-HY_202212';
+studyname = [folder_name,'.study'];
+MiM_HY_config_params;
+brain_score = 8;
+load_folder = fullfile('M:\liu.chang1\',filepath, folder_name);
+save_study_folder = fullfile('M:\liu.chang1\',filepath,folder_name,'BATCH-3-Epoch'); 
+save_epoch_folder = fullfile('M:\liu.chang1\',filepath,folder_name,'BATCH-3-Epoch');    
+load_IC_rej = fullfile('M:\liu.chang1\',filepath,folder_name,'Summary');    
+    
+% mkdir(fullfile(save_study_folder,num2str(subDirStudy)));
+%% LOAD STUDIES && ALLEEGS
+if exist('SLURM_POOL_SIZE','var')
+    POOL_SIZE = min([SLURM_POOL_SIZE,length(load_trials)*4]);
+else
+    POOL_SIZE = 1;
+end
+%- Create STUDY & ALLEEG structs
+study_fName = sprintf('%s_MIM_study',[load_trials{:}]);
+if ~exist([load_dir filesep study_fName '.study'],'file')
+    error('ERROR. study file does not exist');
+else
+    if ~ispc
+        [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName '_UNIX.study'],'filepath',load_dir);
+    else
+        [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName '.study'],'filepath',load_dir);
+    end
+end
+all_subjStr = {ALLEEG.subject};
 %%
 if ~load_study
     EEG=[]; ALLEEG=[]; CURRENTSET=[]; ALLCOM=[]; CURRENTSTUDY = []; STUDY = [];

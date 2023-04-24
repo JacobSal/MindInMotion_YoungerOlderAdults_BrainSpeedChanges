@@ -3,6 +3,7 @@ SUBJ_DIR="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset
 # REGEXP_SUBJ_DIR="$SUBJ_DIR/*/clean/*.sh"
 REGEXP_SUBJ_DIR="$SUBJ_DIR/*/amica/*.sh"
 
+
 for f in $REGEXP_SUBJ_DIR
 do
 # FAILSAFE
@@ -11,6 +12,7 @@ do
   then
     echo "Processing $f file..."
     sbatch $f
+	sleep 10m # wait 10 minutes
   else
     echo "Warning: Some problem with \"$f\""
   fi

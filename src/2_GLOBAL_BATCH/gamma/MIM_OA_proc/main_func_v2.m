@@ -92,7 +92,7 @@ t_conn_freqs = cell(1,length(ALLEEG)*length(CONN_METHODS)*length(FREQ_BANDS));
 t_conn_sigs = cell(1,length(ALLEEG)*length(CONN_METHODS)*length(FREQ_BANDS));
 %% ===================================================================== %%
 %## STEP 4) GENERATE CONNECTIVITY MEASURES
-fprintf(1,'\n==== GENERATING CONNECTIVITY MEASURES FOR SUBJECT DATA ====\n');
+fprintf(1,'\n==== GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s ====\n',ALLEEG.subject);
 %## ASSIGN PATH FOR SIFT
 %- make sure path is in right format and make sure it exists
 if ~strncmp(computer,'PC',2)
@@ -123,6 +123,14 @@ fprintf('%i,',conn_components'); fprintf('\n');
 if length(conn_components) < 2
     return;
 end
+% select components from EEG
+if length(conn_components) ~= size(ALLEEG.icaweights,1)
+    for cond_i = 1:length(ALLEEG)
+        ALLEEG(cond_i) = pop_subcomp(ALLEEG(cond_i), sort(conn_components), 0, 1);
+    end
+%     ALLEEG = pop_subcomp(ALLEEG, components, 0, 1);
+end
+
 %- Calculate Connectivity
 switch CNCTANL_TOOLBOX
     case 'sift'
@@ -243,21 +251,21 @@ t_fNames = repmat(t_fNames,1,length(t_conn_mats)/length(t_fNames));
 t_conn_methods = repmat(t_conn_methods,1,length(t_conn_mats)/length(t_conn_methods));
 t_conn_components = repmat(t_conn_components,1,length(t_conn_mats)/length(t_conn_components));
 t_out = table(t_fPaths,t_fNames,t_conn_methods,t_conn_components,t_conn_freqs,t_conn_sigs,t_conn_mats);
-%## SAVE
-if true
-    for trial_i = 1:length(ALLEEG)
-        %- clear STATS & PCONN for space saving.
-        if isfield(ALLEEG(trial_i).CAT,'Stats')
-            ALLEEG(trial_i).CAT = rmfield(ALLEEG(trial_i).CAT,'Stats');
-        end
-        if isfield(ALLEEG(trial_i).CAT,'PConn')
-            ALLEEG(trial_i).CAT = rmfield(ALLEEG(trial_i).CAT,'PConn');
-        end
-        ALLEEG(trial_i).etc.conn_table = t_out;
-        [~,~] = pop_saveset(ALLEEG(trial_i),...
+%## REMOVE FIELDS && SAVE
+for trial_i = 1:length(ALLEEG)
+    %- clear STATS & PCONN for space saving.
+    if isfield(ALLEEG(trial_i).CAT,'Stats')
+        ALLEEG(trial_i).CAT = rmfield(ALLEEG(trial_i).CAT,'Stats');
+    end
+    if isfield(ALLEEG(trial_i).CAT,'PConn')
+        ALLEEG(trial_i).CAT = rmfield(ALLEEG(trial_i).CAT,'PConn');
+    end
+    ALLEEG(trial_i).CAT.conn_table = t_out;
+    if false
+        [~] = pop_saveset(ALLEEG(trial_i),...
             'filepath',ALLEEG(trial_i).filepath,'filename',ALLEEG(trial_i).filename,...
             'savemode','twofiles');
-    end
+   end
 end
 fprintf(1,'\n==== DONE: GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
 

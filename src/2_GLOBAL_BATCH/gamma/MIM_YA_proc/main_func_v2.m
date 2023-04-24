@@ -1,4 +1,4 @@
-function [ALLEEG] = main_func_v2(ALLEEG,conditions,save_dir,varargin)
+function [ALLEEG] = main_func_v2(ALLEEG,save_dir,varargin)
 %MAIN_FUNC Summary of this function goes here
 %   Detailed explanation goes here
 %   IN: 
@@ -19,8 +19,8 @@ tic
 %## define DEFAULTS
 %-
 SAVE_EEG = false;
-errorMsg = 'Value must be of format {CHAR1,CHAR2,...}.';
-cnd_validFcn = @(x) assert((iscell(x)), errorMsg);
+% errorMsg = 'Value must be of format {CHAR1,CHAR2,...}.';
+% cnd_validFcn = @(x) assert((iscell(x)), errorMsg);
 %- Connectivity Process
 CONN_METHODS = {'dDTF08','dDTF','GGC'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 STAT_ALPHA = 0.01; % 
@@ -43,7 +43,7 @@ SUFFIX_PATH_SIFT = 'SIFT';
 p = inputParser;
 %## define REQUIRED
 addRequired(p,'ALLEEG',@isstruct);
-addRequired(p,'conditions',cnd_validFcn);
+% addRequired(p,'conditions',cnd_validFcn);
 addRequired(p,'save_dir',@ischar);
 %## define OPTIONAL
 addOptional(p,'conn_components',CONN_COMPONENTS,@isnumeric); 
@@ -61,7 +61,7 @@ addParameter(p,'ASSIGN_BOOTSTRAP_MEAN',ASSIGN_BOOTSTRAP_MEAN,@islogical);
 addParameter(p,'STAT_ALPHA',STAT_ALPHA,@isnumeric);
 addParameter(p,'DO_PHASE_RND',DO_PHASE_RND,lpr_validFcn);
 %## SET DEFAULTS
-parse(p,ALLEEG,conditions,save_dir,varargin{:});
+parse(p,ALLEEG,save_dir,varargin{:});
 %- pathing and saving
 % OVERRIDE_SOURCE_EEG = false;
 SAVE_EEG = p.Results.SAVE_EEG;
@@ -94,13 +94,11 @@ t_conn_sigs = cell(1,length(ALLEEG)*length(CONN_METHODS)*length(FREQ_BANDS));
 %## STEP 4) GENERATE CONNECTIVITY MEASURES
 fprintf(1,'\n==== GENERATING CONNECTIVITY MEASURES FOR SUBJECT DATA ====\n');
 %## ASSIGN PATH FOR SIFT
-%- create an extra subdirectory for Epoched & SIFT'd data if one does not already exists
-conn_save_dir = [save_dir filesep ALLEEG(1).subject filesep SUFFIX_PATH_SIFT];
 %- make sure path is in right format and make sure it exists
 if ~strncmp(computer,'PC',2)
-    fPath = convertPath2UNIX(conn_save_dir);
+    fPath = convertPath2UNIX(save_dir);
 else
-    fPath = convertPath2Drive(conn_save_dir);
+    fPath = convertPath2Drive(save_dir);
 end
 if ~exist(fPath,'dir')
     mkdir(fPath)
@@ -108,24 +106,34 @@ end
 
 %- assign ALLEEG_cnct to every subject path
 for trial_i = 1:length(ALLEEG)
-    t_fPaths{trial_i} = fPath;
-    t_fNames{trial_i} = ALLEEG(trial_i).filename;
+    t_fPaths{trial_i} = ALLEEG(trial_i).filepath;
+    %- assign new fName
+    tmp = strsplit(ALLEEG(trial_i).filename,'.');
+    tmp{1} = [tmp{1} '_sift'];
+    fName = join(tmp,'.');
+    fName = fName{1};
+    t_fNames{trial_i} = fName;
+    ALLEEG(trial_i).filename = fName;
 end
 
 %## FEVAL Connectivity
-fprintf('%s) Processing componets:\n',ALLEEG(1).subject)
-fprintf('%i,',conn_components'); fprintf('\n');
-%- exit function if there are not enough components
-if length(conn_components) < 2
-    return;
-end
+% fprintf('%s) Processing componets:\n',ALLEEG(1).subject)
+% fprintf('%i,',conn_components'); fprintf('\n');
+% %- exit function if there are not enough components
+% if length(conn_components) < 2
+%     return;
+% end
 %- Calculate Connectivity
 switch CNCTANL_TOOLBOX
     case 'sift'
-        [ALLEEG] = cnctanl_connMeas(ALLEEG,conn_components,CONN_METHODS,fPath,...
+        [TMPEEG] = cnctanl_connMeas(ALLEEG,conn_components,CONN_METHODS,fPath,...
             'FREQS',FREQS,...
             'WINDOW_LENGTH',WINDOW_LENGTH,...
             'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
+        for trial_i = 1:length(ALLEEG)
+            ALLEEG(trial_i).CAT = TMPEEG(trial_i).CAT;
+        end
+        clear TMPEEG
     case'bsmart'
         slide_step_size = ceil(WINDOW_STEP_SIZE*ALLEEG(1).srate);
         slide_win_len = ceil(WINDOW_LENGTH*ALLEEG(1).srate);

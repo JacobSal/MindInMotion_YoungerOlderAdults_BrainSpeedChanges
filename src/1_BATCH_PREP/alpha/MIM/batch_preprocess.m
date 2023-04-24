@@ -59,27 +59,37 @@ global ADD_CLEANING_SUBMODS
 ADD_CLEANING_SUBMODS = true;
 setWorkspace
 %% PARPOOL SETUP
-if DO_UNIX
+if ~ispc
 %     eeg_options;
-    pop_editoptions('option_parallel',1);
+    % see. eeg_optionsbackup.m for all eeglab options.
+    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
+    'option_single', 1, 'option_memmapdata', 0, ...
+    'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
     disp(['SLURM_JOB_ID: ', getenv('SLURM_JOB_ID')]);
     disp(['SLURM_CPUS_ON_NODE: ', getenv('SLURM_CPUS_ON_NODE')]);
     %## allocate slurm resources to parpool in matlab
     %- get cpu's on node and remove a few for parent script.
-    POOL_SIZE = str2double(getenv('SLURM_CPUS_ON_NODE'));
+    SLURM_POOL_SIZE = str2double(getenv('SLURM_CPUS_ON_NODE'));
     %- create cluster
     pp = parcluster('local');
     %- Number of workers for processing (NOTE: this number should be higher
     %then the number of iterations in your for loop)
+    % pp.NumWorkers = POOL_SIZE-3;
+    % pp.NumThreads = 1;
     fprintf('Number of workers: %i\n',pp.NumWorkers);
     fprintf('Number of threads: %i\n',pp.NumThreads);
-    %- make meta data directory for slurm
+    %- make meta data dire1ory for slurm
     mkdir([run_dir filesep getenv('SLURM_JOB_ID')])
     pp.JobStorageLocation = strcat([run_dir filesep], getenv('SLURM_JOB_ID'));
     %- create your p-pool (NOTE: gross!!)
-    pPool = parpool(pp, POOL_SIZE, 'IdleTimeout', 1440);
+    pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
 else
-    POOL_SIZE = 1;
+%     pop_editoptions('option_parallel',0,'option_storedisk',1,...
+%         'option_saveversion6',0,'option_cachesize',1000,'option_savetwofiles',1);
+    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
+    'option_single', 1, 'option_memmapdata', 0,'option_saveversion6',1, ...
+    'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
+    SLURM_POOL_SIZE = 1;
 end
 %% ================================================================= %%
 %## PATHS
@@ -96,9 +106,11 @@ STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 SUBJ_NORUN = {'H2012_FU', 'H2013_FU', 'H2018_FU', 'H2020_FU', 'H2021_FU',...
             'H3024_Case','H3029_FU','H3039_FU','H3063_FU','NH3021_Case', 'NH3023_Case','NH3025_Case', 'NH3030_FU',...
             'NH3068_FU', 'NH3036_FU', 'NH3058_FU'};
-SUBJ_MISSING_TRIAL_DATA = {'H2012','H2018','H3024','NH3002', 'NH3004','NH3009',...
+SUBJ_MISSING_TRIAL_DATA = {'H1008','H2012','H2018','H3024','NH3002', 'NH3004','NH3009',...
     'NH3023','NH3027', 'NH3028', 'NH3129', 'NH3040'};
-
+SUBJ_YNG = {'H1002','H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1018','H1019','H1020',...
+    'H1022','H1024','H1026','H1027','H1029','H1030','H1031','H1032','H1033','H1034','H1035',...
+    'H1036','H1037','H1038','H1039','H1041','H1042','H1044','H1045','H1047','H1048'}; % JACOB,SAL (04/18/2023)
 SUBJ_2HMA = {'H2017', 'H2010', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
     'H2020', 'H2021', 'H2022', 'H2023',...
     'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2036', 'H2037', 'H2038',...
@@ -116,15 +128,19 @@ SUBJ_3NHMA = {'NH3006', 'NH3007', 'NH3008', 'NH3010',...
 
 TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
 %- Subject Picks
-SUBJ_PICS = {SUBJ_2HMA,SUBJ_3HMA,SUBJ_3NHMA};
-GROUP_NAMES = {'H2000''s','H3000''s','NH3000''s'};
-SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3HMA),1:length(SUBJ_3NHMA)}; % JACOB,SAL(02/23/2023)
+% SUBJ_PICS = {SUBJ_2HMA,SUBJ_3HMA,SUBJ_3NHMA}; % JACOB,SAL(02/23/2023)
+% GROUP_NAMES = {'H2000''s','H3000''s','NH3000''s'}; % JACOB,SAL(02/23/2023)
+% SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3HMA),1:length(SUBJ_3NHMA)}; % JACOB,SAL(02/23/2023)
+SUBJ_PICS = {SUBJ_YNG}; % JACOB,SAL(04/18/2023)
+GROUP_NAMES = {'H1000''s'}; % JACOB,SAL(04/18/2023)
+SUBJ_ITERS = {1:length(SUBJ_YNG)}; % JACOB,SAL(04/18/2023)
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET]; 
 %% ===================================================================== %%
 %## PROCESSING PARAMS
 %- datetime override
 % dt = '24022023_OA_prep'
-dt = '07042023_OA_prep_verified';
+% dt = '07042023_OA_prep_verified';
+dt = '04182023_YA_N37_prep_verified';
 %## PATH & TEMP STUDY NAME
 %- hard define
 RUN_AMICA = false;
@@ -169,7 +185,13 @@ tmp = ~cellfun(@isempty,fPaths);
 fPaths = fPaths(tmp);
 tmp = ~cellfun(@isempty,subjectNames);
 subjectNames = subjectNames(tmp);
-%% GENERATE CONNECTIVITY METRICS (PARFOR)
+%% SET POOLSIZE
+if exist('SLURM_POOL_SIZE','var')
+    POOL_SIZE = min([SLURM_POOL_SIZE,length(fPaths)]);
+else
+    POOL_SIZE = 1;
+end
+%% (PARFOR) GENERATE CONNECTIVITY METRICS 
 LOOP_VAR = 1:length(fPaths);
 amica_cmd = cell(length(fPaths),1);
 params = cell(length(fPaths),1);
@@ -193,6 +215,24 @@ end
 %     end
 % end
 %% HELPER SCRIPT
+%{
+%## TRANSFER FILES FROM TEH AMICA FOLDER TO THE CLEAN FOLDER FOR ALLS
+%SUBJECTS
+M_MIND_IN_MOTION_DIR = [DATA_DIR filesep DATA_SET];
+subjs = [SUBJ_PICS{:}];
+% dt = '07042023_OA_prep_verified';
+dt = '04182023_YA_N37_prep_verified';
+save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
+for subj_i = 1:length(subjs)
+    folder_from = [save_dir filesep subjs{subj_i} filesep 'amica'];
+    folder_to = [save_dir filesep subjs{subj_i} filesep 'clean'];
+    if ~exist([folder_to filesep 'W'],'file')
+        fprintf('Transfering folder for subject %s...\n',subjs{subj_i});
+        transfer_folder(folder_from,folder_to,'.');
+    end
+end
+%}
+%% HELPER SCRIPT
 %## TRANSFER MERGED EEG DATA FROM R:\ TO M:\
 %{
 BAD_SUBJS = {'NH3004','NH3009'};
@@ -210,7 +250,7 @@ for group_i = 1:size(SUBJ_PICS,2)
 %         transfer_folder(folder_from,folder_to,'*EEGandLSandIMU.fdt');
         tmp = dir([folder_to filesep '*.set']);
         if (isempty(tmp) && exist(folder_from,'dir')) && ~any(strcmp(SUBJ_PICS{group_i}{subj_i},BAD_SUBJS))
-            transfer_folder(folder_fromvc ,folder_to,'*.set');
+            transfer_folder(folder_from,folder_to,'*.set');
             transfer_folder(folder_from,folder_to,'*.fdt');
         end
     end

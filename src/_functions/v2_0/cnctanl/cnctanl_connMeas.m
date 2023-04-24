@@ -90,13 +90,6 @@ fprintf('===================================================\n');
 disp('PRE-PROCESSING DATA');
 fprintf('===================================================\n');
 
-% select components from EEG
-for cond_i = 1:length(ALLEEG)
-    ALLEEG(cond_i) = pop_subcomp(ALLEEG(cond_i), sort(components), 0, 1);
-end
-
-% EEG = pop_subcomp(EEG, components, 0, 1);
-
 % resample data
 if ~isempty(SAMPLING_RATE)
     ALLEEG = pop_resample(ALLEEG, SAMPLING_RATE);
@@ -104,7 +97,7 @@ end
 
 % convert list of components to cell array of strings
 ComponentNames = [];
-for j = 1:length(components)
+for j = 1:length(components) 
     ComponentNames = [ComponentNames, {num2str(components(j))}];
 end
 
