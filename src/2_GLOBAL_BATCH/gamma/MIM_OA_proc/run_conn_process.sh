@@ -12,6 +12,7 @@
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=bigmem # cluster to run on, use slurm command 'sinfo -s'
+module purge
 module load matlab/2019a
 cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/MIM_OA_proc/
 

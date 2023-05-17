@@ -37,12 +37,14 @@ addOptional(p,'STUDY_FNAME',STUDY_FNAME,sfn_validFcn);
 addOptional(p,'STUDY_FPATH',STUDY_FPATH,sfp_validFcn);
 %## PARAMETER
 addParameter(p,'STUDY_COND',STUDY_COND,sc_validFcn);
+addParameter(p,'RESAVE_DATASETS',RESAVE_DATASETS,@ischar);
 %- parse
 parse(p,STUDY,ALLEEG, varargin{:});
 %## SET DEFAULTS
 STUDY_FNAME = p.Results.STUDY_FNAME;
 STUDY_FPATH = p.Results.STUDY_FPATH;
 STUDY_COND = p.Results.STUDY_COND;
+RESAVE_DATASETS = p.Results.RESAVE_DATASETS;
 %- OPTIONAL
 %- PARAMETER
 %% ===================================================================== %%

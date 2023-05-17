@@ -149,7 +149,6 @@ for cluster_i = 2:length(STUDY.cluster)
 %                     ALLEEG(subj_i).dipfit.model(sub_comps_clust) = dipfit_out;
                     out(subj_i) = comps_clust(1);
                     comps_out(cluster_i,subj_i) = comps_clust(1);
-                    outliers{cluster_i,subj_i} = comps_clust(sum(dist_to_ctr,2) > DIST_CUTOFF);
                     comps_clust = sub_comps_clust;
                 else
                     out(subj_i) = comps_clust(1);
@@ -202,6 +201,8 @@ for cluster_i = 2:length(STUDY.cluster)
             comps_out(cluster_i,subj_i) = comps_clust(1);
              %- assign component for subject and cluster
             out(subj_i) = comps_clust(1);
+            TMPS = STUDY.cluster(cluster_i).comps(idx);
+            outliers{cluster_i,subj_i} = TMPS(TMPS ~= comps_clust(1));
         else
             fprintf('%s) Using component %i\n',ALLEEG(subj_i).subject,comps_clust);
             %- assign component for subject and cluster
@@ -214,6 +215,17 @@ for cluster_i = 2:length(STUDY.cluster)
     %- assign
     STUDY.cluster(cluster_i).sets = sets_clust;
     STUDY.cluster(cluster_i).comps = out;
+    tmps = [];
+    tmpc = [];
+    for subj_i = 1:length(ALLEEG)
+        tmps = [tmps, repmat(subj_i,1,length([outliers{cluster_i,subj_i}]))];
+        tmpc = [tmpc, outliers{cluster_i,subj_i}];
+    end
+    STUDY.cluster(end+1).sets = tmps;
+    STUDY.cluster(end).comps = tmpc;
+    STUDY.cluster(end).name = sprintf('Outlier clust_%i',cluster_i);
+    STUDY.cluster(end).parent = STUDY.cluster(cluster_i).parent;
+    STUDY.cluster(end).algorithm = {'principal component analysis reduction of sifted brain components'};
 end
 fprintf('done.\n');
 toc

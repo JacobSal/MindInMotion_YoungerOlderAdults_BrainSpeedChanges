@@ -69,33 +69,26 @@ GUI_MODE         = p.Results.GUI_MODE;                      % whether or not to 
 VERBOSITY_LEVEL  = p.Results.VERBOSITY_LEVEL;              % Verbosity Level (0=no/minimal output, 2=graphical output)
 FREQS            = p.Results.FREQS;
 
-try
-    if strncmp(computer,'PC',2)
-        DO_UNIX = false;
-    else
-        DO_UNIX = true;
-    end
-catch
-    error('OSError:unknownOS','ERROR. You are working in an unknown Operating System.');
-end
-%- convert save path
-if DO_UNIX
-    fig_savepath = convertPath2UNIX(fig_savepath,'dferris');
-else
-    fig_savepath = convertPath2Drive(fig_savepath,'M');
-end
+% try
+%     if strncmp(computer,'PC',2)
+%         DO_UNIX = false;
+%     else
+%         DO_UNIX = true;
+%     end
+% catch
+%     error('OSError:unknownOS','ERROR. You are working in an unknown Operating System.');
+% end
+% %- convert save path
+% if DO_UNIX
+%     fig_savepath = convertPath2UNIX(fig_savepath,'dferris');
+% else
+%     fig_savepath = convertPath2Drive(fig_savepath,'M');
+% end
 %% ===================================================================== %%
 %## STEP 3: Pre-process the data
 fprintf('===================================================\n');
 disp('PRE-PROCESSING DATA');
 fprintf('===================================================\n');
-
-% select components from EEG
-for cond_i = 1:length(ALLEEG)
-    ALLEEG(cond_i) = pop_subcomp(ALLEEG(cond_i), sort(components), 0, 1);
-end
-
-% EEG = pop_subcomp(EEG, components, 0, 1);
 
 % resample data
 if ~isempty(SAMPLING_RATE)
@@ -104,7 +97,7 @@ end
 
 % convert list of components to cell array of strings
 ComponentNames = [];
-for j = 1:length(components)
+for j = 1:length(components) 
     ComponentNames = [ComponentNames, {num2str(components(j))}];
 end
 

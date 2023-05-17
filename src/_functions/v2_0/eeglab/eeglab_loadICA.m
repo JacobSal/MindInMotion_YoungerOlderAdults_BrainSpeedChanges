@@ -61,7 +61,7 @@ if isempty(EEG.icaweights)
 %         EEG.etc.ic_classification.ICLabel.classifications = EEG.etc.ic_classification.ICLabel.classifications_default;
 %     end
     % make sure everything is ok and calculate the activation matrix
-    pop_editoptions('option_computeica',1); %randomly needed for some people to run even if you manually selected this checkbox with the GUI
+%     pop_editoptions('option_computeica',1); %randomly needed for some people to run even if you manually selected this checkbox with the GUI
 else
     fprintf('ica already available.\n');
 end
