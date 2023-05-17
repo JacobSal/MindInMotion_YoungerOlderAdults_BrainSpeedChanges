@@ -90,13 +90,6 @@ DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 SUBJINF_DIR = [DATA_DIR filesep DATA_SET filesep '_subjinf'];
 %## DATASET SPECIFIC
-%- MIND IN MOTION (SUBSET (07/25/2022)
-% SUBJ_YNG = {'H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1020',...
-%     'H1022','H1024','H1026','H1027','H1033','H1034'};
-% SUBJ_HMA = {'H2002', 'H2010', 'H2015', 'H2017', 'H2020', 'H2021', 'H2022', 'H2023',...
-%     'H2025', 'H2026', 'H2034', 'H2059', 'H2062', 'H2082', 'H2095'};
-% SUBJ_NMA = {'NH3008', 'NH3043', 'NH3055', 'NH3059', 'NH3069', ...
-%     'NH3070', 'NH3074', 'NH3086', 'NH3090', 'NH3104', 'NH3105', 'NH3106', 'NH3112', 'NH3114'};
 %- MIND IN MOTION (SUBSET (03/10/2023)
 SUBJ_NORUN = {'H2012_FU', 'H2013_FU', 'H2018_FU', 'H2020_FU', 'H2021_FU',...
             'H3024_Case','H3029_FU','H3039_FU','H3063_FU','NH3021_Case', 'NH3023_Case','NH3025_Case', 'NH3030_FU',...
@@ -120,12 +113,19 @@ SUBJ_3NHMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
     'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
     'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
     'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
-%- Subject Picks
-% SUBJ_PICS = {SUBJ_2HMA,SUBJ_3HMA,SUBJ_3NHMA};
-SUBJ_PICS = {SUBJ_2HMA,SUBJ_3NHMA};
-GROUP_NAMES = {'H2000''s','H3000''s'};
-% SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3HMA),1:length(SUBJ_3NHMA)}; % JACOB,SAL(02/23/2023)
-SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3NHMA)}; 
+%##
+SUBJ_YNG = {'H1002','H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1018','H1019','H1020',...
+    'H1022','H1024','H1026','H1027','H1029','H1030','H1031','H1033','H1034','H1035',...
+    'H1036','H1037','H1038','H1039','H1041','H1042','H1045','H1047','H1048'}; % CHANG,LIU(02/15/2023)
+
+%- Subject Picks (OLDER ADULTS)
+% SUBJ_PICS = {SUBJ_2HMA,SUBJ_3NHMA};
+% GROUP_NAMES = {'H2000''s','H3000''s'};
+% SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3NHMA)}; 
+%- Subject Picks (YOUNGER ADULTS)
+SUBJ_PICS = {SUBJ_YNG};
+SUBJ_ITERS = {1:length(SUBJ_YNG)}; % CHANG,LIU(12/26/2023)
+GROUP_NAMES = {'H1000s'};
 %% ===================================================================== %%
 %## PROCESSING PARAMS
 %- statistics
@@ -133,11 +133,13 @@ STAT_ALPHA = 0.05;
 %- datetime override
 % dt = '16032023_OA_subset';
 % dt = '23032023_OA_subset';
-dt = '04092023_MIM_OA_subset_N85_speed_terrain';
+% dt = '04092023_MIM_OA_subset_N85_speed_terrain';
+% dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
+dt = '04172023_MIM_YA_fullset_N_speed_terrain_merge';
 %- hard define
 % load_trials = {'0p25'};
-% load_trials = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-load_trials = {'0p25','0p5','0p75','1p0'};
+load_trials = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+% load_trials = {'0p25','0p5','0p75','1p0'};
 % load_trials = {'flat','low','med','high'}; 
 %- soft define
 subjinfDir = [SUBJINF_DIR filesep sprintf('%s',dt)];

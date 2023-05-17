@@ -1,20 +1,20 @@
 #!/bin/sh
-#SBATCH --job-name=NJ_CONN # Job name
+#SBATCH --job-name=MIM_OA_CONN # Job name
 #SBATCH --mail-type=ALL # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=jsalminen@ufl.edu # Where to send mail
 #SBATCH --nodes=1 # Use one node
 #SBATCH --ntasks=1 # Run a single task
-#SBATCH --cpus-per-task=24 # Number of CPU cores per task
-#SBATCH --mem-per-cpu=50000mb# Total memory limit
+#SBATCH --cpus-per-task=25 # Number of CPU cores per task
+#SBATCH --mem-per-cpu=40000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
-#SBATCH --time=72:00:00 # Time limit hrs:min:sec
-#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/NJ_proc/%j_nj_conn_batch.log # Standard output
+#SBATCH --time=16:00:00 # Time limit hrs:min:sec
+#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/MIM_OA_proc/%j_MIM_OA_conn_batch.log # Standard output
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=bigmem # cluster to run on, use slurm command 'sinfo -s'
 module purge
-module load matlab/2020a
-cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/NJ_proc/
+module load matlab/2019a
+cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/MIM_OA_proc/
 
 echo "Date              = $(date)"
 echo "Hostname          = $(hostname -s)"
@@ -29,7 +29,7 @@ echo "Number of Cores/Task Allocated = $SLURM_CPUS_PER_TASK"
 mkdir -p ./$SLURM_JOB_ID
 
 # Kick off matlab
-matlab -nodisplay < /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/NJ_proc/conn_process.m
+matlab -nodisplay < /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/MIM_OA_proc/conn_process.m
 
 # Cleanup local work directory
 rm -rf ./$SLURM_JOB_ID

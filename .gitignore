@@ -13,3 +13,5 @@
 **/__archive
 **/_test
 **/Job*
+**/install
+**/installer

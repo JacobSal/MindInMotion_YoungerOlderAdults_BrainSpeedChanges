@@ -20,9 +20,12 @@ end
 if ~exist('ADD_CLEANING_SUBMODS','var')
     ADD_CLEANING_SUBMODS = false;
 end
-if ~exist('ADD_SIFT','var')
-    ADD_SIFT = true;
+if ~exist('ADD_DIPFIT_COMPILE_SUBMODS','var')
+    ADD_DIPFIT_COMPILE_SUBMODS = false;
 end
+% if ~exist('ADD_SIFT','var')
+%     ADD_SIFT = false;
+% end
 % Current Directory
 tmp                 = dir(['.' filesep]);
 fprintf(1,'Current folder: %s\n',tmp(1).folder);
@@ -78,6 +81,10 @@ if ADD_CLEANING_SUBMODS
                     'trimOutlier-master'};
     SUBMODULES_GENPATH = {'Cleanline2.00'};
     SUBMODULES_ITERS = (1:length(SUBMODULES));
+elseif ADD_DIPFIT_COMPILE_SUBMODS
+    SUBMODULES = {'fieldtrip','eeglab','postAmicaUtility'};
+    SUBMODULES_GENPATH = {};
+    SUBMODULES_ITERS = (1:length(SUBMODULES));
 else
     %- Conn SUBMODS
     SUBMODULES = {'SIFT','fieldtrip','eeglab','postAmicaUtility',...
@@ -117,10 +124,12 @@ cellfun(@(x) fprintf('Adding functions in: %s...\n',x),a_ftmp);
 clear a_ftmp
 % ----------------------------------------------------------------------- %
 %% ADDPATH for FIELDTRIP Toolboxbemobil
-ft_defaults;
+if contains('fieldtrip',SUBMODULES)
+    ft_defaults;
+end
 %% INITIALIZE MIM & EEGLAB
 %start EEGLAB if necessary
-if ADD_SIFT
+if contains('SIFT',SUBMODULES)
     StartSIFT;
 end
 %- always start eeglab last.

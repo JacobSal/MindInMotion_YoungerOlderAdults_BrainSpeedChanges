@@ -1,4 +1,4 @@
-function [ALLEEG] = main_func_v2(ALLEEG,conditions,save_dir,varargin)
+function [ALLEEG] = main_func_v2(ALLEEG,save_dir,varargin)
 %MAIN_FUNC Summary of this function goes here
 %   Detailed explanation goes here
 %   IN: 
@@ -19,8 +19,8 @@ tic
 %## define DEFAULTS
 %-
 SAVE_EEG = false;
-errorMsg = 'Value must be of format {CHAR1,CHAR2,...}.';
-cnd_validFcn = @(x) assert((iscell(x)), errorMsg);
+% errorMsg = 'Value must be of format {CHAR1,CHAR2,...}.';
+% cnd_validFcn = @(x) assert((iscell(x)), errorMsg);
 %- Connectivity Process
 CONN_METHODS = {'dDTF08','dDTF','GGC'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 STAT_ALPHA = 0.01; % 
@@ -43,7 +43,7 @@ SUFFIX_PATH_SIFT = 'SIFT';
 p = inputParser;
 %## define REQUIRED
 addRequired(p,'ALLEEG',@isstruct);
-addRequired(p,'conditions',cnd_validFcn);
+% addRequired(p,'conditions',cnd_validFcn);
 addRequired(p,'save_dir',@ischar);
 %## define OPTIONAL
 addOptional(p,'conn_components',CONN_COMPONENTS,@isnumeric); 
@@ -61,7 +61,7 @@ addParameter(p,'ASSIGN_BOOTSTRAP_MEAN',ASSIGN_BOOTSTRAP_MEAN,@islogical);
 addParameter(p,'STAT_ALPHA',STAT_ALPHA,@isnumeric);
 addParameter(p,'DO_PHASE_RND',DO_PHASE_RND,lpr_validFcn);
 %## SET DEFAULTS
-parse(p,ALLEEG,conditions,save_dir,varargin{:});
+parse(p,ALLEEG,save_dir,varargin{:});
 %- pathing and saving
 % OVERRIDE_SOURCE_EEG = false;
 SAVE_EEG = p.Results.SAVE_EEG;
@@ -92,24 +92,24 @@ t_conn_freqs = cell(1,length(ALLEEG)*length(CONN_METHODS)*length(FREQ_BANDS));
 t_conn_sigs = cell(1,length(ALLEEG)*length(CONN_METHODS)*length(FREQ_BANDS));
 %% ===================================================================== %%
 %## STEP 4) GENERATE CONNECTIVITY MEASURES
-fprintf(1,'\n==== GENERATING CONNECTIVITY MEASURES FOR SUBJECT DATA ====\n');
+fprintf(1,'\n==== GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s ====\n',ALLEEG.subject);
 %## ASSIGN PATH FOR SIFT
-%- create an extra subdirectory for Epoched & SIFT'd data if one does not already exists
-conn_save_dir = [save_dir filesep ALLEEG(1).subject filesep SUFFIX_PATH_SIFT];
 %- make sure path is in right format and make sure it exists
-if ~strncmp(computer,'PC',2)
-    fPath = convertPath2UNIX(conn_save_dir);
-else
-    fPath = convertPath2Drive(conn_save_dir);
-end
-if ~exist(fPath,'dir')
-    mkdir(fPath)
+if ~exist(save_dir,'dir')
+    mkdir(save_dir)
 end
 
 %- assign ALLEEG_cnct to every subject path
 for trial_i = 1:length(ALLEEG)
-    t_fPaths{trial_i} = fPath;
+    t_fPaths{trial_i} = ALLEEG(trial_i).filepath;
     t_fNames{trial_i} = ALLEEG(trial_i).filename;
+    %- assign new fName
+%     tmp = strsplit(ALLEEG(trial_i).filename,'.');
+%     tmp{1} = [tmp{1} '_sift'];
+%     fName = join(tmp,'.');
+%     fName = fName{1};
+%     t_fNames{trial_i} = fName;
+%     ALLEEG(trial_i).filename = fName;
 end
 
 %## FEVAL Connectivity
@@ -119,18 +119,28 @@ fprintf('%i,',conn_components'); fprintf('\n');
 if length(conn_components) < 2
     return;
 end
+%- select components from EEG
+if length(conn_components) ~= size(ALLEEG.icaweights,1)
+    for cond_i = 1:length(ALLEEG)
+        ALLEEG(cond_i) = pop_subcomp(ALLEEG(cond_i), sort(conn_components), 0, 1);
+    end
+end
 %- Calculate Connectivity
 switch CNCTANL_TOOLBOX
     case 'sift'
-        [ALLEEG] = cnctanl_connMeas(ALLEEG,conn_components,CONN_METHODS,fPath,...
+        [TMPEEG] = cnctanl_connMeas(ALLEEG,conn_components,CONN_METHODS,save_dir,...
             'FREQS',FREQS,...
             'WINDOW_LENGTH',WINDOW_LENGTH,...
             'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
+        for trial_i = 1:length(ALLEEG)
+            ALLEEG(trial_i).CAT = TMPEEG(trial_i).CAT;
+        end
+        clear TMPEEG
     case'bsmart'
         slide_step_size = ceil(WINDOW_STEP_SIZE*ALLEEG(1).srate);
         slide_win_len = ceil(WINDOW_LENGTH*ALLEEG(1).srate);
         max_morder = 30;
-        ALLEEG = bsmart_cnctanl_connMeas(ALLEEG,conn_components,CONN_METHODS,fPath,...
+        ALLEEG = bsmart_cnctanl_connMeas(ALLEEG,conn_components,CONN_METHODS,save_dir,...
             'WINDOW_LENGTH',WINDOW_LENGTH,...
             'MAX_MORDER',max_morder,...
             'SLIDE_WIN_LEN',slide_win_len,...
@@ -172,13 +182,13 @@ for trial_i = 1:length(ALLEEG)
 end
 
 %## SAVE
-if SAVE_EEG
-    for trial_i = 1:length(ALLEEG)
-        [~,~] = pop_saveset(ALLEEG(trial_i),...
-            'filepath',ALLEEG(trial_i).filepath,'filename',ALLEEG(trial_i).filename,...
-            'savemode','twofiles');
-    end
-end
+% if SAVE_EEG
+%     for trial_i = 1:length(ALLEEG)
+%         [~,~] = pop_saveset(ALLEEG(trial_i),...
+%             'filepath',ALLEEG(trial_i).filepath,'filename',ALLEEG(trial_i).filename,...
+%             'savemode','twofiles');
+%     end
+% end
 fprintf(1,'\n==== DONE: GENERATING CONNECTIVITY MEASURES FOR SUBJECT DATA ====\n');          
 
 %% ===================================================================== %%
@@ -235,21 +245,21 @@ t_fNames = repmat(t_fNames,1,length(t_conn_mats)/length(t_fNames));
 t_conn_methods = repmat(t_conn_methods,1,length(t_conn_mats)/length(t_conn_methods));
 t_conn_components = repmat(t_conn_components,1,length(t_conn_mats)/length(t_conn_components));
 t_out = table(t_fPaths,t_fNames,t_conn_methods,t_conn_components,t_conn_freqs,t_conn_sigs,t_conn_mats);
-%## SAVE
-if true
-    for trial_i = 1:length(ALLEEG)
-        %- clear STATS & PCONN for space saving.
-        if isfield(ALLEEG(trial_i).CAT,'Stats')
-            ALLEEG(trial_i).CAT = rmfield(ALLEEG(trial_i).CAT,'Stats');
-        end
-        if isfield(ALLEEG(trial_i).CAT,'PConn')
-            ALLEEG(trial_i).CAT = rmfield(ALLEEG(trial_i).CAT,'PConn');
-        end
-        ALLEEG(trial_i).etc.conn_table = t_out;
-        [~,~] = pop_saveset(ALLEEG(trial_i),...
-            'filepath',ALLEEG(trial_i).filepath,'filename',ALLEEG(trial_i).filename,...
-            'savemode','twofiles');
+%## REMOVE FIELDS && SAVE
+for trial_i = 1:length(ALLEEG)
+    %- clear STATS & PCONN for space saving.
+    if isfield(ALLEEG(trial_i).CAT,'Stats')
+        ALLEEG(trial_i).CAT = rmfield(ALLEEG(trial_i).CAT,'Stats');
     end
+    if isfield(ALLEEG(trial_i).CAT,'PConn')
+        ALLEEG(trial_i).CAT = rmfield(ALLEEG(trial_i).CAT,'PConn');
+    end
+    ALLEEG(trial_i).CAT.conn_table = t_out;
+%     if false
+%         [~] = pop_saveset(ALLEEG(trial_i),...
+%             'filepath',ALLEEG(trial_i).filepath,'filename',ALLEEG(trial_i).filename,...
+%             'savemode','twofiles');
+%    end
 end
 fprintf(1,'\n==== DONE: GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
 

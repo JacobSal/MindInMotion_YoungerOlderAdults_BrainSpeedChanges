@@ -4,7 +4,15 @@ function [Output_ICRejection] = mim_reject_ics(EEG,save_dir,varargin)
 %   IN: 
 %   OUT: 
 %   IMPORTANT: 
-% Code Designer: Jacob Salminen (11/25/2022)
+% CAT CODE
+%  _._     _,-'""`-._
+% (,-.`._,'(       |\`-/|
+%     `-.-' \ )-`( , o o)
+%           `-    \`_`"'-
+% Code Designers: Chang Liu, Jacob Salminen
+% Code Date: 04/28/2023, MATLAB 2019a
+% Copyright (C) Jacob Salminen, jsalminen@ufl.edu
+% Copyright (C) Chang Liu, 
 %## TIME
 tic
 %## DEFINE DEFAULTS
@@ -14,16 +22,14 @@ b1 = regexp(tmp,'eeglab','end');
 b2 = tmp(~cellfun(@isempty,b1));
 PATH_EEGLAB = b2{1}(1:b1{1});
 fprintf('EEGLAB path: %s\n',PATH_EEGLAB);
-%- ICA regexp
-ICA_FNAME_REGEXP = '%s_allcond_ICA_TMPEEG.set';
 %- ICLabel version 
 ICLABEL_VERSION = 'lite';
 %- 
+fit_range = 2:40; % Original setting 2:100. now changed to 2:40 (2022-1-2)
 classes_to_keep = 1; % Brain components
 thresholds_keep = [0.5,0.75,0.9]; % percentages to threshold the ICLabel brain label by for keeping
 thresholds_remove = [0.5]; % percentages to threshold the ICLabel muscle and eye label by for removing
 slope_thres = -0.2;  % Added on 1-3-2022 to avoid very flat spectrum that is not brain component
-
 %-
 SPEC_PERC = 80;
 SPEC_FREQRANGE = [2 100];
@@ -43,6 +49,13 @@ parse(p,EEG,save_dir,varargin{:});
 %- OPTIONALS
 %- PARAMETER
 %% ===================================================================== %%
+%## RECALCULATE ICAACT MATRICES
+EEG = eeg_checkset(EEG,'loaddata');
+if isempty(EEG.icaact)
+    fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+    EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+end
+
 %## (Crteria 1) Count brain components based on ICLabel
 try 
     EEG.etc.ic_classification.ICLabel.classifications;
@@ -66,7 +79,6 @@ for t_i = 1:length(thresholds_remove)
     tmp = sum(classifications(:,3),2);%eye
     comps_remove{2,t_i} = find(tmp>thresholds_remove(t_i));
 end
-
 %% ===================================================================== %%
 %## (Criteria 2) Spectrum graph: Plot PSD together for selected channels
 IC_potential = 1:size(EEG.icawinv,2);
@@ -77,7 +89,6 @@ icaacttmp = EEG.icaact(IC_potential, :, :);
        'freqrange',SPEC_FREQRANGE,'plot','off');
 %- add a linear fit: note that the frequency used here is log(frequency)
 %to help characterize the 1/f structure. y axis should be log(power)
-fit_range = 2:40; % Original setting 2:100. now changed to 2:40 (2022-1-2)
 lsfit = [];
 spectra_psd_fit = [];
 for i = 1:length(IC_potential)
@@ -87,9 +98,64 @@ end
 %- IC rejection criteria: only keep those with log fit < 0
 ICs_keep_brain_spec = IC_potential(lsfit(:,1)<slope_thres)';% actually not a lot get discarded
 ICs_spec_dump = IC_potential(lsfit(:,1)>=slope_thres)';
-% fit linear from 0-150Hz
-%% (PLOTS) INSPECTION
 numICs = 1:size(EEG.icawinv,2);
+%% ===================================================================== %%
+%## (Criteria 4) Scalp topographs and dipole location (if outside the brain or not)
+% Residual variance < 0.15
+IC_RV = vertcat(EEG.dipfit.model.rv);
+ICs_RVthreshold_keep = find(IC_RV <= THRESHOLD_RV_BRAN);
+%% ===================================================================== %%
+%## Gather all IC rejection criteria
+%-
+All_IC_criteria.IClabel.brain50 = comps_keep{1};
+All_IC_criteria.IClabel.brain75 = comps_keep{2};
+All_IC_criteria.IClabel.brain90 = comps_keep{3};
+%-
+All_IC_criteria.IClabel.brain = comps_keep{1};
+All_IC_criteria.IClabel.muscle = comps_remove{1,1};
+All_IC_criteria.IClabel.muscle_threshold = thresholds_remove(1);
+All_IC_criteria.IClabel.eye = comps_remove{2,1};
+All_IC_criteria.IClabel.eye_threshold = thresholds_remove(1);
+All_IC_criteria.IClabel.classification = EEG.etc.ic_classification.ICLabel.classifications;
+%-
+All_IC_criteria.Spectra.keep = ICs_keep_brain_spec;
+All_IC_criteria.Spectra.dump = ICs_spec_dump;
+%-
+All_IC_criteria.RV.keep = ICs_RVthreshold_keep;
+All_IC_criteria.RV.IC_RV = IC_RV;
+EEG.etc.IC_rej = All_IC_criteria;
+
+%- Assign weights to each criteria 
+% If muscle % higher score remove
+IC_all_muscle = zeros(size(EEG.icawinv,2),1);
+IC_all_muscle(All_IC_criteria.IClabel.muscle) = IC_all_muscle(All_IC_criteria.IClabel.muscle)+2;
+IC_all_muscle(All_IC_criteria.Spectra.dump) = IC_all_muscle(All_IC_criteria.Spectra.dump)+1;
+%     IC_all_muscle(All_IC_criteria.Projection.EMG) = IC_all_muscle(All_IC_criteria.Projection.EMG)+2;
+
+% If eye. % higher score remove
+IC_all_eye = zeros(size(EEG.icawinv,2),1);
+IC_all_eye(All_IC_criteria.IClabel.eye) = IC_all_eye(All_IC_criteria.IClabel.eye)+2;
+IC_all_eye(All_IC_criteria.Spectra.dump) = IC_all_eye(All_IC_criteria.Spectra.dump)+1;
+
+% If brain % higher score keep
+IC_all_brain = zeros(size(EEG.icawinv,2),1);
+IC_all_brain(All_IC_criteria.IClabel.brain50) = IC_all_brain(All_IC_criteria.IClabel.brain50)+2;
+IC_all_brain(All_IC_criteria.IClabel.brain75) = IC_all_brain(All_IC_criteria.IClabel.brain75)+2;    
+IC_all_brain(All_IC_criteria.Spectra.keep) = IC_all_brain(All_IC_criteria.Spectra.keep)+1;
+%     IC_all_brain(All_IC_criteria.Projection.EMG) = IC_all_brain(All_IC_criteria.Projection.EMG)-3;
+IC_all_brain(All_IC_criteria.RV.keep) = IC_all_brain(All_IC_criteria.RV.keep)+5;
+IC_all_brain(size(EEG.icawinv,2)-5:size(EEG.icawinv,2)) = IC_all_brain(size(EEG.icawinv,2)-5:size(EEG.icawinv,2))-1;
+
+Output_ICRejection.All_IC_criteria = All_IC_criteria;
+Output_ICRejection.IC_all_brain = IC_all_brain;
+Output_ICRejection.IC_all_muscle = IC_all_muscle;
+Output_ICRejection.IC_all_eye = IC_all_eye;
+Output_ICRejection.Cleaning_Params = EEG.etc.Params;
+%- save Output_ICRejection
+fileName = [save_dir filesep sprintf('%s_ICRej.mat',EEG.subject)];
+save(fileName,'Output_ICRejection');
+%% ===================================================================== %%
+%## (PLOTS) INSPECTION
 if DO_PLOTTING
     %## (PLOT 1) Individual Independent Components
     %{
@@ -124,8 +190,6 @@ if DO_PLOTTING
     fig_i = get(groot,'CurrentFigure');
 %     fig_i.Position = [500 300 1080 720];
     saveas(fig_i,[save_dir filesep sprintf('spectral_stem.jpg')]);
-
-
     %## (PLOT 3) POTENTIAL KEEP COMPONENTS
     % Log-log plot - retained
     CMAP = linspecer(length(ICs_keep_brain_spec));%my personal color scheme 
@@ -187,65 +251,7 @@ if DO_PLOTTING
     fig_i.Position = [500 300 1080 720];
     %     saveas(gcf,fullfile(save_IC_Rejection_folder,subjStr,'Figures',['potential brain components_spectral_',subDirNum,'.fig']))
     saveas(fig_i,[save_dir filesep 'reject_potential_brain_components_spectral.jpg'])
-end
-%% ===================================================================== %%
-%## (Criteria 4) Scalp topographs and dipole location (if outside the brain or not)
-% Residual variance < 0.15
-IC_RV = vertcat(EEG.dipfit.model.rv);
-ICs_RVthreshold_keep = find(IC_RV <= THRESHOLD_RV_BRAN);
-%% ===================================================================== %%
-%## Gather all IC rejection criteria
-%-
-All_IC_criteria.IClabel.brain50 = comps_keep{1};
-All_IC_criteria.IClabel.brain75 = comps_keep{2};
-All_IC_criteria.IClabel.brain90 = comps_keep{3};
-%-
-All_IC_criteria.IClabel.brain = comps_keep{1};
-All_IC_criteria.IClabel.muscle = comps_remove{1,1};
-All_IC_criteria.IClabel.muscle_threshold = thresholds_remove(1);
-All_IC_criteria.IClabel.eye = comps_remove{2,1};
-All_IC_criteria.IClabel.eye_threshold = thresholds_remove(1);
-All_IC_criteria.IClabel.classification = EEG.etc.ic_classification.ICLabel.classifications;
-%-
-All_IC_criteria.Spectra.keep = ICs_keep_brain_spec;
-All_IC_criteria.Spectra.dump = ICs_spec_dump;
-%-
-All_IC_criteria.RV.keep = ICs_RVthreshold_keep;
-All_IC_criteria.RV.IC_RV = IC_RV;
-EEG.etc.IC_rej = All_IC_criteria;
-
-%- Assign weights to each criteria 
-% If muscle % higher score remove
-IC_all_muscle = zeros(size(EEG.icawinv,2),1);
-IC_all_muscle(All_IC_criteria.IClabel.muscle) = IC_all_muscle(All_IC_criteria.IClabel.muscle)+2;
-IC_all_muscle(All_IC_criteria.Spectra.dump) = IC_all_muscle(All_IC_criteria.Spectra.dump)+1;
-%     IC_all_muscle(All_IC_criteria.Projection.EMG) = IC_all_muscle(All_IC_criteria.Projection.EMG)+2;
-
-% If eye. % higher score remove
-IC_all_eye = zeros(size(EEG.icawinv,2),1);
-IC_all_eye(All_IC_criteria.IClabel.eye) = IC_all_eye(All_IC_criteria.IClabel.eye)+2;
-IC_all_eye(All_IC_criteria.Spectra.dump) = IC_all_eye(All_IC_criteria.Spectra.dump)+1;
-
-% If brain % higher score keep
-IC_all_brain = zeros(size(EEG.icawinv,2),1);
-IC_all_brain(All_IC_criteria.IClabel.brain50) = IC_all_brain(All_IC_criteria.IClabel.brain50)+2;
-IC_all_brain(All_IC_criteria.IClabel.brain75) = IC_all_brain(All_IC_criteria.IClabel.brain75)+2;    
-IC_all_brain(All_IC_criteria.Spectra.keep) = IC_all_brain(All_IC_criteria.Spectra.keep)+1;
-%     IC_all_brain(All_IC_criteria.Projection.EMG) = IC_all_brain(All_IC_criteria.Projection.EMG)-3;
-IC_all_brain(All_IC_criteria.RV.keep) = IC_all_brain(All_IC_criteria.RV.keep)+5;
-IC_all_brain(size(EEG.icawinv,2)-5:size(EEG.icawinv,2)) = IC_all_brain(size(EEG.icawinv,2)-5:size(EEG.icawinv,2))-1;
-
-Output_ICRejection.All_IC_criteria = All_IC_criteria;
-Output_ICRejection.IC_all_brain = IC_all_brain;
-Output_ICRejection.IC_all_muscle = IC_all_muscle;
-Output_ICRejection.IC_all_eye = IC_all_eye;
-Output_ICRejection.Cleaning_Params = EEG.etc.Params;
-%- save Output_ICRejection
-fileName = [save_dir filesep sprintf('%s_ICRej.mat',EEG.subject)];
-save(fileName,'Output_ICRejection');
-
-%% PLOTS
-if DO_PLOTTING
+    
     %## (PLOT 5) STEM
     figure('color','white');
     subplot(3,1,1);

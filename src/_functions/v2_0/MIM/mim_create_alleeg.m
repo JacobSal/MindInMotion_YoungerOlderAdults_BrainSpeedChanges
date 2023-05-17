@@ -8,8 +8,9 @@ function [ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,vararg
 %## TIME
 tic
 %## DEFINE DEFAULTS
-%- 
-POOL_SIZE = 20;
+%- developer params
+FORCE_RELOAD = false;
+POOL_SIZE = 10;
 ICA_FNAME_REGEXP = '%s_allcond_ICA_TMPEEG.set';
 %- find eeglab on path
 tmp = strsplit(path,';');
@@ -97,7 +98,7 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
     if ~exist(fPath,'dir')
         mkdir(fPath)
     end
-    if ~exist([fPath filesep fName],'file') || true
+    if ~exist([fPath filesep fName],'file') || FORCE_RELOAD
         fprintf(1,'Loading Subject %s\n',subjStr)
         [~,EEG,~] = eeglab_loadICA(fNames{subj_i},fPaths{subj_i});
         %- override fPath & fName
@@ -206,7 +207,6 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
                 'version','6');
         end
     else
-       
         EEG = pop_loadset('filepath',fPath,'filename',fName);
     end
     ALLEEG{subj_i} = EEG; 
@@ -233,22 +233,3 @@ end
 ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
 end
 
-%% HELPER SCRIPT
-%## TRANSFER CHANLOCS DATA FROM R:\ TO M:\
-%{
-BAD_SUBJS = {}; %{'NH3004','NH3009'};
-R_MIND_IN_MOTION_DIR = 'R:\Ferris-Lab\share\MindInMotion\Data';
-M_MIND_IN_MOTION_DIR = [DATA_DIR filesep DATA_SET]; %'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset'
-%- Loop through directory
-for group_i = 1:size(SUBJ_PICS,2)
-    for subj_i = 1:length(SUBJ_PICS{group_i})
-        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'HeadScan' filesep 'CustomElectrodeLocations.mat'];
-        folder_to = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'EEG' filesep 'HeadScan'];
-        delete(folder_to)
-        if ~exist(folder_to,'dir');
-            mkdir(folder_to);
-        end
-        copyfile(file_from,folder_to);
-    end
-end
-%}

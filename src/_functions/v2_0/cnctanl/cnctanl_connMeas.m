@@ -69,21 +69,21 @@ GUI_MODE         = p.Results.GUI_MODE;                      % whether or not to 
 VERBOSITY_LEVEL  = p.Results.VERBOSITY_LEVEL;              % Verbosity Level (0=no/minimal output, 2=graphical output)
 FREQS            = p.Results.FREQS;
 
-try
-    if strncmp(computer,'PC',2)
-        DO_UNIX = false;
-    else
-        DO_UNIX = true;
-    end
-catch
-    error('OSError:unknownOS','ERROR. You are working in an unknown Operating System.');
-end
-%- convert save path
-if DO_UNIX
-    fig_savepath = convertPath2UNIX(fig_savepath,'dferris');
-else
-    fig_savepath = convertPath2Drive(fig_savepath,'M');
-end
+% try
+%     if strncmp(computer,'PC',2)
+%         DO_UNIX = false;
+%     else
+%         DO_UNIX = true;
+%     end
+% catch
+%     error('OSError:unknownOS','ERROR. You are working in an unknown Operating System.');
+% end
+% %- convert save path
+% if DO_UNIX
+%     fig_savepath = convertPath2UNIX(fig_savepath,'dferris');
+% else
+%     fig_savepath = convertPath2Drive(fig_savepath,'M');
+% end
 %% ===================================================================== %%
 %## STEP 3: Pre-process the data
 fprintf('===================================================\n');

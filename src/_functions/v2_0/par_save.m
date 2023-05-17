@@ -64,7 +64,8 @@ if ~ispc
         savePath = pathIn;
     end
     % save
-    save(savePath,'SAVEVAR','-v7.3');
+%     save(savePath,'SAVEVAR','-v7.3');
+    save(savePath,'SAVEVAR','-v6');
     fprintf('\nSaving %s to\n%s\n',fName,savePath);
 else
     %- convert path to os
@@ -83,6 +84,7 @@ else
         savePath = pathIn;
     end
     %- save
-    save(savePath,'SAVEVAR','-v7.3');
+%     save(savePath,'SAVEVAR','-v7.3');
+    save(savePath,'SAVEVAR','-v6');
     fprintf('\nSaving %s to\n%s\n',fName,savePath);
 end
