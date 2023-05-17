@@ -55,39 +55,9 @@ addpath(run_dir)
 global ADD_CLEANING_SUBMODS
 ADD_CLEANING_SUBMODS = false;
 setWorkspace
-%% PARPOOL SETUP
-if ~ispc
-%     eeg_options;
-    % see. eeg_optionsbackup.m for all eeglab options.
-    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
+pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
     'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
-    disp(['SLURM_JOB_ID: ', getenv('SLURM_JOB_ID')]);
-    disp(['SLURM_CPUS_ON_NODE: ', getenv('SLURM_CPUS_ON_NODE')]);
-    %## allocate slurm resources to parpool in matlab
-    %- get cpu's on node and remove a few for parent script.
-    SLURM_POOL_SIZE = str2double(getenv('SLURM_CPUS_ON_NODE'));
-    %- create cluster
-    pp = parcluster('local');
-    %- Number of workers for processing (NOTE: this number should be higher
-    %then the number of iterations in your for loop)
-    % pp.NumWorkers = POOL_SIZE-3;
-    % pp.NumThreads = 1;
-    fprintf('Number of workers: %i\n',pp.NumWorkers);
-    fprintf('Number of threads: %i\n',pp.NumThreads);
-    %- make meta data dire1ory for slurm
-    mkdir([run_dir filesep getenv('SLURM_JOB_ID')])
-    pp.JobStorageLocation = strcat([run_dir filesep], getenv('SLURM_JOB_ID'));
-    %- create your p-pool (NOTE: gross!!)
-    pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
-else
-%     pop_editoptions('option_parallel',0,'option_storedisk',1,...
-%         'option_saveversion6',0,'option_cachesize',1000,'option_savetwofiles',1);
-    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
-    'option_single', 1, 'option_memmapdata', 0,'option_saveversion6',1, ...
-    'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
-    SLURM_POOL_SIZE = 1;
-end
 %% ================================================================= %%
 %## PATHS
 %- hardcode data_dir
@@ -113,26 +83,72 @@ SUBJ_2HMA = {'H2017', 'H2010', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
     'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2036', 'H2037', 'H2038',...
     'H2039', 'H2041', 'H2042', 'H2052', 'H2059', 'H2062', 'H2072', 'H2082',...
     'H2090', 'H2095', 'H2111', 'H2117'};
-SUBJ_3HMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
-    'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120'}; % JACOB,SAL(02/23/2023)
-SUBJ_3NHMA = {'NH3006', 'NH3007', 'NH3008', 'NH3010',...
+SUBJ_3MA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
+    'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120',...
+    'NH3006', 'NH3007', 'NH3008', 'NH3010',...
     'NH3021', 'NH3025', 'NH3026',...
     'NH3030', 'NH3036',...
     'NH3041', 'NH3043', 'NH3051', 'NH3054', 'NH3055', 'NH3056', 'NH3058',...
     'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
     'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
     'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
-
-TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
 %- Subject Picks
-SUBJ_PICS = {SUBJ_2HMA,SUBJ_3HMA,SUBJ_3NHMA}; % JACOB,SAL(02/23/2023)
-GROUP_NAMES = {'H2000''s','H3000''s','NH3000''s'}; % JACOB,SAL(02/23/2023)
-SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3HMA),1:length(SUBJ_3NHMA)}; % JACOB,SAL(02/23/2023)
+SUBJ_PICS = {SUBJ_2HMA,SUBJ_3MA}; % JACOB,SAL(02/23/2023)
+GROUP_NAMES = {'H2000''s','H3000''s'}; % JACOB,SAL(02/23/2023)
+SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3MA)}; % JACOB,SAL(02/23/2023)
 % SUBJ_PICS = {SUBJ_YNG}; % JACOB,SAL(04/18/2023)
 % GROUP_NAMES = {'H1000''s'}; % JACOB,SAL(04/18/2023)
 % SUBJ_ITERS = {1:length(SUBJ_YNG)}; % JACOB,SAL(04/18/2023)
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET]; 
 %% ===================================================================== %%
+%% (HELPER SCRIPT) TRANSFER ELEC_ALIGNED.MAT & VOL.MAT & VALIDATION FIGURES FROM M:\ TO R:\
+R_MIND_IN_MOTION_DIR = 'R:\Ferris-Lab\share\MindInMotion\Data';
+M_MIND_IN_MOTION_DIR = [DATA_DIR filesep DATA_SET]; %'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset'
+%- Loop through directory
+for group_i = 1:size(SUBJ_PICS,2)
+    for subj_i = 1:length(SUBJ_PICS{group_i})
+        folder_to = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.01'];
+        if ~exist(folder_to,'dir')
+            mkdir(folder_to);
+        end
+        file_from = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'elec_aligned.mat'];
+        if exist(file_from,'file')
+            copyfile(file_from,folder_to)
+        else
+            fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+        end
+        file_from = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'vol.mat'];
+        if exist(file_from,'file')
+            copyfile(file_from,folder_to)
+        else
+            fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+        end
+        file_from = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'ft_plot_mesh.fig'];
+        if exist(file_from,'file')
+            copyfile(file_from,folder_to)
+        else
+            fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+        end
+        file_from = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'ft_plot_sens_1.fig'];
+        if exist(file_from,'file')
+            copyfile(file_from,folder_to)
+        else
+            fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+        end
+        file_from = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'ft_plot_sens_2.fig'];
+        if exist(file_from,'file')
+            copyfile(file_from,folder_to)
+        else
+            fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+        end
+        file_from = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'ft_sourceplot.fig'];
+        if exist(file_from,'file')
+            copyfile(file_from,folder_to)
+        else
+            fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+        end
+    end
+end
 %% (HELPER SCRIPT) TRANSFER HEADMODEL & ELECTRODE_ALIGNED DATA FROM R:\ TO M:\
 R_MIND_IN_MOTION_DIR = 'R:\Ferris-Lab\share\MindInMotion\Data';
 M_MIND_IN_MOTION_DIR = [DATA_DIR filesep DATA_SET]; %'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset'

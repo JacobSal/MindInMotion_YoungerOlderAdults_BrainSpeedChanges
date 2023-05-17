@@ -20,6 +20,7 @@ function [error_code] = mim_mcc_dipfit(working_dir,eeg_fpath,varargin)
 tic
 %## DEFINE DEFAULTS
 %- define output
+RV_THRESHOLD = 0.5;
 error_code = 0;
 %- working directory containing the vol.mat & elec_aligned.mat
 errorMsg = 'Value ''working_dir'' must be PATH. ''working_dir'' should point to a folder. Working directory must contain a fieldtrip generated vol.mat & elec_aligned.mat'; 
@@ -44,9 +45,6 @@ parse(p,working_dir,eeg_fpath,varargin{:});
 %% ===================================================================== %%
 % fid = fopen([working_dir filesep 'output.txt'],'w');
 %- EEGLAB options for opening EEG data
-% pop_editoptions('option_storedisk',1,'option_savetwofiles',1, ...
-%     'option_single',1,'option_memmapdata',0,'option_computeica',0,...
-%     'option_saveversion6',1,'option_scaleicarms',1,'option_rememberfolder',1);
 try
     fprintf(['SLURM_JOB_ID: ', getenv('SLURM_JOB_ID') '\n']);
     fprintf(['SLURM_CPUS_ON_NODE: ', getenv('SLURM_CPUS_ON_NODE') '\n']);
@@ -129,10 +127,12 @@ catch e
              'error. on working_dir %s\n'],e.identifier,e.message,working_dir);
 end
 %% LEADFIELD CALCULATION
+%##
 % choose the available When the forward solution is computed, the lead 
 % field matrix (= channels X source points matrix) is calculated for each 
 % grid point taking into account the head model and the channel positions.
 if ~exist([working_dir filesep 'leadfield_fem.mat'],'file')
+    fprintf('Computing Leadfield...\n');
     cfg             = [];
     cfg.grid        = sourcemodel;
     cfg.headmodel   = headmodel_fem_tr;
@@ -185,20 +185,6 @@ fprintf('Converting EEGLAB to Fieldtrip...\n');
 ftEEG = eeglab2fieldtrip(EEG,'componentanalysis','dipfit');
 clear EEG 
 %- ft_dipolefitting
-% cfg = [];
-% cfg.numdipoles    =  1;
-% cfg.headmodel     = headmodel_fem_tr;
-% cfg.sourcemodel   = leadfield_fem;
-% cfg.elec          = elec_aligned; %elec_aligned_fem;
-% cfg.dipfit.metric = 'rv';
-% cfg.nonlinear     = 'no';
-% cfg.component     = 1:size(ftEEG.topo,2);
-% % cfg.component     = 2;
-% % for each component scan the whole brain with dipoles using FIELDTRIPs
-% % dipolefitting function
-% dipfit_fem_grid        = ft_dipolefitting(cfg,ftEEG);
-% save([working_dir filesep 'dipfit_fem_grid.mat'],'dipfit_fem_grid','-v6');
-
 %## NONLINEAR FIT
 if ~exist([working_dir filesep 'dipfit'], 'dir')
     mkdir([working_dir filesep 'dipfit'])
@@ -211,12 +197,37 @@ parfor (comp_i = 1:size(ftEEG.topo,2),POOL_SIZE)
     cfg.sourcemodel     = leadfield_fem;
     cfg.elec            = elec_aligned; %elec_aligned;
     cfg.dipfit.metric   = 'rv';
-    cfg.nonlinear       = 'yes';
-    cfg.component       = comp_i
-    source        = ft_dipolefitting(cfg,ftEEG);
-    sources{comp_i} = source;
+    cfg.nonlinear       = 'no';
+    cfg.component       = comp_i;
+    source              = ft_dipolefitting(cfg,ftEEG);
+    sources{comp_i}     = source;
     display(source)
-%     par_save(source,[working_dir filesep 'dipfit'],sprintf('source_%i.mat',comp_i));
+end
+sources = cellfun(@(x) [[]; x], sources);
+par_save(sources,[working_dir filesep 'dipfit'],'dipfit_struct_coarse.mat');
+%- filter by residual variance by removing those > 50%
+tmp = [sourceds.dip];
+inds = find([tmp.rv] < RV_THRESHOLD);
+clear tmp
+%## NONLINEAR FIT
+sources = cell(size(ftEEG.topo,2),1);
+parfor (comp_i = 1:size(ftEEG.topo,2),POOL_SIZE)
+    cfg = [];
+    cfg.numdipoles      =  1;
+    cfg.headmodel       = headmodel_fem_tr;
+    cfg.sourcemodel     = leadfield_fem;
+    cfg.elec            = elec_aligned; %elec_aligned;
+    cfg.dipfit.metric   = 'rv';
+    cfg.nonlinear       = 'yes';
+    cfg.component       = comp_i;
+    if any(comp_i == inds)
+        source              = ft_dipolefitting(cfg,ftEEG);
+        sources{comp_i}     = source;
+        display(source)
+    else
+        fprintf('Skipping componentn %i due to a high residual variance in coarse fit...\n',comp_i);
+        sources{comp_i} = struct('label',{},'dip',[],'Vdata',[],'Vmodel',[],'component',comp_i,'cfg',cfg);
+    end
 end
 sources = cellfun(@(x) [[]; x], sources);
 par_save(sources,[working_dir filesep 'dipfit'],'dipfit_struct.mat');
