@@ -13,7 +13,11 @@ FORCE_RELOAD = false;
 POOL_SIZE = 10;
 ICA_FNAME_REGEXP = '%s_allcond_ICA_TMPEEG.set';
 %- find eeglab on path
-tmp = strsplit(path,';');
+if ~ispc
+    tmp = strsplit(path,':');
+else
+    tmp = strsplit(path,';');
+end
 b1 = regexp(tmp,'eeglab','end');
 b2 = tmp(~cellfun(@isempty,b1));
 PATH_EEGLAB = b2{1}(1:b1{1});
@@ -92,101 +96,24 @@ fsPrev = {};
 %## Populate ALLEEG Struct
 parfor (subj_i=1:length(fNames),POOL_SIZE)
 % for subj_i=1:length(fNames)
-    subjStr = subjectNames{subj_i};
-    fName = sprintf(ICA_FNAME_REGEXP,subjStr);
-    fPath = [save_dir filesep subjStr filesep 'ICA'];
+    fName = sprintf(ICA_FNAME_REGEXP,subjectNames{subj_i});
+    fPath = [save_dir filesep subjectNames{subj_i} filesep 'ICA'];
     if ~exist(fPath,'dir')
         mkdir(fPath)
     end
     if ~exist([fPath filesep fName],'file') || FORCE_RELOAD
-        fprintf(1,'Loading Subject %s\n',subjStr)
+        fprintf(1,'Loading Subject %s\n',subjectNames{subj_i})
         [~,EEG,~] = eeglab_loadICA(fNames{subj_i},fPaths{subj_i});
         %- override fPath & fName
-        EEG.subject = subjStr;
+        EEG.subject = subjectNames{subj_i};
         %## ADD DIPFIT STRUCT TO EEG STRUCT
         fprintf('%s) dipfit available: %i\n',EEG.subject,isfield(EEG,'dipfit'));
-        try
-            EEG.dipfit.coord_transform;
-            EEG.dipfit.mrifile;
-            EEG.dipfit.hdmfile;
-            EEG.dipfit.coordformat;
-        catch e
-            fprintf(['error. identifier: %s\n',...
-                     'error. %s\n',...
-                     'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
-            fprintf('MNI pop_dipfit_settings...\n');
-            %{
-            EEG = pop_dipfit_settings(EEG,'coordformat','MNI','coord_transform',COORD_TRANSFORM_MNI,...
-                    'hdmfile',MNI_VOL,'mrifile',MNI_MRI,'chanfile',MNI_CHAN_1005);
-            %}
-
-            %## Check Filese
-            tmp = [];
-            if ~isfield(EEG.dipfit,'coord_transform')
-                EEG.dipfit.coord_transform = COORD_TRANSFORM_MNI;
-                tmp = [tmp, 'added default coord_transform; '];
-            end
-            if ~isfield(EEG.dipfit,'mrifile')
-                EEG.dipfit.mrifile = MNI_MRI;
-                tmp = [tmp, 'added default mrifile; '];
-            end
-            if ~isfield(EEG.dipfit,'hdmfile')
-                EEG.dipfit.hdmfile = MNI_VOL;
-                tmp = [tmp, 'added default hdmfile; '];
-            end
-            if ~isfield(EEG.dipfit,'coordformat')
-                EEG.dipfit.coordformat = 'MNI';
-                tmp = [tmp, 'added default coordformat; '];
-            end
-            if ~isfield(EEG.dipfit,'chanfile')
-                EEG.dipfit.chanfile = MNI_CHAN_1005;
-                tmp = [tmp, 'added default chanfile; '];
-            end
-            if ~isfield(EEG.dipfit,'chansel')
-                EEG.dipfit.chansel = (1:EEG.nbchan);
-                tmp = [tmp, 'added default chansel; '];
-            end
-            EEG.dipfit.comment = tmp;
+        if ~isfield(EEG,'dipfit')
+            bem_eeglab_dipfit(EEG,COORD_TRANSFORM_MNI,MNI_MRI,MNI_VOL,MNI_CHAN_1005,DIP_NUM,DIP_PLOT)
         end
-        %% Update EEG channel location again %has to update chanloc for dipfit
-        tmp = load(chanlocs_fPaths{subj_i});
-        chanlocs_new = tmp.chanlocs_new;
-%         getchanlocs_new = tmp.getchanlocs_new;
-        nodatchans_new = tmp.nodatchans_new;
-        % update the EEG electrode locations
-        % Be cautious that not all electrodes are EEG
-        % Sanity check: if we have 120 electrodes digitized
-        disp(['Found total ',num2str(length(chanlocs_new)),' electrodes']);
-        for p = 1:length(chanlocs_new)
-            elec_idx = find(strcmpi(chanlocs_new(p).labels,{EEG.chanlocs(:).labels}));
-            if ~isempty(elec_idx)
-                % update all available fields
-                EEG.chanlocs(elec_idx).X = chanlocs_new(p).X;
-                EEG.chanlocs(elec_idx).Y = chanlocs_new(p).Y;
-                EEG.chanlocs(elec_idx).Z = chanlocs_new(p).Z;
-                EEG.chanlocs(elec_idx).theta = chanlocs_new(p).theta;
-                EEG.chanlocs(elec_idx).radius = chanlocs_new(p).radius;
-                EEG.chanlocs(elec_idx).sph_theta = chanlocs_new(p).sph_theta;
-                EEG.chanlocs(elec_idx).sph_phi = chanlocs_new(p).sph_phi;
-            end
-        end
-        % Add fiducials location 
-        if isempty(EEG.chaninfo.nodatchans)
-            EEG.chaninfo.nodatchans = nodatchans_new;
-        end
-        EEG = eeg_checkchanlocs(EEG); % check the consistency of the chanloc structure
-        %%
-        try 
-            EEG.dipfit.model;
-        catch e
-            %- DIPFIT (see. ft_dipolefitting())
-            fprintf(['error. identifier: %s\n',...
-                     'error. %s\n',...
-                     'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
-            fprintf('pop_multifit...\n');
-            EEG = pop_multifit(EEG,[],'dipoles',DIP_NUM,'dipplot',DIP_PLOT);
-            tmp = EEG.dipfit;
-            par_save(tmp,fPath,sprintf('%s_dipfit_mni.mat',EEG.subject));
+        %## Update EEG channel location again
+        if ~isempty(chanlocs_fPaths)
+            EEG = custom_update_chanlocs(EEG,chanlocs_fPaths{subj_i});
         end
         %## CHECK ICLABEL
         if ~isfield(EEG.etc,'ic_classification')
@@ -203,13 +130,12 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
         if bool_save_eeg
             [EEG] = pop_saveset(EEG,'savemode','twofiles',...
                 'filename',fName,...
-                'filepath',fPath,...
-                'version','6');
+                'filepath',fPath);
         end
     else
         EEG = pop_loadset('filepath',fPath,'filename',fName);
     end
-    ALLEEG{subj_i} = EEG; 
+    ALLEEG{subj_i} = EEG;
 end
 %## BOOKKEEPING (i.e., delete fields not similar across EEG structures)
 for subj_i = 1:length(ALLEEG)
@@ -233,3 +159,85 @@ end
 ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
 end
 
+function [EEG] = custom_update_chanlocs(EEG,chanlocs_fPath)
+    tmp = load(chanlocs_fPath);
+    chanlocs_new = tmp.chanlocs_new;
+    nodatchans_new = tmp.nodatchans_new;
+    %- update the EEG electrode locations
+    % Be cautious that not all electrodes are EEG
+    % Sanity check: if we have 120 electrodes digitized
+    fprintf('Found total of %i electrodes',length(chanlocs_new));
+    for p = 1:length(chanlocs_new)
+        elec_idx = find(strcmpi(chanlocs_new(p).labels,{EEG.chanlocs(:).labels}));
+        if ~isempty(elec_idx)
+            % update all available fields
+            EEG.chanlocs(elec_idx).X = chanlocs_new(p).X;
+            EEG.chanlocs(elec_idx).Y = chanlocs_new(p).Y;
+            EEG.chanlocs(elec_idx).Z = chanlocs_new(p).Z;
+            EEG.chanlocs(elec_idx).theta = chanlocs_new(p).theta;
+            EEG.chanlocs(elec_idx).radius = chanlocs_new(p).radius;
+            EEG.chanlocs(elec_idx).sph_theta = chanlocs_new(p).sph_theta;
+            EEG.chanlocs(elec_idx).sph_phi = chanlocs_new(p).sph_phi;
+        end
+    end
+    % Add fiducials location 
+    if isempty(EEG.chaninfo.nodatchans)
+        EEG.chaninfo.nodatchans = nodatchans_new;
+    end
+    EEG = eeg_checkchanlocs(EEG); % check the consistency of the chanloc structure
+end
+
+function [EEG] = bem_eeglab_dipfit(EEG,COORD_TRANSFORM_MNI,MNI_MRI,MNI_VOL,MNI_CHAN_1005,DIP_NUM,DIP_PLOT)
+    %## FIT DIPOLES TO HEADMODEL IF NEEDED
+    try
+        EEG.dipfit.coord_transform;
+        EEG.dipfit.mrifile;
+        EEG.dipfit.hdmfile;
+        EEG.dipfit.coordformat;
+    catch e
+        fprintf(['error. identifier: %s\n',...
+                 'error. %s\n',...
+                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+        fprintf('MNI pop_dipfit_settings...\n');
+        %## Check Files
+        tmp = [];
+        if ~isfield(EEG.dipfit,'coord_transform')
+            EEG.dipfit.coord_transform = COORD_TRANSFORM_MNI;
+            tmp = [tmp, 'added default coord_transform; '];
+        end
+        if ~isfield(EEG.dipfit,'mrifile')
+            EEG.dipfit.mrifile = MNI_MRI;
+            tmp = [tmp, 'added default mrifile; '];
+        end
+        if ~isfield(EEG.dipfit,'hdmfile')
+            EEG.dipfit.hdmfile = MNI_VOL;
+            tmp = [tmp, 'added default hdmfile; '];
+        end
+        if ~isfield(EEG.dipfit,'coordformat')
+            EEG.dipfit.coordformat = 'MNI';
+            tmp = [tmp, 'added default coordformat; '];
+        end
+        if ~isfield(EEG.dipfit,'chanfile')
+            EEG.dipfit.chanfile = MNI_CHAN_1005;
+            tmp = [tmp, 'added default chanfile; '];
+        end
+        if ~isfield(EEG.dipfit,'chansel')
+            EEG.dipfit.chansel = (1:EEG.nbchan);
+            tmp = [tmp, 'added default chansel; '];
+        end
+        EEG.dipfit.comment = tmp;
+    end
+    %- pop_multifit.m
+    try 
+        EEG.dipfit.model;
+    catch e
+        %- DIPFIT (see. ft_dipolefitting())
+        fprintf(['error. identifier: %s\n',...
+                 'error. %s\n',...
+                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+        fprintf('pop_multifit...\n');
+        EEG = pop_multifit(EEG,[],'dipoles',DIP_NUM,'dipplot',DIP_PLOT);
+        tmp = EEG.dipfit;
+        par_save(tmp,fPath,sprintf('%s_dipfit_mni.mat',EEG.subject));
+    end
+end

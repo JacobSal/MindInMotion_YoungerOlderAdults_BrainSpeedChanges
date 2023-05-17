@@ -109,60 +109,23 @@ SUBJINF_DIR = [DATA_DIR filesep DATA_SET filesep '_subjinf'];
 %             'NH3068_FU', 'NH3036_FU', 'NH3058_FU'};
 % SUBJ_MISSING_TRIAL_DATA = {'H2012','H2018','H3024','NH3002', 'NH3004','NH3009',...
 %     'NH3023','NH3027', 'NH3028', 'NH3129', 'NH3040'};
-% SUBJ_2HMA = {'H2017', 'H2010', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
-%     'H2020', 'H2021', 'H2022', 'H2023',...
-%     'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2036', 'H2037', 'H2038',...
-%     'H2039', 'H2041', 'H2042', 'H2052', 'H2059', 'H2062', 'H2072', 'H2082',...
-%     'H2090', 'H2095', 'H2111', 'H2117'};
-% SUBJ_3NHMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
-%     'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120',...
-%     'NH3006', 'NH3007', 'NH3008', 'NH3010',...
-%     'NH3021', 'NH3025', 'NH3026',...
-%     'NH3030', 'NH3036',...
-%     'NH3041', 'NH3043', 'NH3051', 'NH3054', 'NH3055', 'NH3056', 'NH3058',...
-%     'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
-%     'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
-%     'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
-% SUBJ_PICS = {SUBJ_2HMA,SUBJ_3NHMA};
-% GROUP_NAMES = {'H2000''s','H3000''s'};
-% SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3NHMA)}; 
-%## HEADMODEL RUN (05/07/2023)
-% %- SKULL 0.01 CONDUCTIVITY COEFFICIENT
-% SUBJ_2HMA_s0p01 = {'H2017', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
-%     'H2020', 'H2021', 'H2022', 'H2023',...
-%     'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2037', 'H2038',...
-%     'H2039', 'H2042', 'H2052', 'H2059', 'H2062', 'H2082',...
-%     'H2090', 'H2095'};
-% SUBJ_3NHMA_s0p01 = {'H3039','H3046',...
-%     'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107',...
-%     'NH3025',...
-%     'NH3041', 'NH3054', 'NH3056',...
-%     'NH3106'}; % JACOB,SAL(02/23/2023)
-% %- SKULL 0.0042 CONDUCTIVITY COEFFICIENT
-% SUBJ_2HMA_s0p0042 = {'H2017', 'H2002', 'H2008', 'H2013', 'H2015',...
-%     'H2020', 'H2021', 'H2022', 'H2023',...
-%     'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2037', 'H2038',...
-%     'H2039', 'H2041', 'H2042', 'H2059', 'H2062', 'H2082',...
-%     'H2095'};
-% SUBJ_3NHMA_s0p0042 = {'H3039','H3046',...
-%     'H3053','H3063','H3077',...
-%     'NH3008',...
-%     'NH3041', 'NH3043', 'NH3054', 'NH3055', 'NH3056', 'NH3058',...
-%     'NH3059', 'NH3068', 'NH3069', 'NH3070', 'NH3074',...
-%     'NH3086', 'NH3090', 'NH3104', 'NH3105', 'NH3106',...
-%     'NH3112', 'NH3113', 'NH3114'}; % JACOB,SAL(02/23/2023)
-%- SUBJECT MIX of 0.01 & 0.0042 headmodels (preference for 0.01)
-SUBJ_OA_MIX_2 = {'H2017','H2010','H2002','H2007','H2008','H2013','H2015',...
-    'H2020','H2021','H2022','H2023','H2025','H2026','H2027','H2033',...
-    'H2034','H2036','H2037','H2038','H2039','H2042','H2052',...
-    'H2059','H2062','H2072','H2082','H2090','H2095','H2111','H2117'};
-SUBJ_OA_MIX_3 = {'H3018','H3029','H3034','H3039','H3042','H3046','H3047','H3053',...
-    'H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120',...
-    'NH3006','NH3007','NH3008','NH3010','NH3021','NH3025','NH3026',...
-    'NH3030','NH3036','NH3041','NH3043'}; 
-SUBJ_PICS = {SUBJ_OA_MIX_2,SUBJ_OA_MIX_3};
+SUBJ_2HMA = {'H2017', 'H2010', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
+    'H2020', 'H2021', 'H2022', 'H2023',...
+    'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2036', 'H2037', 'H2038',...
+    'H2039', 'H2041', 'H2042', 'H2052', 'H2059', 'H2062', 'H2072', 'H2082',...
+    'H2090', 'H2095', 'H2111', 'H2117'};
+SUBJ_3NHMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
+    'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120',...
+    'NH3006', 'NH3007', 'NH3008', 'NH3010',...
+    'NH3021', 'NH3025', 'NH3026',...
+    'NH3030', 'NH3036',...
+    'NH3041', 'NH3043', 'NH3051', 'NH3054', 'NH3055', 'NH3056', 'NH3058',...
+    'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
+    'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
+    'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
+SUBJ_PICS = {SUBJ_2HMA,SUBJ_3NHMA};
 GROUP_NAMES = {'H2000''s','H3000''s'};
-SUBJ_ITERS = {1:length(SUBJ_OA_MIX_2),1:length(SUBJ_OA_MIX_3)}; 
+SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3NHMA)};
 %- Subject Directory Information
 OA_PREP_FPATH = '07042023_OA_prep_verified'; % JACOB,SAL(04/10/2023)
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
@@ -170,29 +133,29 @@ OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP
 %## PROCESSING PARAMS
 params = [];
 %- study group and saving
-params.OVERRIDE_DIPFIT =  true;
+OVERRIDE_DIPFIT =  true;
 % SAVE_EEG = false; % saves EEG structures throughout processing
 %- component rejection crit
-params.THRESHOLD_DIPFIT_RV = 0.15;
-params.THRESHOLD_BRAIN_ICLABEL = 0.50;
+THRESHOLD_DIPFIT_RV = 0.15;
+THRESHOLD_BRAIN_ICLABEL = 0.50;
 %- MIM specific epoching
-params.EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
+EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 %- epoching params
-% params.TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
-params.TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-params.EPOCH_TIME_LIMITS = [-0.5,4.5]; % [-1,3] captures gait events well
-params.TRIAL_LENGTH = 3*60; % trial length in seconds
-params.PER_OVERLAP = 0.0; % percent overlap between epochs
-params.TRIAL_BEGIN_STR = 'TrialStart';
-params.TRIAL_END_STR = 'TrialEnd';
-params.EVENT_TRIAL_PARSER = 'type';
-params.EVENT_COND_PARSER = 'cond';
+% TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
+TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+EPOCH_TIME_LIMITS = [-0.5,4.5]; % [-1,3] captures gait events well
+TRIAL_LENGTH = 3*60; % trial length in seconds
+PER_OVERLAP = 0.0; % percent overlap between epochs
+TRIAL_BEGIN_STR = 'TrialStart';
+TRIAL_END_STR = 'TrialEnd';
+EVENT_TRIAL_PARSER = 'type';
+EVENT_COND_PARSER = 'cond';
 %- eeglab_cluster.m spectral params
-params.FREQ_LIMITS = [1,100];
-params.CYCLE_LIMITS = [3,0.8];
-params.SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
-params.FREQ_FAC = 4;
-params.PAD_RATIO = 2;
+FREQ_LIMITS = [1,100];
+CYCLE_LIMITS = [3,0.8];
+SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
+FREQ_FAC = 4;
+PAD_RATIO = 2;
 %% global script chain (VERSION 1)
 %- datetime override
 % dt = '05012023_MIM_OA_subset_N85_speed_terrain_merge';
@@ -202,14 +165,10 @@ dt = '05072023_MIM_OA_subset_N';
 SAVE_EEG = true;
 SESSION_NUMBER = '1';
 SUFFIX_PATH_EPOCHED = 'EPOCHED';
-study_fName_1 = sprintf('%s_all_comps_study',[params.TRIAL_TYPES{:}]);
-study_fName_2 = sprintf('%s_reduced_comps_study',[params.TRIAL_TYPES{:}]);
-study_fName_3 = sprintf('%s_EPOCH_study',[params.TRIAL_TYPES{:}]);
+study_fName_1 = sprintf('%s_all_comps_study',[TRIAL_TYPES{:}]);
+study_fName_2 = sprintf('%s_reduced_comps_study',[TRIAL_TYPES{:}]);
+study_fName_3 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 %- soft define
-path2BEM  = [PATHS.path4EEGlab filesep 'plugins' filesep 'dipfit' filesep 'standard_BEM' filesep];
-mniMRI = fullfile(path2BEM, 'standard_mri.mat');
-mniVol = fullfile(path2BEM, 'standard_vol.mat');
-mniChan1005 = fullfile(path2BEM,'elec','standard_1005.elc');
 TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
@@ -251,7 +210,7 @@ for group_i = 1:length(SUBJ_ITERS)
     %## Assigning paths for eeglab study
     for subj_i = sub_idx
         subjectNames{cnt} = SUBJ_PICS{group_i}{subj_i};
-        tmp = join(params.TRIAL_TYPES,'_'); 
+        tmp = join(TRIAL_TYPES,'_'); 
         conditions{cnt} = tmp{:};
         groups{cnt} = GROUP_NAMES{group_i};
         sessions{cnt} = SESSION_NUMBER;
@@ -352,8 +311,8 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
     end
     EEG.icaact    = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     %## PARSE TRIALS
-    fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED filesep [params.TRIAL_TYPES{:}]];
-    fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[params.TRIAL_TYPES{:}]);
+    fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED filesep [TRIAL_TYPES{:}]];
+    fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[TRIAL_TYPES{:}]);
     if ~exist(fPath,'dir')
         mkdir(fPath)
     end
@@ -374,7 +333,7 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
     else
         try
             %## EPOCH
-            [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,params.TRIAL_TYPES,params.EPOCH_TIME_LIMITS);
+            [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,TRIAL_TYPES,EPOCH_TIME_LIMITS);
 
             %## SAVE ONE BIG EEG FILE
             ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
@@ -402,7 +361,7 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
             ALLEEG.etc.timewarp_by_cond = timewarp_struct;
             %- STRUCT EDITS
             ALLEEG.urevent = []; % might be needed
-            ALLEEG.etc.epoch.epoch_limits = params.EPOCH_TIME_LIMITS;
+            ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
             %- 
             ALLEEG = eeg_checkset(ALLEEG,'eventconsistency');
             ALLEEG = eeg_checkset(ALLEEG);
@@ -464,11 +423,11 @@ tmp = cellfun(@(x) [[]; x], tmp);
                                         'RESAVE_DATASETS','on');
 %- NOTES: spec_mode, 'psd' does not work.
 [STUDY,ALLEEG] = eeglab_cluster(STUDY,ALLEEG,...
-                    'SPEC_MODE',params.SPEC_MODE,...
-                    'FREQ_LIMITS',params.FREQ_LIMITS,...
-                    'CYCLE_LIMITS',params.CYCLE_LIMITS,...
-                    'FREQ_FAC',params.FREQ_FAC,...
-                    'PAD_RATIO',params.PAD_RATIO);
+                    'SPEC_MODE',SPEC_MODE,...
+                    'FREQ_LIMITS',FREQ_LIMITS,...
+                    'CYCLE_LIMITS',CYCLE_LIMITS,...
+                    'FREQ_FAC',FREQ_FAC,...
+                    'PAD_RATIO',PAD_RATIO);
 %## PCA reduction algorithm
 %- RECALCULATE ICAACT MATRICES
 %     ALLEEG = eeg_checkset(ALLEEG,'loaddata');

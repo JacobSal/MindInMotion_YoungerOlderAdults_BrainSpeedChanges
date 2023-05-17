@@ -61,10 +61,6 @@ ADD_CLEANING_SUBMODS = false;
 setWorkspace
 %% PARPOOL SETUP
 if ~ispc
-%     eeg_options;
-    % see. eeg_optionsbackup.m for all eeglab options.
-%     pop_editoptions('option_parallel',0,'option_storedisk',1,...
-%         'option_saveversion6',0,'option_cachesize',1000,'option_savetwofiles',1);
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
     'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
@@ -87,8 +83,6 @@ if ~ispc
     %- create your p-pool (NOTE: gross!!)
     pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
 else
-%     pop_editoptions('option_parallel',0,'option_storedisk',1,...
-%         'option_saveversion6',0,'option_cachesize',1000,'option_savetwofiles',1);
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
     'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
@@ -161,66 +155,30 @@ else
 end
 %% ===================================================================== %%
 %## PROCESSING PARAMS
-% pop_editoptions('option_parallel',1);
-params = [];
-%- study group and saving
-params.OVERRIDE_DIPFIT =  true;
-% SAVE_EEG = false; % saves EEG structures throughout processing
-%- component rejection crit
-params.THRESHOLD_DIPFIT_RV = 0.15;
-params.THRESHOLD_BRAIN_ICLABEL = 0.50;
-%- MIM specific epoching
-params.EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 %- epoching params
-% params.TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
-params.TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-% params.TRIAL_TYPES = {'0p25','0p5','0p75','1p0'};
-% params.TRIAL_TYPES = {'flat','low','med','high'};
-% params.TRIAL_TYPES = {'0p25'};
-params.EPOCH_TIME_LIMITS = [-0.5,5]; % [-1,3] captures gait events well
-params.TRIAL_LENGTH = 3*60; % trial length in seconds
-params.PER_OVERLAP = 0.0; % percent overlap between epochs
-params.TRIAL_BEGIN_STR = 'TrialStart';
-params.TRIAL_END_STR = 'TrialEnd';
-params.EVENT_TRIAL_PARSER = 'type';
-params.EVENT_COND_PARSER = 'cond';
+% TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
+TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %- connectivity process
-params.CONN_FREQS = (1:100);
-params.CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
+CONN_FREQS = (1:100);
+CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 %- subj_i_genConnMeas
-params.CNCTANL_TOOLBOX = 'sift'; %'bsmart'
-params.WINDOW_LENGTH = 0.5;
-params.WINDOW_STEP_SIZE = 0.025;
-params.NEW_SAMPLE_RATE = [];
-params.DO_BOOTSTRAP = true;
-% ASSIGN_BOOTSTRAP_MEAN = false;
-% SAVE_CONN_BOOTSTRAP = false;
+CNCTANL_TOOLBOX = 'sift'; %'bsmart'
+WINDOW_LENGTH = 0.5;
+WINDOW_STEP_SIZE = 0.025;
+NEW_SAMPLE_RATE = [];
+DO_BOOTSTRAP = true;
 %- subj_i_genConnStats
-params.DO_PHASE_RND = true;
-%- eeglab_cluster.m spectral params
-params.FREQ_LIMITS = [1,100];
-params.CYCLE_LIMITS = [3,0.8];
-params.SPEC_MODE = 'fft'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
-params.FREQ_FAC = 4;
-params.PAD_RATIO = 2;
+DO_PHASE_RND = true;
 %% global script chain (VERSION 1)
 %- datetime override
-% dt = '16032023_OA_subset'; % OA (03/22/2023) JS
-% dt = '02042023_OA_subset';
-% dt = '31032023_OA_subset_randi';
-% dt = '04052023_OA_subset';    
-% dt = '04052023_MIM_OA_subset_N85_speed_terrain';
-% dt = '04062023_MIM_OA_subset_N85_speed_terrain';
-% dt = '04092023_MIM_OA_subset_N85_speed_terrain';
 dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
-% dt = '04102023_OA_subset_randi';
 %## PATH & TEMP STUDY NAME
 %- hard define
 DO_CONN_ANL = false;
 SAVE_EEG = true;
 SESSION_NUMBER = '1';
-study_fName_3 = sprintf('%s_EPOCH_study',[params.TRIAL_TYPES{:}]);
-study_fName_4 = sprintf('%s_CONN_study',[params.TRIAL_TYPES{:}]);
+study_fName_3 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+study_fName_4 = sprintf('%s_CONN_study',[TRIAL_TYPES{:}]);
 %- soft define
 path2BEM  = [PATHS.path4EEGlab filesep 'plugins' filesep 'dipfit' filesep 'standard_BEM' filesep];
 mniMRI = fullfile(path2BEM, 'standard_mri.mat');
@@ -285,14 +243,13 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
         try
             %## RUN MAIN_FUNC
             [TMP_EEG] = main_func_v2(EEG,save_dir,components,...
-                'SAVE_EEG',SAVE_EEG,...
-                'CONN_METHODS',params.CONN_METHODS,... %
-                'FREQS',params.CONN_FREQS,...
-                'CNCTANL_TOOLBOX',params.CNCTANL_TOOLBOX,... 
-                'DO_BOOTSTRAP',params.DO_BOOTSTRAP,...
-                'DO_PHASE_RND',params.DO_PHASE_RND,...
-                'WINDOW_LENGTH',params.WINDOW_LENGTH,...
-                'WINDOW_STEP_SIZE',params.WINDOW_STEP_SIZE);
+                'CONN_METHODS',CONN_METHODS,... %
+                'FREQS',CONN_FREQS,...
+                'CNCTANL_TOOLBOX',CNCTANL_TOOLBOX,... 
+                'DO_BOOTSTRAP',DO_BOOTSTRAP,...
+                'DO_PHASE_RND',DO_PHASE_RND,...
+                'WINDOW_LENGTH',WINDOW_LENGTH,...
+                'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
 %                 pop_mergeset();
             EEG.CAT = TMP_EEG.CAT;
             [EEG] = pop_saveset(EEG,...

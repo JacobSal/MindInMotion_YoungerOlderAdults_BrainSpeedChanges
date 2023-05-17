@@ -37,8 +37,6 @@ FREQ_BANDS = {FREQS;1:7;7:12;12:28;28:48;48:60};
 DO_PHASE_RND = true;
 errorMsg = 'Value must be (true/false). Determines whether a phase randomized distribution will be created.'; 
 lpr_validFcn = @(x) assert(islogical(x),errorMsg);
-%- HARD DEFINES
-SUFFIX_PATH_SIFT = 'SIFT';
 %## define Parser
 p = inputParser;
 %## define REQUIRED
@@ -48,8 +46,7 @@ addRequired(p,'save_dir',@ischar);
 %## define OPTIONAL
 addOptional(p,'conn_components',CONN_COMPONENTS,@isnumeric); 
 %## define PARAMETER
-addParameter(p,'SAVE_EEG',SAVE_EEG,@islogical);
-%- subj_i_genConnMeas
+%- cnctanl_connMeas
 addParameter(p,'CONN_METHODS',CONN_METHODS,@iscell);
 addParameter(p,'FREQS',FREQS,@isnumeric);
 addParameter(p,'CNCTANL_TOOLBOX',CNCTANL_TOOLBOX,@ischar);
@@ -57,14 +54,11 @@ addParameter(p,'DO_BOOTSTRAP',DO_BOOTSTRAP,@islogical);
 addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH,@isnumeric);
 addParameter(p,'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE,@isnumeric);
 addParameter(p,'ASSIGN_BOOTSTRAP_MEAN',ASSIGN_BOOTSTRAP_MEAN,@islogical);
-%- subj_i_genConnStats
+%- cnctanl_groupStats
 addParameter(p,'STAT_ALPHA',STAT_ALPHA,@isnumeric);
 addParameter(p,'DO_PHASE_RND',DO_PHASE_RND,lpr_validFcn);
 %## SET DEFAULTS
 parse(p,ALLEEG,save_dir,varargin{:});
-%- pathing and saving
-% OVERRIDE_SOURCE_EEG = false;
-SAVE_EEG = p.Results.SAVE_EEG;
 %- Connectivity process
 CONN_METHODS = p.Results.CONN_METHODS; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 STAT_ALPHA = p.Results.STAT_ALPHA;
@@ -78,10 +72,6 @@ WINDOW_STEP_SIZE = p.Results.WINDOW_STEP_SIZE;
 ASSIGN_BOOTSTRAP_MEAN = p.Results.ASSIGN_BOOTSTRAP_MEAN;
 % subj_i_genConnStats
 DO_PHASE_RND = p.Results.DO_PHASE_RND;
-%- Get Anatomy Coordinates for different brain areas.
-% out = get_Anatomy();
-% BRAIN_CHARS = out.BrainAcronym;
-% BRAIN_COORDS = out.coords_MNI;
 %## TABLE VARS
 t_fPaths = cell(1,length(ALLEEG));
 t_fNames = cell(1,length(ALLEEG));
