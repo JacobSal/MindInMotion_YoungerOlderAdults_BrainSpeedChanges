@@ -61,10 +61,6 @@ ADD_CLEANING_SUBMODS = false;
 setWorkspace
 %% PARPOOL SETUP
 if ~ispc
-%     eeg_options;
-    % see. eeg_optionsbackup.m for all eeglab options.
-%     pop_editoptions('option_parallel',0,'option_storedisk',1,...
-%         'option_saveversion6',0,'option_cachesize',1000,'option_savetwofiles',1);
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
     'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
@@ -87,8 +83,6 @@ if ~ispc
     %- create your p-pool (NOTE: gross!!)
     pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
 else
-%     pop_editoptions('option_parallel',0,'option_storedisk',1,...
-%         'option_saveversion6',0,'option_cachesize',1000,'option_savetwofiles',1);
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
     'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
@@ -103,54 +97,31 @@ DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 SUBJINF_DIR = [DATA_DIR filesep DATA_SET filesep '_subjinf'];
 %## DATASET SPECIFIC
-%- MIND IN MOTION (SUBSET (07/25/2022)
-% SUBJ_YNG = {'H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1020',...
-%     'H1022','H1024','H1026','H1027','H1033','H1034'};
-% SUBJ_HMA = {'H2002', 'H2010', 'H2015', 'H2017', 'H2020', 'H2021', 'H2022', 'H2023',...
-%     'H2025', 'H2026', 'H2034', 'H2059', 'H2062', 'H2082', 'H2095'};
-% SUBJ_NMA = {'NH3008', 'NH3043', 'NH3055', 'NH3059', 'NH3069', ...
-%     'NH3070', 'NH3074', 'NH3086', 'NH3090', 'NH3104', 'NH3105', 'NH3106', 'NH3112', 'NH3114'};
 %- MIND IN MOTION (SUBSET (03/10/2023)
 SUBJ_NORUN = {'H2012_FU', 'H2013_FU', 'H2018_FU', 'H2020_FU', 'H2021_FU',...
             'H3024_Case','H3029_FU','H3039_FU','H3063_FU','NH3021_Case', 'NH3023_Case','NH3025_Case', 'NH3030_FU',...
             'NH3068_FU', 'NH3036_FU', 'NH3058_FU'};
 SUBJ_MISSING_TRIAL_DATA = {'H2012','H2018','H3024','NH3002', 'NH3004','NH3009',...
     'NH3023','NH3027', 'NH3028', 'NH3129', 'NH3040'};
-
-SUBJ_2HMA = {'H2017', 'H2010', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
-    'H2020', 'H2021', 'H2022', 'H2023',...
-    'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2036', 'H2037', 'H2038',...
-    'H2039', 'H2041', 'H2042', 'H2052', 'H2059', 'H2062', 'H2072', 'H2082',...
+SUBJ_NO_MRI = {'H2010', 'H2036', 'H2041', 'H2072', 'H3018','H3120'};
+SUBJ_2HMA = { 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
+    'H2017', 'H2020', 'H2021', 'H2022', 'H2023',...
+    'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2037', 'H2038',...
+    'H2039', 'H2042', 'H2052', 'H2059', 'H2062', 'H2082',...
     'H2090', 'H2095', 'H2111', 'H2117'};
-% SUBJ_3HMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
-%     'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120'}; % JACOB,SAL(02/23/2023)
-SUBJ_3NHMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
-    'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120',...
+SUBJ_3NHMA = {'H3029','H3034','H3039','H3042','H3046',...
+    'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107',...
     'NH3006', 'NH3007', 'NH3008', 'NH3010',...
     'NH3021', 'NH3025', 'NH3026',...
-    'NH3030', 'NH3036',...
-    'NH3041', 'NH3043', 'NH3051', 'NH3054', 'NH3055', 'NH3056', 'NH3058',...
+    'NH3030', 'NH3036', 'NH3041', 'NH3043', 'NH3051', 'NH3054', 'NH3055', 'NH3056', 'NH3058',...
     'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
     'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
-    'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
+    'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'};
 %- Subject Picks
-% SUBJ_PICS = {SUBJ_2HMA,SUBJ_3HMA,SUBJ_3NHMA};
 SUBJ_PICS = {SUBJ_2HMA,SUBJ_3NHMA};
 GROUP_NAMES = {'H2000''s','H3000''s'};
-% SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3HMA),1:length(SUBJ_3NHMA)}; % JACOB,SAL(02/23/2023)
 SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3NHMA)}; 
-% SUBJ_ITERS = {[3,4,5],[16,17,18]};
-% N_SUBS = 5;
-% SUBJ_ITERS = {get_unique_randi(length(SUBJ_2HMA),N_SUBS,1)',get_unique_randi(length(SUBJ_3NHMA),N_SUBS,1)'};
-%- Subject Picks
-% SUBJ_PICS = {SUBJ_YNG,SUBJ_HMA,SUBJ_NMA}; % CHANG,LIU(07/25/2022)
-% SUBJ_ITERS = {[],1:length(SUBJ_HMA),1:length(SUBJ_NMA)}; % CHANG,LIU(07/25/2022)
 %- Subject Directory Information
-% PREPROCESS_NAME = '8std_iCC0p9_ChanRej0p5_TimeRej0p4_winTol10'; % CHANG,LIU(07/25/2022)
-% OUTSIDE_DATA_DIR = 'M:\liu.chang1\STUDY-preprocess-MiM_20220725'; % CHANG,LIU(07/25/2022)
-% OUTSIDE_DATA_SUFFIX = 'ICA_ICLabel_dipfit_templateElec';% CHANG,LIU(07/25/2022)
-% OUTSIDE_DATA_SUFFIX = 'ICA_ICLabel_dipfit_fem'; % CHANG,LIU(07/25/2022)
-% OA_PREP_FPATH = '24022023_OA_prep'; % JACOB,SAL(02/23/2023)
 OA_PREP_FPATH = '07042023_OA_prep_verified'; % JACOB,SAL(04/10/2023)
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
 %## CONVERT PATHS
@@ -161,66 +132,30 @@ else
 end
 %% ===================================================================== %%
 %## PROCESSING PARAMS
-% pop_editoptions('option_parallel',1);
-params = [];
-%- study group and saving
-params.OVERRIDE_DIPFIT =  true;
-% SAVE_EEG = false; % saves EEG structures throughout processing
-%- component rejection crit
-params.THRESHOLD_DIPFIT_RV = 0.15;
-params.THRESHOLD_BRAIN_ICLABEL = 0.50;
-%- MIM specific epoching
-params.EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 %- epoching params
-% params.TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
-params.TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-% params.TRIAL_TYPES = {'0p25','0p5','0p75','1p0'};
-% params.TRIAL_TYPES = {'flat','low','med','high'};
-% params.TRIAL_TYPES = {'0p25'};
-params.EPOCH_TIME_LIMITS = [-0.5,5]; % [-1,3] captures gait events well
-params.TRIAL_LENGTH = 3*60; % trial length in seconds
-params.PER_OVERLAP = 0.0; % percent overlap between epochs
-params.TRIAL_BEGIN_STR = 'TrialStart';
-params.TRIAL_END_STR = 'TrialEnd';
-params.EVENT_TRIAL_PARSER = 'type';
-params.EVENT_COND_PARSER = 'cond';
+% TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
+TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %- connectivity process
-params.CONN_FREQS = (1:100);
-params.CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
+CONN_FREQS = (1:100);
+CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 %- subj_i_genConnMeas
-params.CNCTANL_TOOLBOX = 'sift'; %'bsmart'
-params.WINDOW_LENGTH = 0.5;
-params.WINDOW_STEP_SIZE = 0.025;
-params.NEW_SAMPLE_RATE = [];
-params.DO_BOOTSTRAP = true;
-% ASSIGN_BOOTSTRAP_MEAN = false;
-% SAVE_CONN_BOOTSTRAP = false;
+CNCTANL_TOOLBOX = 'sift'; %'bsmart'
+WINDOW_LENGTH = 0.5;
+WINDOW_STEP_SIZE = 0.025;
+NEW_SAMPLE_RATE = [];
+DO_BOOTSTRAP = true;
 %- subj_i_genConnStats
-params.DO_PHASE_RND = true;
-%- eeglab_cluster.m spectral params
-params.FREQ_LIMITS = [1,100];
-params.CYCLE_LIMITS = [3,0.8];
-params.SPEC_MODE = 'fft'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
-params.FREQ_FAC = 4;
-params.PAD_RATIO = 2;
+DO_PHASE_RND = true;
 %% global script chain (VERSION 1)
 %- datetime override
-% dt = '16032023_OA_subset'; % OA (03/22/2023) JS
-% dt = '02042023_OA_subset';
-% dt = '31032023_OA_subset_randi';
-% dt = '04052023_OA_subset';    
-% dt = '04052023_MIM_OA_subset_N85_speed_terrain';
-% dt = '04062023_MIM_OA_subset_N85_speed_terrain';
-% dt = '04092023_MIM_OA_subset_N85_speed_terrain';
 dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
-% dt = '04102023_OA_subset_randi';
 %## PATH & TEMP STUDY NAME
 %- hard define
 DO_CONN_ANL = false;
 SAVE_EEG = true;
 SESSION_NUMBER = '1';
-study_fName_3 = sprintf('%s_EPOCH_study',[params.TRIAL_TYPES{:}]);
-study_fName_4 = sprintf('%s_CONN_study',[params.TRIAL_TYPES{:}]);
+study_fName_3 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+study_fName_4 = sprintf('%s_CONN_study',[TRIAL_TYPES{:}]);
 %- soft define
 path2BEM  = [PATHS.path4EEGlab filesep 'plugins' filesep 'dipfit' filesep 'standard_BEM' filesep];
 mniMRI = fullfile(path2BEM, 'standard_mri.mat');
@@ -285,14 +220,13 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
         try
             %## RUN MAIN_FUNC
             [TMP_EEG] = main_func_v2(EEG,save_dir,components,...
-                'SAVE_EEG',SAVE_EEG,...
-                'CONN_METHODS',params.CONN_METHODS,... %
-                'FREQS',params.CONN_FREQS,...
-                'CNCTANL_TOOLBOX',params.CNCTANL_TOOLBOX,... 
-                'DO_BOOTSTRAP',params.DO_BOOTSTRAP,...
-                'DO_PHASE_RND',params.DO_PHASE_RND,...
-                'WINDOW_LENGTH',params.WINDOW_LENGTH,...
-                'WINDOW_STEP_SIZE',params.WINDOW_STEP_SIZE);
+                'CONN_METHODS',CONN_METHODS,... %
+                'FREQS',CONN_FREQS,...
+                'CNCTANL_TOOLBOX',CNCTANL_TOOLBOX,... 
+                'DO_BOOTSTRAP',DO_BOOTSTRAP,...
+                'DO_PHASE_RND',DO_PHASE_RND,...
+                'WINDOW_LENGTH',WINDOW_LENGTH,...
+                'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
 %                 pop_mergeset();
             EEG.CAT = TMP_EEG.CAT;
             [EEG] = pop_saveset(EEG,...

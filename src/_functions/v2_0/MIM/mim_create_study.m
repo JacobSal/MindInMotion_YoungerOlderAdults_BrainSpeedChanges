@@ -34,7 +34,7 @@ if ~exist(study_fPath,'dir')
 end
 %% ===================================================================== %%
 THRESH_BRAIN_SCORE = 8;
-POOL_SIZE = 15;
+% POOL_SIZE = 15;
 %## DIPOLE REJECTION
 % parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
 parfor subj_i = 1:length(ALLEEG)
