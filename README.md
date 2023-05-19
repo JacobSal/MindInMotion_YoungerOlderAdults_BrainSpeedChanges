@@ -83,13 +83,13 @@
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Built With
-* [![MATLAB][matlab](https://www.mathworks.com/)
-* [![eeglab][eeglab.com][eeglab-url]
-* [![fieldtrip][fieldtrip.com][fieldtrip-url];
-* [![spm12](https://github.com/spm/spm12)
-* [![groupSIFT](https://github.com/sccn/groupSIFT)
-* [![SIFT](https://github.com/sccn/SIFT)
-* [![postAmicaUtility](https://github.com/sccn/postAmicaUtility)
+* [![MATLAB][matlab.com]][matlab-url]
+* [![eeglab][eeglab.com]][eeglab-url]
+* [![fieldtrip][fieldtrip.com]][fieldtrip-url]
+* [![spm][spm.com]][spm-url]
+* [![groupSIFT][groupSIFT.com]][groupSIFT-url]
+* [![SIFT][SIFT.com]][SIFT-url]
+* [![postAmicaUtility][postAmicaUtility.com]][postAicaUtility-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -181,9 +181,17 @@ Project Link: [https://github.com/JacobSal/slurm_eeglab_wrapper-m](https://githu
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/jacob-salminen-124a50129
 [matlab.com]: https://www.mathworks.com/brand/_jcr_content/mainParsys/band_1065211270_copy_44377276/mainParsys/columns_copy/2/image.adapt.480.medium.svg/1590723997951.svg?style=for-the-badge
-[matlab-url]: https://www.mathworks.com/products/matlab.html
+[matlab-url]: https://www.mathworks.com/products/matlab.html?style=for-the-badge
 [eeglab.com]: https://sccn.ucsd.edu/images/sccn.svg?style=for-the-badge
 [eeglab-url]: https://eeglab.org/#The_EEGLAB_Tutorial_Outline
 [fieldtrip.com]: https://www.fieldtriptoolbox.org/assets/img/blueyellow/fieldtriplogo-75.png?style=for-the-badge
 [fieldtrip-url]: https://www.fieldtriptoolbox.org/
+[spm.com]: https://avatars.githubusercontent.com/u/14014701?s=200&v=4?style=for-the-badge
+[spm-url]: https://github.com/spm/
+[groupSIFT.com]: 
+[groupSIFT-url]: https://github.com/sccn/groupSIFT
+[SIFT.com]:
+[SIFT-url]: https://github.com/sccn/sift
+[postAicaUtility-url]: 
+[postAicaUtility.com]: https://github.com/sccn/postAmicaUtility
 [product-screenshot]: images/screenshot.png
