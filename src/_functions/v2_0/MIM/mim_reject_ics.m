@@ -303,7 +303,7 @@ if DO_PLOTTING
     saveas(fig_i,[save_dir filesep 'KEEP_IC_PSD.jpg']);
 
     %## (PLOT 7) BEMOBIL PIPELINE PLOT
-    %{
+    
     summed_scores_to_keep = sum(classifications(:,1),2);
     titles_FEM = {};
     for i_title = 1:size(EEG.icawinv,2)
@@ -313,7 +313,7 @@ if DO_PLOTTING
         'fixscale',0,'minweight',0.75,'titles',titles_FEM);
     saveas(gcf,[save_dir filesep 'potential_brain_components_allcritera_customElectrode.fig']);
     saveas(gcf,[save_dir filesep 'potential_brain_components_allcritera_customElectrode.jpg']);
-    %}
+    
 end
 end
 

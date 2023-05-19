@@ -252,7 +252,7 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
 % for subj_i = LOOP_VAR
     fprintf('Running subject %s...\n',subjectNames{subj_i})
     try
-%         if true
+%         if true % force processing
         if ~exist([working_dirs{subj_i} filesep 'vol.mat'],'file') || ~exist([working_dirs{subj_i} filesep 'elec_aligned.mat'],'file')
             err = mim_FEheadmodel_create_vol(working_dirs{subj_i},subjectNames{subj_i});
             fprintf('Volume creation for %s: %i\n',subjectNames{subj_i},err);
@@ -262,10 +262,9 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
              'error. %s\n',...
              'error. on working_dir %s\n'],e.identifier,e.message,working_dirs{subj_i});
     end
-%     err = mim_mcc_dipfit(working_dirs{subj_i},[fPaths{subj_i} filesep fNames{subj_i}]);
-%     err = mim_FEheadmodel_dipfit(working_dirs{subj_i},[fPaths{subj_i} filesep fNames{subj_i}]);
-%     fprintf('Dipfit for %s: %i\n',subjectNames{subj_i},err);
 end
+%% SOURCEMODEL, LEADFIELDS, & DIPFITTING without MCR 
+%{
 %% (PARFOR) SOURCEMODEL
 fprintf('Making Sourcemodels\n');
 % parfor (subj_i = LOOP_VAR,POOL_SIZE)
@@ -285,3 +284,4 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
     err = mim_FEheadmodel_dipfit(working_dirs{subj_i},[fPaths{subj_i} filesep fNames{subj_i}]);
     fprintf('Leadfield for %s: %i\n',subjectNames{subj_i},err);
 end
+%}

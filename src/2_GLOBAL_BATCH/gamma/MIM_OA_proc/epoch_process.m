@@ -133,11 +133,12 @@ OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP
 %## PROCESSING PARAMS
 params = [];
 %- study group and saving
-OVERRIDE_DIPFIT =  true;
+SAVE_EEG = false; %true;
+OVERRIDE_DIPFIT = true;
 % SAVE_EEG = false; % saves EEG structures throughout processing
 %- component rejection crit
-THRESHOLD_DIPFIT_RV = 0.15;
-THRESHOLD_BRAIN_ICLABEL = 0.50;
+% THRESHOLD_DIPFIT_RV = 0.15;
+% THRESHOLD_BRAIN_ICLABEL = 0.50;
 %- MIM specific epoching
 EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 %- epoching params
@@ -156,13 +157,13 @@ CYCLE_LIMITS = [3,0.8];
 SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
 FREQ_FAC = 4;
 PAD_RATIO = 2;
+
 %% global script chain (VERSION 1)
 %- datetime override
 % dt = '05012023_MIM_OA_subset_N85_speed_terrain_merge';
-dt = '05072023_MIM_OA_subset_N';
+dt = '05182023_MIM_OA_subset_N85_oldpipe';
 %## PATH & TEMP STUDY NAME
 %- hard define
-SAVE_EEG = true;
 SESSION_NUMBER = '1';
 SUFFIX_PATH_EPOCHED = 'EPOCHED';
 study_fName_1 = sprintf('%s_all_comps_study',[TRIAL_TYPES{:}]);
@@ -224,8 +225,8 @@ if ~exist([save_dir filesep study_fName_1 '.study'],'file') %|| true
     fprintf(1,'\n==== CLUSTERING SUBJECT DATA ====\n');
     [MAIN_ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
                         conditions,groups,sessions,...
-                        'SAVE_EEG',SAVE_EEG,...
-                        'CHANLOCS_FPATHS',chanlocs_fPaths);
+                        'SAVE_EEG',SAVE_EEG); %,...
+%                         'CHANLOCS_FPATHS',chanlocs_fPaths);
     [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,study_fName_1,save_dir);
     [MAIN_STUDY,MAIN_ALLEEG] = std_checkset(MAIN_STUDY,MAIN_ALLEEG);
     [MAIN_STUDY,MAIN_ALLEEG] = parfunc_save_study(MAIN_STUDY,MAIN_ALLEEG,...
@@ -241,49 +242,6 @@ else
     end
     fprintf(1,'\n==== DONE: LOADING CLUSTER STUDY DATA ====\n');
 end
-%% REDUCE CLUSTERS TO ONE COMPONENT PER SUBJECT
-% if ~exist([save_dir filesep study_fName_2 '.study'],'file')
-%     %## LOAD PREVIOUS STUDY
-%     if ~exist('MAIN_STUDY','var') || ~exist('MAIN_ALLEEG','var')
-%         fprintf(1,'\n==== LOADING CLUSTER STUDY DATA ====\n');
-%         if ~ispc
-%             [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',save_dir);
-%         else
-%             [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',save_dir);
-%         end
-%         fprintf(1,'\n==== DONE: LOADING CLUSTER STUDY DATA ====\n');
-%     end
-%     %## RECALCULATE ICAACT MATRICES
-%     MAIN_ALLEEG = eeg_checkset(MAIN_ALLEEG,'loaddata');
-%     for subj_i = 1:length(MAIN_ALLEEG)
-%         if isempty(MAIN_ALLEEG(subj_i).icaact)
-%             fprintf('%s) Recalculating ICA activations\n',MAIN_ALLEEG(subj_i).subject);
-%             MAIN_ALLEEG(subj_i).icaact = (MAIN_ALLEEG(subj_i).icaweights*MAIN_ALLEEG(subj_i).icasphere)*MAIN_ALLEEG(subj_i).data(MAIN_ALLEEG(subj_i).icachansind,:);
-%         end
-%     end
-%     %## PCA reduction algorithm
-% %     [tmps,tmpa,~,outliers] = cluster_pca_reduce(MAIN_STUDY,MAIN_ALLEEG); %## DEBUG
-% %     [MAIN_STUDY,MAIN_ALLEEG,~,~] = cluster_pca_reduce(MAIN_STUDY,MAIN_ALLEEG);
-%     %## ICA reduction algorithm
-% %     [tmpS,comps_out,comps_rej] = cluster_ica_reduce(MAIN_STUDY); %## DEBUG
-%     [MAIN_STUDY,~,~] = cluster_ica_reduce(MAIN_STUDY);
-%     %## ADD ANATOMICAL LABELS
-%     [~, atlas_cell] = add_anatomical_labels(MAIN_STUDY,MAIN_ALLEEG);
-%     MAIN_STUDY.etc.add_anatomical_labels = atlas_cell;
-%     %## SAVE STUDY
-% %     [MAIN_STUDY,MAIN_ALLEEG] = eeglab_save_study(MAIN_STUDY,MAIN_ALLEEG,...
-% %                                             'reduced_comps_pca_study',save_dir);
-%     [MAIN_STUDY,MAIN_ALLEEG] = eeglab_save_study(MAIN_STUDY,MAIN_ALLEEG,...
-%                                             study_fName_2,save_dir);
-% else
-%     fprintf(1,'\n==== LOADING REDUCED COMPONENTS STUDY DATA ====\n');
-%     if ~ispc
-%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_2 '_UNIX.study'],'filepath',save_dir);
-%     else
-%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_2 '.study'],'filepath',save_dir);
-%     end
-%     fprintf(1,'\n==== DONE: LOADING REDUCED COMPONENTS STUDY DATA ====\n');
-% end
 %% INITIALIZE PARFOR LOOP VARS
 if exist('SLURM_POOL_SIZE','var')
     POOL_SIZE = min([SLURM_POOL_SIZE,length(MAIN_ALLEEG)]);
@@ -298,6 +256,7 @@ rmv_subj = zeros(1,length(MAIN_ALLEEG));
 %- clear vars for memory
 % clear MAIN_ALLEEG
 %% GENERATE EPOCH MAIN FUNC
+TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 %## PARFOR LOOP
 parfor (subj_i = LOOP_VAR,POOL_SIZE)
     %## LOAD EEG DATA
@@ -334,16 +293,17 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
         try
             %## EPOCH
             [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,TRIAL_TYPES,EPOCH_TIME_LIMITS);
-
+            EEG = pop_mergeset( ALLEEG, 1:size(ALLEEG,2),1);
+            EEG = rmfield(EEG,'timewarp'); 
             %## SAVE ONE BIG EEG FILE
             ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
-            %- timewarp for all conditions
-            events = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
-            timewarp = make_timewarp(ALLEEG,events,'baselineLatency',0, ...
+            ALLEEG = rmfield(ALLEEG,'timewarp');
+            %- timewarp for across conditions
+            timewarp = make_timewarp(ALLEEG,TIMEWARP_EVENTS,'baselineLatency',0, ...
                     'maxSTDForAbsolute',inf,...
                     'maxSTDForRelative',inf);
             %- subject specific warpto (later use to help calc grand avg warpto across subjects)
-            timewarp.warpto = median(timewarp.latencies);        
+            timewarp.warpto = nanmedian(timewarp.latencies);        
             goodepochs  = sort([timewarp.epochs]);
             %- probably not needed? 
             sedi = setdiff(1:length(ALLEEG.epoch),goodepochs);
@@ -351,18 +311,13 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
             ALLEEG = pop_select( ALLEEG,'notrial',sedi);
             %- store timewarp structure in EEG
             ALLEEG.timewarp = timewarp;
-            %{
-            new_warp = [];
-            new_warp.latencies = cat(1,timewarp_struct.latencies);
-            new_warp.epochs = cat(2,timewarp_struct.epochs);
-            new_warp.eventSequence = timewarp_struct(1).eventSequence;
-            new_warp.warpto = timewarp_struct(1).warpto;
-            %}
+            disp(EEG.subject); disp(allWarpTo); disp(grandAvgWarpTo);
+            %- store condition-by-conditino timewarpings
             ALLEEG.etc.timewarp_by_cond = timewarp_struct;
-            %- STRUCT EDITS
+            %## STRUCT EDITS
             ALLEEG.urevent = []; % might be needed
             ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
-            %- 
+            %- checks
             ALLEEG = eeg_checkset(ALLEEG,'eventconsistency');
             ALLEEG = eeg_checkset(ALLEEG);
             ALLEEG = eeg_checkamica(ALLEEG);
@@ -449,6 +404,7 @@ STUDY.etc.pipe_params = params;
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                             study_fName_3,save_dir,...
                                             'STUDY_COND',[]);
+                                        %%
 %% Version History
 %{
 v2.0; (04/28/2023) JS: Splitting up the epoching, plotting, and

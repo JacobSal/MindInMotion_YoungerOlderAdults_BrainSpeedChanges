@@ -17,7 +17,7 @@ function [error_code] = mim_mcc_dipfit(working_dir,eeg_fpath,varargin)
 % Copyright (C) Chang Liu, liu.chang1@ufl.edu
 
 %## TIME
-tic
+startj = tic;
 %## DEFINE DEFAULTS
 %- define output
 RV_THRESHOLD = 0.5;
@@ -88,6 +88,7 @@ clear tmp
 %% PREPARE VOLUME AND SENSORS
 %- prepare volume and sensors (projects sensors to scalp)
 if ~exist([working_dir filesep 'headmodel_fem_tr.mat'],'file')
+    starti = tic;
     fprintf('Preparing vol.mat and elec_aligned.mat...\n');
     %## Override Simbio path to utilize parallel processing
     % this is done when compiling.
@@ -95,6 +96,8 @@ if ~exist([working_dir filesep 'headmodel_fem_tr.mat'],'file')
     [headmodel_fem_tr, ~] = ft_prepare_vol_sens(vol, elec_aligned);
     disp(headmodel_fem_tr);
     save([working_dir filesep 'headmodel_fem_tr.mat'],'headmodel_fem_tr','-v7.3');
+    endi = toc(starti);
+    fprintf('Call to ft_prepare_leadfield.m took %0.2g',endi);
 else
     fprintf('Loading headmodel_fem_tr.mat...\n');
     tmp = load([working_dir filesep 'headmodel_fem_tr.mat']);
@@ -102,6 +105,7 @@ else
 end
 %% SOURCEMODEL CALCULATION
 if ~exist([working_dir filesep 'sourcemodel.mat'],'file')
+    starti = tic;
     cfg             = [];
     cfg.resolution  = 5; % changeable
     cfg.threshold   = 0.1;
@@ -112,6 +116,8 @@ if ~exist([working_dir filesep 'sourcemodel.mat'],'file')
     cfg.unit        = 'mm';
     sourcemodel     = ft_prepare_sourcemodel(cfg);
     save([working_dir filesep 'sourcemodel.mat'],'sourcemodel');
+    endi = toc(starti);
+    fprintf('Call to ft_prepare_leadfield.m took %0.2g',endi);
 else
     fprintf('Loading sourcemodel.mat...\n');
     tmp = load([working_dir filesep 'sourcemodel.mat']);
@@ -141,6 +147,8 @@ if ~exist([working_dir filesep 'leadfield_fem.mat'],'file')
     % cfg.normalize   = 'column'; 
     leadfield_fem   = ft_prepare_leadfield(cfg);% This actually didn't take that long - ?1r without parallel processing
     save([working_dir filesep 'leadfield_fem.mat'],'leadfield_fem');
+    endi = toc(starti);
+    fprintf('Call to ft_prepare_leadfield.m took %0.2g',endi);
 else
     fprintf('Loading leadfield_fem.mat...\n');
     tmp = load([working_dir filesep 'leadfield_fem.mat']);
@@ -190,6 +198,7 @@ if ~exist([working_dir filesep 'dipfit'], 'dir')
     mkdir([working_dir filesep 'dipfit'])
 end
 sources = cell(size(ftEEG.topo,2),1);
+starti = tic;
 parfor (comp_i = 1:size(ftEEG.topo,2),POOL_SIZE)
     cfg = [];
     cfg.numdipoles      =  1;
@@ -203,14 +212,17 @@ parfor (comp_i = 1:size(ftEEG.topo,2),POOL_SIZE)
     sources{comp_i}     = source;
     display(source)
 end
+endi = toc(starti);
+fprintf('Call to ft_dipolefitting.m coarse took %0.2g',endi);
 sources = cellfun(@(x) [[]; x], sources);
 par_save(sources,[working_dir filesep 'dipfit'],'dipfit_struct_coarse.mat');
 %- filter by residual variance by removing those > 50%
-tmp = [sourceds.dip];
+tmp = [sources.dip];
 inds = find([tmp.rv] < RV_THRESHOLD);
 clear tmp
 %## NONLINEAR FIT
 sources = cell(size(ftEEG.topo,2),1);
+starti = tic;
 parfor (comp_i = 1:size(ftEEG.topo,2),POOL_SIZE)
     cfg = [];
     cfg.numdipoles      =  1;
@@ -225,14 +237,17 @@ parfor (comp_i = 1:size(ftEEG.topo,2),POOL_SIZE)
         sources{comp_i}     = source;
         display(source)
     else
-        fprintf('Skipping componentn %i due to a high residual variance in coarse fit...\n',comp_i);
-        sources{comp_i} = struct('label',{},'dip',[],'Vdata',[],'Vmodel',[],'component',comp_i,'cfg',cfg);
+        fprintf('Skipping component %i due to a high residual variance in coarse fit...\n',comp_i);
+        sources{comp_i} = struct('label',cell(1,1),'dip',[],'Vdata',double(0),'Vmodel',double(0),'component',comp_i,'cfg',[]);
     end
 end
+endi = toc(starti);
+fprintf('Call to ft_dipolefitting.m nonlinear took %0.2g',endi);
 sources = cellfun(@(x) [[]; x], sources);
 par_save(sources,[working_dir filesep 'dipfit'],'dipfit_struct.mat');
 %## TIME
-toc
+endj = toc(startj);
+fprintf('Call to mim_mcc_dipfit.m took %0.2g',endj-startj);
 %## EXIT
 % fclose(fid);
 % exit(error_code);
