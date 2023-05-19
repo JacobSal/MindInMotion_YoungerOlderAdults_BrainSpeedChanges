@@ -36,19 +36,15 @@ fprintf(1,'Current User: %s\n',USER_NAME);
 REPO_NAME = 'par_EEGProcessing';
 %- determine OS
 if strncmp(computer,'PC',2)
-    DO_UNIX = false;
-    PATH_EXT = 'M';
     PATH_ROOT = ['M:' filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 else  % isunix
-    DO_UNIX = true;
-    PATH_EXT = 'dferris';
     PATH_ROOT = [filesep 'blue' filesep 'dferris',...
         filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 end
 %% SETWORKSPACE
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '1_BATCH_PREP' filesep 'alpha' filesep 'MIM'];
+run_dir = [source_dir filesep '1_BATCH_PREP' filesep 'alpha' filesep 'MIM_OA'];
 %- cd to source directory
 cd(source_dir)
 %- addpath for local folder
@@ -120,23 +116,13 @@ SUBJ_3MA = {'H3029','H3034','H3039','H3042','H3046',...
     'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
     'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
 %- Subject Picks
-% SUBJ_PICS = {SUBJ_2HMA,SUBJ_3HMA,SUBJ_3NHMA}; % JACOB,SAL(02/23/2023)
-% GROUP_NAMES = {'H2000''s','H3000''s','NH3000''s'}; % JACOB,SAL(02/23/2023)
-% SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3HMA),1:length(SUBJ_3NHMA)}; % JACOB,SAL(02/23/2023)
-% SUBJ_PICS = {SUBJ_YNG}; % JACOB,SAL(04/18/2023)
-% GROUP_NAMES = {'H1000''s'}; % JACOB,SAL(04/18/2023)
-% SUBJ_ITERS = {1:length(SUBJ_YNG)}; % JACOB,SAL(04/18/2023)
 SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA}; % JACOB,SAL(04/18/2023)
 GROUP_NAMES = {'H2000''s','H3000''s'}; % JACOB,SAL(04/18/2023)
-SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3HMA)}; % JACOB,SAL(04/18/2023)
+SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)}; % JACOB,SAL(04/18/2023)
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET]; 
 %% ===================================================================== %%
 %## PROCESSING PARAMS
 %- datetime override
-% dt = '24022023_OA_prep'
-% dt = '07042023_OA_prep_verified';
-% dt = '04182023_YA_N37_prep_verified';
-% dt = '05192023_YA_N37_prep_verified';
 dt = '05192023_YAN33_OAN79_prep_verified';
 %## PATH & TEMP STUDY NAME
 %- hard define
