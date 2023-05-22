@@ -144,7 +144,7 @@ EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 %- epoching params
 % TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-EPOCH_TIME_LIMITS = [-0.5,4.5]; % [-1,3] captures gait events well
+EPOCH_TIME_LIMITS = [-0.5,5]; % [-1,3] captures gait events well
 TRIAL_LENGTH = 3*60; % trial length in seconds
 PER_OVERLAP = 0.0; % percent overlap between epochs
 TRIAL_BEGIN_STR = 'TrialStart';
@@ -298,7 +298,7 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
             %## SAVE ONE BIG EEG FILE
             ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
             ALLEEG = rmfield(ALLEEG,'timewarp');
-            %- timewarp for across conditions
+            %- timewarp for across condition
             timewarp = make_timewarp(ALLEEG,TIMEWARP_EVENTS,'baselineLatency',0, ...
                     'maxSTDForAbsolute',inf,...
                     'maxSTDForRelative',inf);
