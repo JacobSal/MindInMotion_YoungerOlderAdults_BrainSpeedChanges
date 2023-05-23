@@ -138,7 +138,7 @@ parse(p,subj_char,save_fPath,fOutput,fDataset,varargin{:});
 %- PARAMETERS
 %- MIMCONFIG
 mim_config.CleanEEG_output     = [fOutput filesep 'clean'];
-mim_config.amicaEEG_output     = [fOutput filesep 'amica'];
+mim_config.amicaEEG_output     = [fOutput filesep 'clean'];
 %% ===================================================================== %%
 %% SCRIPT PART 1
 EEG = [];

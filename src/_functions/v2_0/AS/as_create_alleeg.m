@@ -1,4 +1,4 @@
-function [ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,varargin)
+function [ALLEEG] = as_create_alleeg(fNames,fPaths,subjectNames,save_dir,varargin)
 %MIM_CREATE_ALLEEG Summary of this function goes here
 %   Detailed explanation goes here
 %   IN: 
@@ -9,7 +9,8 @@ function [ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,vararg
 tic
 %## DEFINE DEFAULTS
 %- developer params
-FORCE_RELOAD = false;
+DO_BEM_DIPFIT = true;
+FORCE_RELOAD = true;
 ICA_FNAME_REGEXP = '%s_allcond_ICA_TMPEEG.set';
 %- find eeglab on path
 if ~ispc
@@ -17,6 +18,7 @@ if ~ispc
 else
     tmp = strsplit(path,';');
 end
+% tmp = strsplit(path,';');
 b1 = regexp(tmp,'eeglab','end');
 b2 = tmp(~cellfun(@isempty,b1));
 PATH_EEGLAB = b2{1}(1:b1{1});
@@ -90,8 +92,14 @@ chanlocs_fPaths     = p.Results.CHANLOCS_FPATHS;
 fprintf(1,'==== Creating Study ====\n')
 %* empty ALLEEG structure for repopulating
 ALLEEG = cell(1,length(fNames)); 
-%* empty STUDY structure for repopulating
-fsPrev = {};
+%## Populate ALLEEG Struct
+pp = gcp('nocreate');
+disp(pp);
+if ~isfield(pp,'NumWorkers')
+    POOL_SIZE = 1;
+else
+    POOL_SIZE = pp.NumWorkers;
+end
 %## Populate ALLEEG Struct
 parfor (subj_i=1:length(fNames),POOL_SIZE)
 % for subj_i=1:length(fNames)
@@ -107,13 +115,27 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
         EEG.subject = subjectNames{subj_i};
         %## ADD DIPFIT STRUCT TO EEG STRUCT
         fprintf('%s) dipfit available: %i\n',EEG.subject,isfield(EEG,'dipfit'));
-        if ~isfield(EEG,'dipfit')
-            bem_eeglab_dipfit(EEG,COORD_TRANSFORM_MNI,MNI_MRI,MNI_VOL,MNI_CHAN_1005,DIP_NUM,DIP_PLOT)
-        end
         %## Update EEG channel location again
         if ~isempty(chanlocs_fPaths)
+            fprintf('Attaching customelectrode locations...\n');
             EEG = custom_update_chanlocs(EEG,chanlocs_fPaths{subj_i});
         end
+        if DO_BEM_DIPFIT
+            fprintf('Trying Boundary Element Model Dipfit...\n');
+            try
+                EEG.dipfit.model;
+                EEG.dipfit.coord_transform;
+                EEG.dipfit.mrifile;
+                EEG.dipfit.hdmfile;
+                EEG.dipfit.coordformat;
+            catch e
+                fprintf(['error. identifier: %s\n',...
+                     'error. %s\n',...
+                     'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+                EEG = bem_eeglab_dipfit(EEG,COORD_TRANSFORM_MNI,MNI_MRI,MNI_VOL,MNI_CHAN_1005,DIP_NUM,DIP_PLOT)
+            end
+        end
+        
         %## CHECK ICLABEL
         if ~isfield(EEG.etc,'ic_classification')
             EEG = iclabel(EEG, 'lite');
@@ -125,8 +147,8 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
         EEG.condition = char(conditions{subj_i});
         EEG.session = char(sessions{subj_i});
         EEG = eeg_checkset(EEG,'eventconsistency');
-        fprintf(1,'Saving Subject %s\n',EEG.subject);
         if bool_save_eeg
+            fprintf(1,'Saving Subject %s\n',EEG.subject);
             [EEG] = pop_saveset(EEG,'savemode','twofiles',...
                 'filename',fName,...
                 'filepath',fPath);
@@ -137,6 +159,7 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
     ALLEEG{subj_i} = EEG;
 end
 %## BOOKKEEPING (i.e., delete fields not similar across EEG structures)
+fsPrev = {};
 for subj_i = 1:length(ALLEEG)
     EEG = ALLEEG{subj_i};
     fs = fields(EEG);
@@ -188,55 +211,39 @@ end
 
 function [EEG] = bem_eeglab_dipfit(EEG,COORD_TRANSFORM_MNI,MNI_MRI,MNI_VOL,MNI_CHAN_1005,DIP_NUM,DIP_PLOT)
     %## FIT DIPOLES TO HEADMODEL IF NEEDED
-    try
-        EEG.dipfit.coord_transform;
-        EEG.dipfit.mrifile;
-        EEG.dipfit.hdmfile;
-        EEG.dipfit.coordformat;
-    catch e
-        fprintf(['error. identifier: %s\n',...
-                 'error. %s\n',...
-                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
-        fprintf('MNI pop_dipfit_settings...\n');
-        %## Check Files
-        tmp = [];
-        if ~isfield(EEG.dipfit,'coord_transform')
-            EEG.dipfit.coord_transform = COORD_TRANSFORM_MNI;
-            tmp = [tmp, 'added default coord_transform; '];
-        end
-        if ~isfield(EEG.dipfit,'mrifile')
-            EEG.dipfit.mrifile = MNI_MRI;
-            tmp = [tmp, 'added default mrifile; '];
-        end
-        if ~isfield(EEG.dipfit,'hdmfile')
-            EEG.dipfit.hdmfile = MNI_VOL;
-            tmp = [tmp, 'added default hdmfile; '];
-        end
-        if ~isfield(EEG.dipfit,'coordformat')
-            EEG.dipfit.coordformat = 'MNI';
-            tmp = [tmp, 'added default coordformat; '];
-        end
-        if ~isfield(EEG.dipfit,'chanfile')
-            EEG.dipfit.chanfile = MNI_CHAN_1005;
-            tmp = [tmp, 'added default chanfile; '];
-        end
-        if ~isfield(EEG.dipfit,'chansel')
-            EEG.dipfit.chansel = (1:EEG.nbchan);
-            tmp = [tmp, 'added default chansel; '];
-        end
-        EEG.dipfit.comment = tmp;
+    fprintf('MNI pop_dipfit_settings...\n');
+    %## Check Files
+    tmp = [];
+    if ~isfield(EEG.dipfit,'coord_transform')
+        EEG.dipfit.coord_transform = COORD_TRANSFORM_MNI;
+        tmp = [tmp, 'added default coord_transform; '];
     end
+    if ~isfield(EEG.dipfit,'mrifile')
+        EEG.dipfit.mrifile = MNI_MRI;
+        tmp = [tmp, 'added default mrifile; '];
+    end
+    if ~isfield(EEG.dipfit,'hdmfile')
+        EEG.dipfit.hdmfile = MNI_VOL;
+        tmp = [tmp, 'added default hdmfile; '];
+    end
+    if ~isfield(EEG.dipfit,'coordformat')
+        EEG.dipfit.coordformat = 'MNI';
+        tmp = [tmp, 'added default coordformat; '];
+    end
+    if ~isfield(EEG.dipfit,'chanfile')
+        EEG.dipfit.chanfile = MNI_CHAN_1005;
+        tmp = [tmp, 'added default chanfile; '];
+    end
+    if ~isfield(EEG.dipfit,'chansel')
+        EEG.dipfit.chansel = (1:EEG.nbchan);
+        tmp = [tmp, 'added default chansel; '];
+    end
+    EEG.dipfit.comment = tmp;
+   
     %- pop_multifit.m
-    try 
-        EEG.dipfit.model;
-    catch e
-        %- DIPFIT (see. ft_dipolefitting())
-        fprintf(['error. identifier: %s\n',...
-                 'error. %s\n',...
-                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
-        fprintf('pop_multifit...\n');
-        EEG = pop_multifit(EEG,[],'dipoles',DIP_NUM,'dipplot',DIP_PLOT);
-        tmp = EEG.dipfit;
-        par_save(tmp,fPath,sprintf('%s_dipfit_mni.mat',EEG.subject));
-    end
+    %- DIPFIT (see. ft_dipolefitting())
+    fprintf('pop_multifit...\n');
+    EEG = pop_multifit(EEG,[],'dipoles',DIP_NUM,'dipplot',DIP_PLOT);
+%     dipfit = EEG.dipfit;
+%     save([fPath filesep sprintf('%s_dipfit_mni.mat',EEG.subject)],'dipfit');
 end

@@ -7,7 +7,10 @@
 %   Previous Version: n/a
 %   Summary: 
 
+%- run script
 % sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/alpha/MIM_OA/run_batch_preprocess.sh
+%- run amica
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/alpha/MIM_OA/run_singlenode_amica_run.sh
 
 %{
 %## RESTORE MATLAB

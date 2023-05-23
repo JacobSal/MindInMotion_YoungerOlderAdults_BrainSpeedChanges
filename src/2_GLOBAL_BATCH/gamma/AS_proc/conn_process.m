@@ -6,9 +6,9 @@
 %   Current Version:  v1.0.20220103.0
 %   Previous Version: n/a
 %   Summary: This code was modified from
-%   /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/MIM_OA_proc/conn_process.m
-
-% sbatch /blue/dferris/bishoy.pramanik/GitHub/Jacob/src/AS_PingPong_Connectivity/AS_proc_v2/run_conn_process.sh
+%
+%- run sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/AS_proc/run_conn_process.sh
 
 %{
 %## RESTORE MATLAB
@@ -38,19 +38,15 @@ fprintf(1,'Current User: %s\n',USER_NAME);
 REPO_NAME = 'par_EEGProcessing';
 %- determine OS
 if strncmp(computer,'PC',2)
-    DO_UNIX = false;
-    PATH_EXT = 'M';
     PATH_ROOT = ['M:' filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
-else  % isunix
-    DO_UNIX = true;
-    PATH_EXT = 'dferris';
+else  % isunix=
     PATH_ROOT = [filesep 'blue' filesep 'dferris',...
         filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 end
 %% SETWORKSPACE
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'gamma' filesep 'MIM_OA_proc'];
+run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'gamma' filesep 'AS_proc'];
 %- cd to source directory
 cd(source_dir)
 %- addpath for local folder
@@ -62,10 +58,6 @@ ADD_CLEANING_SUBMODS = false;
 setWorkspace
 %% PARPOOL SETUP
 if ~ispc
-%     eeg_options;
-    % see. eeg_optionsbackup.m for all eeglab options.
-%     pop_editoptions('option_parallel',0,'option_storedisk',1,...
-%         'option_saveversion6',0,'option_cachesize',1000,'option_savetwofiles',1);
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
     'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
@@ -78,8 +70,6 @@ if ~ispc
     pp = parcluster('local');
     %- Number of workers for processing (NOTE: this number should be higher
     %then the number of iterations in your for loop)
-    % pp.NumWorkers = POOL_SIZE-3;
-    % pp.NumThreads = 1;
     fprintf('Number of workers: %i\n',pp.NumWorkers);
     fprintf('Number of threads: %i\n',pp.NumThreads);
     %- make meta data dire1ory for slurm
@@ -88,8 +78,6 @@ if ~ispc
     %- create your p-pool (NOTE: gross!!)
     pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
 else
-%     pop_editoptions('option_parallel',0,'option_storedisk',1,...
-%         'option_saveversion6',0,'option_cachesize',1000,'option_savetwofiles',1);
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
     'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
@@ -104,26 +92,9 @@ DATA_DIR = [source_dir filesep '_data'];
 %- path for local data
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 SUBJINF_DIR = [DATA_DIR filesep DATA_SET filesep '_subjinf'];
-%## DATASET SPECIFIC
-SUBJ_PICS = {{'02','03','04','05','09','11','15','16','18','19','21','22',...
-            '23','24','25','27','28','29','30','31','32','33','35','36','38'}};
-% SUBJ_ITERS = {[1,5]};
-SUBJ_ITERS = {(1:length(SUBJ_PICS{1}))};
-%COND_CHARS = {'cooperative','competitive'};
-FNAME_POSTFIX = 'iCanNoiseEMG_postAMICA_postDIPFIT_cat12_AutoSelectComponents_ManuallySelectComponents_GoProCheckedEvents_Epoched_ALL_NoWarp_ChangeEpochRejection_Downsample_v2';
-OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET];
-
 %% Data Processing Parameters
 fprintf('\nData Processing Parameters\n');
-%- study group and saving
-SAVE_EEG = false; % saves EEG structures throughout processing
-%- component rejection criteria
-THRESHOLD_DIPFIT_RV = 0.15;
-THRESHOLD_BRAIN_ICLABEL = 0.50;
-%-
-COND_FIELD_PARSER = 'bounces'; %'condlabel';
-EVENT_FIELD_PARSER = 'type';
-% COND_CHARS = {'human','BM'};
+%- 
 COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
 EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -134,43 +105,34 @@ for cond_i = 1:length(COND_CHARS)
         cnt = cnt + 1;
     end
 end
-params.TRIAL_TYPES = EVENT_COND_COMBOS;
-EPOCH_TIME_LIMITS = [-1,1];
-PARSE_TYPE = 'Custom';
+TRIAL_TYPES = EVENT_COND_COMBOS;
 %- connectivity process
-params.CONN_FREQS = (1:100);
-params.CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
+CONN_FREQS = (1:100);
+CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 %- subj_i_genConnMeas
-params.CNCTANL_TOOLBOX = 'sift'; %'bsmart'
-params.WINDOW_LENGTH = 0.5;
-params.WINDOW_STEP_SIZE = 0.025;
-params.NEW_SAMPLE_RATE = [];
-params.DO_BOOTSTRAP = true;
+CNCTANL_TOOLBOX = 'sift'; %'bsmart'
+WINDOW_LENGTH = 0.5;
+WINDOW_STEP_SIZE = 0.025;
+NEW_SAMPLE_RATE = [];
+DO_BOOTSTRAP = true;
 %- subj_i_genConnStats
-params.DO_PHASE_RND = true;
+DO_PHASE_RND = true;
 %- eeglab_cluster.m spectral params
-params.FREQ_LIMITS = [1,100];
-params.CYCLE_LIMITS = [3,0.8];
-params.SPEC_MODE = 'fft'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
-params.FREQ_FAC = 4;
-params.PAD_RATIO = 2;
+FREQ_LIMITS = [1,100];
+CYCLE_LIMITS = [3,0.8];
+SPEC_MODE = 'fft'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
+FREQ_FAC = 4;
+PAD_RATIO = 2;
 
 %% global script chain (VERSION 1)
 %- datetime override
-dt = '05082023_ASDataset';
+dt = '05222023_run_JS';
 %## PATH & TEMP STUDY NAME
 %- hard define
-DO_CONN_ANL = false;
 SAVE_EEG = true;
-SESSION_NUMBER = '1';
-study_fName_3 = sprintf('%s_EPOCH_study',[params.TRIAL_TYPES{:}]);
-study_fName_4 = sprintf('%s_CONN_study',[params.TRIAL_TYPES{:}]);
+study_fName_3 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+study_fName_4 = sprintf('%s_CONN_study',[TRIAL_TYPES{:}]);
 %- soft define
-path2BEM  = [PATHS.path4EEGlab filesep 'plugins' filesep 'dipfit' filesep 'standard_BEM' filesep];
-mniMRI = fullfile(path2BEM, 'standard_mri.mat');
-mniVol = fullfile(path2BEM, 'standard_vol.mat');
-mniChan1005 = fullfile(path2BEM,'elec','standard_1005.elc');
-TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
@@ -188,6 +150,8 @@ else
     else
         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_3 '.study'],'filepath',load_dir);
     end
+    %## (AS) ATTACH CLUSTER
+    MAIN_STUDY.cluster = MAIN_STUDY.urcluster;
     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(MAIN_STUDY);
 end
 %% INITIALIZE PARFOR LOOP VARS
@@ -202,14 +166,10 @@ LOOP_VAR = 1:length(MAIN_ALLEEG);
 tmp = cell(1,length(MAIN_ALLEEG));
 rmv_subj = zeros(1,length(MAIN_ALLEEG));
 %- HARD DEFINES
-SUFFIX_PATH_EPOCHED = 'EPOCHED';
-%- clear vars for memory
-% clear MAIN_ALLEEG
 %% CONNECTIVITY MAIN FUNC
 fprintf('Computing Connectivity\n');
 pop_editoptions('option_computeica', 1);
 %## PARFOR LOOP
-%     tmp = cell(length(MAIN_ALLEEG),1);
 EEG = [];
 parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
 %     for subj_i = LOOP_VAR
@@ -230,13 +190,13 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
             %## RUN MAIN_FUNC
             [TMP_EEG] = main_func_v2(EEG,save_dir,components,...
                 'SAVE_EEG',SAVE_EEG,...
-                'CONN_METHODS',params.CONN_METHODS,... %
-                'FREQS',params.CONN_FREQS,...
-                'CNCTANL_TOOLBOX',params.CNCTANL_TOOLBOX,... 
-                'DO_BOOTSTRAP',params.DO_BOOTSTRAP,...
-                'DO_PHASE_RND',params.DO_PHASE_RND,...
-                'WINDOW_LENGTH',params.WINDOW_LENGTH,...
-                'WINDOW_STEP_SIZE',params.WINDOW_STEP_SIZE);
+                'CONN_METHODS',CONN_METHODS,... %
+                'FREQS',CONN_FREQS,...
+                'CNCTANL_TOOLBOX',CNCTANL_TOOLBOX,... 
+                'DO_BOOTSTRAP',DO_BOOTSTRAP,...
+                'DO_PHASE_RND',DO_PHASE_RND,...
+                'WINDOW_LENGTH',WINDOW_LENGTH,...
+                'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
 %                 pop_mergeset();
             EEG.CAT = TMP_EEG.CAT;
             [EEG] = pop_saveset(EEG,...
@@ -253,9 +213,8 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
         end
     end
 end
-pop_editoptions('option_computeica', 0);
+pop_editoptions('option_computeica',0);
 %% SAVE BIG STUDY
-MAIN_STUDY.etc.pipe_params = params;
 [ALLEEG,MAIN_STUDY] = parfunc_rmv_subjs(tmp,MAIN_STUDY,rmv_subj);
 %- Save
 [MAIN_STUDY,ALLEEG] = parfunc_save_study(MAIN_STUDY,ALLEEG,...

@@ -89,7 +89,7 @@
 * [![spm][spm.com]][spm-url]
 * [![groupSIFT][groupSIFT.com]][groupSIFT-url]
 * [![SIFT][SIFT.com]][SIFT-url]
-* [![postAmicaUtility][postAmicaUtility.com]][postAicaUtility-url]
+* [![postAmicaUtility][postAmicaUtility.com]][postAmicaUtility-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -192,6 +192,6 @@ Project Link: [https://github.com/JacobSal/slurm_eeglab_wrapper-m](https://githu
 [groupSIFT-url]: https://github.com/sccn/groupSIFT
 [SIFT.com]:
 [SIFT-url]: https://github.com/sccn/sift
-[postAicaUtility-url]: 
-[postAicaUtility.com]: https://github.com/sccn/postAmicaUtility
+[postAmicaUtility-url]: 
+[postAmicaUtility.com]: https://github.com/sccn/postAmicaUtility
 [product-screenshot]: images/screenshot.png

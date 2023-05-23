@@ -1,4 +1,4 @@
-%   Project Title: Transfer major project files from long term storage
+%   Project Title: Finite Element Model for EEG sourcemodeling
 %   drive to hypercomputer storage
 %   Code Designer: Jacob salminen
 %
@@ -6,9 +6,15 @@
 %   Current Version:  v1.0.20230223.0
 %   Previous Version: n/a
 %   Summary: 
-
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/run_fem_dipole_fit.sh
-
+%- run -m script
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/fem_dipole_fit.m
+%- compile exe
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/mcc_dipfit/compile_mim_mcc_dipfit.sh
+%- run test exe
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/mcc_dipfit/_out/run_mim_mcc_dipfit_exe.sh
+%- run exe
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/mcc_dipfit/run_mim_mcc_dipfit_exe.sh
+%
 %{
 %## RESTORE MATLAB
 % WARNING: restores default pathing to matlab 

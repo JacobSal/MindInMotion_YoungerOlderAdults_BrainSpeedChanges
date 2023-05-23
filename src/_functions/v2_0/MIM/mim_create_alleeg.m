@@ -11,7 +11,6 @@ tic
 %- developer params
 DO_BEM_DIPFIT = true;
 FORCE_RELOAD = true;
-POOL_SIZE = 10;
 ICA_FNAME_REGEXP = '%s_allcond_ICA_TMPEEG.set';
 %- find eeglab on path
 if ~ispc
@@ -95,6 +94,13 @@ ALLEEG = cell(1,length(fNames));
 %* empty STUDY structure for repopulating
 fsPrev = {};
 %## Populate ALLEEG Struct
+pp = gcp('nocreate');
+disp(pp);
+if ~isfield(pp,'NumWorkers')
+    POOL_SIZE = 1;
+else
+    POOL_SIZE = pp.NumWorkers;
+end
 parfor (subj_i=1:length(fNames),POOL_SIZE)
 % for subj_i=1:length(fNames)
     fName = sprintf(ICA_FNAME_REGEXP,subjectNames{subj_i});

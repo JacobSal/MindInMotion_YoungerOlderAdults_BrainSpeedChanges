@@ -6,7 +6,9 @@
 %   Current Version:  v1.0.20220103.0
 %   Previous Version: n/a
 %   Summary: This code was modified from
-%   /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/MIM_OA_proc/conn_process.m
+
+%- run sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/AS_proc/run_epoch_process.sh
 
 % sbatch /blue/dferris/bishoy.pramanik/GitHub/Jacob/src/AS_PingPong_Connectivity/AS_proc_v2/run_conn_process.sh
 
@@ -38,19 +40,15 @@ fprintf(1,'Current User: %s\n',USER_NAME);
 REPO_NAME = 'par_EEGProcessing';
 %- determine OS
 if strncmp(computer,'PC',2)
-    DO_UNIX = false;
-    PATH_EXT = 'M';
     PATH_ROOT = ['M:' filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 else  % isunix
-    DO_UNIX = true;
-    PATH_EXT = 'dferris';
     PATH_ROOT = [filesep 'blue' filesep 'dferris',...
         filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 end
 %% SETWORKSPACE
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'gamma' filesep 'MIM_OA_proc'];
+run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'gamma' filesep 'AS_proc'];
 %- cd to source directory
 cd(source_dir)
 %- addpath for local folder
@@ -62,10 +60,6 @@ ADD_CLEANING_SUBMODS = false;
 setWorkspace
 %% PARPOOL SETUP
 if ~ispc
-%     eeg_options;
-    % see. eeg_optionsbackup.m for all eeglab options.
-%     pop_editoptions('option_parallel',0,'option_storedisk',1,...
-%         'option_saveversion6',0,'option_cachesize',1000,'option_savetwofiles',1);
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
     'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
@@ -78,8 +72,6 @@ if ~ispc
     pp = parcluster('local');
     %- Number of workers for processing (NOTE: this number should be higher
     %then the number of iterations in your for loop)
-    % pp.NumWorkers = POOL_SIZE-3;
-    % pp.NumThreads = 1;
     fprintf('Number of workers: %i\n',pp.NumWorkers);
     fprintf('Number of threads: %i\n',pp.NumThreads);
     %- make meta data dire1ory for slurm
@@ -88,8 +80,6 @@ if ~ispc
     %- create your p-pool (NOTE: gross!!)
     pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
 else
-%     pop_editoptions('option_parallel',0,'option_storedisk',1,...
-%         'option_saveversion6',0,'option_cachesize',1000,'option_savetwofiles',1);
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
     'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
@@ -118,9 +108,6 @@ fprintf('\nData Processing Parameters\n');
 % pop_editoptions('option_parallel',1);
 %- study group and saving
 SAVE_EEG = false; % saves EEG structures throughout processing
-%- component rejection criteria
-THRESHOLD_DIPFIT_RV = 0.15;
-THRESHOLD_BRAIN_ICLABEL = 0.50;
 %-
 COND_FIELD_PARSER = 'bounces'; %'condlabel';
 EVENT_FIELD_PARSER = 'type';
@@ -137,19 +124,6 @@ for cond_i = 1:length(COND_CHARS)
 end
 EPOCH_TIME_LIMITS = [-1,1];
 PARSE_TYPE = 'Custom';
-%- connectivity process
-CONN_FREQS = (1:100);
-CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
-%- subj_i_genConnMeas
-CNCTANL_TOOLBOX = 'sift'; %'bsmart'
-WINDOW_LENGTH = 0.5;
-WINDOW_STEP_SIZE = 0.025;
-NEW_SAMPLE_RATE = [];
-DO_BOOTSTRAP = true;
-% ASSIGN_BOOTSTRAP_MEAN = false;
-SAVE_CONN_BOOTSTRAP = true;
-%- subj_i_genConnStats
-DO_PHASE_RND = true;
 %- eeglab_cluster.m spectral params
 FREQ_LIMITS = [1,100];
 CYCLE_LIMITS = [3,0.8];
@@ -160,7 +134,8 @@ PAD_RATIO = 2;
 %- datetime override
 %dt = '16032023_OA_subset'; % OA
 % dt = '03292023_JS_test_v2'; 
-dt = '05082023_ASdataset';
+% dt = '05082023_ASdataset';
+dt = '05222023_run_JS';
 %## PATH & TEMP STUDY NAME
 fprintf('\nPATH and TEMP .study Names\n');
 %## PARAMS
@@ -168,15 +143,11 @@ fprintf('\nPATH and TEMP .study Names\n');
 SAVE_EEG = true;
 SESSION_NUMBER = '1';
 SUFFIX_PATH_EPOCHED = 'EPOCHED';
-study_fName_1 = sprintf('%s_all_comps_study',[params.TRIAL_TYPES{:}]);
-study_fName_2 = sprintf('%s_reduced_comps_study',[params.TRIAL_TYPES{:}]);
-study_fName_3 = sprintf('%s_EPOCH_study',[params.TRIAL_TYPES{:}]);
+study_fName_1 = sprintf('%s_all_comps_study',[EVENT_COND_COMBOS{:}]);
+study_fName_2 = sprintf('%s_reduced_comps_study',[EVENT_COND_COMBOS{:}]);
+study_fName_3 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
 %- soft define
-path2BEM  = [PATHS.path4EEGlab filesep 'plugins' filesep 'dipfit' filesep 'standard_BEM' filesep];
-mniMRI = fullfile(path2BEM, 'standard_mri.mat');
-mniVol = fullfile(path2BEM, 'standard_vol.mat');
-mniChan1005 = fullfile(path2BEM,'elec','standard_1005.elc');
-TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
+cluster_info_fpath = [STUDIES_DIR filesep 'as_cluster_info' filesep 'cluster_info.mat'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
@@ -200,7 +171,6 @@ for group_i = 1:length(SUBJ_ITERS)
     sub_idx = SUBJ_ITERS{group_i}; %1:2; %1:length(SUBJ_PICS{GROUP_INT}); %1:2;
     %- set cnt
     cnt = stack_iter + 1;
-    
     %## Assigning paths for .set, headmodel,& channel file
     for subj_i = sub_idx
         fPaths{cnt} = [OUTSIDE_DATA_DIR filesep 'Pilot' SUBJ_PICS{group_i}{subj_i}];
@@ -231,8 +201,8 @@ if ~exist([save_dir filesep study_fName_1 '.study'],'file') %|| true
     fprintf(1,'\n==== CLUSTERING SUBJECT DATA ====\n');
     [MAIN_ALLEEG] = as_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
                         conditions,groups,sessions);
-    %- NOTES: spec_mode, 'psd' does not work.
-    [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,study_fName_1,save_dir);
+%     [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,study_fName_1,save_dir);
+    [MAIN_STUDY,MAIN_ALLEEG] = as_create_study(MAIN_ALLEEG,cluster_info_fpath,study_fName_1,save_dir);
     [MAIN_STUDY,MAIN_ALLEEG] = std_checkset(MAIN_STUDY,MAIN_ALLEEG);
     [MAIN_STUDY,MAIN_ALLEEG] = parfunc_save_study(MAIN_STUDY,MAIN_ALLEEG,...
                                             study_fName_1,save_dir,...
@@ -275,8 +245,8 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
     end
     EEG.icaact    = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     %## PARSE TRIALS
-    fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED filesep [params.TRIAL_TYPES{:}]];
-    fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[params.TRIAL_TYPES{:}]);
+    fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED filesep [EVENT_COND_COMBOS{:}]];
+    fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[EVENT_COND_COMBOS{:}]);
     if ~exist(fPath,'dir')
         mkdir(fPath)
     end
@@ -321,7 +291,7 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
             %}
             %- STRUCT EDITS
             ALLEEG.urevent = []; % might be needed
-            ALLEEG.etc.epoch.epoch_limits = params.EPOCH_TIME_LIMITS;
+            ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
             %- 
             ALLEEG = eeg_checkset(ALLEEG,'eventconsistency');
             ALLEEG = eeg_checkset(ALLEEG);
@@ -364,7 +334,7 @@ for subj_i = 1:length(tmp)
     if any(~out)
         for j = 1:length(addFs)
             EEG.(addFs{j}) = [];
-            fprintf('%s) Adding fields %s\n',EEG.subject,addFs{j})
+            fprintf('%s) Adding %s %s\n',EEG.subject,addFs{j})
         end
     end 
     tmp{subj_i} = EEG;
@@ -377,37 +347,13 @@ tmp = cellfun(@(x) [[]; x], tmp);
                                 'name',study_fName_3,...
                                 'filename',study_fName_3,...
                                 'filepath',save_dir);
-[STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
-[STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
-                                        STUDY.filename,STUDY.filepath,...
-                                        'RESAVE_DATASETS','on');
-%## LOAD AMANDAS CLUSTER INFO
-fprintf('\nLoading Amandas Cluster Information...\n');
-AMANDA_CLUSTER_ITERS = [1,3:12];
-tmp = load([STUDIES_DIR filesep 'as_cluster_info' filesep 'cluster_info.mat']);
-tmp = tmp.cluster_info;
-STUDY.cluster = tmp(AMANDA_CLUSTER_ITERS);
-%- extract component array
-comps_out = zeros(length(STUDY.cluster),length(MAIN_ALLEEG));
-compList = [];
-setList  = [];
-for clus_i = 2:length(STUDY.cluster)
-    sets_i = STUDY.cluster(clus_i).sets;
-    for j = 1:length(sets_i)
-        comps_out(clus_i,sets_i(j)) = STUDY.cluster(clus_i).comps(j);
-        compList = [compList STUDY.cluster(clus_i).comps(j)];
-        setList = [setList repmat(j,1,length(STUDY.cluster(clus_i).comps(j)))];
-    end
-end
-STUDY.cluster(1).ursets = STUDY.cluster(1).sets;
-STUDY.cluster(1).urcomps = STUDY.cluster(1).comps;
-STUDY.cluster(1).sets = setList;
-STUDY.cluster(1).comps = compList;
-STUDY.urcluster = STUDY.cluster;
+%## (AS) ATTACH CLUSTER STRUCT
+STUDY.cluster = MAIN_STUDY.cluster;
+STUDY.urcluster = MAIN_STUDY.urcluster;
 %## ADD ANATOMICAL LABELS
 [~, atlas_cell] = add_anatomical_labels(STUDY,ALLEEG);
 STUDY.etc.add_anatomical_labels = atlas_cell;
-STUDY.etc.pipe_params = params;
+%## SAVE
 % [ALLEEG,MAIN_STUDY] = parfunc_rmv_subjs(tmp,MAIN_STUDY,rmv_subj);
 %- Save
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...

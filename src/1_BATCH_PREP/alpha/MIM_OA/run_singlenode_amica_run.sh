@@ -13,7 +13,7 @@
 #SBATCH --qos=dferris-b
 #SBATCH --partition=hpg2-compute
 # NOTE: (04/22/2023) SalminenJ, Seems to time out after ~15 subject runs (6hr time limit). Moving to a 48hr cycle ( I think this is max for hpg2-compute).
-SUBJ_DIR="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/04182023_YA_N37_prep_verified"
+SUBJ_DIR="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/05192023_YAN33_OAN79_prep_verified"
 # REGEXP_SUBJ_DIR="$SUBJ_DIR/*/clean/*.sh"
 REGEXP_SUBJ_DIR="$SUBJ_DIR/*/amica/*.param"
 cd SUBJ_DIR

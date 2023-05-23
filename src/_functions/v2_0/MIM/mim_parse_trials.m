@@ -71,6 +71,7 @@ for trial_i = 1:length(trial_names)
     EEG.filename        = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,trial_names{trial_i});
     EEG.etc.epoch.epoch_limits   = epoch_limits; 
     EEG.condition = trial_names{trial_i};
+    %- (MIND IN MOTION) sliding window
     if strcmp(trial_names{trial_i},'rest') || SLIDING_WINDOW_ONLY
         EEG.etc.epoch.parse_var = 'sliding_window';
         EEG.timewarp = struct([]);
@@ -78,7 +79,8 @@ for trial_i = 1:length(trial_names)
         %- SLIDING WINDOW: MIM specific function
         [TMP_EEG] = sliding_window_epoch(EEG,trial_names{trial_i},(epoch_limits(2)-epoch_limits(1)),...
             PERCENT_OVERLAP,EVENT_FIELD_CONDITION,EVENT_FIELD_TRIAL,TRIAL_BEG_CHAR,TRIAL_END_CHAR,APPROX_TRIAL_LENGTH);
-    else
+    %- (MIND IN MOTION) Gait Timewarp
+    else 
         EEG.etc.epoch.parse_var = 'gait_timewarp';
         EEG.timewarp = struct([]);
         %- GAIT TIMEWARP: MIM specific function
