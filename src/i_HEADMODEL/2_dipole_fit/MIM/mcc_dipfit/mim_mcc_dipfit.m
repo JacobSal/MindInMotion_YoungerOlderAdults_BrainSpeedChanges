@@ -1,4 +1,4 @@
-function [error_code] = mim_mcc_dipfit(working_dir,eeg_fpath,varargin)
+function [error_code] = mim_mcc_dipfit(working_dir,eeg_fpath,source_out_fpath,varargin)
 %MIM_FEHEADMODEL_DIPFIT Summary of this function goes here
 %   Detailed explanation goes here
 %   IN: 
@@ -31,14 +31,18 @@ fprintf('elec_aligned.mat check: %i\n',exist([working_dir filesep 'elec_aligned.
 %- EEG filepath
 errorMsg = 'Value ''eeg_fpath'' must be PATH. ''eeg_fpath'' should point to a EEGLAB .set file'; 
 ef_validFcn = @(x) assert(logical(exist(x,'file')),errorMsg);
+%- Output for source.mat filepath
+errorMsg = 'Value ''source_out_fpath'' must be PATH. ''source_out_fpath'' should point to a folder that exists';
+sof_validFcn = @(x) assert(logical(exist(x,'file')),errorMsg);
 %## Define Parser
 p = inputParser;
 %## REQUIRED
 addRequired(p,'working_dir',wd_validFcn);
 addRequired(p,'eeg_fpath',ef_validFcn);
+addRequired(p,'source_out_fpath',sof_validFcn);
 %## OPTIONAL
 %## PARAMETER
-parse(p,working_dir,eeg_fpath,varargin{:});
+parse(p,working_dir,eeg_fpath,source_out_fpath,varargin{:});
 %## SET DEFAULTS
 %- OPTIONALS
 %- PARAMETER
@@ -194,9 +198,9 @@ ftEEG = eeglab2fieldtrip(EEG,'componentanalysis','dipfit');
 clear EEG 
 %- ft_dipolefitting
 %## NONLINEAR FIT
-if ~exist([working_dir filesep 'dipfit'], 'dir')
-    mkdir([working_dir filesep 'dipfit'])
-end
+% if ~exist(source_out_fpath, 'dir')
+%     mkdir(source_out_fpath)
+% end
 sources = cell(size(ftEEG.topo,2),1);
 starti = tic;
 parfor (comp_i = 1:size(ftEEG.topo,2),POOL_SIZE)
@@ -215,7 +219,7 @@ end
 endi = toc(starti);
 fprintf('Call to ft_dipolefitting.m coarse took %0.2g',endi);
 sources = cellfun(@(x) [[]; x], sources);
-par_save(sources,[working_dir filesep 'dipfit'],'dipfit_struct_coarse.mat');
+par_save(sources,source_out_fpath,'dipfit_struct_coarse.mat');
 %- filter by residual variance by removing those > 50%
 tmp = [sources.dip];
 inds = find([tmp.rv] < RV_THRESHOLD);
@@ -244,7 +248,7 @@ end
 endi = toc(starti);
 fprintf('Call to ft_dipolefitting.m nonlinear took %0.2g',endi);
 sources = cellfun(@(x) [[]; x], sources);
-par_save(sources,[working_dir filesep 'dipfit'],'dipfit_struct.mat');
+par_save(sources,source_out_fpath,'dipfit_struct.mat');
 %## TIME
 endj = toc(startj);
 fprintf('Call to mim_mcc_dipfit.m took %0.2g',endj-startj);

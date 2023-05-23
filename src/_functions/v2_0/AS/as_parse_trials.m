@@ -91,7 +91,7 @@ for cond_i = 1:length(cond_names)
         TMP_EEG.condition = cond_names{cond_i};
         %- assign a new name
         TMP_EEG.filename        = sprintf('%s_%s_%s_EPOCH_TMPEEG.set',TMP_EEG.subject,cond_names{cond_i},event_names{event_i});
-        TMP_EEG.etc.epoch.epoch_limits   = epoch_limits;    
+        TMP_EEG.etc.epoch.epoch_limits   = epoch_limits;
         %- check to make sure a number isn't the first character
         chk = regexp(cond_names{cond_i},'\d');
         if any(chk)
