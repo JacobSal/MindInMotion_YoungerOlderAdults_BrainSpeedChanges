@@ -12,10 +12,11 @@ function [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,COND_CHARS_TIMEWARP,epo
 % Code Designer: Jacob Salminen
 % Code Date: 12/30/2022, MATLAB 2019a
 % Copyright (C) Jacob Salminen, jsalminen@ufl.edu
-
+%% DEFINE DEFAULTS
 %## TIME
 tic
-%## DEFINE DEFAULTS
+%- (ADMIN PARAMS)
+SAVE_ALLEEG = false;
 %- event timewarp params
 COND_CHARS_TIMEWARP = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 BASELINE_LATENCY_MS = 100;
@@ -94,6 +95,17 @@ end
 %- concatenate ALLEEG
 ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
 timewarp_struct = cellfun(@(x) [[]; x], timewarp_struct);
+if SAVE_ALLEEG
+    for i = 1:length(ALLEEG)
+        %- save each parsed trial/condition to own folder to help save
+        %memory. EEGLAB is weird like that.
+        if ~exist([ALLEEG(i).filepath filesep TMP_TMP_EEG.condition],'dir')
+            mkdir([ALLEEG(i).filepath filesep TMP_TMP_EEG.condition])
+        end
+        ALLEEG(i) = pop_saveset(ALLEEG(i),...
+            'filepath',[ALLEEG(i).filepath filesep TMP_TMP_EEG.condition],'filename',ALLEEG(i).filename);
+    end
+end
 %##
 toc
 end

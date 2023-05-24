@@ -69,9 +69,7 @@ if ~ispc
     %- create cluster
     pp = parcluster('local');
     %- Number of workers for processing (NOTE: this number should be higher
-    %then the number of iterations in your for loop)
-    % pp.NumWorkers = POOL_SIZE-3;
-    % pp.NumThreads = 1;
+    %then the number of iterations in your for loop
     fprintf('Number of workers: %i\n',pp.NumWorkers);
     fprintf('Number of threads: %i\n',pp.NumThreads);
     %- make meta data dire1ory for slurm
@@ -85,16 +83,12 @@ else
     'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
     SLURM_POOL_SIZE = 1;
 end
-%% ================================================================= %%
+%% (DATASET INFORMATION) =============================================== %%
 %## PATHS
 %- hardcode data_dir
 DATA_SET = 'MIM_dataset';
 DATA_DIR = [source_dir filesep '_data'];
-%- path for local data
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-SUBJINF_DIR = [DATA_DIR filesep DATA_SET filesep '_subjinf'];
-%## DATASET SPECIFIC
-%- MIND IN MOTION (05/19/2023)
+%## (MIND IN MOTION) DATASET SPECIFIC (05/24/2023)
 SUBJ_NORUN = {'H2012_FU', 'H2013_FU', 'H2018_FU', 'H2020_FU', 'H2021_FU',...
             'H3024_Case','H3029_FU','H3039_FU','H3063_FU','NH3021_Case', 'NH3023_Case','NH3025_Case', 'NH3030_FU',...
             'NH3068_FU', 'NH3036_FU', 'NH3058_FU'};
@@ -118,11 +112,14 @@ SUBJ_3MA = {'H3029','H3034','H3039','H3042','H3046',...
     'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
     'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
     'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
-%- Subject Picks
-SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA}; % JACOB,SAL(04/18/2023)
-GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; % JACOB,SAL(04/18/2023)
-SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3HMA)}; % JACOB,SAL(04/18/2023)
-% OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET]; 
+%- (OY) Subject Picks 
+SUBJ_PICS = {SUBJ_1YA}; 
+GROUP_NAMES = {'H1000''s'}; 
+SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
+%- (OA) Subject Picks 
+% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
+% GROUP_NAMES = {'H2000''s','H3000''s'}; 
+% SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %% ================================================================= %%
 %## PROCESSING PARAMS
 %- Combined OA & YA
@@ -135,20 +132,8 @@ OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP
 % YA_PREP_FPATH = '04182023_YA_N37_prep_verified'; % JACOB,SAL(04/10/2023)
 % OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep YA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
 %% global script chain (VERSION 1)
-%- datetime override
-% dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
-% dt = 'test';
-dt = '05192023_YAN33_OAN79_prep_verified';
-%## PATH & TEMP STUDY NAME
-%- hard define
+%- hard defineW
 NORMALIZE_MRI = true;
-%- soft define
-save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
-load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
-%- create new study directory
-if ~exist(save_dir,'dir')
-    mkdir(save_dir);
-end
 %% Store fNames and fPaths
 working_dirs    = cell(1,length([SUBJ_ITERS{:}]));
 fiducial_fPaths = cell(3,length([SUBJ_ITERS{:}]));
