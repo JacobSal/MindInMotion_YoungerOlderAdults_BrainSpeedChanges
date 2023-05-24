@@ -14,7 +14,11 @@ function [ALLEEG,timewarp_struct] = as_parse_trials(EEG,epoch_limits,varargin)
 % Copyright (C) Jacob Salminen, jsalminen@ufl.edu
 
 %% DEFINE DEFAULTS
+%## TIME
+tic
 %## PARAMS
+%- (ADMIN PARAMS)
+SAVE_ALLEEG = false;
 %- event timewarp params
 BASELINE_LATENCY_MS = 100;
 % CONDLABEL_CHARS = {'competitive','cooperative','moving_serve','stationary_serve'};
@@ -95,7 +99,19 @@ fprintf(1,'\n==== DONE: EPOCHING ====\n');
 %- concatenate ALLEEG
 ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
 timewarp_struct = cellfun(@(x) [[]; x], timewarp_struct);
-
+if SAVE_ALLEEG
+    for i = 1:length(ALLEEG)
+        %- save each parsed trial/condition to own folder to help save
+        %memory. EEGLAB is weird like that.
+        if ~exist([ALLEEG(i).filepath filesep TMP_TMP_EEG.condition],'dir')
+            mkdir([ALLEEG(i).filepath filesep TMP_TMP_EEG.condition])
+        end
+        ALLEEG(i) = pop_saveset(ALLEEG(i),...
+            'filepath',[ALLEEG(i).filepath filesep TMP_TMP_EEG.condition],'filename',ALLEEG(i).filename);
+    end
+end
+%##
+toc
 end
 %% ===================================================================== %%
 %## SUBFUNCTION
