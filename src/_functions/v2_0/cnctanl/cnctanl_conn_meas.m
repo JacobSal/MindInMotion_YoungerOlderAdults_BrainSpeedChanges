@@ -1,3 +1,4 @@
+function [ALLEEG] = cnctanl_conn_meas(ALLEEG,comps,conn_measures,varargin)
 %   Project Title: 
 %   Code Designer: Jacob salminen
 %
@@ -21,124 +22,130 @@
 %           
 %   OUT:
 %
-
-function [EEG] = cnctanl_connMeas(EEG,PATHS,components,connMeasures,varargin)
+%
+% CAT CODE
+%  _._     _,-'""`-._
+% (,-.`._,'(       |\`-/|
+%     `-.-' \ )-`( , o o)
+%           `-    \`_`"'-
+% Code Designer: Jacob Salminen
+% Code Date: 12/30/2022, MATLAB 2019a
+% Copyright (C) Jacob Salminen, jsalminen@ufl.edu
 %## TIME
 tic
 %## DEFINE DEFAULTS
-Defaults = {0.5,...
-    0.025,...
-    [],...
-    'nogui',...
-    1,...
-    [],...
-    []};
+FREQS = (1:60);
+WINDOW_LENGTH = 0.5; % time (s)
+WINDOW_STEP_SIZE = 0.025; % time (s)
+SAMPLING_RATE  = []; % empty (i.e., []) or integer
+VERBOSITY_LEVEL = 1;
+GUI_MODE = 'nogui';
+%- figure savepath
+save_dir = ALLEEG(1).filepath;
+sd_validfunc = (@(x) exist(save_dir,'dir'));
+%## PARSE
 p = inputParser;
-validPath = (@(x) ischar(x) || isempty(x));
 %## REQUIRED
-addRequired(p,'EEG',@isstruct)
-addRequired(p,'PATHS',@isstruct)
-addRequired(p,'components',@isnumeric)
-addRequired(p,'connMeasures',@iscell)
+addRequired(p,'ALLEEG',@isstruct)
+addRequired(p,'comps',@isnumeric)
+addRequired(p,'conn_measures',@iscell)
 %## OPTIONAL
-addOptional(p,'savePath',Defaults{6},validPath)
+addOptional(p,'save_dir',save_dir,sd_validfunc)
 %## PARAMETER
-addParameter(p,'WindowLengthSec',Defaults{1}, @isnumeric) % number of current set in previous load
-addParameter(p,'WindowStepSizeSec',Defaults{2}, @isnumeric) % MIM folder overwrite in special cases
-addParameter(p,'NewSamplingRate',Defaults{3}, @isnumeric)
-addParameter(p,'GUI_MODE',Defaults{4}, @ischar)
-addParameter(p,'VERBOSITY_LEVEL',Defaults{5}, @isnumeric)
-parse(p, EEG, PATHS, components, connMeasures, varargin{:});
+addParameter(p,'FREQS',FREQS, @isnumeric) 
+addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH, @isnumeric) % number of current set in previous load
+addParameter(p,'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE, @isnumeric) % MIM folder overwrite in special cases
+addParameter(p,'SAMPLING_RATE',SAMPLING_RATE, @isnumeric)
+addParameter(p,'GUI_MODE',GUI_MODE, @ischar)
+addParameter(p,'VERBOSITY_LEVEL',VERBOSITY_LEVEL, @isnumeric)
+parse(p, ALLEEG, comps, conn_measures, varargin{:});
 
 %## SET DEFAULTS
-% Defaults OR Override Values
-WindowLengthSec     = p.Results.WindowLengthSec;               % sliding window length in seconds
-WindowStepSizeSec   = p.Results.WindowStepSizeSec;             % sliding window step size in seconds
-NewSamplingRate     = p.Results.NewSamplingRate;               % new sampling rate (if downsampling)
-GUI_MODE            = p.Results.GUI_MODE;                      % whether or not to show the Graphical User Interfaces. Can be 'nogui' or anything else (to show the gui)
-VERBOSITY_LEVEL     = p.Results.VERBOSITY_LEVEL;               % Verbosity Level (0=no/minimal output, 2=graphical output)
-savePath            = p.Results.savePath;
-try
-    if strncmp(computer,'PC',2)
-        DO_UNIX = false;
-    else
-        DO_UNIX = true;
-    end
-catch
-    error('OSError:unknownOS','ERROR. You are working in an unknown Operating System.');
-end
-
-if DO_UNIX
-    savePath = convertPath2UNIX(savePath,'dferris');
-else
-    savePath = convertPath2Drive(savePath,'M');
-end
-%% PREP SAVE DIRECTORIES
-% [savePath,~] = get_SubPath(PATHS,savePath,'SIFT');
-
-%% STEP 3: Pre-process the data
+%- Optional
+save_dir     = p.Results.save_dir;
+%- parameters
+WINDOW_LENGTH    = p.Results.WINDOW_LENGTH;               % sliding window length in seconds
+WINDOW_STEP_SIZE = p.Results.WINDOW_STEP_SIZE;             % sliding window step size in seconds
+SAMPLING_RATE    = p.Results.SAMPLING_RATE;               % new sampling rate (if downsampling)
+GUI_MODE         = p.Results.GUI_MODE;                      % whether or not to show the Graphical User Interfaces. Can be 'nogui' or anything else (to show the gui)
+VERBOSITY_LEVEL  = p.Results.VERBOSITY_LEVEL;              % Verbosity Level (0=no/minimal output, 2=graphical output)
+FREQS            = p.Results.FREQS;
+%% ===================================================================== %%
+%## STEP 3: Pre-process the data
 fprintf('===================================================\n');
 disp('PRE-PROCESSING DATA');
 fprintf('===================================================\n');
 
-% select components from EEG
-EEG = pop_subcomp(EEG, components, 0, 1);
-
 % resample data
-if ~isempty(NewSamplingRate)
-    EEG = pop_resample( EEG, NewSamplingRate);
+if ~isempty(SAMPLING_RATE)
+    ALLEEG = pop_resample(ALLEEG, SAMPLING_RATE);
 end
 
 % convert list of components to cell array of strings
-ComponentNames = [];
-for j = 1:length(components)
-    ComponentNames = [ComponentNames, {num2str(components(j))}];
+comp_names = [];
+for j = 1:length(comps) 
+    comp_names = [comp_names, {num2str(comps(j))}];
 end
 
+%%
 % This is a SIFT toolbox function. 
 % NOTE (01/14/2022): look into the varargins of the function to determine 
 % what they do. (See. pre_prepData.m (SIFT toolbox) for more information 
 % regarding varargins).
-%% ==== PARAMS ==== %%
-SEQLEN          = 0.5; % sec
-STEPSIZE        = 0.025; % sec
-%% ==== END: PARAMS ==== %%
-cfg             = [];
-cfg.verb = 1;
-cfg.sigtype = [];
-    cfg.sigtype.arg_direct = 0;
-    cfg.sigtype.arg_selection = 'Components';
-cfg.varnames = ComponentNames;
-cfg.diff = [];
-    cfg.diff.arg_direct = 0;
-    cfg.diff.arg_selection = 0;
-cfg.detrend = [];
-    cfg.detrend.arg_direct = 0;
-    cfg.detrend.verg = 1;
-    cfg.detrend.method = {'linear'};
-    cfg.detrend.piecewise = [];
-        cfg.detrend.piecewise.arg_direct = 0;
-        cfg.detrend.piecewise.seglength = SEQLEN; % sec
-        cfg.detrend.piecewise.stepsize = STEPSIZE; % sec
-        cfg.detrend.piecewise.arg_selection = 1;
-    cfg.detrend.plot = 1;
-    cfg.detrend.arg_selection = 1;
-cfg.normalize = [];
-    cfg.normalize.arg_direct = 0;
-    cfg.normalize.verb = 1;
-    cfg.normalize.method = {'time','ensemble'};
-    cfg.normalize.arg_selection = 1;
-cfg.resetConfigs  = 0;
-cfg.aamp = [];
-cfg.badsegments = [];
-cfg.newtrials = [];
-cfg.equalizetrials = 0;
+%##
+% g             = [];
+% %- set verbosity and assing components
+% g.verb = 1;
+% g.sigtype = [];
+%     g.sigtype.arg_direct = 1;
+%     g.sigtype.arg_selection = 'Components';
+% g.varnames = ComponentNames;
+% g.diff = [];
+%     g.diff.arg_direct = 0;
+%     g.diff.arg_selection = 0;
+% %- detrend using linear non-piecewise
+% % least-squares fit method
+% g.detrend = [];
+%     g.detrend.arg_direct = 1;
+%     g.detrend.verg = 1;
+%     g.detrend.method = {'linear'};
+%     g.detrend.piecewise = [];
+%         g.detrend.piecewise.arg_direct = 0;
+%         g.detrend.piecewise.seglength = WINDOW_LENGTH; % sec
+%         g.detrend.piecewise.stepsize = WINDOW_STEP_SIZE; % sec
+%         g.detrend.piecewise.arg_selection = 1;
+%     g.detrend.plot = 1;
+%     g.detrend.arg_selection = 1;
+% %- normalize across time and ensemble (trials)
+% g.normalize = [];
+%     g.normalize.arg_direct = 1;
+%     g.normalize.verb = 1;
+%     g.normalize.method = {'time','ensemble'};
+%     g.normalize.arg_selection = 1;
+% %- other bonus options
+% g.resetConfigs  = 0;
+% g.aamp = [];
+% g.badsegments = [];
+% g.newtrials = [];
+% g.equalizetrials = 0;
+% 
+% %## CONSIDERATION:
+% % (NOTE FROM EXAMPLE SIFT SCRIPT) No piecewise detrending based on conversation with Andreas Widmann.
+% [EEG,g] = feval(@pre_prepData,'EEG',EEG,g);
+% EEG.CAT.configs.('pre_prepData') = g;
+% fprintf('\n\n');
 
-%## CONSIDERATION:
-% (NOTE FROM EXAMPLE SIFT SCRIPT) No piecewise detrending based on conversation with Andreas Widmann.
-[EEG,cfg] = feval(@pre_prepData,'EEG',EEG,cfg);
-EEG.CAT.configs.('pre_prepData') = cfg;
-fprintf('\n\n');
+%- ALTERNATIVE
+[ALLEEG] = pop_pre_prepData(ALLEEG,'nogui',...
+             'VerbosityLevel',VERBOSITY_LEVEL,...
+             'SignalType',{'Components'},...
+             'VariableNames',comp_names,...
+             'Detrend',{'verb',VERBOSITY_LEVEL,'method',{'linear'}},...
+             'NormalizeData',{'verb',VERBOSITY_LEVEL,'method',{'time', 'ensemble'}},...
+             'resetConfigs',true,...
+             'badsegments',[],...
+             'newtrials',[],...
+             'equalizetrials',false);
 
 %% STEP 4: Identify the optimal model order
 fprintf('===================================================\n');
@@ -148,66 +155,114 @@ fprintf('===================================================\n');
 % orders (e.g. 1 to 30) and visualize the results
 
 %## PARAMS
-MORDER                  = [1 30];
-INFC_SELECTOR           = {'sbc' 'aic' 'fpe' 'hq'};
-APPRCH_ALG              = 'Vieira-Morf';
+MORDER_RANGE            = [1, ceil((ALLEEG(1).srate*WINDOW_LENGTH)/2-1)];
+MORDER                  = ceil((ALLEEG(1).srate*WINDOW_LENGTH)/2-1);
+INFC_SELECTOR           = {'aic' 'hq'};
+APPRCH_ALG              = {'Vieira-Morf'};
 APPRCH_TAPER            = 'rectwin';
 APPRCH_PRCT_WIN2SAMP    = 100;
 PRCT_WIN2SAMP           = 80;
-SEQLEN                  = 0.5; % sec
-STEPSIZE                = 0.025; % sec
 %END
 % cfg = arg_tovals(arg_report('rich',@est_selMModelOrder,[{'EEG',EEG},varargin]),false);
 cfg = [];
 cfg.verb = VERBOSITY_LEVEL;
 cfg.modelingApproach = [];
-    cfg.modelingApproach.arg_direct = 0;
+    cfg.modelingApproach.arg_direct = 1;
     cfg.modelingApproach.algorithm = [];
-        cfg.modelingApproach.algorithm.arg_direct = 0;
-        cfg.modelingApproach.algorithm.morder = 10;
+        cfg.modelingApproach.algorithm.arg_direct = 1;
+        cfg.modelingApproach.algorithm.morder = MORDER;
         cfg.modelingApproach.algorithm.arg_selection = APPRCH_ALG;
-    cfg.modelingApproach.morder = 10;
+    cfg.modelingApproach.morder = MORDER;
     cfg.modelingApproach.winStartIdx =  [];
-    cfg.modelingApproach.winlen = SEQLEN;
-    cfg.modelingApproach.winstep = STEPSIZE;
+    cfg.modelingApproach.winlen = WINDOW_LENGTH;
+    cfg.modelingApproach.winstep = WINDOW_STEP_SIZE;
     cfg.modelingApproach.taperfcn = APPRCH_TAPER;
     cfg.modelingApproach.epochTimeLims = [];
     cfg.modelingApproach.prctWinToSample = APPRCH_PRCT_WIN2SAMP;
     cfg.modelingApproach.normalize = [];
     cfg.modelingApproach.detrend = [];
-        cfg.modelingApproach.detrend.arg_direct = 0;
+        cfg.modelingApproach.detrend.arg_direct = 1;
         cfg.modelingApproach.detrend.method = 'constant';
         cfg.modelingApproach.detrend.arg_selection = 1;
     cfg.modelingApproach.verb = VERBOSITY_LEVEL;
     cfg.modelingApproach.timer = 0;
     cfg.modelingApproach.setArgDirectMode = 1;
     cfg.modelingApproach.arg_selection = 'Segmentation VAR';
-cfg.morderRange = MORDER;
+cfg.morderRange = MORDER_RANGE;
 cfg.downdate = 1;
 cfg.runPll = [];
-    cfg.runPll.arg_direct = 0;
+    cfg.runPll.arg_direct = 1;
     cfg.runPll.arg_selection = 0;
 cfg.icselector = INFC_SELECTOR;
 cfg.winStartIdx = [];
 cfg.epochTimeLims = [];
 cfg.prctWinToSample = PRCT_WIN2SAMP;
 cfg.plot = [];
-    cfg.plot.arg_direct = 0;
+    cfg.plot.arg_direct = 1;
     cfg.plot.arg_selection = 0;
 % pop_est_selModelOrder
-[IC,cfg] = feval(@est_selModelOrder,'EEG',EEG,cfg);
-EEG.CAT.IC = IC;
-EEG.CAT.configs.('est_selModelOrder') = cfg;
+% for cond_i=1:length(ALLEEG)
+%     [IC,cfg] = feval(@est_selModelOrder,'EEG',ALLEEG(cond_i),cfg);
+%     ALLEEG(cond_i).CAT.IC = IC;
+%     ALLEEG(cond_i).CAT.configs.('est_selModelOrder') = cfg;
+% end
+for cond_i=1:length(ALLEEG)
+    % calculate the information criteria
+    ALLEEG(cond_i).CAT.IC = est_selModelOrder('EEG',ALLEEG(cond_i),cfg);
+    
+    if ~isempty(cfg)
+        % store the configuration structure
+        ALLEEG(cond_i).CAT.configs.('est_selModelOrder') = cfg;
+    end
+end
+% Open the model-fitting GUI for model fitting. 
+% Once model is fit results will be return in EEG structure
+
+%- ALTERNATIVE
+%** NOTE: this may be buggy on HiPerGator/Hypercomputing systems due to the
+% gui initiation. buggy because of feval statement: "
+% modFuncName = ['pop_' ALLEEG(1).CAT.IC.modelFitting.modelingFuncName];
+% ALLEEG = feval(modFuncName, ALLEEG,0,ALLEEG(1).CAT.IC.modelFitting.modelingArguments);
+
+% ALLEEG = pop_est_selModelOrder(ALLEEG,'nogui', ...
+%         'modelingApproach',         ...
+%             {'Segmentation VAR',     ...
+%                 'algorithm', APPRCH_ALG ... % Was 'Vieira-Morf'. 'Group Lasso (DAL/SCSA)' is recommended but slow. 'ARfit' is the simplest. (04/18/2021 Makoto)
+%                 'winStartIdx', []    ...
+%                 'winlen',  WINDOW_LENGTH    ...
+%                 'winstep', WINDOW_STEP_SIZE  ...
+%                 'taperfcn', APPRCH_TAPER    ... % For long sliding window like 20 s, rectangle window is suitable. (04/18/2021 Makoto)
+%                 'epochTimeLims', []      ...
+%                 'prctWinToSample', APPRCH_PRCT_WIN2SAMP   ...
+%                 'normalize', []          ...
+%                 'detrend', {'method', 'linear'} ...
+%                 'verb', VERBOSITY_LEVEL},      ...
+%         'morderRange',MORDER ,  ... % Typically below 10 using the elbow method. (04/18/2021 Makoto)
+%         'downdate',true,        ...
+%         'runPll',[],            ...
+%         'icselector',INFC_SELECTOR,  ...
+%         'winStartIdx',[],       ...
+%         'epochTimeLims',[],     ...
+%         'prctWinToSample',PRCT_WIN2SAMP,   ...
+%         'plot', [], ...
+%         'verb',VERBOSITY_LEVEL);
+
 % To plot the results, use this:
-handles = vis_plotOrderCriteria(EEG.CAT.IC,'conditions', [],    ...
-                                            'icselector', {'sbc','aic','fpe','hq'},  ...
+tmp_morder = zeros(1,length(ALLEEG));
+for cond_i = 1:length(ALLEEG)
+    fprintf('%s) Plotting Validations',ALLEEG(cond_i).subject);
+    handles = vis_plotOrderCriteria(ALLEEG(cond_i).CAT.IC,'conditions', [],    ...
+                                            'icselector', INFC_SELECTOR,  ...
                                             'minimizer', 'min', ...
                                             'prclim', 90);
-ModelOrder = ceil(mean(EEG.CAT.IC.hq.popt));
+    tmp_morder(cond_i) = ceil(mean(ALLEEG(cond_i).CAT.IC.hq.popt));
+    saveas(handles,[save_dir filesep sprintf('%s_orderResults.fig',ALLEEG(cond_i).subject)]);
+    close(handles);
+end
+ModelOrder = ceil(mean(tmp_morder));
 
 % If you want to save this figure you can uncomment the following lines:
-saveas(handles,[savePath filesep sprintf('%s_orderResults.fig',EEG.subject)]);
-close(handles);
+
 
 % Finally, we can automatically select the model order which minimizes one
 % of the criteria (or you can set this manually based on above figure)
@@ -230,15 +285,15 @@ fprintf('===================================================\n');
 fprintf('\n');
 
 % Here we can check that our selected parameters make sense
-fprintf('MVAR PARAMETER SUMMARY FOR CONDITION: %s\n\n',EEG.condition);
-
-est_dispMVARParamCheck(EEG,struct('morder',ModelOrder','winlen',WindowLengthSec,'winstep',WindowStepSizeSec,'verb',VERBOSITY_LEVEL))
-
+for cond_i = 1:length(ALLEEG)
+    fprintf('MVAR PARAMETER SUMMARY FOR CONDITION: %s\n\n',ALLEEG(cond_i).condition);
+    est_dispMVARParamCheck(ALLEEG(cond_i),struct('morder',ModelOrder','winlen',WINDOW_LENGTH,'winstep',WINDOW_STEP_SIZE,'verb',VERBOSITY_LEVEL))
+end
 % Once we have identified our optimal model order, we can fit our VAR model.
 
 % Fit a model using the options specifed for model order selection (STEP 4)
-[EEG] = pop_est_fitMVAR(EEG,GUI_MODE, ...
-        EEG.CAT.configs.est_selModelOrder.modelingApproach, ...
+[ALLEEG] = pop_est_fitMVAR(ALLEEG,GUI_MODE,...
+        ALLEEG(1).CAT.configs.est_selModelOrder.modelingApproach,...
         'ModelOrder',ModelOrder);
 
 % Note that EEG.CAT.MODEL now contains the model structure with
@@ -259,29 +314,29 @@ fprintf('===================================================\n');
 % step can be slow.
 
 %## PARAMS
-cfg                     = [];
+%- Whiteness Check
 CHKW_ALPHA              = 0.05;
 CHKW_CORR               = 'none';
 CHKW_LAGS               = 50;
 CHKW_CRIT               = {'Ljung-Box' 'ACF' 'Box-Pierce' 'Li-McLeod'};
 CHKW_PRCT_WIN2SAMP      = 100;
-
+%- Residuals Check
 CHKR_ALPHA              = 0.05;
 CHKR_CORR               = 'none';
 CHKR_LAGS               = 50;
 CHKR_CRIT               = {};
 CHKR_PRCT_WIN2SAMP      = 100;
-
+%- Consistency Check
 CHKC_PRCT_WIN2SAMP      = 100;
 CHKC_DONORM             = 0;
 CHKC_VERB               = 0;
-
+%- Stability Check
 CHKS_PRCT_WIN2SAMP      = 100;
 %END
 
 % We can obtain statistics for residual whiteness, percent consistency, and
 % model stability ...
-[EEG] = pop_est_validateMVAR(EEG,GUI_MODE,...
+[ALLEEG] = pop_est_validateMVAR(ALLEEG,GUI_MODE,...
                             'checkWhiteness', ...
                                 {'alpha' CHKW_ALPHA ...
                                  'statcorrection' CHKW_CORR ...
@@ -309,26 +364,26 @@ CHKS_PRCT_WIN2SAMP      = 100;
                                 {'winStartIdx' []   ...
                                  'prctWinToSample' CHKS_PRCT_WIN2SAMP ...
                                  'verb' 0},     ...
-                             'prctWinToSample',70,  ...
                              'winStartIdx',[],      ...
                              'verb',VERBOSITY_LEVEL,...
                              'plot',false);
 
-% ... and then plot the results 
-handles = vis_plotModelValidation({EEG.CAT.VALIDATION.whitestats}, ...
-                                     {EEG.CAT.VALIDATION.PCstats},         ...
-                                     {EEG.CAT.VALIDATION.stabilitystats});                                        
-% If you want to save this figure you can uncomment the following lines:
-saveas(handles,[savePath filesep sprintf('%s_validationResults.fig',EEG.subject)]);
-close(handles);
+for cond_i = 1:length(ALLEEG)
+    % ... and then plot the results 
+    handles = vis_plotModelValidation({ALLEEG(cond_i).CAT.VALIDATION.whitestats}, ...
+                                         {ALLEEG(cond_i).CAT.VALIDATION.PCstats},         ...
+                                         {ALLEEG(cond_i).CAT.VALIDATION.stabilitystats});                                        
+    % If you want to save this figure you can uncomment the following lines:
+    saveas(handles,[save_dir filesep sprintf('%s_validationResults.fig',ALLEEG(cond_i).subject)]);
+    close(handles);
 
-% To automatically determine whether our model accurately fits the data you
-% can write a few lines as follows (replace 'acf' with desired statistic):
-%
-if ~all(EEG.CAT.VALIDATION.whitestats.acf.w)
-    msgbox('Residuals are not completely white!');
+    % To automatically determine whether our model accurately fits the data you
+    % can write a few lines as follows (replace 'acf' with desired statistic):
+    %
+    if ~all(ALLEEG(cond_i).CAT.VALIDATION.whitestats.acf.w)
+        fprintf(1,'WARNING: Residuals are not completely white!\n');
+    end
 end
-
 fprintf('\n\n');
 
 %% STEP 7: Compute Connectivity
@@ -342,15 +397,12 @@ fprintf('===================================================\n');
 % list of available connectivity and spectral estimators.
 
 %## PARAMS
-cfg             = [];
-% CONN_METHOD      = {'mCoh' 'dDTF08' 'ffDTF' 'S'};
-ABSVALSQ        = true;
-SPECTRAL_DB     = true;
-FREQS           = [1:100];
-%END
+ABSVALSQ        = false;
+SPECTRAL_DB     = false;
+%ENDn 
 
-EEG = pop_est_mvarConnectivity(EEG,GUI_MODE, ...
-            'connmethods', connMeasures, ...
+ALLEEG = pop_est_mvarConnectivity(ALLEEG,GUI_MODE, ...
+            'connmethods', conn_measures, ...
             'absvalsq',ABSVALSQ,           ...
             'spectraldecibels',SPECTRAL_DB,   ...
             'freqs',FREQS,        ...
@@ -358,6 +410,7 @@ EEG = pop_est_mvarConnectivity(EEG,GUI_MODE, ...
 
 disp('done')
 disp('===================================')
+
 %## TIME
 toc
 %% SUBFUNCTIONS

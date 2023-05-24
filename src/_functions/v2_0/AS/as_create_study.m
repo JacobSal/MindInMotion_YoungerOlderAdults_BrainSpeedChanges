@@ -78,7 +78,7 @@ for subj_i = 1:length(ALLEEG)
 end
 ALLEEG = ALLEEG(~logical(tmp_rmv_subjs));
 %% 
-[tmp_cluster] = rmv_subj_inds(tmp_cluster,tmp_rmv_subjs);
+[tmp_cluster] = rmv_subj_inds(tmp_cluster,find(tmp_rmv_subjs));
 %% CREATE STUDY
 % initiailize study
 fprintf('\n==== Making Study Modifications ====\n')
@@ -110,7 +110,7 @@ fprintf('==== Reorganizing Cluster Information ====\n');
 %- create an unscrambling array for removing subjects
 iter = 1;
 for subj_i = 1:length(tmp_subjs)
-    if any(subj_i == subj_vec)
+    if any(subj_i == tmp_rmv_subjs)
         continue;
     else
         tmp_subjs(subj_i,2) = iter;

@@ -17,8 +17,6 @@ function [ALLEEG] = main_func_v2(ALLEEG,save_dir,varargin)
 %## TIME
 tic
 %## define DEFAULTS
-%-
-SAVE_EEG = false;
 % errorMsg = 'Value must be of format {CHAR1,CHAR2,...}.';
 % cnd_validFcn = @(x) assert((iscell(x)), errorMsg);
 %- Connectivity Process
@@ -26,7 +24,7 @@ CONN_METHODS = {'dDTF08','dDTF','GGC'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh',
 STAT_ALPHA = 0.01; % 
 % subj_i_genConnMeas
 FREQS = (1:100);
-CONN_COMPONENTS = ALLEEG(1).chanlocs.urchan;
+CONN_COMPONENTS = (1:size(ALLEEG(1).icaweights,1))';
 CNCTANL_TOOLBOX = 'sift';
 DO_BOOTSTRAP = false;
 WINDOW_LENGTH = 0.5;
@@ -37,8 +35,6 @@ FREQ_BANDS = {FREQS;1:7;7:12;12:28;28:48;48:60};
 DO_PHASE_RND = true;
 errorMsg = 'Value must be (true/false). Determines whether a phase randomized distribution will be created.'; 
 lpr_validFcn = @(x) assert(islogical(x),errorMsg);
-%- HARD DEFINES
-SUFFIX_PATH_SIFT = 'SIFT';
 %## define Parser
 p = inputParser;
 %## define REQUIRED
@@ -46,10 +42,10 @@ addRequired(p,'ALLEEG',@isstruct);
 % addRequired(p,'conditions',cnd_validFcn);
 addRequired(p,'save_dir',@ischar);
 %## define OPTIONAL
-addOptional(p,'conn_components',CONN_COMPONENTS,@isnumeric); 
+
 %## define PARAMETER
-addParameter(p,'SAVE_EEG',SAVE_EEG,@islogical);
-%- subj_i_genConnMeas
+addParameter(p,'CONN_COMPONENTS',CONN_COMPONENTS,@isnumeric);
+%- cnctanl_connMeas
 addParameter(p,'CONN_METHODS',CONN_METHODS,@iscell);
 addParameter(p,'FREQS',FREQS,@isnumeric);
 addParameter(p,'CNCTANL_TOOLBOX',CNCTANL_TOOLBOX,@ischar);
@@ -57,20 +53,17 @@ addParameter(p,'DO_BOOTSTRAP',DO_BOOTSTRAP,@islogical);
 addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH,@isnumeric);
 addParameter(p,'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE,@isnumeric);
 addParameter(p,'ASSIGN_BOOTSTRAP_MEAN',ASSIGN_BOOTSTRAP_MEAN,@islogical);
-%- subj_i_genConnStats
+%- cnctanl_groupStats
 addParameter(p,'STAT_ALPHA',STAT_ALPHA,@isnumeric);
 addParameter(p,'DO_PHASE_RND',DO_PHASE_RND,lpr_validFcn);
 %## SET DEFAULTS
 parse(p,ALLEEG,save_dir,varargin{:});
-%- pathing and saving
-% OVERRIDE_SOURCE_EEG = false;
-SAVE_EEG = p.Results.SAVE_EEG;
 %- Connectivity process
 CONN_METHODS = p.Results.CONN_METHODS; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 STAT_ALPHA = p.Results.STAT_ALPHA;
 % subj_i_genConnMeas
 FREQS = p.Results.FREQS;
-conn_components = p.Results.conn_components;
+CONN_COMPONENTS = p.Results.CONN_COMPONENTS;
 CNCTANL_TOOLBOX = p.Results.CNCTANL_TOOLBOX;
 DO_BOOTSTRAP = p.Results.DO_BOOTSTRAP;
 WINDOW_LENGTH = p.Results.WINDOW_LENGTH;
@@ -78,15 +71,11 @@ WINDOW_STEP_SIZE = p.Results.WINDOW_STEP_SIZE;
 ASSIGN_BOOTSTRAP_MEAN = p.Results.ASSIGN_BOOTSTRAP_MEAN;
 % subj_i_genConnStats
 DO_PHASE_RND = p.Results.DO_PHASE_RND;
-%- Get Anatomy Coordinates for different brain areas.
-% out = get_Anatomy();
-% BRAIN_CHARS = out.BrainAcronym;
-% BRAIN_COORDS = out.coords_MNI;
 %## TABLE VARS
 t_fPaths = cell(1,length(ALLEEG));
 t_fNames = cell(1,length(ALLEEG));
 t_conn_methods = cell(1,length(ALLEEG));
-t_conn_components = cell(1,length(ALLEEG));
+t_CONN_COMPONENTS = cell(1,length(ALLEEG));
 t_conn_mats = cell(1,length(ALLEEG)*length(CONN_METHODS)*length(FREQ_BANDS));
 t_conn_freqs = cell(1,length(ALLEEG)*length(CONN_METHODS)*length(FREQ_BANDS));
 t_conn_sigs = cell(1,length(ALLEEG)*length(CONN_METHODS)*length(FREQ_BANDS));
@@ -114,21 +103,21 @@ end
 
 %## FEVAL Connectivity
 fprintf('%s) Processing componets:\n',ALLEEG(1).subject)
-fprintf('%i,',conn_components'); fprintf('\n');
+fprintf('%i,',CONN_COMPONENTS'); fprintf('\n');
 %- exit function if there are not enough components
-if length(conn_components) < 2
+if length(CONN_COMPONENTS) < 2
     return;
 end
 %- select components from EEG
-if length(conn_components) ~= size(ALLEEG.icaweights,1)
+if length(CONN_COMPONENTS) ~= size(ALLEEG.icaweights,1)
     for cond_i = 1:length(ALLEEG)
-        ALLEEG(cond_i) = pop_subcomp(ALLEEG(cond_i), sort(conn_components), 0, 1);
+        ALLEEG(cond_i) = pop_subcomp(ALLEEG(cond_i), sort(CONN_COMPONENTS), 0, 1);
     end
 end
 %- Calculate Connectivity
 switch CNCTANL_TOOLBOX
     case 'sift'
-        [TMPEEG] = cnctanl_connMeas(ALLEEG,conn_components,CONN_METHODS,save_dir,...
+        [TMPEEG] = cnctanl_conn_meas(ALLEEG,CONN_COMPONENTS,CONN_METHODS,save_dir,...
             'FREQS',FREQS,...
             'WINDOW_LENGTH',WINDOW_LENGTH,...
             'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
@@ -140,7 +129,7 @@ switch CNCTANL_TOOLBOX
         slide_step_size = ceil(WINDOW_STEP_SIZE*ALLEEG(1).srate);
         slide_win_len = ceil(WINDOW_LENGTH*ALLEEG(1).srate);
         max_morder = 30;
-        ALLEEG = bsmart_cnctanl_connMeas(ALLEEG,conn_components,CONN_METHODS,save_dir,...
+        ALLEEG = bsmart_cnctanl_connMeas(ALLEEG,CONN_COMPONENTS,CONN_METHODS,save_dir,...
             'WINDOW_LENGTH',WINDOW_LENGTH,...
             'MAX_MORDER',max_morder,...
             'SLIDE_WIN_LEN',slide_win_len,...
@@ -178,7 +167,7 @@ end
 %## ASSIGN OUTPUT VALUES
 for trial_i = 1:length(ALLEEG)
     t_conn_methods{trial_i} = CONN_METHODS;
-    t_conn_components{trial_i} = conn_components;
+    t_CONN_COMPONENTS{trial_i} = CONN_COMPONENTS;
 end
 
 %## SAVE
@@ -243,8 +232,8 @@ end
 t_fPaths = repmat(t_fPaths,1,length(t_conn_mats)/length(t_fPaths));
 t_fNames = repmat(t_fNames,1,length(t_conn_mats)/length(t_fNames));
 t_conn_methods = repmat(t_conn_methods,1,length(t_conn_mats)/length(t_conn_methods));
-t_conn_components = repmat(t_conn_components,1,length(t_conn_mats)/length(t_conn_components));
-t_out = table(t_fPaths,t_fNames,t_conn_methods,t_conn_components,t_conn_freqs,t_conn_sigs,t_conn_mats);
+t_CONN_COMPONENTS = repmat(t_CONN_COMPONENTS,1,length(t_conn_mats)/length(t_CONN_COMPONENTS));
+t_out = table(t_fPaths,t_fNames,t_conn_methods,t_CONN_COMPONENTS,t_conn_freqs,t_conn_sigs,t_conn_mats);
 %## REMOVE FIELDS && SAVE
 for trial_i = 1:length(ALLEEG)
     %- clear STATS & PCONN for space saving.
