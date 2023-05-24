@@ -17,8 +17,6 @@ function [ALLEEG] = main_func_v2(ALLEEG,save_dir,varargin)
 %## TIME
 tic
 %## define DEFAULTS
-%-
-SAVE_EEG = false;
 % errorMsg = 'Value must be of format {CHAR1,CHAR2,...}.';
 % cnd_validFcn = @(x) assert((iscell(x)), errorMsg);
 %- Connectivity Process

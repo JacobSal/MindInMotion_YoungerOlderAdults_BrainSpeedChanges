@@ -172,45 +172,44 @@ pop_editoptions('option_computeica', 1);
 %## PARFOR LOOP
 EEG = [];
 parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
-%     for subj_i = LOOP_VAR
-    if ~isempty(fPaths_out{subj_i})
-        %- Parse out components
-        components = comps_out(:,subj_i);
-        components = sort(components(components ~= 0));
-        %## LOAD EEG DATA
-        EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
-        %- Recalculate ICA Matrices && Book Keeping
-        EEG = eeg_checkset(EEG,'loaddata');
-        if isempty(EEG.icaact)
-            fprintf('%s) Recalculating ICA activations\n',EEG.subject);
-            EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
-        end
-        EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
-        try
-            %## RUN MAIN_FUNC
-            [TMP_EEG] = main_func_v2(EEG,save_dir,components,...
-                'SAVE_EEG',SAVE_EEG,...
-                'CONN_METHODS',CONN_METHODS,... %
-                'FREQS',CONN_FREQS,...
-                'CNCTANL_TOOLBOX',CNCTANL_TOOLBOX,... 
-                'DO_BOOTSTRAP',DO_BOOTSTRAP,...
-                'DO_PHASE_RND',DO_PHASE_RND,...
-                'WINDOW_LENGTH',WINDOW_LENGTH,...
-                'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
+% for subj_i = LOOP_VAR
+    %- Parse out components
+    components = comps_out(:,subj_i);
+    components = sort(components(components ~= 0));
+    %## LOAD EEG DATA
+    EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
+    %- Recalculate ICA Matrices && Book Keeping
+    EEG = eeg_checkset(EEG,'loaddata');
+    if isempty(EEG.icaact)
+        fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+        EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+    end
+    EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
+    fprintf('%s) Processing componets:\n',EEG.subject)
+    fprintf('%i,',components'); fprintf('\n');
+    try
+        %## RUN MAIN_FUNC
+        [TMP_EEG] = main_func_v2(EEG,save_dir,...
+            'CONN_METHODS',CONN_METHODS,... %
+            'FREQS',CONN_FREQS,...
+            'CNCTANL_TOOLBOX',CNCTANL_TOOLBOX,... 
+            'DO_BOOTSTRAP',DO_BOOTSTRAP,...
+            'DO_PHASE_RND',DO_PHASE_RND,...
+            'WINDOW_LENGTH',WINDOW_LENGTH,...
+            'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
 %                 pop_mergeset();
-            EEG.CAT = TMP_EEG.CAT;
-            [EEG] = pop_saveset(EEG,...
-                'filepath',EEG.filepath,'filename',EEG.filename,...
-                'savemode','twofiles');
-            tmp{subj_i} = EEG;
-        catch e
-            rmv_subj(subj_i) = 1;
-            EEG.CAT = struct([]);
-            tmp{subj_i} = EEG;
-            fprintf(['error. identifier: %s\n',...
-                     'error. %s\n',...
-                     'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
-        end
+        EEG.CAT = TMP_EEG.CAT;
+        [EEG] = pop_saveset(EEG,...
+            'filepath',EEG.filepath,'filename',EEG.filename,...
+            'savemode','twofiles');
+        tmp{subj_i} = EEG;
+    catch e
+        rmv_subj(subj_i) = 1;
+        EEG.CAT = struct([]);
+        tmp{subj_i} = EEG;
+        fprintf(['error. identifier: %s\n',...
+                 'error. %s\n',...
+                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
     end
 end
 pop_editoptions('option_computeica',0);

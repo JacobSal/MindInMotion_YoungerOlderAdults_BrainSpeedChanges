@@ -1,4 +1,4 @@
-function [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,trial_names,epoch_limits,varargin)
+function [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,COND_CHARS_TIMEWARP,epoch_limits,varargin)
 %MIM_PARSE_TRIALS Summary of this function goes here
 %   This is a CUSTOM function
 %   IN: 
@@ -13,16 +13,21 @@ function [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,trial_names,epoch_limit
 % Code Date: 12/30/2022, MATLAB 2019a
 % Copyright (C) Jacob Salminen, jsalminen@ufl.edu
 
+%## TIME
+tic
 %## DEFINE DEFAULTS
-%- Keeping as HARD defines for now (03/08/2023)
-PARSE_TYPE = '';
-PERCENT_OVERLAP = 0;
-EVENT_FIELD_CONDITION = 'cond';
-EVENT_FIELD_TRIAL = 'type';
-TRIAL_BEG_CHAR = 'TrialStart';
-TRIAL_END_CHAR = 'TrialEnd';
+%- event timewarp params
+COND_CHARS_TIMEWARP = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+BASELINE_LATENCY_MS = 100;
+STD_TIMEWARP = 3;
+EVENTS_TIMEWARP = {'RHS','LTO','LHS','RTO','RHS'};
+%- sliding window params
+DO_SLIDING_WINDOW = false;
+COND_CHARS_SLIDING_WINDOW = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
+COND_CHAR_FIELD = 'cond';
 APPROX_TRIAL_LENGTH = 3*60; % seconds
-SLIDING_WINDOW_ONLY = false;
+PERCENT_OVERLAP = 0;
+WINDOW_LENGTH = 5;
 %- soft defines
 %## TIME
 tic
@@ -30,95 +35,75 @@ tic
 p = inputParser;
 %## REQUIRED
 addRequired(p,'EEG',@isstruct);
-addRequired(p,'trial_names',@iscell);
 addRequired(p,'epoch_limits',@isnumeric);
 %## OPTIONAL
 %## PARAMETER
 addParameter(p,'PERCENT_OVERLAP',PERCENT_OVERLAP,@ischar);
-addParameter(p,'EVENT_FIELD_CONDITION',EVENT_FIELD_CONDITION,@ischar);
-addParameter(p,'EVENT_FIELD_TRIAL',EVENT_FIELD_TRIAL,@ischar);
-addParameter(p,'TRIAL_BEG_CHAR',TRIAL_BEG_CHAR,@ischar);
-addParameter(p,'TRIAL_END_CHAR',TRIAL_END_CHAR,@ischar);
-addParameter(p,'APPROX_TRIAL_LENGTH',APPROX_TRIAL_LENGTH,@isnumeric);
-addParameter(p,'SLIDING_WINDOW_ONLY',SLIDING_WINDOW_ONLY,@islogical);
-parse(p,EEG,trial_names,epoch_limits,varargin{:});
+addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH,@ischar);
+parse(p,EEG,epoch_limits,varargin{:});
 %## SET DEFAULTS
-%- OPTIONALS
 %- PARAMETER
 PERCENT_OVERLAP = p.Results.PERCENT_OVERLAP;
-EVENT_FIELD_CONDITION = p.Results.EVENT_FIELD_CONDITION;
-EVENT_FIELD_TRIAL = p.Results.EVENT_FIELD_TRIAL;
-TRIAL_BEG_CHAR = p.Results.TRIAL_BEG_CHAR;
-TRIAL_END_CHAR = p.Results.TRIAL_END_CHAR;
-APPROX_TRIAL_LENGTH = p.Results.APPROX_TRIAL_LENGTH;
-SLIDING_WINDOW_ONLY = p.Results.SLIDING_WINDOW_ONLY;
-%- PERMS
-
+WINDOW_LENGTH = p.Results.WINDOW_LENGTH;
 %% ===================================================================== %%
-%- empty ALLEEG structure for repopulating
-ALLEEG = cell(1,length(trial_names)); 
-timewarp_struct = cell(1,length(trial_names));
-% allWarpTo = nan(length(condList),5);
-% fprintf(1,'\n==== %s: EPOCHING SUBJECT TRIALS ====\n',EEG.subject);
-EEG = pop_epoch( EEG, {  'RHS'  }, epoch_limits, 'newname', sprintf('Merged datasets %s epochs',EEG.subject), 'epochinfo', 'yes'); 
-EEG = eeg_checkset(EEG);
-EEG = pop_rmbase( EEG, [epoch_limits(1)*1000 epoch_limits(2)*1000-2] ,[]); % Remove baseline from an epoched dataset.[-1500 2998] = baseline latency range, is it removing the mean during each gait cycle
-EEG = eeg_checkset(EEG);
-for trial_i = 1:length(trial_names)
-    fprintf(1,'\n==== %s: Processing trial %s ====\n',EEG.subject,trial_names{trial_i});
-    %## EPOCH SUBJ DATA
-    %- assign a new name
-    EEG.filename        = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,trial_names{trial_i});
-    EEG.etc.epoch.epoch_limits   = epoch_limits; 
-    EEG.condition = trial_names{trial_i};
+if DO_SLIDING_WINDOW
     %- (MIND IN MOTION) sliding window
-    if strcmp(trial_names{trial_i},'rest') || SLIDING_WINDOW_ONLY
-        EEG.etc.epoch.parse_var = 'sliding_window';
-        EEG.timewarp = struct([]);
-        %- override event structure to be compatible with sliding window
-        %- SLIDING WINDOW: MIM specific function
-        [TMP_EEG] = sliding_window_epoch(EEG,trial_names{trial_i},(epoch_limits(2)-epoch_limits(1)),...
-            PERCENT_OVERLAP,EVENT_FIELD_CONDITION,EVENT_FIELD_TRIAL,TRIAL_BEG_CHAR,TRIAL_END_CHAR,APPROX_TRIAL_LENGTH);
+    ALLEEG = cell(1,length(COND_CHARS_SLIDING_WINDOW)); 
+    timewarp_struct = cell(1,length(COND_CHARS_SLIDING_WINDOW));
+    EEG.etc.epoch.parse_var = 'sliding_window';
+    EEG.timewarp = struct([]);
+    for i = 1:length(COND_CHARS_SLIDING_WINDOW)
+        fprintf(1,'\n==== %s: Processing trial %s ====\n',EEG.subject,COND_CHARS_SLIDING_WINDOW{i});
+        [EEG] = mim_sliding_window_epoch(EEG,cond_char,window_len,percent_overlap,...
+            COND_CHAR_FIELD,APPROX_TRIAL_LENGTH);
+        %- check to make sure a number isn't the first character
+        chk = regexp(COND_CHARS_SLIDING_WINDOW{i},'\d');
+        if any(chk)
+            COND_CHARS_SLIDING_WINDOW{i} = sprintf('x%s',COND_CHARS_SLIDING_WINDOW{i});
+        end
+        TMP_EEG.etc.epoch.condition = COND_CHARS_SLIDING_WINDOW{i};
+        ALLEEG{i} = TMP_EEG;
+        timewarp_struct{i} = struct([]);
+    end
+else
     %- (MIND IN MOTION) Gait Timewarp
-    else 
-        EEG.etc.epoch.parse_var = 'gait_timewarp';
-        EEG.timewarp = struct([]);
+    ALLEEG = cell(1,length(COND_CHARS_TIMEWARP)); 
+    timewarp_struct = cell(1,length(COND_CHARS_TIMEWARP));
+    TMP_EEG = pop_epoch( EEG, {  'RHS'  }, epoch_limits, 'newname', sprintf('Merged datasets %s epochs',EEG.subject), 'epochinfo', 'yes'); 
+    TMP_EEG = eeg_checkset(TMP_EEG);
+    TMP_EEG = pop_rmbase( TMP_EEG, [epoch_limits(1)*1000 epoch_limits(2)*1000-BASELINE_LATENCY_MS] ,[]); % Remove baseline from an epoched dataset.[-1500 2998] = baseline latency range, is it removing the mean during each gait cycle
+    TMP_EEG = eeg_checkset(TMP_EEG);
+    for i = 1:length(COND_CHARS_TIMEWARP)
+        fprintf(1,'\n==== %s: Processing trial %s ====\n',TMP_EEG.subject,COND_CHARS_TIMEWARP{i});
+        TMP_EEG.etc.epoch_type = 'gait_timewarp';
+        TMP_EEG.filename = sprintf('%s_%s_EPOCH_TMPEEG.set',TMP_EEG.subject,COND_CHARS_TIMEWARP{i});
+        TMP_EEG.condition = COND_CHARS_TIMEWARP{i};
         %- GAIT TIMEWARP: MIM specific function
-        TMP_EEG = gait_timewarp_epoch(EEG,trial_names{trial_i},epoch_limits,...
-            EVENT_FIELD_CONDITION);
-        timewarp_struct{trial_i} = TMP_EEG.timewarp;
+        TMP_EEG = mim_timewarp_epoch(TMP_EEG,COND_CHARS_TIMEWARP{i},...
+            EVENTS_TIMEWARP,STD_TIMEWARP);
+        %- check to make sure a number isn't the first character
+        chk = regexp(COND_CHARS_TIMEWARP{i},'\d');
+        if any(chk)
+            COND_CHARS_TIMEWARP{i} = sprintf('x%s',COND_CHARS_TIMEWARP{i});
+        end
+        TMP_EEG.etc.epoch.condition = COND_CHARS_TIMEWARP{i};
+        ALLEEG{i} = TMP_EEG;
+        timewarp_struct{i} = TMP_EEG.timewarp;
     end
-    %- check to make sure a number isn't the first character
-    chk = regexp(trial_names{trial_i},'\d');
-    if any(chk)
-        trial_names{trial_i} = sprintf('x%s',trial_names{trial_i});
-    end
-    TMP_EEG.etc.epoch.condition = trial_names{trial_i};
-    %## STORE IN ALLEEG
-    ALLEEG{trial_i} = TMP_EEG;
 end
-fprintf(1,'\n==== DONE: EPOCHING ====\n');
 %- concatenate ALLEEG
 ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
 timewarp_struct = cellfun(@(x) [[]; x], timewarp_struct);
+%##
+toc
 end
-%% SUBFUNCTION
-function [EEG] = gait_timewarp_epoch(EEG,cond_char)
-STD_TIMEWARP = 2.5;
-EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
-%##  EPOCH DATA FOR GAIT CYCLES (TIME WARP)
-%seconds to epoch relative to first RHS
-
-% tmp = strcmp({EEG.event.(EVENT_FIELD_CONDITION)},cond_char);
-% valid_points = [find(tmp,1,'first'),find(tmp,1,'last')];
-% EEG = pop_epoch( EEG, {'RHS'}, epoch_limits,...
-%         'eventindices',valid_points(1):valid_points(2),...
-%         'newname', sprintf('Merged datasets %s epochs',EEG.subject),...
-%         'epochinfo', 'yes');
-
+%% ===================================================================== %%
+%## SUBFUNCTION
+function [EEG] = mim_timewarp_epoch(EEG,cond_char,EVENTS_TIMEWARP,STD_TIMEWARP)
+%- seconds to epoch relative to first RHS
 EEG = pop_selectevent(EEG, 'cond',cond_char,'deleteevents','off','deleteepochs','on','invertepochs','off'); 
 %- setup timewarp structure
-timewarp = make_timewarp(EEG,EVENTS,'baselineLatency',0, ...
+timewarp = make_timewarp(EEG,EVENTS_TIMEWARP,'baselineLatency',0, ...
         'maxSTDForAbsolute',STD_TIMEWARP,...
         'maxSTDForRelative',STD_TIMEWARP);
 %subject specific warpto (later use to help calc grand avg warpto across subjects)
@@ -133,30 +118,24 @@ EEG = pop_select( EEG,'notrial',sedi);
 EEG.timewarp = timewarp;
 end
 %% SUBFUNCTION 
-function [EEG] = sliding_window_epoch(EEG,cond_char,window_len,PERCENT_OVERLAP,EVENT_FIELD_CONDITION,EVENT_FIELD_TRIAL,TRIAL_BEG_CHAR,TRIAL_END_CHAR,APPROX_TRIAL_LENGTH)
+function [EEG] = mim_sliding_window_epoch(EEG,cond_char,window_len,percent_overlap,COND_CHAR_FIELD,APPROX_TRIAL_LENGTH)
+%## Looking at cooperative vs competitive vs ball_machie
 %- find conditions that match input string
-tmp_all = strcmp({EEG.event.(EVENT_FIELD_CONDITION)},cond_char);
-tmp_start = strcmp({EEG.event.(EVENT_FIELD_TRIAL)},TRIAL_BEG_CHAR);
-tmp_end = strcmp({EEG.event.(EVENT_FIELD_TRIAL)},TRIAL_END_CHAR);
+tmp_all = strcmp({EEG.event.(COND_CHAR_FIELD)},cond_char);
+% tmp_all = contains({EEG.event.(COND_CHAR_FIELD)},'Human');
+fprintf('Using all events for condition ''%s'' as 1 trial',cond_char);
+trial_start = find(tmp_all,1,'first');
+trial_end = find(tmp_all,1,'last');
+EEG.event(trial_start).type = 'tmp_start';
+EEG.event(trial_start).cond = cond_char;
+EEG.event(trial_end).type = 'tmp_end';
+EEG.event(trial_end).cond = cond_char;
+tmp_all = strcmp({EEG.event.(COND_CHAR_FIELD)},cond_char);
+tmp_start = strcmp({EEG.event.(EVENT_FIELD_TRIAL)},'tmp_start');
+tmp_end = strcmp({EEG.event.(EVENT_FIELD_TRIAL)},'tmp_end');
 valid_idxs = find(tmp_all & (tmp_start | tmp_end));
-if rem(length(valid_idxs),2) ~= 0
-        fprintf('Using all events for condition ''%s'' as 1 trial',cond_char);
-        trial_start = find(tmp_all,1,'first');
-        trial_end = find(tmp_all,1,'last');
-        EEG.event(trial_start).type = 'tmp_start';
-        EEG.event(trial_start).cond = cond_char;
-        EEG.event(trial_end).type = 'tmp_end';
-        EEG.event(trial_end).cond = cond_char;
-        tmp_all = strcmp({EEG.event.(EVENT_FIELD_CONDITION)},cond_char);
-        tmp_start = strcmp({EEG.event.(EVENT_FIELD_TRIAL)},'tmp_start');
-        tmp_end = strcmp({EEG.event.(EVENT_FIELD_TRIAL)},'tmp_end');
-        valid_idxs = find(tmp_all & (tmp_start | tmp_end));
-    if rem(length(valid_idxs),2) ~= 0
-        error(['Not all trial seperators are available in the EEG.event field for subject %s...\n',...
-               'check EEG.event indices: [%i,%i]\n'],EEG.subject,find(tmp_all,1,'first'),find(tmp_all,1,'last'));
-    end
-end
-spc = (abs(window_len)/2)*(1-PERCENT_OVERLAP);
+%-
+spc = (abs(window_len)/2)*(1-percent_overlap);
 %- initiate loop
 trial_cnt = 1;
 tmp_event = EEG.event;
@@ -224,7 +203,6 @@ EEG = pop_epoch( EEG,{cond_char},[-window_len/2,window_len/2],...
         'newname',sprintf('Merged_Datasets_%s_Epochs',EEG.subject),...
         'epochinfo','yes');
 
-%% ===================================================================== %%
 %## SUBFUNCTIONS
 function [event] = create_event_entry(varargin)
     dt_tmp = datetime;
