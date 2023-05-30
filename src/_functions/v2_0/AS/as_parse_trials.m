@@ -18,14 +18,15 @@ function [ALLEEG,timewarp_struct] = as_parse_trials(EEG,epoch_limits,varargin)
 tic
 %## PARAMS
 %- (ADMIN PARAMS)
-SAVE_ALLEEG = false;
+
 %- event timewarp params
 BASELINE_LATENCY_MS = 100;
-% CONDLABEL_CHARS = {'competitive','cooperative','moving_serve','stationary_serve'};
+% COND_FIELD2PARSE = 'bounces';
+CONDLABEL_CHARS = {'competitive','cooperative','moving_serve','stationary_serve'};
 BOUNCES_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; % {'Serve_Human'}
 TYPE_CHARS = {'Subject_hit'}; %{'Subject_receive'};
 STD_TIMEWARP = 3;
-EVENTS_TIMEWARP = {'Subject_receive','Subject_hit','Subject_receive'};
+EVENTS_TIMEWARP = {'Subject_hit','Subject_receive','Subject_hit'}; %{'Subject_receive','Subject_hit','Subject_receive'};
 %- sliding window params
 DO_SLIDING_WINDOW = false;
 REGEXP_BOUNCES = {'Human','BM'};
@@ -70,20 +71,34 @@ if DO_SLIDING_WINDOW
     end
 else
     %## EVENT TIMEWARPING CODE
-    ALLEEG = cell(1,length(TYPE_CHARS)*length(BOUNCES_CHARS)); 
+    ALLEEG = cell(length(TYPE_CHARS)*length(BOUNCES_CHARS),1); 
     timewarp_struct = cell(1,length(TYPE_CHARS)*length(BOUNCES_CHARS));
     cnt = 1;
     for j = 1:length(TYPE_CHARS)
+        %{
+        %## Extract Epochs & Remove Baseline
+        %## Amanda's data already epoched so this code chunk is not needed 
         TMP_EEG = pop_epoch(EEG,TYPE_CHARS(j),epoch_limits,...
-            'newname',sprintf('Merged datasets %s epochs',TMP_EEG.subject),'epochinfo', 'yes');
+            'newname',sprintf('Merged datasets %s epochs',EEG.subject),'epochinfo', 'yes');
         TMP_EEG = eeg_checkset(TMP_EEG);
         %- Remove baseline 150ms before receive or hit
         TMP_EEG = pop_rmbase(TMP_EEG,[epoch_limits(1)*1000 epoch_limits(2)*1000-epoch_limits(2)*1000-BASELINE_LATENCY_MS] ,[]);
         TMP_EEG = eeg_checkset(TMP_EEG);
+        %}
         for i = 1:length(BOUNCES_CHARS)
-            fprintf(1,'\n==== Processing ''%s'' ====\n',BOUNCES_CHARS{i});    
-            %## Update EEG structure
-            [TMP_TMP_EEG] = as_timewarp_epoch(TMP_EEG,BOUNCES_CHARS{i},EVENTS_TIMEWARP,STD_TIMEWARP);
+            fprintf(1,'\n==== Processing ''%s'' ====\n',BOUNCES_CHARS{i});
+            %{
+            %## Timewarp Condition
+            %## Amanda's data is already timewarped so this is not needed
+            [TMP_TMP_EEG] = as_timewarp_epoch(TMP_EEG,BOUNCES_CHARS{i},...
+                EVENTS_TIMEWARP,STD_TIMEWARP,COND_FIELD2PARSE);
+            %}
+            %## select bounce events
+            TMP_TMP_EEG = pop_selectevent(EEG,'bounces',BOUNCES_CHARS{i},...
+                'deleteevents','off','deleteepochs','on','invertepochs','off'); 
+            %## select condition events
+%             TMP_TMP_EEG = pop_selectevent(EEG,'condlabel',CONDLABEL_CHARS{i},...
+%                 'deleteevents','off','deleteepochs','on','invertepochs','off'); 
             %- set parameters
             TMP_TMP_EEG.etc.epoch_type = sprintf('timewarp-%s',TYPE_CHARS{j});
             TMP_TMP_EEG.condition = [BOUNCES_CHARS{i} '_' TYPE_CHARS{j}];
@@ -99,25 +114,15 @@ fprintf(1,'\n==== DONE: EPOCHING ====\n');
 %- concatenate ALLEEG
 ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
 timewarp_struct = cellfun(@(x) [[]; x], timewarp_struct);
-if SAVE_ALLEEG
-    for i = 1:length(ALLEEG)
-        %- save each parsed trial/condition to own folder to help save
-        %memory. EEGLAB is weird like that.
-        if ~exist([ALLEEG(i).filepath filesep TMP_TMP_EEG.condition],'dir')
-            mkdir([ALLEEG(i).filepath filesep TMP_TMP_EEG.condition])
-        end
-        ALLEEG(i) = pop_saveset(ALLEEG(i),...
-            'filepath',[ALLEEG(i).filepath filesep TMP_TMP_EEG.condition],'filename',ALLEEG(i).filename);
-    end
-end
 %##
 toc
 end
 %% ===================================================================== %%
 %## SUBFUNCTION
-function [EEG] = as_timewarp_epoch(EEG,cond_char,EVENTS_TIMEWARP,STD_TIMEWARP)
+function [EEG] = as_timewarp_epoch(EEG,cond_char,EVENTS_TIMEWARP,STD_TIMEWARP,COND_FIELD2PARSE)
+
 %- seconds to epoch relative to first RHS
-EEG = pop_selectevent(EEG, 'cond',cond_char,'deleteevents','off','deleteepochs','on','invertepochs','off'); 
+EEG = pop_selectevent(EEG,COND_FIELD2PARSE,cond_char,'deleteevents','off','deleteepochs','on','invertepochs','off'); 
 %- setup timewarp structure
 timewarp = make_timewarp(EEG,EVENTS_TIMEWARP,'baselineLatency',0, ...
         'maxSTDForAbsolute',STD_TIMEWARP,...

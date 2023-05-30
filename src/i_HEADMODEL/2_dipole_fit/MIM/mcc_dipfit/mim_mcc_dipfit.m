@@ -142,6 +142,7 @@ end
 % field matrix (= channels X source points matrix) is calculated for each 
 % grid point taking into account the head model and the channel positions.
 if ~exist([working_dir filesep 'leadfield_fem.mat'],'file')
+    starti = tic;
     fprintf('Computing Leadfield...\n');
     cfg             = [];
     cfg.grid        = sourcemodel;

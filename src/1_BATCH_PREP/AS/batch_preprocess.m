@@ -46,7 +46,7 @@ else  % isunix
     PATH_ROOT = [filesep 'blue' filesep 'dferris',...
         filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 end
-%% DEFINE SOURCE DIRECTORY & CD ======================================== %%
+%% SETWORKSPACE
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
 run_dir = [source_dir filesep '1_BATCH_PREP' filesep 'MIM_OA_YA'];
@@ -55,11 +55,11 @@ cd(source_dir)
 %- addpath for local folder
 addpath(source_dir)
 addpath(run_dir)
-%% SET WORKSPACE ======================================================= %%
+%- set workspace
 global ADD_CLEANING_SUBMODS
 ADD_CLEANING_SUBMODS = true;
 setWorkspace
-%% PARPOOL SETUP ======================================================= %%
+%% PARPOOL SETUP
 if ~ispc
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
@@ -97,7 +97,7 @@ SUBJ_NO_MRI = {'H2010', 'H2036', 'H2041', 'H2072', 'H3018','H3120'};
 SUBJ_1YA = {'H1002','H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1018','H1019','H1020',...
     'H1022','H1024','H1026','H1027','H1029','H1030','H1031','H1032','H1033','H1034','H1035',...
     'H1036','H1037','H1038','H1039','H1041','H1042','H1044','H1045','H1047','H1047'}; % JACOB,SAL (04/18/2023)
-SUBJ_2MA = {'H2002', 'H2007', 'H2008', 'H2013', 'H2015', 'H2017', ...
+SUBJ_2MA = {'H2017', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
     'H2020', 'H2021', 'H2022', 'H2023',...
     'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2037', 'H2038',...
     'H2039', 'H2042', 'H2052', 'H2059', 'H2062', 'H2082',...
@@ -112,17 +112,13 @@ SUBJ_3MA = {'H3029','H3034','H3039','H3042','H3046',...
     'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
     'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
 %- (OY) Subject Picks 
-% SUBJ_PICS = {SUBJ_1YA}; 
-% GROUP_NAMES = {'H1000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
+SUBJ_PICS = {SUBJ_1YA}; 
+GROUP_NAMES = {'H1000''s'}; 
+SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
 %- (OA) Subject Picks 
 % SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
 % GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%- (VARIOUS) Subjct Picks
-SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-GROUP_NAMES = {'H2000''s','H3000''s'}; 
-SUBJ_ITERS = {[9],[]};
+% SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)}; 
 %% (PROCESSING PARAMS) ================================================= %%
 %## hard define
 %- dataset name
@@ -184,7 +180,7 @@ amica_cmd = cell(length(fPaths),1);
 params = cell(length(fPaths),1);
 parfor (subj_i = LOOP_VAR,POOL_SIZE)
 % for subj_i = 1
-    fprintf('Running subject %s...\n',subjectNames{subj_i})
+    fprintf('Running subject %s...',subjectNames{subj_i})
     %## PREP for MAIN_FUNC
     if ~exist([save_dir filesep subjectNames{subj_i}],'dir')
         mkdir([save_dir filesep subjectNames{subj_i}]);

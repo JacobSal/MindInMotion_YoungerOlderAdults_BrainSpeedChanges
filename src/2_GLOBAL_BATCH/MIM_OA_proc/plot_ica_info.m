@@ -7,7 +7,7 @@
 %   Previous Version: n/a
 %   Summary: 
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/MIM_OA_proc/run_plot_ica_info.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_OA_proc/run_plot_ica_info.sh
 
 %{
 %## RESTORE MATLAB
@@ -51,7 +51,7 @@ cd(source_dir)
 %- addpath for local folder
 addpath(source_dir)
 addpath(run_dir)
-%- set workspace
+%% SET WORKSPACE ======================================================= %%
 global ADD_CLEANING_SUBMODS
 ADD_CLEANING_SUBMODS = false;
 setWorkspace
@@ -122,14 +122,15 @@ DATA_SET = 'MIM_dataset';
 %- datetime override
 % dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
 % dt = '05012023_MIM_OA_subset_N85_speed_terrain_merge';
-dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
+% dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
+dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
 %- epoching params
 % TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %## Soft Defines
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-study_fName_3 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep '_figs'];
 load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
@@ -138,18 +139,18 @@ if ~exist(save_dir,'dir')
 end
 %% LOAD STUDIES && ALLEEGS
 if exist('SLURM_POOL_SIZE','var')
-    POOL_SIZE = min([SLURM_POOL_SIZE,length(load_trials)*4]);
+    POOL_SIZE = min([SLURM_POOL_SIZE,length(TRIAL_TYPES)*4]);
 else
     POOL_SIZE = 1;
 end
 %- Create STUDY & ALLEEG structs
-if ~exist([load_dir filesep study_fName_3 '.study'],'file')
+if ~exist([load_dir filesep study_fName_1 '.study'],'file')
     error('ERROR. study file does not exist');
 else
     if ~ispc
-        [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_3 '_UNIX.study'],'filepath',load_dir);
+        [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',load_dir);
     else
-        [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_3 '.study'],'filepath',load_dir);
+        [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',load_dir);
     end
     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
 end
@@ -203,6 +204,7 @@ for cluster_i = 2:length(STUDY.cluster)
 %     saveas(fig_i,[save_dir filesep sprintf('allDipPlot_2.fig')]);
     saveas(fig_i,[save_dir filesep sprintf('cl%i_allDipPlot_coronal.jpg',cluster_i)]);
 end
+%}
 %- Spec plot
 fprintf('==== Making Spectogram Plots ====\n');
 std_specplot(STUDY,ALLEEG,'clusters',main_cl_inds,...
@@ -219,6 +221,7 @@ fig_i.Position = [500 300 1080 720];
 saveas(fig_i,[save_dir filesep sprintf('allTopoPlot.fig')]);
 saveas(fig_i,[save_dir filesep sprintf('allTopoPlot.jpg')]);
 close all
+%{
 %## POP VIEW PROPS
 if ~exist([save_dir filesep 'component_props'],'dir') 
     mkdir([save_dir filesep 'component_props']);
@@ -290,7 +293,7 @@ speed_trials = {'0p25','0p5','0p75','1p0'};
 terrain_trials = {'flat','low','med','high'};
 COND_DESIGNS = {speed_trials,terrain_trials};
 %-
-inds = [2,3,4,7,8,9];
+inds = main_cl_inds(2:end); %[2,3,4,7,8,9];
 %## std_precomp.m params
 SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
 FREQ_FAC = 4;

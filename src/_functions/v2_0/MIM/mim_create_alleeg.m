@@ -9,15 +9,17 @@ function [ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,vararg
 tic
 %## DEFINE DEFAULTS
 %- developer params
-DO_BEM_DIPFIT = true;
+DO_BEM_DIPFIT = false;
+DO_FEM_DIPFIT = true;
 FORCE_RELOAD = true;
 ICA_FNAME_REGEXP = '%s_allcond_ICA_TMPEEG.set';
 %- find eeglab on path
-if ~ispc
-    tmp = strsplit(path,':');
-else
-    tmp = strsplit(path,';');
-end
+% if ~ispc
+%     tmp = strsplit(path,':');
+% else
+%     tmp = strsplit(path,';');
+% end
+tmp = strsplit(path,';');
 % tmp = strsplit(path,';');
 b1 = regexp(tmp,'eeglab','end');
 b2 = tmp(~cellfun(@isempty,b1));
@@ -94,15 +96,16 @@ ALLEEG = cell(1,length(fNames));
 %* empty STUDY structure for repopulating
 fsPrev = {};
 %## Populate ALLEEG Struct
-pp = gcp('nocreate');
-disp(pp);
-if ~isfield(pp,'NumWorkers')
-    POOL_SIZE = 1;
-else
-    POOL_SIZE = pp.NumWorkers;
-end
-parfor (subj_i=1:length(fNames),POOL_SIZE)
+% pp = gcp('nocreate');
+% disp(pp);
+% if ~isfield(pp,'NumWorkers')
+%     POOL_SIZE = 1;
+% else
+%     POOL_SIZE = pp.NumWorkers;
+% end
+% parfor (subj_i=1:length(fNames),POOL_SIZE)
 % for subj_i=1:length(fNames)
+parfor subj_i=1:length(fNames)
     fName = sprintf(ICA_FNAME_REGEXP,subjectNames{subj_i});
     fPath = [save_dir filesep subjectNames{subj_i} filesep 'ICA'];
     if ~exist(fPath,'dir')
@@ -135,7 +138,20 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
                 EEG = bem_eeglab_dipfit(EEG,COORD_TRANSFORM_MNI,MNI_MRI,MNI_VOL,MNI_CHAN_1005,DIP_NUM,DIP_PLOT)
             end
         end
-        
+        if DO_FEM_DIPFIT
+            fprintf('Trying Finite Element Model Dipfit...\n');
+            try
+                EEG.dipfit.model;
+            catch e
+                fprintf('A valid dipfit model needs to be calculated for FEM dipfit analysis...\n');
+                fprintf(['error. identifier: %s\n',...
+                     'error. %s\n',...
+                     'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+                 exit();
+            end
+            [EEG] = fem_eeglab_dipfit(EEG,COORD_TRANSFORM_MNI,MNI_MRI,MNI_VOL,MNI_CHAN_1005)
+        end
+                 
         %## CHECK ICLABEL
         if ~isfield(EEG.etc,'ic_classification')
             EEG = iclabel(EEG, 'lite');
@@ -147,8 +163,8 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
         EEG.condition = char(conditions{subj_i});
         EEG.session = char(sessions{subj_i});
         EEG = eeg_checkset(EEG,'eventconsistency');
-        fprintf(1,'Saving Subject %s\n',EEG.subject);
         if bool_save_eeg
+            fprintf(1,'Saving Subject %s\n',EEG.subject);
             [EEG] = pop_saveset(EEG,'savemode','twofiles',...
                 'filename',fName,...
                 'filepath',fPath);
@@ -179,7 +195,33 @@ end
 %- CONCATENATE ALLEEG
 ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
 end
-
+function [EEG] = fem_eeglab_dipfit(EEG,COORD_TRANSFORM_MNI,MNI_MRI,MNI_VOL,MNI_CHAN_1005)
+    tmp = [];
+    if ~isfield(EEG.dipfit,'coord_transform')
+        EEG.dipfit.coord_transform = [0 0 0 0 0 0 1 1 1]; %COORD_TRANSFORM_MNI;
+        tmp = [tmp, 'added default coord_transform; '];
+    end
+    if ~isfield(EEG.dipfit,'mrifile')
+        EEG.dipfit.mrifile = MNI_MRI;
+        tmp = [tmp, 'added default mrifile; '];
+    end
+    if ~isfield(EEG.dipfit,'hdmfile')
+        EEG.dipfit.hdmfile = MNI_VOL;
+        tmp = [tmp, 'added default hdmfile; '];
+    end
+    if ~isfield(EEG.dipfit,'coordformat')
+        EEG.dipfit.coordformat = 'MNI';
+        tmp = [tmp, 'added default coordformat; '];
+    end
+    if ~isfield(EEG.dipfit,'chanfile')
+        EEG.dipfit.chanfile = MNI_CHAN_1005;
+        tmp = [tmp, 'added default chanfile; '];
+    end
+    if ~isfield(EEG.dipfit,'chansel')
+        EEG.dipfit.chansel = (1:EEG.nbchan);
+        tmp = [tmp, 'added default chansel; '];
+    end
+end
 function [EEG] = custom_update_chanlocs(EEG,chanlocs_fPath)
     tmp = load(chanlocs_fPath);
     chanlocs_new = tmp.chanlocs_new;

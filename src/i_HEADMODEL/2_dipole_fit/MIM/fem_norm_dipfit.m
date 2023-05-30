@@ -7,7 +7,7 @@
 %   Previous Version: n/a
 %   Summary: 
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/run_fem_dipole_fit.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/run_fem_norm_dipfit.sh
 
 %{
 %## RESTORE MATLAB
@@ -98,7 +98,7 @@ SUBJ_NO_MRI = {'H2010', 'H2036', 'H2041', 'H2072', 'H3018','H3120'};
 SUBJ_1YA = {'H1002','H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1018','H1019','H1020',...
     'H1022','H1024','H1026','H1027','H1029','H1030','H1031','H1032','H1033','H1034','H1035',...
     'H1036','H1037','H1038','H1039','H1041','H1042','H1044','H1045','H1047','H1047'}; % JACOB,SAL (04/18/2023)
-SUBJ_2MA = {'H2017', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
+SUBJ_2MA = {'H2002', 'H2007', 'H2008', 'H2013', 'H2015', 'H2017',...
     'H2020', 'H2021', 'H2022', 'H2023',...
     'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2037', 'H2038',...
     'H2039', 'H2042', 'H2052', 'H2059', 'H2062', 'H2082',...
@@ -120,20 +120,20 @@ SUBJ_ITERS = {1:length(SUBJ_1YA)};
 % SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
 % GROUP_NAMES = {'H2000''s','H3000''s'}; 
 % SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%% ================================================================= %%
-%## PROCESSING PARAMS
-%- Combined OA & YA
+%- (VARIOUS) Subjct Picks
+% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
+% GROUP_NAMES = {'H2000''s','H3000''s'}; 
+% SUBJ_ITERS = {[27],[]};
+%% (PROCESSING PARAMS) ================================================= %%
+%## Hard Define
+%- subject choices (Combined OA & YA)
+% YA_PREP_FPATH = '04182023_YA_N37_prep_verified'; % JACOB,SAL(04/10/2023)
+% OA_PREP_FPATH = '07042023_OA_prep_verified'; % JACOB,SAL(04/10/2023)
 OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
-%- OA
-% OA_PREP_FPATH = '07042023_OA_prep_verified'; % JACOB,SAL(04/10/2023)
-% OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
-%- YA
-% YA_PREP_FPATH = '04182023_YA_N37_prep_verified'; % JACOB,SAL(04/10/2023)
-% OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep YA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
-%% global script chain (VERSION 1)
-%- hard defineW
+%- MRI normalization
 NORMALIZE_MRI = true;
+%## Soft Define
 %% Store fNames and fPaths
 working_dirs    = cell(1,length([SUBJ_ITERS{:}]));
 fiducial_fPaths = cell(3,length([SUBJ_ITERS{:}]));
@@ -142,6 +142,7 @@ simnibs_fPaths  = cell(1,length([SUBJ_ITERS{:}]));
 subjectNames    = cell(1,length([SUBJ_ITERS{:}])); 
 fNames          = cell(1,length([SUBJ_ITERS{:}]));
 fPaths          = cell(1,length([SUBJ_ITERS{:}]));
+dipfit_fPaths   = cell(1,length([SUBJ_ITERS{:}]));
 stack_iter = 0;
 for group_i = 1:length(SUBJ_ITERS)
     sub_idx = SUBJ_ITERS{group_i}; 
@@ -150,6 +151,7 @@ for group_i = 1:length(SUBJ_ITERS)
     %## Assigning paths for .set, headmodel,& channel file
     for subj_i = sub_idx
         %## Generate Headmodels from MRI and Headscan
+        subjectNames{cnt} = SUBJ_PICS{group_i}{subj_i};
         working_dirs{cnt} = [DATA_DIR filesep DATA_SET filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI'];
         %- Segmentation (SimNIBS)
         simnibs_fPaths{cnt} = [working_dirs{cnt} filesep sprintf('%s_masks_contr.nii.gz',SUBJ_PICS{group_i}{subj_i})];
@@ -157,34 +159,29 @@ for group_i = 1:length(SUBJ_ITERS)
         fiducial_fPaths{1,cnt} = [working_dirs{cnt} filesep 'mri_acpc_rs.mat'];
         fiducial_fPaths{2,cnt} = [working_dirs{cnt} filesep 'mri_acpc.mat'];
         fiducial_fPaths{3,cnt} = [working_dirs{cnt} filesep 'ctf_fiducials.mat'];
-        %- Chanlocs fPaths
-        chanlocs_fPaths{cnt} = [working_dirs{cnt} filesep 'CustomElectrodeLocations.txt'];
-        subjectNames{cnt} = SUBJ_PICS{group_i}{subj_i};
         %- ICA fPaths
         fPaths{cnt} = [OUTSIDE_DATA_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'clean'];
         tmp = dir([fPaths{cnt} filesep '*.set']);
         fNames{cnt} = tmp.name;
+        %- Generated DIPFIT fPaths
+        dipfit_fPaths{cnt} = [OUTSIDE_DATA_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'head_model' filesep 'dipfit_struct.mat'];
         %- Prints
-        if ~isempty(working_dirs{cnt})
-            fprintf('==== Subject %s Paths ====\n',SUBJ_PICS{group_i}{subj_i})
-            fprintf('ICA Exists: %i\n',(exist([fPaths{cnt} filesep fNames{cnt}],'file') && exist([fPaths{cnt} filesep 'W'],'file')));
-%             fprintf('MRI working directory Exists: %i\n',exist(working_dirs{cnt},'dir'));
-            fprintf('SimNIBS Segmentation Exists: %i\n',exist(simnibs_fPaths{cnt},'file'));
-            fprintf('Digitized Electrodes Exists: %i\n',exist(chanlocs_fPaths{cnt},'file'));
-            fprintf('MRI Fiducials Exist: %i\n',exist(fiducial_fPaths{1,cnt},'file') && exist(fiducial_fPaths{2,cnt},'file') && exist(fiducial_fPaths{3,cnt},'file'));
-            fprintf('vol.mat check: %i\n',exist([working_dirs{cnt} filesep 'vol.mat'],'file'))
-            fprintf('elec_aligned.mat check: %i\n',exist([working_dirs{cnt} filesep 'elec_aligned.mat'],'file'))
-        end
+        fprintf('==== Subject %s Paths ====\n',SUBJ_PICS{group_i}{subj_i})
+        fprintf('ICA Exists: %i\n',(exist([fPaths{cnt} filesep fNames{cnt}],'file') && exist([fPaths{cnt} filesep 'W'],'file')));
+        fprintf('SimNIBS Segmentation Exists: %i\n',exist(simnibs_fPaths{cnt},'file'));
+        fprintf('DIPFIT Exists: %i\n',exist(dipfit_fPaths{cnt},'file'));
+        fprintf('MRI Fiducials Exist: %i\n',exist(fiducial_fPaths{1,cnt},'file') && exist(fiducial_fPaths{2,cnt},'file') && exist(fiducial_fPaths{3,cnt},'file'));
         cnt = cnt + 1;
     end
     stack_iter = stack_iter + length(SUBJ_ITERS{group_i});
 end
-working_dirs = working_dirs(~cellfun(@isempty,working_dirs));
-fPaths = fPaths(~cellfun(@isempty,working_dirs));
-fNames = fNames(~cellfun(@isempty,working_dirs));
-chanlocs_fPaths = chanlocs_fPaths(~cellfun(@isempty,working_dirs));
-fiducial_fPaths = fiducial_fPaths(:,~cellfun(@isempty,working_dirs));
-subjectNames = subjectNames(~cellfun(@isempty,working_dirs));
+inds = logical(cellfun(@(x) exist(x,'file'),dipfit_fPaths));
+working_dirs = working_dirs(inds);
+dipfit_fPaths = dipfit_fPaths(inds);
+fPaths = fPaths(inds);
+fNames = fNames(inds);
+fiducial_fPaths = fiducial_fPaths(:,inds);
+subjectNames = subjectNames(inds);
 %% SET POOLSIZE
 if exist('SLURM_POOL_SIZE','var')
     POOL_SIZE = min([SLURM_POOL_SIZE,length(working_dirs)]);
@@ -193,67 +190,12 @@ else
 end
 %% LOOP THROUGH PARTICIPANTS
 LOOP_VAR = 1:length(working_dirs);
-% parfor (subj_i = LOOP_VAR, POOL_SIZE)
-for subj_i = LOOP_VAR
-    %% LOAD SUBJECT DATA
-    tic
-    %- load MRI
-    fprintf('Load MRI info...\n');
-    tmp = load(fiducial_fPaths{1,subj_i});
-    mri_acpc_rs = tmp.mri_acpc_rs;
-    %- assign amica_folder
-    fprintf('Load EEG...\n');
-%     amica_folder = [fPaths filesep fNames];
-    EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
-    %- load dipfit_fem.mat
-    fprintf('Load dipfit_fem.mat...\n');
-    tmp = load([working_dirs{subj_i} filesep 'dipfit' filesep 'dipfit_struct.mat']);
-    dipfit_fem = tmp.SAVEVAR;
-    %% 
-    dippos = zeros(length(dipfit_fem.component),3);
-    for i=1:length(dipfit_fem.component)
-        %- 
-        EEG.dipfit_fem.model(i).posxyz = dipfit_fem.dip(i).pos;
-        EEG.dipfit_fem.model(i).momxyz = reshape(dipfit_fem.dip(i).mom, 3, length(dipfit_fem.dip(i).mom)/3)';
-        if ~isempty(dipfit_fem.dip(i).rv)
-            EEG.dipfit_fem.model(i).rv     = dipfit_fem.dip(i).rv;
-        else
-            EEG.dipfit_fem.model(i).rv     = NaN;
-        end
-        %- 
-        EEG.dipfit_fem.model(i).diffmap = dipfit_fem.Vmodel(i) - dipfit_fem.Vdata(i);
-        EEG.dipfit_fem.model(i).sourcepot = dipfit_fem.Vmodel(i);
-        EEG.dipfit_fem.model(i).datapot   = dipfit_fem.Vdata(i);
-
-        dippos(i,:) = dipfit_fem.dip(i).pos;
-    end
-    %% NORMALIZE MRI
-    if NORMALIZE_MRI
-        cfg = [];
-        cfg.nonlinear = 'yes';
-        cfg.spmmethod = 'old'; % SPM new method takes forever, Mailing list argues that the spmmethod new works better
-        mri_norm = ft_volumenormalise(cfg,mri_acpc_rs);
-        %- PLOT
-        ft_sourceplot(cfg,mri_norm);
-        
-    end
-    %% Convert the dipole location to MNI space
-    dipfit_fem_pos = reshape([dipfit_fem.dip(:).pos],3,[])';
-    dipfit_fem_mnipos = ft_warp_apply(mri_norm.params,ft_warp_apply(mri_norm.initial,dipfit_fem_pos), 'individual2sn');
-    dipfit_fem_mni_voxinds = round(ft_warp_apply(pinv(mri_norm.transform), dipfit_fem_mnipos ));
-    for i=1:length(dipfit_fem.component)   
-        dipfit_fem.dip(i).mnipos = dipfit_fem_mnipos(i,:);
-        dipfit_fem.dip(i).mni_voxinds = dipfit_fem_mni_voxinds(i,:);
-        EEG.dipfit_fem.model(i).mnipos = dipfit_fem_mnipos(i,:);
-        EEG.dipfit_fem.model(i).mni_voxinds = dipfit_fem_mni_voxinds(i,:);
-        EEG.dipfit_fem.model(i).pos_old = EEG.dipfit_fem.model(i).posxyz;
-        EEG.dipfit_fem.model(i).posxyz = EEG.dipfit_fem.model(i).mnipos;
-    end
-    %% save
-    EEG.dipfit = EEG.dipfit_fem;
-    dipfit_fem_model = EEG.dipfit;
-    save([fPaths{cnt} filesep 'dipfit_fem_norm.mat'],'dipfit_fem_model')
-    EEG = pop_saveset(EEG);  
+parfor (subj_i = LOOP_VAR, POOL_SIZE) % (05/24/2023) JS, parfor might not
+% be possible for this loop. a problem with ft_sourceplot.
+% for subj_i = LOOP_VAR
+    [EEG,dipfit_fem_norm] = mim_norm_dipfit(fPaths{subj_i},fNames{subj_i},fiducial_fPaths{1,subj_i},dipfit_fPaths{subj_i});
+    par_save(dipfit_fem_norm,fPaths{subj_i},'dipfit_fem_norm.mat')
+    EEG = pop_saveset(EEG,'filepath',EEG.filepath,'filename',EEG.filename); 
 end
 %## TIME
 toc
