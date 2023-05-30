@@ -12,7 +12,7 @@ function [STUDY,ALLEEG] = as_create_study(ALLEEG,cluster_info_fpath,study_fName,
 %## TIME
 tic
 %## DEFINE DEFAULTS
-
+AMANDA_CLUSTER_ITERS = [1,3:12];
 %## Define Parser
 p = inputParser;
 %## REQUIRED
@@ -34,19 +34,18 @@ if ~exist(study_fPath,'dir')
     mkdir(study_fPath);
 end
 %% ===================================================================== %%
-pp = gcp('nocreate');
-disp(pp);
-if ~isfield(pp,'NumWorkers')
-    POOL_SIZE = 1;
-else
-    POOL_SIZE = pp.NumWorkers;
-end
+% pp = gcp('nocreate');
+% disp(pp);
+% if ~isfield(pp,'NumWorkers')
+%     POOL_SIZE = 1;
+% else
+%     POOL_SIZE = pp.NumWorkers;
+% end
 %## LOAD AMANDAS CLUSTER INFO
 fprintf('\nLoading Amandas Cluster Information...\n');
-AMANDA_CLUSTER_ITERS = [1,3:12];
 tmp = load(cluster_info_fpath);
 tmp = tmp.cluster_info;
-tmp_cluster = tmp(AMANDA_CLUSTER_ITERS);
+tmp_cluster = tmp; %tmp(AMANDA_CLUSTER_ITERS);
 %- extract component array
 comps_out = zeros(length(tmp_cluster),length(ALLEEG));
 compList = [];
@@ -64,6 +63,7 @@ tmp_cluster(1).urcomps = tmp_cluster(1).comps;
 tmp_cluster(1).sets = setList;
 tmp_cluster(1).comps = compList;
 %% REMOVE COMPS?
+%{
 tmp_rmv_subjs = zeros(1,length(ALLEEG));
 for subj_i = 1:length(ALLEEG)
     tmp = tmp_cluster(1).comps(tmp_cluster(1).sets == subj_i);
@@ -77,8 +77,8 @@ for subj_i = 1:length(ALLEEG)
     end
 end
 ALLEEG = ALLEEG(~logical(tmp_rmv_subjs));
-%% 
 [tmp_cluster] = rmv_subj_inds(tmp_cluster,find(tmp_rmv_subjs));
+%}
 %% CREATE STUDY
 % initiailize study
 fprintf('\n==== Making Study Modifications ====\n')
@@ -91,9 +91,10 @@ fprintf('\n==== Making Study Modifications ====\n')
 %## (AS) DIPOLE STRUCT
 STUDY.urcluster = tmp_cluster;
 STUDY.cluster = tmp_cluster;
-STUDY.etc.rmvd_subj.inds = tmp_rmv_subjs;
+% STUDY.etc.rmvd_subj.inds = tmp_rmv_subjs;
 %## SAVE
-parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
+% parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
+parfor subj_i = 1:length(ALLEEG)
     ALLEEG(subj_i).etc.full_setfile.filename = ALLEEG(subj_i).filename;
     ALLEEG(subj_i).etc.full_setfile.filepath = ALLEEG(subj_i).filepath;
     ALLEEG(subj_i).filename = sprintf('%s_%s_ICA_TMPEEG',ALLEEG(subj_i).subject,'reducedcomps');

@@ -36,7 +36,7 @@ SPEC_FREQRANGE = [2 100];
 %-
 DO_PLOTTING = true;
 %-
-THRESHOLD_RV_BRAN = 0.15;
+THRESHOLD_RV_BRAIN = 0.15;
 %## Define Parser
 p = inputParser;
 %## REQUIRED
@@ -103,7 +103,8 @@ numICs = 1:size(EEG.icawinv,2);
 %## (Criteria 4) Scalp topographs and dipole location (if outside the brain or not)
 % Residual variance < 0.15
 IC_RV = vertcat(EEG.dipfit.model.rv);
-ICs_RVthreshold_keep = find(IC_RV <= THRESHOLD_RV_BRAN);
+IC_POSXYZ = vertcat(EEG.dipfit.model.posxyz);
+ICs_RVthreshold_keep = find(IC_RV <= THRESHOLD_RV_BRAIN & all(~isnan(IC_POSXYZ),2));
 %% ===================================================================== %%
 %## Gather all IC rejection criteria
 %-
@@ -303,7 +304,6 @@ if DO_PLOTTING
     saveas(fig_i,[save_dir filesep 'KEEP_IC_PSD.jpg']);
 
     %## (PLOT 7) BEMOBIL PIPELINE PLOT
-    
     summed_scores_to_keep = sum(classifications(:,1),2);
     titles_FEM = {};
     for i_title = 1:size(EEG.icawinv,2)
@@ -311,8 +311,9 @@ if DO_PLOTTING
     end
     bemobil_plot_patterns_CL(EEG.icawinv,EEG.chanlocs,'chan_to_plot',find(IC_all_brain >= 8)','weights',summed_scores_to_keep,...
         'fixscale',0,'minweight',0.75,'titles',titles_FEM);
-    saveas(gcf,[save_dir filesep 'potential_brain_components_allcritera_customElectrode.fig']);
-    saveas(gcf,[save_dir filesep 'potential_brain_components_allcritera_customElectrode.jpg']);
+    fig_i = get(groot,'CurrentFigure');
+    saveas(fig_i,[save_dir filesep 'potential_brain_components_allcritera_customElectrode.fig']);
+    saveas(fig_i,[save_dir filesep 'potential_brain_components_allcritera_customElectrode.jpg']);
     
 end
 end

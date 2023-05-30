@@ -1,20 +1,20 @@
 #!/bin/bash
-#SBATCH --job-name=MIM_OA_EPOCH # Job name
+#SBATCH --job-name=DIPOLE_NORM # Job name
 #SBATCH --mail-type=ALL # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=jsalminen@ufl.edu # Where to send mail
 #SBATCH --nodes=1 # Use one node
-#SBATCH --ntasks=1 # Run a single task
-#SBATCH --cpus-per-task=25 # Number of CPU cores per task
-#SBATCH --mem-per-cpu=30000mb# Total memory limit
+#SBATCH --ntasks=1 # Run a single tasks
+#SBATCH --cpus-per-task=15 # Number of CPU cores per task
+#SBATCH --mem-per-cpu=20000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
-#SBATCH --time=16:00:00 # Time limit hrs:min:sec
-#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_OA_proc/_hpg_logs/%j_MIM_OA_epoch_process.log # Standard output
+#SBATCH --time=06:00:00 # Time limit hrs:min:sec
+#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/_hpg_logs/%j_fem_norm_dipfit.log # Standard output
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
-#SBATCH --partition=hpg-default # cluster to run on, use slurm command 'sinfo -s'
+#SBATCH --partition=hpg-default # cluster to run on, use slurm command 'sinfo -s'; bigmem
 module purge
 module load matlab/2020b
-cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_OA_proc/
+cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/
 
 echo "Date              = $(date)"
 echo "Hostname          = $(hostname -s)"
@@ -24,12 +24,11 @@ echo "Number of Nodes Allocated      = $SLURM_JOB_NUM_NODES"
 echo "Number of Tasks Allocated      = $SLURM_NTASKS"
 echo "Number of Cores/Task Allocated = $SLURM_CPUS_PER_TASK"
 
-
 # Create a temporary directory on scratch
 mkdir -p ./$SLURM_JOB_ID
 
 # Kick off matlab
-matlab -nodisplay < /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_OA_proc/epoch_process.m
+matlab -nodisplay < /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/fem_norm_dipfit.m
 
 # Cleanup local work directory
 rm -rf ./$SLURM_JOB_ID

@@ -1,4 +1,4 @@
-function [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,COND_CHARS_TIMEWARP,epoch_limits,varargin)
+function [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,epoch_limits,varargin)
 %MIM_PARSE_TRIALS Summary of this function goes here
 %   This is a CUSTOM function
 %   IN: 
@@ -39,11 +39,13 @@ addRequired(p,'EEG',@isstruct);
 addRequired(p,'epoch_limits',@isnumeric);
 %## OPTIONAL
 %## PARAMETER
-addParameter(p,'PERCENT_OVERLAP',PERCENT_OVERLAP,@ischar);
-addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH,@ischar);
+addParameter(p,'DO_SLIDING_WINDOW',DO_SLIDING_WINDOW,@ischar);
+addParameter(p,'PERCENT_OVERLAP',PERCENT_OVERLAP,@isnumeric);
+addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH,@isnumeric);
 parse(p,EEG,epoch_limits,varargin{:});
 %## SET DEFAULTS
 %- PARAMETER
+DO_SLIDING_WINDOW = p.Results.DO_SLIDING_WINDOW;
 PERCENT_OVERLAP = p.Results.PERCENT_OVERLAP;
 WINDOW_LENGTH = p.Results.WINDOW_LENGTH;
 %% ===================================================================== %%
@@ -76,36 +78,37 @@ else
     TMP_EEG = eeg_checkset(TMP_EEG);
     for i = 1:length(COND_CHARS_TIMEWARP)
         fprintf(1,'\n==== %s: Processing trial %s ====\n',TMP_EEG.subject,COND_CHARS_TIMEWARP{i});
-        TMP_EEG.etc.epoch_type = 'gait_timewarp';
-        TMP_EEG.filename = sprintf('%s_%s_EPOCH_TMPEEG.set',TMP_EEG.subject,COND_CHARS_TIMEWARP{i});
-        TMP_EEG.condition = COND_CHARS_TIMEWARP{i};
         %- GAIT TIMEWARP: MIM specific function
-        TMP_EEG = mim_timewarp_epoch(TMP_EEG,COND_CHARS_TIMEWARP{i},...
+        TMP_TMP_EEG = mim_timewarp_epoch(TMP_EEG,COND_CHARS_TIMEWARP{i},...
             EVENTS_TIMEWARP,STD_TIMEWARP);
+        TMP_TMP_EEG.etc.epoch_type = 'gait_timewarp';
+        TMP_TMP_EEG.filename = sprintf('%s_%s_EPOCH_TMPEEG.set',TMP_TMP_EEG.subject,COND_CHARS_TIMEWARP{i});
+        TMP_TMP_EEG.condition = COND_CHARS_TIMEWARP{i};
+        
         %- check to make sure a number isn't the first character
         chk = regexp(COND_CHARS_TIMEWARP{i},'\d');
         if any(chk)
             COND_CHARS_TIMEWARP{i} = sprintf('x%s',COND_CHARS_TIMEWARP{i});
         end
-        TMP_EEG.etc.epoch.condition = COND_CHARS_TIMEWARP{i};
-        ALLEEG{i} = TMP_EEG;
-        timewarp_struct{i} = TMP_EEG.timewarp;
+        TMP_TMP_EEG.etc.epoch.condition = COND_CHARS_TIMEWARP{i};
+        ALLEEG{i} = TMP_TMP_EEG;
+        timewarp_struct{i} = TMP_TMP_EEG.timewarp;
     end
 end
 %- concatenate ALLEEG
 ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
 timewarp_struct = cellfun(@(x) [[]; x], timewarp_struct);
-if SAVE_ALLEEG
-    for i = 1:length(ALLEEG)
-        %- save each parsed trial/condition to own folder to help save
-        %memory. EEGLAB is weird like that.
-        if ~exist([ALLEEG(i).filepath filesep TMP_TMP_EEG.condition],'dir')
-            mkdir([ALLEEG(i).filepath filesep TMP_TMP_EEG.condition])
-        end
-        ALLEEG(i) = pop_saveset(ALLEEG(i),...
-            'filepath',[ALLEEG(i).filepath filesep TMP_TMP_EEG.condition],'filename',ALLEEG(i).filename);
-    end
-end
+% if SAVE_ALLEEG
+%     for i = 1:length(ALLEEG)
+%         %- save each parsed trial/condition to own folder to help save
+%         %memory. EEGLAB is weird like that.
+%         if ~exist([ALLEEG(i).filepath filesep TMP_TMP_EEG.condition],'dir')
+%             mkdir([ALLEEG(i).filepath filesep TMP_TMP_EEG.condition])
+%         end
+%         ALLEEG(i) = pop_saveset(ALLEEG(i),...
+%             'filepath',[ALLEEG(i).filepath filesep TMP_TMP_EEG.condition],'filename',ALLEEG(i).filename);
+%     end
+% end
 %##
 toc
 end

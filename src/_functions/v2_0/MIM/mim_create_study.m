@@ -35,18 +35,26 @@ end
 %% ===================================================================== %%
 THRESH_BRAIN_SCORE = 8;
 % POOL_SIZE = 15;
+% pp = gcp('nocreate');
+% disp(pp);
+% if ~isfield(pp,'NumWorkers')
+%     POOL_SIZE = 1;
+% else
+%     POOL_SIZE = pp.NumWorkers;
+% end
 %## DIPOLE REJECTION
 % parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
 parfor subj_i = 1:length(ALLEEG)
     reject_struct = mim_reject_ics(ALLEEG(subj_i),ALLEEG(subj_i).filepath);
-    tmp_bad = setdiff((1:size(ALLEEG(subj_i).icaweights,1)),find((reject_struct.IC_all_brain >= THRESH_BRAIN_SCORE & reject_struct.IC_all_brain ~= 9)));
-    tmp_good = find(reject_struct.IC_all_brain >= THRESH_BRAIN_SCORE & reject_struct.IC_all_brain ~= 9);
+    tmp_bad = setdiff(find((1:size(ALLEEG(subj_i).icaweights,1))),find((reject_struct.IC_all_brain >= THRESH_BRAIN_SCORE & reject_struct.IC_all_brain ~= 9)));
+    tmp_good = [find(reject_struct.IC_all_brain >= THRESH_BRAIN_SCORE & reject_struct.IC_all_brain ~= 9)];
     ALLEEG(subj_i).etc.urreject = [];
     ALLEEG(subj_i).etc.urreject.crit = [];
     ALLEEG(subj_i).etc.urreject.ic_keep = [];
     ALLEEG(subj_i).etc.urreject.ic_rej = [];
     ALLEEG(subj_i).etc.urreject.dipfit = [];
     if isempty(tmp_good)
+        fprintf('** Subject %s has 0 brain components\n',ALLEEG(subj_i).subject);
         continue;
     end
     ALLEEG(subj_i).etc.urreject.crit = reject_struct;
@@ -85,7 +93,8 @@ fprintf('\n==== Making Study Modifications ====\n')
 %                                 'commands', {'dipselect',0.2},...
 %                                 'filename',studyName,...
 %                                 'filepath',studyDir);
-parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
+% parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
+parfor subj_i = 1:length(ALLEEG)
     ALLEEG(subj_i).etc.full_setfile.filename = ALLEEG(subj_i).filename;
     ALLEEG(subj_i).etc.full_setfile.filepath = ALLEEG(subj_i).filepath;
     ALLEEG(subj_i).filename = sprintf('%s_%s_ICA_TMPEEG',ALLEEG(subj_i).subject,'reducedcomps');

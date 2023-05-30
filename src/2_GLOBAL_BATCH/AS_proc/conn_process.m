@@ -8,7 +8,7 @@
 %   Summary: This code was modified from
 %
 %- run sh
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/AS_proc/run_conn_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/AS_proc/run_conn_process.sh
 
 %{
 %## RESTORE MATLAB
@@ -46,7 +46,7 @@ end
 %% SETWORKSPACE
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'gamma' filesep 'AS_proc'];
+run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'AS_proc'];
 %- cd to source directory
 cd(source_dir)
 %- addpath for local folder
@@ -86,17 +86,31 @@ end
 %% ===================================================================== %%
 %## Data PATHS
 fprintf('\nData PATHS\n');
-%- Hardcodes directory (data_dir) to .SET files for raw EEG data
-DATA_SET = 'AS_dataset';
-DATA_DIR = [source_dir filesep '_data'];
-%- path for local data
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-SUBJINF_DIR = [DATA_DIR filesep DATA_SET filesep '_subjinf'];
-%% Data Processing Parameters
+%## DATASET SPECIFIC
+SUBJ_PICS = {{'02','03','04','05','09','11','15','16','18','19','21','22',...
+            '23','24','25','27','28','29','30','31','32','33','35','36','38'}};
+SUBJ_ITERS = {(1:length(SUBJ_PICS{1}))};
+%% (PARAMETERS) ======================================================== %%
 fprintf('\nData Processing Parameters\n');
-%- 
+%## Hard Defines
+%- dataset specific
+DATA_SET = 'AS_dataset';
+%- study group and saving
 COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
 EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
+%- connectivity process
+CONN_FREQS = (1:100);
+CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
+CNCTANL_TOOLBOX = 'sift'; %'bsmart'
+WINDOW_LENGTH = 0.5;
+WINDOW_STEP_SIZE = 0.025;
+NEW_SAMPLE_RATE = [];
+DO_BOOTSTRAP = true;
+DO_PHASE_RND = true;
+%- datetime override
+dt = '05252023_bounces_1h2h2bm_JS';
+%## Soft Define
+%- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
 cnt = 1;
 for cond_i = 1:length(COND_CHARS)
@@ -105,34 +119,13 @@ for cond_i = 1:length(COND_CHARS)
         cnt = cnt + 1;
     end
 end
-TRIAL_TYPES = EVENT_COND_COMBOS;
-%- connectivity process
-CONN_FREQS = (1:100);
-CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
-%- subj_i_genConnMeas
-CNCTANL_TOOLBOX = 'sift'; %'bsmart'
-WINDOW_LENGTH = 0.5;
-WINDOW_STEP_SIZE = 0.025;
-NEW_SAMPLE_RATE = [];
-DO_BOOTSTRAP = true;
-%- subj_i_genConnStats
-DO_PHASE_RND = true;
-%- eeglab_cluster.m spectral params
-FREQ_LIMITS = [1,100];
-CYCLE_LIMITS = [3,0.8];
-SPEC_MODE = 'fft'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
-FREQ_FAC = 4;
-PAD_RATIO = 2;
-
-%% global script chain (VERSION 1)
-%- datetime override
-dt = '05222023_run_JS';
-%## PATH & TEMP STUDY NAME
-%- hard define
-SAVE_EEG = true;
-study_fName_3 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
-study_fName_4 = sprintf('%s_CONN_study',[TRIAL_TYPES{:}]);
-%- soft define
+%- path for local data
+DATA_DIR = [source_dir filesep '_data'];
+OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET];
+STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
+study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
+study_fName_2 = sprintf('%s_CONN_study',[EVENT_COND_COMBOS{:}]);
+cluster_info_fpath = [STUDIES_DIR filesep 'as_cluster_info' filesep 'cluster_info.mat'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
@@ -141,17 +134,17 @@ if ~exist(save_dir,'dir')
 end
 %% LOAD EPOCH STUDY
 %- Create STUDY & ALLEEG structs
-if ~exist([load_dir filesep study_fName_3 '.study'],'file')
+if ~exist([load_dir filesep study_fName_1 '.study'],'file')
     error('ERROR. study file does not exist');
     exit(); %#ok<UNRCH>
 else
     if ~ispc
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_3 '_UNIX.study'],'filepath',load_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',load_dir);
     else
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_3 '.study'],'filepath',load_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',load_dir);
     end
     %## (AS) ATTACH CLUSTER
-    MAIN_STUDY.cluster = MAIN_STUDY.urcluster;
+%     MAIN_STUDY.cluster = MAIN_STUDY.urcluster;
     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(MAIN_STUDY);
 end
 %% INITIALIZE PARFOR LOOP VARS
@@ -189,7 +182,8 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
     fprintf('%i,',components'); fprintf('\n');
     try
         %## RUN MAIN_FUNC
-        [TMP_EEG] = main_func_v2(EEG,save_dir,...
+        [TMP_EEG] = main_func(EEG,save_dir,...
+            'CONN_COMPONENTS',components,...
             'CONN_METHODS',CONN_METHODS,... 
             'FREQS',CONN_FREQS,...
             'CNCTANL_TOOLBOX',CNCTANL_TOOLBOX,... 
@@ -217,7 +211,7 @@ pop_editoptions('option_computeica',0);
 [ALLEEG,MAIN_STUDY] = parfunc_rmv_subjs(tmp,MAIN_STUDY,rmv_subj);
 %- Save
 [MAIN_STUDY,ALLEEG] = parfunc_save_study(MAIN_STUDY,ALLEEG,...
-                                        study_fName_4,save_dir,...
+                                        study_fName_2,save_dir,...
                                         'STUDY_COND',[]);
 %% Version History
 %{

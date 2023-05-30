@@ -1,4 +1,4 @@
-function [ALLEEG] = main_func_v2(ALLEEG,save_dir,varargin)
+function [ALLEEG] = main_func(ALLEEG,save_dir,varargin)
 %MAIN_FUNC Summary of this function goes here
 %   Detailed explanation goes here
 %   IN: 

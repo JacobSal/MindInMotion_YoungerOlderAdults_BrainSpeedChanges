@@ -31,9 +31,10 @@ outlier_cl_inds = zeros(1,length(STUDY.cluster));
 %- loop through all clusters but the parent cluster
 main_cl_inds(1) = 1;
 for clus_i = 2:length(STUDY.cluster)
-    %- if cluster name contains the word 'Outlier' then the cluster is an
+    %- if cluster name contains the word 'Outlier' or 'Reject' then the cluster is an
     %outlier
-    if ~contains(STUDY.cluster(clus_i).name,'Outlier')
+    chk = isempty(regexpi(STUDY.cluster(clus_i).name,'outlier')) && isempty(regexpi(STUDY.cluster(clus_i).name,'reject'));
+    if chk
         sets_i = STUDY.cluster(clus_i).sets;
         main_cl_inds(clus_i) = 1;
         for j = 1:length(sets_i)

@@ -7,7 +7,7 @@
 %   Previous Version: n/a
 %   Summary: 
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/MIM_OA_proc/run_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_OA_proc/run_epoch_process.sh
 
 %{
 %## RESTORE MATLAB
@@ -42,7 +42,7 @@ else  % isunix
     PATH_ROOT = [filesep 'blue' filesep 'dferris',...
         filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 end
-%% SETWORKSPACE
+%% DEFINE SOURCE DIRECTORY & CD ======================================== %%
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
 run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'MIM_OA_proc'];
@@ -51,11 +51,11 @@ cd(source_dir)
 %- addpath for local folder
 addpath(source_dir)
 addpath(run_dir)
-%- set workspace
+%% SET WORKSPACE ======================================================= %%
 global ADD_CLEANING_SUBMODS
 ADD_CLEANING_SUBMODS = false;
 setWorkspace
-%% PARPOOL SETUP
+%% PARPOOL SETUP ======================================================= %%
 if ~ispc
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
@@ -98,6 +98,11 @@ SUBJ_2MA = {'H2017', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
     'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2037', 'H2038',...
     'H2039', 'H2042', 'H2052', 'H2059', 'H2062', 'H2082',...
     'H2090', 'H2095', 'H2111', 'H2117'};
+% SUBJ_2MA = {'H2017', 'H2002', 'H2007', 'H2013', 'H2015',...
+%     'H2020', 'H2021',...
+%     'H2025', 'H2026', 'H2027', 'H2034', 'H2037', 'H2038',...
+%     'H2039', 'H2042', 'H2052', 'H2059', 'H2062', 'H2082',...
+%     'H2090', 'H2095', 'H2111', 'H2117'};
 SUBJ_3MA = {'H3029','H3034','H3039','H3042','H3046',...
     'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107',...
     'NH3006', 'NH3007', 'NH3008', 'NH3010',...
@@ -108,13 +113,13 @@ SUBJ_3MA = {'H3029','H3034','H3039','H3042','H3046',...
     'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
     'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
 %- (OY) Subject Picks 
-SUBJ_PICS = {SUBJ_1YA}; 
-GROUP_NAMES = {'H1000''s'}; 
-SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
+% SUBJ_PICS = {SUBJ_1YA}; 
+% GROUP_NAMES = {'H1000''s'}; 
+% SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
 %- (OA) Subject Picks 
-% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
+SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
+GROUP_NAMES = {'H2000''s','H3000''s'}; 
+SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
@@ -131,7 +136,8 @@ SESSION_NUMBER = '1';
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 EPOCH_TIME_LIMITS = [-0.5,5]; % [-1,3] captures gait events well
 % ESTIMATED_TRIAL_LENGTH = 3*60; % trial length in seconds
-PER_OVERLAP = 0.0; % percent overlap between epochs
+WINDOW_LENGTH = 6; % sliding window length in seconds
+PERCENT_OVERLAP = 0.0; % percent overlap between epochs
 TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 %- eeglab_cluster.m spectral params
 FREQ_LIMITS = [1,100];
@@ -141,7 +147,7 @@ FREQ_FAC = 4;
 PAD_RATIO = 2;
 %- datetime override
 % dt = '05182023_MIM_OA_subset_N85_oldpipe';
-dt = '05192023_MIM_OAN79_subset_prep_verified';
+dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
 %- Subject Directory information
 OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 %## soft define
@@ -149,8 +155,7 @@ DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
 study_fName_1 = sprintf('%s_all_comps_study',[TRIAL_TYPES{:}]);
-study_fName_2 = sprintf('%s_reduced_comps_study',[TRIAL_TYPES{:}]);
-study_fName_3 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+study_fName_2 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 % TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
@@ -165,7 +170,9 @@ subjectNames    = cell(1,length([SUBJ_ITERS{:}]));
 fNames          = cell(1,length([SUBJ_ITERS{:}]));
 fPaths          = cell(1,length([SUBJ_ITERS{:}]));
 chanlocs_fPaths   = cell(1,length([SUBJ_ITERS{:}]));
-vol_fPaths = cell(1,length([SUBJ_ITERS{:}]));
+% dipfit_fPaths   = cell(1,length([SUBJ_ITERS{:}]));
+dipfit_norm_fPaths = cell(1,length([SUBJ_ITERS{:}]));
+% vol_fPaths = cell(1,length([SUBJ_ITERS{:}]));
 stack_iter = 0;
 for group_i = 1:length(SUBJ_ITERS)
     sub_idx = SUBJ_ITERS{group_i}; %1:2; %1:length(SUBJ_PICS{GROUP_INT}); %1:2;
@@ -181,9 +188,13 @@ for group_i = 1:length(SUBJ_ITERS)
         %- Chanlocs fPaths
 %         chanlocs_fPaths{cnt} = [DATA_DIR filesep DATA_SET filesep SUBJ_PICS{group_i}{subj_i} filesep 'EEG' filesep 'HeadScan' filesep 'CustomElectrodeLocations.mat'];
         chanlocs_fPaths{cnt} = [DATA_DIR filesep DATA_SET filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep '' filesep 'CustomElectrodeLocations.mat'];
+%         dipfit_fPaths{cnt} = [OUTSIDE_DATA_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'head_model' filesep 'dipfit_struct.mat'];
+        dipfit_norm_fPaths{cnt} = [fPaths{cnt} filesep 'dipfit_fem_norm.mat'];
         %- Prints
         fprintf('==== Subject %s Paths ====\n',SUBJ_PICS{group_i}{subj_i})
         fprintf('ICA Exists: %i\n',(exist([fPaths{cnt} filesep fNames{cnt}],'file') && exist([fPaths{cnt} filesep 'W'],'file')))
+%         fprintf('DIPFIT Exists: %i\n',exist(dipfit_fPaths{cnt},'file'));
+        fprintf('Normalized DIPFIT Exists: %i\n',exist(dipfit_norm_fPaths{cnt},'file'));
         cnt = cnt + 1;
     end
     %- reset cnt
@@ -199,6 +210,16 @@ for group_i = 1:length(SUBJ_ITERS)
     end
     stack_iter = stack_iter + length(SUBJ_ITERS{group_i});
 end
+%- remove subjects without a dipole fit
+inds = logical(cellfun(@(x) exist(x,'file'),dipfit_norm_fPaths));
+chanlocs_fPaths = chanlocs_fPaths(inds);
+dipfit_norm_fPaths = dipfit_norm_fPaths(inds);
+fPaths = fPaths(inds);
+fNames = fNames(inds);
+sessions = sessions(inds);
+groups = groups(inds);
+conditions = conditions(inds);
+subjectNames = subjectNames(inds);
 %% CREATE STUDY
 %## Create STUDY & ALLEEG structs
 if ~exist([save_dir filesep study_fName_1 '.study'],'file') %|| true
@@ -247,7 +268,7 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
         fprintf('%s) Recalculating ICA activations\n',EEG.subject);
         EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
     end
-    EEG.icaact    = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
+    EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     %## PARSE TRIALS
     fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED filesep [TRIAL_TYPES{:}]];
     fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[TRIAL_TYPES{:}]);
@@ -255,67 +276,54 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
         mkdir(fPath)
     end
     %- parse
-    if exist([fPath filesep fName],'file') && false
-        try
-            ALLEEG = pop_loadset('filename',fName,'filepath',fPath);
-            tmp{subj_i} = ALLEEG;
-        catch e
-            rmv_subj(subj_i) = 1;
-            EEG.timewarp = struct([]);
-            EEG.urevent = [];
-            tmp{subj_i} = []; %EEG;
-            fprintf(['error. identifier: %s\n',...
-                     'error. %s\n',...
-                     'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
-        end
-    else
-        try
-            %## EPOCH
-            [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,TRIAL_TYPES,EPOCH_TIME_LIMITS);
-            EEG = pop_mergeset( ALLEEG, 1:size(ALLEEG,2),1);
-            EEG = rmfield(EEG,'timewarp'); 
-            %## SAVE ONE BIG EEG FILE
-            ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
-            ALLEEG = rmfield(ALLEEG,'timewarp');
-            %- timewarp for across condition
-            timewarp = make_timewarp(ALLEEG,TIMEWARP_EVENTS,'baselineLatency',0, ...
-                    'maxSTDForAbsolute',inf,...
-                    'maxSTDForRelative',inf);
-            %- subject specific warpto (later use to help calc grand avg warpto across subjects)
-            timewarp.warpto = nanmedian(timewarp.latencies);        
-            goodepochs  = sort([timewarp.epochs]);
-            %- probably not needed? 
-            sedi = setdiff(1:length(ALLEEG.epoch),goodepochs);
-            %- reject outlier strides
-            ALLEEG = pop_select( ALLEEG,'notrial',sedi);
-            %- store timewarp structure in EEG
-            ALLEEG.timewarp = timewarp;
-            disp(EEG.subject); disp(allWarpTo); disp(grandAvgWarpTo);
-            %- store condition-by-conditino timewarpings
-            ALLEEG.etc.timewarp_by_cond = timewarp_struct;
-            %## STRUCT EDITS
-            ALLEEG.urevent = []; % might be needed
-            ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
-            %- checks
-            ALLEEG = eeg_checkset(ALLEEG,'eventconsistency');
-            ALLEEG = eeg_checkset(ALLEEG);
-            ALLEEG = eeg_checkamica(ALLEEG);
-            %- save
-            [ALLEEG] = pop_saveset(ALLEEG,'savemode','twofiles',...
-                    'filename',fName,...
-                    'filepath',fPath,...
-                    'version','6');
-            tmp{subj_i} = ALLEEG;
-        catch e
-            rmv_subj(subj_i) = 1;
-            EEG.timewarp = struct([]);
-            EEG.urevent = [];
-            tmp{subj_i} = []; %EEG;
-            fprintf(['error. identifier: %s\n',...
-                     'error. %s\n',...
-                     'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
-        end
+    try
+        %## EPOCH
+        [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,EPOCH_TIME_LIMITS); %,...
+%             'PERCENT_OVERLAP',PERCENT_OVERLAP,'WINDOW_LENGTH',WINDOW_LENGTH);
+        EEG = pop_mergeset(ALLEEG,1:size(ALLEEG,2),1);
+        EEG = rmfield(EEG,'timewarp'); 
+        %## SAVE ONE BIG EEG FILE
+        ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
+        ALLEEG = rmfield(ALLEEG,'timewarp');
+        %- timewarp for across condition
+        timewarp = make_timewarp(ALLEEG,TIMEWARP_EVENTS,'baselineLatency',0, ...
+                'maxSTDForAbsolute',inf,...
+                'maxSTDForRelative',inf);
+        %- subject specific warpto (later use to help calc grand avg warpto across subjects)
+        timewarp.warpto = nanmedian(timewarp.latencies);        
+        goodepochs  = sort([timewarp.epochs]);
+        %- probably not needed? 
+        sedi = setdiff(1:length(ALLEEG.epoch),goodepochs);
+        %- reject outlier strides
+        ALLEEG = pop_select(ALLEEG,'notrial',sedi);
+        %- store timewarp structure in EEG
+        ALLEEG.timewarp = timewarp;
+%         disp(EEG.subject); disp(allWarpTo); disp(grandAvgWarpTo);
+        %- store condition-by-conditino timewarpings
+        ALLEEG.etc.timewarp_by_cond = timewarp_struct;
+        %## STRUCT EDITS
+        ALLEEG.urevent = []; % might be needed
+        ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
+        %- checks
+        ALLEEG = eeg_checkset(ALLEEG,'eventconsistency');
+        ALLEEG = eeg_checkset(ALLEEG);
+        ALLEEG = eeg_checkamica(ALLEEG);
+        %- save
+        [ALLEEG] = pop_saveset(ALLEEG,'savemode','twofiles',...
+                'filename',fName,...
+                'filepath',fPath,...
+                'version','6');
+        tmp{subj_i} = ALLEEG;
+    catch e
+        rmv_subj(subj_i) = 1;
+        EEG.timewarp = struct([]);
+        EEG.urevent = [];
+        tmp{subj_i} = []; %EEG;
+        fprintf(['error. identifier: %s\n',...
+                 'error. %s\n',...
+                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
     end
+
 end
 %% SAVE BIG STUDY
 fprintf('==== Reformatting Study ====\n');
@@ -348,42 +356,14 @@ tmp = cellfun(@(x) [[]; x], tmp);
 [STUDY, ALLEEG] = std_editset([],tmp,...
                                 'updatedat','off',...
                                 'savedat','off',...
-                                'name',study_fName_3,...
-                                'filename',study_fName_3,...
+                                'name',study_fName_2,...
+                                'filename',study_fName_2,...
                                 'filepath',save_dir);
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                         STUDY.filename,STUDY.filepath,...
                                         'RESAVE_DATASETS','on');
-%- NOTES: spec_mode, 'psd' does not work.
-[STUDY,ALLEEG] = eeglab_cluster(STUDY,ALLEEG,...
-                    'SPEC_MODE',SPEC_MODE,...
-                    'FREQ_LIMITS',FREQ_LIMITS,...
-                    'CYCLE_LIMITS',CYCLE_LIMITS,...
-                    'FREQ_FAC',FREQ_FAC,...
-                    'PAD_RATIO',PAD_RATIO);
-%## PCA reduction algorithm
-%- RECALCULATE ICAACT MATRICES
-%     ALLEEG = eeg_checkset(ALLEEG,'loaddata');
-%     for subj_i = 1:length(ALLEEG)
-%         if isempty(ALLEEG(subj_i).icaact)
-%             fprintf('%s) Recalculating ICA activations\n',ALLEEG(subj_i).subject);
-%             ALLEEG(subj_i).icaact = (ALLEEG(subj_i).icaweights*ALLEEG(subj_i).icasphere)*ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:);
-%         end
-%     end
-% [STUDY,ALLEEG,~,~] = cluster_pca_reduce(STUDY,ALLEEG);
-%## ICA reduction algorithm
-[STUDY,~,~] = cluster_ica_reduce(STUDY);
-%## ADD ANATOMICAL LABELS
-[~, atlas_cell] = add_anatomical_labels(STUDY,ALLEEG);
-STUDY.etc.add_anatomical_labels = atlas_cell;
-STUDY.etc.pipe_params = params;
-% [ALLEEG,MAIN_STUDY] = parfunc_rmv_subjs(tmp,MAIN_STUDY,rmv_subj);
-%- Save
-[STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
-                                            study_fName_3,save_dir,...
-                                            'STUDY_COND',[]);
-                                        %%
+                                        
 %% Version History
 %{
 v2.0; (04/28/2023) JS: Splitting up the epoching, plotting, and
