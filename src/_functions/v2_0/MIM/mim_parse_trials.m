@@ -19,8 +19,8 @@ tic
 SAVE_ALLEEG = false;
 %- event timewarp params
 COND_CHARS_TIMEWARP = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-BASELINE_LATENCY_MS = 100;
-STD_TIMEWARP = 3;
+BASELINE_TIMELIMITS = [-epoch_limits(1),epoch_limits(2)-1000*(1/EEG.srate)]; % time in milliseconds
+STD_TIMEWARP = 3; %2.5;
 EVENTS_TIMEWARP = {'RHS','LTO','LHS','RTO','RHS'};
 %- sliding window params
 DO_SLIDING_WINDOW = false;
@@ -74,7 +74,7 @@ else
     timewarp_struct = cell(1,length(COND_CHARS_TIMEWARP));
     TMP_EEG = pop_epoch( EEG, {  'RHS'  }, epoch_limits, 'newname', sprintf('Merged datasets %s epochs',EEG.subject), 'epochinfo', 'yes'); 
     TMP_EEG = eeg_checkset(TMP_EEG);
-    TMP_EEG = pop_rmbase( TMP_EEG, [epoch_limits(1)*1000 epoch_limits(2)*1000-BASELINE_LATENCY_MS] ,[]); % Remove baseline from an epoched dataset.[-1500 2998] = baseline latency range, is it removing the mean during each gait cycle
+    TMP_EEG = pop_rmbase(TMP_EEG, BASELINE_TIMELIMITS ,[]); % Remove baseline from an epoched dataset.[-1500 2998] = baseline latency range, is it removing the mean during each gait cycle
     TMP_EEG = eeg_checkset(TMP_EEG);
     for i = 1:length(COND_CHARS_TIMEWARP)
         fprintf(1,'\n==== %s: Processing trial %s ====\n',TMP_EEG.subject,COND_CHARS_TIMEWARP{i});

@@ -131,7 +131,6 @@ SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
 FREQ_FAC = 4;
 PAD_RATIO = 2;
 %- datetime override
-% dt = '05182023_MIM_OA_subset_N85_oldpipe';
 dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];

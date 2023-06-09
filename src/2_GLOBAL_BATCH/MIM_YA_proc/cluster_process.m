@@ -7,7 +7,7 @@
 %   Previous Version: n/a
 %   Summary: 
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_OA_proc/run_cluster_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_YA_proc/run_cluster_process.sh
 
 %{
 %## RESTORE MATLAB
@@ -45,7 +45,7 @@ end
 %% DEFINE SOURCE DIRECTORY & CD ======================================== %%
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'MIM_OA_proc'];
+run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'MIM_YA_proc'];
 %- cd to source directory
 cd(source_dir)
 %- addpath for local folder
@@ -108,20 +108,17 @@ SUBJ_3MA = {'H3029','H3034','H3039','H3042','H3046',...
     'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
     'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
 %- (OY) Subject Picks 
-% SUBJ_PICS = {SUBJ_1YA}; 
-% GROUP_NAMES = {'H1000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
+SUBJ_PICS = {SUBJ_1YA}; 
+GROUP_NAMES = {'H1000''s'}; 
+SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
 %- (OA) Subject Picks 
-SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-GROUP_NAMES = {'H2000''s','H3000''s'}; 
-SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
+% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
+% GROUP_NAMES = {'H2000''s','H3000''s'}; 
+% SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
 DATA_SET = 'MIM_dataset';
-%- study group and saving
-SAVE_EEG = false; %true;
-OVERRIDE_DIPFIT = true;
 % TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %- eeglab_cluster.m spectral params
@@ -131,8 +128,7 @@ SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
 FREQ_FAC = 4;
 PAD_RATIO = 2;
 %- datetime override
-% dt = '05182023_MIM_OA_subset_N85_oldpipe';
-dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
+dt = '05302023_MIM_YAN33_subset_prep_verified_gait';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];

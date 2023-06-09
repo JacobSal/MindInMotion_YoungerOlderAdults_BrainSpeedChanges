@@ -84,10 +84,6 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (DATASET INFORMATION) =============================================== %%
-%## PATHS
-%- hardcode data_dir
-DATA_SET = 'MIM_dataset';
-DATA_DIR = [source_dir filesep '_data'];
 %## (MIND IN MOTION) DATASET SPECIFIC (05/24/2023)
 SUBJ_NORUN = {'H2012_FU', 'H2013_FU', 'H2018_FU', 'H2020_FU', 'H2021_FU',...
             'H3024_Case','H3029_FU','H3039_FU','H3063_FU','NH3021_Case', 'NH3023_Case','NH3025_Case', 'NH3030_FU',...
@@ -112,28 +108,32 @@ SUBJ_3MA = {'H3029','H3034','H3039','H3042','H3046',...
     'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
     'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
     'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
-%- (OY) Subject Picks 
-SUBJ_PICS = {SUBJ_1YA}; 
-GROUP_NAMES = {'H1000''s'}; 
-SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
+%- (YA) Subject Picks 
+% SUBJ_PICS = {SUBJ_1YA}; 
+% GROUP_NAMES = {'H1000''s'}; 
+% SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
 %- (OA) Subject Picks 
 % SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
 % GROUP_NAMES = {'H2000''s','H3000''s'}; 
 % SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %- (VARIOUS) Subjct Picks
-% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {[27],[]};
+SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
+GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
+SUBJ_ITERS = {[],[27],[]};
 %% (PROCESSING PARAMS) ================================================= %%
 %## Hard Define
 %- subject choices (Combined OA & YA)
 % YA_PREP_FPATH = '04182023_YA_N37_prep_verified'; % JACOB,SAL(04/10/2023)
 % OA_PREP_FPATH = '07042023_OA_prep_verified'; % JACOB,SAL(04/10/2023)
 OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
-OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
+%- hardcode data_dir
+DATA_SET = 'MIM_dataset';
 %- MRI normalization
 NORMALIZE_MRI = true;
 %## Soft Define
+DATA_DIR = [source_dir filesep '_data'];
+OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
+
 %% Store fNames and fPaths
 working_dirs    = cell(1,length([SUBJ_ITERS{:}]));
 fiducial_fPaths = cell(3,length([SUBJ_ITERS{:}]));
