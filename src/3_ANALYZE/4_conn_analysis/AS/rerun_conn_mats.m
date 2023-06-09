@@ -5,10 +5,9 @@
 %   Version History --> See details at the end of the script.
 %   Current Version:  v1.0.20220103.0
 %   Previous Version: n/a
-%   Summary: This code was modified from
-%
-%- run sh
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/AS_proc/run_conn_process.sh
+%   Summary: 
+
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_test/1_paper_MIM/run_rerun_conn_mats.sh
 
 %{
 %## RESTORE MATLAB
@@ -46,7 +45,7 @@ end
 %% SETWORKSPACE
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'AS_proc'];
+run_dir = [source_dir filesep '3_ANALYZE' filesep '4_conn_analysis' filesep 'AS'];
 %- cd to source directory
 cd(source_dir)
 %- addpath for local folder
@@ -159,85 +158,87 @@ LOOP_VAR = 1:length(MAIN_ALLEEG);
 tmp = cell(1,length(MAIN_ALLEEG));
 rmv_subj = zeros(1,length(MAIN_ALLEEG));
 %- HARD DEFINES
-%% CONNECTIVITY MAIN FUNC
-fprintf('Computing Connectivity\n');
-pop_editoptions('option_computeica', 1);
-%## PARFOR LOOP
-EEG = [];
-parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
-% for subj_i = LOOP_VAR
-    %- Parse out components
-    components = comps_out(:,subj_i);
-    components = sort(components(components ~= 0));
-    %## LOAD EEG DATA
-    EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
-    %- Recalculate ICA Matrices && Book Keeping
-    EEG = eeg_checkset(EEG,'loaddata');
-    if isempty(EEG.icaact)
-        fprintf('%s) Recalculating ICA activations\n',EEG.subject);
-        EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+%% PERFORM PERMUTATION STATISTICS
+%{
+STUDIES = cell(1,length(load_trials));
+ALLEEGS = cell(1,length(load_trials));
+%- Create STUDY & ALLEEG structs
+for cond_i = 1:length(load_trials)
+    if DO_UNIX
+        study_fName = sprintf('%s_MIM_study_UNIX',load_trials{cond_i});
+    else
+        study_fName = sprintf('%s_MIM_study',load_trials{cond_i});
     end
-    EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
-    fprintf('%s) Processing componets:\n',EEG.subject)
-    fprintf('%i,',components'); fprintf('\n');
-    %- re-epoch
-    ALLEEG = cell(1,length(COND_CHARS))
-    for i = 1:length(ALLEEG.etc.cond_files)
-        ALLEEG{i} = pop_loadset('filepath',EEG.etc.cond_files(i).fPath,'filename',EEG.etc.cond_files(i).fName);
-    end
-    ALLEEG = cellfun(@(x) [[],x],ALLEEG);
-    try
-        %## RUN MAIN_FUNC
-        [TMP] = main_func(ALLEEG,save_dir,...
-            'CONN_COMPONENTS',components,...
-            'CONN_METHODS',CONN_METHODS,... 
-            'FREQS',CONN_FREQS,...
-            'CNCTANL_TOOLBOX',CNCTANL_TOOLBOX,... 
-            'DO_BOOTSTRAP',DO_BOOTSTRAP,...
-            'DO_PHASE_RND',DO_PHASE_RND,...
-            'WINDOW_LENGTH',WINDOW_LENGTH,...
-            'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
-%         for i=1:length(TMP)
-%             par_save(TMP(i).CAT)
-%         end
-        BIG_CAT = cat(1,TMP(:).CAT)
-        EEG.CAT = BIG_CAT;
-        [EEG] = pop_saveset(EEG,...
-            'filepath',EEG.filepath,'filename',EEG.filename,...
-            'savemode','twofiles');
-        tmp{subj_i} = EEG;
-    catch e
-        rmv_subj(subj_i) = 1;
-        EEG.CAT = struct([]);
-        tmp{subj_i} = EEG;
-        fprintf(['error. identifier: %s\n',...
-                 'error. %s\n',...
-                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+    if ~exist([load_dir filesep study_fName '.study'],'file')
+        error('ERROR. study file does not exist');
+    else
+        [STUDIES{cond_i},ALLEEGS{cond_i}] = pop_loadstudy('filename',[study_fName '.study'],'filepath',load_dir);
     end
 end
-pop_editoptions('option_computeica',0);
-%% SAVE BIG STUDY
-[ALLEEG,MAIN_STUDY] = parfunc_rmv_subjs(tmp,MAIN_STUDY,rmv_subj);
-%- Save
-[MAIN_STUDY,ALLEEG] = parfunc_save_study(MAIN_STUDY,ALLEEG,...
-                                        study_fName_2,save_dir,...
-                                        'STUDY_COND',[]);
+%## CONNECTIVITY STATISTICS RERUN 
+%- Reconfigure
+tmpALLEEGS = cell(1,length(ALLEEGS{1}));
+for subj_i = 1:length(ALLEEGS{1})
+    for cond_i = 1:length(load_trials)
+        tmpALLEEGS{subj_i} = [tmpALLEEGS{subj_i} ALLEEGS{cond_i}(subj_i)];
+    end
+end
+clear ALLEEGS
+%- Generate Connectivity Statistics 
+parfor subj_i = 1:length(tmpALLEEGS)
+    %- Rerun statistics 
+    fprintf('%s) Running wrapper_cnctanl_stats.m ...',tmpALLEEGS{subj_i}(1).subject);
+    [tmpALLEEGS{subj_i}] = wrapper_cnctanl_stats(tmpALLEEGS{subj_i},...
+        'DO_PHASERAND',DO_PHASERAND,...
+        'DO_BOOTSTRAP',DO_BOOTSTRAP);
+    %{
+    for cond_i = 1:length(tmpALLEEGS{subj_i})
+         %- load statistics
+         EEG = tmpALLEEGS{subj_i}(cond_i);
+         EEG = cnctanl_loadCAT(EEG,'NonzeroTest');
+        for conn_i = 1:length(CONN_METHODS)
+            %- calculate average connnectivity for each component pair across time
+            [statMat,extract_sig] = gen_connMatrix(EEG,CONN_METHODS{conn_i},(1:length(EEG.CAT.Conn.freqs)),STAT_ALPHA);
+            %- 
+            EEG.etc.js_processing(cond_i).META.(CONN_METHODS{conn_i}).connExtract(1).freqs = EEG.CAT.Conn.freqs;
+            EEG.etc.js_processing(cond_i).META.(CONN_METHODS{conn_i}).connExtract(1).mats = statMat;
+            EEG.etc.js_processing(cond_i).META.(CONN_METHODS{conn_i}).connExtract(1).sigs = extract_sig;
+            %##
+        end
+        [~,~] = pop_saveset(EEG,...
+            'filepath',EEG.filepath,'filename',EEG.filename,...
+            'savemode','twofiles');
+    end
+    %}
+end
+%}
+%% HELPERS
+%{
+for cond_i = 1:length(load_trials)
+    study_fName = sprintf('%s_MIM_study',load_trials{cond_i});
+    [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName '.study'],'filepath',load_dir);
+
+    %## ROBUST SAVE STUDY
+    %- fix paths from dferris to M
+%     for subj_i = 1:length(MAIN_STUDY.datasetinfo)
+%         MAIN_STUDY.datasetinfo(subj_i).filepath = convertPath2Drive(MAIN_ALLEEG(subj_i).filepath,'M');
+%     end
+%     [MAIN_STUDY,MAIN_ALLEEG] = pop_saavestudy( MAIN_STUDY, MAIN_ALLEEG,...
+%                         'filename',study_fName,'filepath',save_dir);
+
+    %- fix paths from M to dferris
+    for subj_i = 1:length(MAIN_STUDY.datasetinfo)
+        MAIN_STUDY.datasetinfo(subj_i).filepath = convertPath2UNIX(fullfile(MAIN_ALLEEG(subj_i).filepath),'dferris');
+%         MAIN_ALLEEG(subj_i).filepath = convertPath2UNIX(MAIN_ALLEEG(subj_i).filepath,'dferris');
+    end
+    [MAIN_STUDY,MAIN_ALLEEG] = pop_savestudy( MAIN_STUDY, MAIN_ALLEEG,...
+                        'filename',[study_fName '_UNIX'],...
+                        'filepath',load_dir);
+end
+%}
 %% Version History
 %{
-v1.0; (11/11/2022), JS: really need to consider updating bootstrap
-    algorithm with parallel computing. Taking ~ 1 day per
-    condition for all subjects and the bottle neck is entirely the
-    bootstrap.
+v1.0.01132023.0 : Initializing versioning for future iterations. Previous
+Params:
 
-    Note: validateattributes and assert functions may be helpful
-    in more clearly defining function inputs.
-        e.g.  DO_PHASE_RND = true;
-          errorMsg = 'Value must be (true/false). Determines whether a phase randomized distribution will be created.'; 
-          validationFcn = @(x) assert(islogical(x),errorMsg);
-v1.0; (12/5/2022) Need to adapt this to include all conditions
-    within each SUBJ structure so connectivity can be calculated
-    for the ALLEEG structure rather than the EEG structure.
-    *** maybe try to ditch the SUBJ strucutre entirely for this
-    round?
-v1.0.01132023.0 : Initializing versioning for future iterations.
 %}

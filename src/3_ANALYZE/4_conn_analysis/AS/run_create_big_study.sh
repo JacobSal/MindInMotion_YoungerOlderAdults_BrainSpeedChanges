@@ -1,20 +1,20 @@
-#!/bin/bash
-#SBATCH --job-name=PLOTTING # Job name
+#!/bin/sh
+#SBATCH --job-name=CONN_ALLEEG # Job name
 #SBATCH --mail-type=ALL # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=jsalminen@ufl.edu # Where to send mail
 #SBATCH --nodes=1 # Use one node
 #SBATCH --ntasks=1 # Run a single task
-#SBATCH --cpus-per-task=25 # Number of CPU cores per task
-#SBATCH --mem-per-cpu=15000mb# Total memory limit
+#SBATCH --cpus-per-task=30 # Number of CPU cores per task
+#SBATCH --mem-per-cpu=30000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
-#SBATCH --time=06:00:00 # Time limit hrs:min:sec
-#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_YA_proc/_hpg_logs/%j_MIM_YA_plot_ica_info.log # Standard output
+#SBATCH --time=24:00:00 # Time limit hrs:min:sec
+#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_test/3_paper_MIM_HOA/%j_alleeg_connect_run.log # Standard output
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=hpg-default # cluster to run on, use slurm command 'sinfo -s'
 module purge
-module load matlab/2020b
-cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_YA_proc/
+module load matlab/2019a
+cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_test/3_paper_MIM_HOA
 
 echo "Date              = $(date)"
 echo "Hostname          = $(hostname -s)"
@@ -29,7 +29,7 @@ echo "Number of Cores/Task Allocated = $SLURM_CPUS_PER_TASK"
 mkdir -p ./$SLURM_JOB_ID
 
 # Kick off matlab
-matlab -nodisplay < /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_YA_proc/plot_ica_info.m
+matlab -nodisplay < /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_test/3_paper_MIM_HOA/alleeg_connect_run.m
 
 # Cleanup local work directory
 rm -rf ./$SLURM_JOB_ID

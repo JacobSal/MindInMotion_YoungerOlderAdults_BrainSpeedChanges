@@ -117,6 +117,27 @@ GROUP_NAMES = {'H2000''s','H3000''s'};
 SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %% (PARAMETERS) ======================================================== %%
 %## Hard Defines
+%-spec
+RECOMPUTE_SPEC = false;
+%-
+condstats = 'on';        % ['on'|'off]
+statsMethod = 'perm';    % ['param'|'perm'|'bootstrap']
+Alpha = 0.05;           % [NaN|alpha], Significance threshold (0<alpha<<1)
+mcorrect = 'cluster'; %fdr
+groupstats = 'off';
+mode = 'fieldtrip';
+singletrials = 'off' ;  %['on'|'off'] load single trials spectral data (if available). Default is 'off'.
+%- 
+speed_trials = {'0p25','0p5','0p75','1p0'};
+terrain_trials = {'flat','low','med','high'};
+COND_DESIGNS = {speed_trials,terrain_trials};
+%-
+inds = main_cl_inds(2:end); %[2,3,4,7,8,9];
+%## std_precomp.m params
+SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
+FREQ_FAC = 4;
+FREQ_LIMITS = [3,40];
+SPEC_YLIM = [-30,-5];
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- datetime override
@@ -278,27 +299,6 @@ parfor subj_i = 1:length(ALLEEG)
     fprintf('** Subject %s has %i brain components\n',ALLEEG(subj_i).subject, length(tmp_good));
 end
 %}
-%%
-RECOMPUTE_SPEC = false;
-%-
-condstats = 'on';        % ['on'|'off]
-statsMethod = 'perm';    % ['param'|'perm'|'bootstrap']
-Alpha = 0.05;           % [NaN|alpha], Significance threshold (0<alpha<<1)
-mcorrect = 'cluster'; %fdr
-groupstats = 'off';
-mode = 'fieldtrip';
-singletrials = 'off' ;  %['on'|'off'] load single trials spectral data (if available). Default is 'off'.
-%- 
-speed_trials = {'0p25','0p5','0p75','1p0'};
-terrain_trials = {'flat','low','med','high'};
-COND_DESIGNS = {speed_trials,terrain_trials};
-%-
-inds = main_cl_inds(2:end); %[2,3,4,7,8,9];
-%## std_precomp.m params
-SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
-FREQ_FAC = 4;
-FREQ_LIMITS = [3,40];
-SPEC_YLIM = [-30,-5];
 %% ASSIGN GROUP NAME & STUDY STATS
 for subj_i = 1:length(ALLEEG)
     ALLEEG(subj_i).group = 'Older Adults';
@@ -310,6 +310,7 @@ STUDY = pop_statparams(STUDY, 'condstats', condstats,...
                     'fieldtripmethod','montecarlo','fieldtripmcorrect',mcorrect,'fieldtripnaccu',10000);
 %% (PRECOMPUTE MEASURES) COMPUTE SPECTRUMS
 if RECOMPUTE_SPEC
+    fprintf('Running Spectrum Calculation...');
     parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
         EEG = ALLEEG(subj_i);
         tmp = STUDY;
@@ -343,12 +344,12 @@ end
 %                                     'freqrange',FREQ_LIMITS,'logtrials','on'});
 %% MAKEDESIGN & PLOT
 for des_i = 1:length(COND_DESIGNS)
-    for cluster_i = inds % main_cl_inds
-        %-
+    %-
         [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
                 'subjselect', {ALLEEG.subject},...
                 'variable1','cond',...
                 'values1', COND_DESIGNS{des_i});
+    for cluster_i = main_cl_inds
         %-
     %     [STUDY, specdata, specfreqs, pgroup, pcond, pinter] = std_specplot(STUDY, ALLEEG,...
     %             'clusters',cluster_i,'comps','all','subject','','freqrange', FREQ_LIMITS,'subtractsubjectmean','on');

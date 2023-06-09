@@ -13,7 +13,7 @@
 %## RESTORE MATLAB
 % WARNING: restores default pathing to matlab 
 restoredefaultpath;
-clc;
+clc;s
 close all;
 clearvars
 %}
@@ -120,7 +120,7 @@ SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- datetime override
-dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
+% dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
 %- study group and saving
 SAVE_EEG = false; %true;
 % OVERRIDE_DIPFIT = true;
@@ -141,8 +141,8 @@ DO_CONN_ANL = false;
 %## Soft Defines
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-study_fName_3 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
-study_fName_4 = sprintf('%s_CONN_study',[TRIAL_TYPES{:}]);
+study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+study_fName_2 = sprintf('%s_CONN_study',[TRIAL_TYPES{:}]);
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
@@ -151,14 +151,14 @@ if ~exist(save_dir,'dir')
 end
 %% LOAD EPOCH STUDY
 %- Create STUDY & ALLEEG structs
-if ~exist([load_dir filesep study_fName_3 '.study'],'file')
+if ~exist([load_dir filesep study_fName_1 '.study'],'file')
     error('ERROR. study file does not exist');
     exit(); %#ok<UNRCH>
 else
     if ~ispc
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_3 '_UNIX.study'],'filepath',load_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',load_dir);
     else
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_3 '.study'],'filepath',load_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',load_dir);
     end
     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(MAIN_STUDY);
 end
@@ -198,22 +198,32 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
             EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
         end
         EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
+        %- re-epoch
+        ALLEEG = cell(1,length(COND_CHARS))
+        for i = 1:length(ALLEEG.etc.cond_files)
+            ALLEEG{i} = pop_loadset('filepath',EEG.etc.cond_files(i).fPath,'filename',EEG.etc.cond_files(i).fName);
+        end
+        ALLEEG = cellfun(@(x) [[],x],ALLEEG);
         try
             %## RUN MAIN_FUNC
-            [TMP_EEG] = main_func_v2(EEG,save_dir,components,...
-                'CONN_METHODS',CONN_METHODS,... %
+            [TMP] = main_func(ALLEEG,save_dir,...
+                'CONN_COMPONENTS',components,...
+                'CONN_METHODS',CONN_METHODS,... 
                 'FREQS',CONN_FREQS,...
                 'CNCTANL_TOOLBOX',CNCTANL_TOOLBOX,... 
                 'DO_BOOTSTRAP',DO_BOOTSTRAP,...
                 'DO_PHASE_RND',DO_PHASE_RND,...
                 'WINDOW_LENGTH',WINDOW_LENGTH,...
                 'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
-%                 pop_mergeset();
-            EEG.CAT = TMP_EEG.CAT;
+    %         for i=1:length(TMP)
+    %             par_save(TMP(i).CAT)
+    %         end
+            BIG_CAT = cat(1,TMP(:).CAT)
+            EEG.CAT = BIG_CAT;
             [EEG] = pop_saveset(EEG,...
                 'filepath',EEG.filepath,'filename',EEG.filename,...
                 'savemode','twofiles');
-            tmp{subj_i} = EEG;
+        tmp{subj_i} = EEG;
         catch e
             rmv_subj(subj_i) = 1;
             EEG.CAT = struct([]);
@@ -227,10 +237,12 @@ end
 pop_editoptions('option_computeica', 0);
 %% SAVE BIG STUDY
 MAIN_STUDY.etc.pipe_params = params;
+
 [ALLEEG,MAIN_STUDY] = parfunc_rmv_subjs(tmp,MAIN_STUDY,rmv_subj);
 %- Save
+ALLEEG = eeg_checkset(ALLEEG,'eventconsistency');
 [MAIN_STUDY,ALLEEG] = parfunc_save_study(MAIN_STUDY,ALLEEG,...
-                                        study_fName_4,save_dir,...
+                                        study_fName_2,save_dir,...
                                         'STUDY_COND',[]);
 %% Version History
 %{

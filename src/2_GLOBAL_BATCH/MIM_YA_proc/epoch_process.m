@@ -97,6 +97,7 @@ GROUP_NAMES = {'H1000s'};
 DATA_SET = 'MIM_dataset';
 %- study group and saving
 SAVE_EEG = false; %true;
+DO_SAVE_EPOCHED_SETS = true;
 % OVERRIDE_DIPFIT = true;
 %- MIM specific epoching
 EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
@@ -105,7 +106,7 @@ SUFFIX_PATH_EPOCHED = 'EPOCHED';
 SESSION_NUMBER = '1';
 % TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-EPOCH_TIME_LIMITS = [-0.5,5]; % [-1,3] captures gait events well
+EPOCH_TIME_LIMITS = [-1,3]; % [-1,3] captures gait events well, [-0.5,5];
 % ESTIMATED_TRIAL_LENGTH = 3*60; % trial length in seconds
 WINDOW_LENGTH = 6; % sliding window length in seconds
 PERCENT_OVERLAP = 0.0; % percent overlap between epochs
@@ -251,11 +252,34 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
         %## EPOCH
         [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,EPOCH_TIME_LIMITS); %,...
 %             'PERCENT_OVERLAP',PERCENT_OVERLAP,'WINDOW_LENGTH',WINDOW_LENGTH);
-        EEG = pop_mergeset(ALLEEG,1:size(ALLEEG,2),1);
-        EEG = rmfield(EEG,'timewarp'); 
+        %## REMOVE USELESS EVENT FIELDS
+        for i = 1:length(ALLEEG)
+            ALLEEG(i).event = rmfield(ALLEEG(i).event,'trialName');
+            ALLEEG(i).event = rmfield(ALLEEG(i).event,'channel');
+            ALLEEG(i).event = rmfield(ALLEEG(i).event,'code');
+            ALLEEG(i).event = rmfield(ALLEEG(i).event,'urevent');
+            ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvtime');
+            ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvmknum');
+            ALLEEG(i).event = rmfield(ALLEEG(i).event,'datetime');
+        end
         %## SAVE ONE BIG EEG FILE
+        cond_files = struct('fPath',[],'fName',[]);
+        if SAVE_ALLEEG
+            for i = 1:length(ALLEEG)
+                %- save each parsed trial/condition to own folder to help save
+                %memory. EEGLAB is weird like that.
+                tmp_fPath = [ALLEEG(i).filepath filesep sprintf('cond_%i',i)];
+                if ~exist(tmp_fPath,'dir')
+                    mkdir(tmp_fPath)
+                end
+                [~] = pop_saveset(ALLEEG(i),...
+                    'filepath',tmp_fPath,'filename',sprintf('epoch_%i.set',i));
+                cond_files(i).fPath = tmp_fPath;
+                cond_files(i).fName = sprintf('cond_%i.set',i);
+            end
+        end
         ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
-        ALLEEG = rmfield(ALLEEG,'timewarp');
+        ALLEEG.etc.cond_files = cond_files;
         %- timewarp for across condition
         timewarp = make_timewarp(ALLEEG,TIMEWARP_EVENTS,'baselineLatency',0, ...
                 'maxSTDForAbsolute',inf,...
@@ -324,6 +348,7 @@ for subj_i = 1:length(tmp)
 end
 tmp = cellfun(@(x) [[]; x], tmp);
 %##
+tmp = eeg_checkset(tmp,'eventconsistency');
 [STUDY, ALLEEG] = std_editset([],tmp,...
                                 'updatedat','off',...
                                 'savedat','off',...
