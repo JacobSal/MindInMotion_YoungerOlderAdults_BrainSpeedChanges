@@ -14,6 +14,7 @@ tic
 %% FLEXIBLE HANDLING OF SRC FOLDER
 % restoredefaultpath;
 %## OVERRIDE USING "global"
+% global FUNCTIONS_VERSION ADD_CLEANING_SUBMODS ADD_DIPFIT_COMPILE_SUBMODS
 if ~exist('FUNCTIONS_VERSION','var')
     FUNCTIONS_VERSION = 'v2_0';
 end
@@ -74,7 +75,7 @@ SUBMODULES = {'groupSIFT','SIFT','fieldtrip','spm12','eeglab','postAmicaUtility'
 %}
 %- Cleaning SUBMODS
 if ADD_CLEANING_SUBMODS
-    SUBMODULES = {'SIFT','fieldtrip','spm12','eeglab','postAmicaUtility',...
+    SUBMODULES = {'eeglab','SIFT','fieldtrip','spm12','postAmicaUtility',...
                     'Granger_Geweke_Causality','MindInMotion','bemobil-pipeline-master','bids-matlab-tools5.3.1',...
                     'Cleanline2.00','firfilt','ICLabel','LIMO3.2','PowPowCAT3.0','bva-io1.7',...
                     'EEGLAB-specparam-master','iCanClean','Viewprops1.5.4',...
@@ -87,19 +88,24 @@ elseif ADD_DIPFIT_COMPILE_SUBMODS
     SUBMODULES_ITERS = (1:length(SUBMODULES));
 else
     %- Conn SUBMODS
-    SUBMODULES = {'SIFT','fieldtrip','eeglab','postAmicaUtility',...
+    SUBMODULES = {'fieldtrip','eeglab','SIFT','postAmicaUtility',...
         'Granger_Geweke_Causality',...
         'ICLabel','Viewprops1.5.4'};
     SUBMODULES_GENPATH = {};
     SUBMODULES_ITERS = (1:length(SUBMODULES));
 end
 %## add submodules
+if ispc
+    DELIM = ';';
+else
+    DELIM = ':';
+end
 PATHS.PATHS = cell(length(SUBMODULES),1);
 for ss = SUBMODULES_ITERS
     if any(strcmp(SUBMODULES{ss},SUBMODULES_GENPATH))
         fprintf('Adding submodule using genpath(): %s...\n',[submodules_dir filesep SUBMODULES{ss}]);
         a_ftmp = unix_genpath([submodules_dir filesep SUBMODULES{ss}]);
-        a_ftmp = split(a_ftmp,';'); a_ftmp = a_ftmp(~cellfun(@isempty,a_ftmp));
+        a_ftmp = split(a_ftmp,DELIM); a_ftmp = a_ftmp(~cellfun(@isempty,a_ftmp));
         cellfun(@(x) path(path,x),a_ftmp);
         cellfun(@(x) fprintf('Adding functions in: %s...\n',x),a_ftmp);
     else
@@ -133,6 +139,7 @@ if contains('SIFT',SUBMODULES)
     StartSIFT;
 end
 %- always start eeglab last.
+ALLEEG=[]; STUDY=[]; CURRENTSET=0; CURRENTSTUDY=0;
 eeglab;
 %% Colors
 color.lightGreen  = [186,228,179]/255;

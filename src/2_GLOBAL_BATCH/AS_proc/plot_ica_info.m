@@ -96,7 +96,7 @@ fprintf('\nData Processing Parameters\n');
 DATA_SET = 'AS_dataset';
 %- psd params
 SPEC_YLIM = [-30,-5];
-RECOMPUTE_SPEC = false;
+RECOMPUTE_SPEC = true;
 FREQ_LIMITS = [3,50];
 SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
 FREQ_FAC = 4;
@@ -116,7 +116,9 @@ test_2 = {'2Bounce_Human','2Bounce_BM'};
 test_3 = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'};
 COND_DESIGNS = {test_1,test_2,test_3};
 %- datetime override
-dt = '05252023_bounces_1h2h2bm_JS';
+% dt = '05252023_bounces_1h2h2bm_JS';
+% dt = '06122023_bounces_1h2h2bm_JS';
+dt = '06152023_bounces_1h2h2bm_JS';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);

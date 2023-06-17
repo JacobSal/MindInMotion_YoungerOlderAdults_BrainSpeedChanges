@@ -413,6 +413,7 @@ disp('===================================')
 
 %## TIME
 toc
+end
 %% SUBFUNCTIONS
 
 %% DOCUMENTATION PER FUNCTION 

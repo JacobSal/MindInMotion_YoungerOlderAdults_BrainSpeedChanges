@@ -125,6 +125,7 @@ SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- study group and saving
+SAVE_ALLEEG = true;
 SAVE_EEG = false; %true;
 OVERRIDE_DIPFIT = true;
 %- MIM specific epoching
@@ -134,7 +135,7 @@ SUFFIX_PATH_EPOCHED = 'EPOCHED';
 SESSION_NUMBER = '1';
 % TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-EPOCH_TIME_LIMITS = [-0.5,5]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
+EPOCH_TIME_LIMITS = [-1,4]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
 % ESTIMATED_TRIAL_LENGTH = 3*60; % trial length in seconds
 WINDOW_LENGTH = 6; % sliding window length in seconds
 PERCENT_OVERLAP = 0.0; % percent overlap between epochs
@@ -147,7 +148,8 @@ FREQ_FAC = 4;
 PAD_RATIO = 2;
 %- datetime override
 % dt = '05182023_MIM_OA_subset_N85_oldpipe';
-dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
+% dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
+dt = '06122023_MIM_OAN79_subset_prep_verified_gait';
 %- Subject Directory information
 OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 %## soft define
@@ -270,7 +272,8 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
     end
     EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     %## PARSE TRIALS
-    fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED filesep [TRIAL_TYPES{:}]];
+    epoched_fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED];
+    fPath = [epoched_fPath filesep [TRIAL_TYPES{:}]];
     fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[TRIAL_TYPES{:}]);
     if ~exist(fPath,'dir')
         mkdir(fPath)
@@ -281,14 +284,28 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
         [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,EPOCH_TIME_LIMITS); %,...
 %             'PERENT_OVERLAP',PERCENT_OVERLAP,'WINDOW_LENGTH',WINDOW_LENGTH);
         %## REMOVE USELESS EVENT FIELDS
-        for i = 1:length(ALLEEG)
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'trialName');
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'channel');
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'code');
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'urevent');
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvtime');
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvmknum');
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'datetime');
+       for i = 1:length(ALLEEG)
+            if isfield(ALLEEG(i).event,'trialName')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'trialName');
+            end
+            if isfield(ALLEEG(i).event,'channel')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'channel');
+            end
+            if isfield(ALLEEG(i).event,'code')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'code');
+            end
+%             if isfield(ALLEEG(i).event,'urevent')
+%                 ALLEEG(i).event = rmfield(ALLEEG(i).event,'urevent');
+%             end
+            if isfield(ALLEEG(i).event,'bvtime')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvtime');
+            end
+            if isfield(ALLEEG(i).event,'bvmknum')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvmknum');
+            end
+%             if isfield(ALLEEG(i).event,'datetime')
+%                 ALLEEG(i).event = rmfield(ALLEEG(i).event,'datetime');
+%             end
         end
         %## SAVE ONE BIG EEG FILE
         cond_files = struct('fPath',[],'fName',[]);
@@ -296,7 +313,7 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
             for i = 1:length(ALLEEG)
                 %- save each parsed trial/condition to own folder to help save
                 %memory. EEGLAB is weird like that.
-                tmp_fPath = [ALLEEG(i).filepath filesep sprintf('cond_%i',i)];
+                tmp_fPath = [epoched_fPath filesep sprintf('cond_%i',i)];
                 if ~exist(tmp_fPath,'dir')
                     mkdir(tmp_fPath)
                 end

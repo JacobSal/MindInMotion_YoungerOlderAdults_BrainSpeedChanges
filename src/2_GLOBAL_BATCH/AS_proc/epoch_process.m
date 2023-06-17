@@ -117,7 +117,7 @@ EPOCH_TIME_LIMITS = [-0.5,2];
 % FREQ_FAC = 4;
 % PAD_RATIO = 2;
 %- datetime override
-dt = '06092023_bounces_1h2h2bm_JS';
+dt = '06152023_bounces_1h2h2bm_JS';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -191,9 +191,9 @@ if ~exist([save_dir filesep study_fName_1 '.study'],'file') %|| true
     fprintf(1,'\n==== CLUSTERING SUBJECT DATA ====\n');
     [ALLEEG] = as_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
                         conditions,groups,sessions);
-    [STUDY,ALLEEG] = as_create_study(ALLEEG,cluster_info_fpath,study_fName_1,save_dir);
-    [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
-    [~,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
+    [MAIN_STUDY,ALLEEG] = as_create_study(ALLEEG,cluster_info_fpath,study_fName_1,save_dir);
+    [MAIN_STUDY,ALLEEG] = std_checkset(MAIN_STUDY,ALLEEG);
+    [MAIN_STUDY,ALLEEG] = parfunc_save_study(MAIN_STUDY,ALLEEG,...
                                             study_fName_1,save_dir,...
                                             'RESAVE_DATASETS','on');
     fprintf(1,'\n==== DONE: CLUSTERING SUBJECT DATA ====\n');
@@ -236,7 +236,8 @@ for subj_i = LOOP_VAR
     end
     EEG.icaact    = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     %## PARSE TRIALS
-    fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED filesep [EVENT_COND_COMBOS{:}]];
+    epoched_fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED];
+    fPath = [epoched_fPath filesep [EVENT_COND_COMBOS{:}]];
     fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[EVENT_COND_COMBOS{:}]);
     if ~exist(fPath,'dir')
         mkdir(fPath)
@@ -248,13 +249,27 @@ for subj_i = LOOP_VAR
                 %'EVENT_FIELD_CONDITION',EVENT_FIELD_PARSER);
         %## REMOVE USELESS EVENT FIELDS
         for i = 1:length(ALLEEG)
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'trialName');
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'channel');
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'code');
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'urevent');
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvtime');
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvmknum');
-            ALLEEG(i).event = rmfield(ALLEEG(i).event,'datetime');
+            if isfield(ALLEEG(i).event,'trialName')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'trialName');
+            end
+            if isfield(ALLEEG(i).event,'channel')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'channel');
+            end
+            if isfield(ALLEEG(i).event,'code')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'code');
+            end
+%             if isfield(ALLEEG(i).event,'urevent')
+%                 ALLEEG(i).event = rmfield(ALLEEG(i).event,'urevent');
+%             end
+            if isfield(ALLEEG(i).event,'bvtime')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvtime');
+            end
+            if isfield(ALLEEG(i).event,'bvmknum')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvmknum');
+            end
+            if isfield(ALLEEG(i).event,'datetime')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'datetime');
+            end
         end
         %## SAVE ONE BIG EEG FILE
         cond_files = struct('fPath',[],'fName',[]);
@@ -262,14 +277,15 @@ for subj_i = LOOP_VAR
             for i = 1:length(ALLEEG)
                 %- save each parsed trial/condition to own folder to help save
                 %memory. EEGLAB is weird like that.
-                tmp_fPath = [ALLEEG(i).filepath filesep sprintf('cond_%i',i)];
+                REGEX_FNAME = 'cond_%i';
+                tmp_fPath = [epoched_fPath filesep sprintf(REGEX_FNAME,i)];
                 if ~exist(tmp_fPath,'dir')
                     mkdir(tmp_fPath)
                 end
                 [~] = pop_saveset(ALLEEG(i),...
-                    'filepath',tmp_fPath,'filename',sprintf('epoch_%i.set',i));
+                    'filepath',tmp_fPath,'filename',sprintf([REGEX_FNAME '.set'],i));
                 cond_files(i).fPath = tmp_fPath;
-                cond_files(i).fName = sprintf('cond_%i.set',i);
+                cond_files(i).fName = sprintf([REGEX_FNAME '.set'],i);
             end
         end
         ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
@@ -333,8 +349,8 @@ tmp = eeg_checkset(tmp,'eventconsistency');
                                 'filename',study_fName_2,...
                                 'filepath',save_dir);
 %## (AS) ATTACH CLUSTER STRUCT
-STUDY.cluster = STUDY.cluster;
-% STUDY.urcluster = STUDY.urcluster;
+STUDY.cluster = MAIN_STUDY.cluster;
+STUDY.urcluster = MAIN_STUDY.urcluster;
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                             study_fName_2,save_dir,...
                                             'STUDY_COND',[]);

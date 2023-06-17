@@ -1,4 +1,5 @@
 #!/bin/bash
+# sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_YA_proc/run_plot_ica_info.sh
 #SBATCH --job-name=PLOTTING # Job name
 #SBATCH --mail-type=ALL # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=jsalminen@ufl.edu # Where to send mail

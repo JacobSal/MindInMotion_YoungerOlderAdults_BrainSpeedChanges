@@ -40,11 +40,14 @@ for cluster_i = 2:length(STUDY.cluster)
     for subj_i = tmpsets
         idx = (STUDY.cluster(cluster_i).sets == subj_i);
         comps_clust = STUDY.cluster(cluster_i).comps(idx);
-        %- just choosing a component based on the AMICA ICA sorting algorithm
+        %- choosing component based on minimum dipole fit residual variance
         if ~isempty(comps_clust) && length(comps_clust) > 1
-            fprintf('Cluster %i) Subject %i''s choice component: %i\n',cluster_i,subj_i,min(comps_clust));
-            comps_store(cluster_i,subj_i) = min(comps_clust);
-            comps_rej{cluster_i,subj_i} = comps_clust(comps_clust ~= min(comps_clust));
+            [val,idx] = min([ALLEEG(subj_i).dipfit.model(comps_clust).rv]); %min(comps_clust);
+            chc = comps_clust(idx);
+            %- prints % stores
+            fprintf('Cluster %i) Subject %i''s choice component (%i) rv: %i\n',cluster_i,subj_i,chc,val);
+            comps_store(cluster_i,subj_i) = chc;
+            comps_rej{cluster_i,subj_i} = comps_clust(comps_clust ~= chc);
             fprintf('Cluster %i) Subject %i''s outlier components:',cluster_i,subj_i); fprintf('%i, ',comps_rej{cluster_i,subj_i}); fprintf('\n');
             tmps = [tmps, repmat(subj_i,1,length([comps_rej{cluster_i,subj_i}]))];
             tmpc = [tmpc, comps_rej{cluster_i,subj_i}];
@@ -63,7 +66,7 @@ for cluster_i = 2:length(STUDY.cluster)
     STUDY.cluster(end).comps = tmpc;
     STUDY.cluster(end).name = sprintf('Outlier clust_%i',cluster_i);
     STUDY.cluster(end).parent = STUDY.cluster(cluster_i).parent;
-    STUDY.cluster(end).algorithm = {'minimum of sifted brain independent components'};
+    STUDY.cluster(end).algorithm = {'minimum residual variance of subject components'};
 end
 %- parentcluster alterations
 all_sets = [];

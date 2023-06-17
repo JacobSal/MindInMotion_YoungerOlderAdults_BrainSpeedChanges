@@ -43,7 +43,7 @@ else  % isunix=
     PATH_ROOT = [filesep 'blue' filesep 'dferris',...
         filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 end
-%% SETWORKSPACE
+%% DEFINE SOURCE DIRECTORY & CD ======================================== %%
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
 run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'AS_proc'];
@@ -52,11 +52,11 @@ cd(source_dir)
 %- addpath for local folder
 addpath(source_dir)
 addpath(run_dir)
-%- set workspace
+%% SET WORKSPACE ======================================================= %%
 global ADD_CLEANING_SUBMODS
 ADD_CLEANING_SUBMODS = false;
 setWorkspace
-%% PARPOOL SETUP
+%% PARPOOL SETUP ======================================================= %%
 if ~ispc
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
@@ -108,7 +108,9 @@ NEW_SAMPLE_RATE = [];
 DO_BOOTSTRAP = true;
 DO_PHASE_RND = true;
 %- datetime override
-dt = '05252023_bounces_1h2h2bm_JS';
+% dt = '05252023_bounces_1h2h2bm_JS';
+% dt = '06122023_bounces_1h2h2bm_JS';
+dt = '06152023_bounces_1h2h2bm_JS';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -121,7 +123,7 @@ for cond_i = 1:length(COND_CHARS)
 end
 %- path for local data
 DATA_DIR = [source_dir filesep '_data'];
-OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET];
+% OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
 study_fName_2 = sprintf('%s_CONN_study',[EVENT_COND_COMBOS{:}]);
@@ -176,14 +178,18 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
     if isempty(EEG.icaact)
         fprintf('%s) Recalculating ICA activations\n',EEG.subject);
         EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+        EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     end
-    EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     fprintf('%s) Processing componets:\n',EEG.subject)
     fprintf('%i,',components'); fprintf('\n');
     %- re-epoch
-    ALLEEG = cell(1,length(COND_CHARS))
-    for i = 1:length(ALLEEG.etc.cond_files)
-        ALLEEG{i} = pop_loadset('filepath',EEG.etc.cond_files(i).fPath,'filename',EEG.etc.cond_files(i).fName);
+    ALLEEG = cell(1,length(EVENT_COND_COMBOS));
+    for i = 1:length(EEG.etc.cond_files)
+        if ~ispc
+            ALLEEG{i} = pop_loadset('filepath',convertPath2UNIX(EEG.etc.cond_files(i).fPath),'filename',EEG.etc.cond_files(i).fName);
+        else
+            ALLEEG{i} = pop_loadset('filepath',convertPath2Drive(EEG.etc.cond_files(i).fPath),'filename',EEG.etc.cond_files(i).fName);
+        end
     end
     ALLEEG = cellfun(@(x) [[],x],ALLEEG);
     try
@@ -200,8 +206,8 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
 %         for i=1:length(TMP)
 %             par_save(TMP(i).CAT)
 %         end
-        BIG_CAT = cat(1,TMP(:).CAT)
-        EEG.CAT = BIG_CAT;
+        BIG_CAT = cat(1,TMP(:).CAT);
+        EEG.etc.COND_CAT = BIG_CAT;
         [EEG] = pop_saveset(EEG,...
             'filepath',EEG.filepath,'filename',EEG.filename,...
             'savemode','twofiles');

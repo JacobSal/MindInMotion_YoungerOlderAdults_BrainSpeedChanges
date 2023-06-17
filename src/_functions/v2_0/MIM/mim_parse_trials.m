@@ -19,7 +19,7 @@ tic
 SAVE_ALLEEG = false;
 %- event timewarp params
 COND_CHARS_TIMEWARP = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-BASELINE_TIMELIMITS = [-epoch_limits(1),epoch_limits(2)-1000*(1/EEG.srate)]; % time in milliseconds
+BASELINE_TIMELIMITS = [epoch_limits(1),epoch_limits(2)-1000*(1/EEG.srate)]; % time in milliseconds
 STD_TIMEWARP = 3; %2.5;
 EVENTS_TIMEWARP = {'RHS','LTO','LHS','RTO','RHS'};
 %- sliding window params
@@ -91,6 +91,7 @@ else
             COND_CHARS_TIMEWARP{i} = sprintf('x%s',COND_CHARS_TIMEWARP{i});
         end
         TMP_TMP_EEG.etc.epoch.condition = COND_CHARS_TIMEWARP{i};
+        TMP_TMP_EEG.etc.epoch.epoch_limits = epoch_limits;
         ALLEEG{i} = TMP_TMP_EEG;
         timewarp_struct{i} = TMP_TMP_EEG.timewarp;
     end

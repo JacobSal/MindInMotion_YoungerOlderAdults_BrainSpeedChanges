@@ -55,7 +55,7 @@ addpath(run_dir)
 global ADD_CLEANING_SUBMODS
 ADD_CLEANING_SUBMODS = false;
 setWorkspace
-%% PARPOOL SETUP
+%% PARPOOL SETUP ======================================================= %%
 if ~ispc
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
@@ -131,8 +131,7 @@ singletrials = 'off' ;  %['on'|'off'] load single trials spectral data (if avail
 speed_trials = {'0p25','0p5','0p75','1p0'};
 terrain_trials = {'flat','low','med','high'};
 COND_DESIGNS = {speed_trials,terrain_trials};
-%-
-inds = main_cl_inds(2:end); %[2,3,4,7,8,9];
+
 %## std_precomp.m params
 SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
 FREQ_FAC = 4;
@@ -144,7 +143,8 @@ DATA_SET = 'MIM_dataset';
 % dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
 % dt = '05012023_MIM_OA_subset_N85_speed_terrain_merge';
 % dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
-dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
+% dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
+dt = '06122023_MIM_OAN79_subset_prep_verified_gait';
 %- epoching params
 % TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
@@ -175,6 +175,8 @@ else
     end
     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
 end
+%-
+inds = main_cl_inds(2:end); %[2,3,4,7,8,9];
 % STUDY.cluster = STUDY.etc.cluster_save;
 % disp(STUDY.cluster);
 % disp(STUDY.urcluster);
@@ -193,10 +195,10 @@ saveas(fig_i,[save_dir filesep sprintf('partDipPlot_top.jpg')]);
 view([45,0,0])
 saveas(fig_i,[save_dir filesep sprintf('partDipPlot_sagittal.jpg')]);
 view([0,-45,0])
-saveas(fig_i,[save_dir filesep sprintf('partDipPlot_coronal.jpg')]);]
+saveas(fig_i,[save_dir filesep sprintf('partDipPlot_coronal.jpg')]);
 %##
 [~] = std_dipplot(STUDY,ALLEEG,'clusters',main_cl_inds(2:end),...
-            'mode','multicolor','figure','on');
+            'mode','multicolor','projlines','off');
 fig_i = get(groot,'CurrentFigure');
 saveas(fig_i,[save_dir filesep sprintf('allDipPlot_top.jpg')]);
 view([45,0,0])
@@ -213,7 +215,7 @@ saveas(fig_i,[save_dir filesep sprintf('outlierDipPlot_sagittal.jpg')]);
 view([0,-45,0])
 saveas(fig_i,[save_dir filesep sprintf('outlierDipPlot_coronal.jpg')]);
 %##
-for cluster_i = 2:length(STUDY.cluster)
+for cluster_i = inds
     std_dipplot(STUDY,ALLEEG,'clusters',cluster_i);
     fig_i = get(groot,'CurrentFigure');
 %     saveas(fig_i,[save_dir filesep sprintf('DipPlot_0.fig')]);

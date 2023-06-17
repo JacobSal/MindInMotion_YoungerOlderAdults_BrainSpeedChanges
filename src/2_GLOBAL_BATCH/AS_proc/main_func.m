@@ -81,7 +81,7 @@ t_conn_freqs = cell(1,length(ALLEEG)*length(CONN_METHODS)*length(FREQ_BANDS));
 t_conn_sigs = cell(1,length(ALLEEG)*length(CONN_METHODS)*length(FREQ_BANDS));
 %% ===================================================================== %%
 %## STEP 4) GENERATE CONNECTIVITY MEASURES
-fprintf(1,'\n==== GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s ====\n',ALLEEG.subject);
+fprintf(1,'\n==== GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s ====\n',ALLEEG(1).subject);
 %## ASSIGN PATH FOR SIFT
 %- make sure path is in right format and make sure it exists
 if ~exist(save_dir,'dir')
@@ -109,22 +109,29 @@ if length(CONN_COMPONENTS) < 2
     return;
 end
 %- select components from EEG
-if length(CONN_COMPONENTS) ~= size(ALLEEG.icaweights,1)
+if length(CONN_COMPONENTS) ~= size(ALLEEG(1).icaweights,1)
     for cond_i = 1:length(ALLEEG)
-        ALLEEG(cond_i) = pop_subcomp(ALLEEG(cond_i), sort(CONN_COMPONENTS), 0, 1);
+        EEG = ALLEEG(cond_i);
+        EEG = pop_subcomp(EEG,sort(CONN_COMPONENTS),0,1);
+        %- Recalculate ICA Matrices && Book Keeping
+        if isempty(EEG.icaact)
+            fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+            EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+            EEG.icaact = reshape(EEG.icaact,size(EEG.icaact,1),EEG.pnts,EEG.trials);
+        end
+        ALLEEG(cond_i) = EEG;
     end
 end
 %- Calculate Connectivity
 switch CNCTANL_TOOLBOX
     case 'sift'
-        [TMPEEG] = cnctanl_conn_meas(ALLEEG,CONN_COMPONENTS,CONN_METHODS,save_dir,...
+        [EEG] = cnctanl_conn_meas(ALLEEG,CONN_COMPONENTS,CONN_METHODS,save_dir,...
             'FREQS',FREQS,...
             'WINDOW_LENGTH',WINDOW_LENGTH,...
             'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE);
         for trial_i = 1:length(ALLEEG)
-            ALLEEG(trial_i).CAT = TMPEEG(trial_i).CAT;
+            ALLEEG(trial_i).CAT = EEG(trial_i).CAT;
         end
-        clear TMPEEG
     case'bsmart'
         slide_step_size = ceil(WINDOW_STEP_SIZE*ALLEEG(1).srate);
         slide_win_len = ceil(WINDOW_LENGTH*ALLEEG(1).srate);
@@ -151,6 +158,13 @@ if DO_BOOTSTRAP
         TMP_EEG = ALLEEG(trial_i).CAT.PConn;
         fName = strsplit(ALLEEG(trial_i).filename,'.'); fName = [fName{1} '.mat'];
         par_save(TMP_EEG,ALLEEG(trial_i).filepath,fName,'_BootStrap');
+        %- BootStrap corrected statistics per condition
+%         fprintf('\n==== NONZERO STATISTICS ====\n')
+%         [ALLEEG(trial_i),~] = cnctanl_groupStats(ALLEEG(trial_i),'NonZero');
+%         %- Save Nonzero Stats
+%         TMP_EEG = ALLEEG(trial_i).CAT.Stats;
+%         fName = strsplit(ALLEEG(trial_i).filename,'.'); fName = [fName{1} '.mat'];
+%         par_save(TMP_EEG,ALLEEG(trial_i).filepath,fName,'_NonZero');
     end
     %- assign mean of bootstrap as Conn value
     if ASSIGN_BOOTSTRAP_MEAN

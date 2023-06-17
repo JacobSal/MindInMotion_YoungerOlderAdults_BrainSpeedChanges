@@ -190,9 +190,9 @@ else
 end
 %% LOOP THROUGH PARTICIPANTS
 LOOP_VAR = 1:length(working_dirs);
-parfor (subj_i = LOOP_VAR, POOL_SIZE) % (05/24/2023) JS, parfor might not
+% parfor (subj_i = LOOP_VAR, POOL_SIZE) % (05/24/2023) JS, parfor might not
 % be possible for this loop. a problem with ft_sourceplot.
-% for subj_i = LOOP_VAR
+for subj_i = LOOP_VAR
     [EEG,dipfit_fem_norm] = mim_norm_dipfit(fPaths{subj_i},fNames{subj_i},fiducial_fPaths{1,subj_i},dipfit_fPaths{subj_i});
     par_save(dipfit_fem_norm,fPaths{subj_i},'dipfit_fem_norm.mat')
     EEG = pop_saveset(EEG,'filepath',EEG.filepath,'filename',EEG.filename); 

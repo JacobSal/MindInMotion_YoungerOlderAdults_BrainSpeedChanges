@@ -33,7 +33,8 @@ CYCLE_LIMITS = [3,0.8];
 errorMsg = 'Value must be of format [DOUBLE1,DOUBLE2]. Varies the length of the window used to determine the power of a certain frequency band';
 cl_validFcn = @(x) assert((isnumeric(x) && length(x) == 2) || isempty(x),errorMsg);
 %- cluster params
-KMEANS_CLUSTER_N = 10; %8;
+% (06/14/2023) JS, Trying K=9 for Older Adults
+KMEANS_CLUSTER_N = 9; %10; %8; 
 %## Define Parser
 p = inputParser;
 %## REQUIRED

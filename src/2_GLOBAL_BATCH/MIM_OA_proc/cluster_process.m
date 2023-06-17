@@ -120,18 +120,22 @@ SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- study group and saving
-SAVE_EEG = false; %true;
-OVERRIDE_DIPFIT = true;
+DO_ERSP_CALC = false;
+DO_SPEC_CALC = true;
 % TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-%- eeglab_cluster.m spectral params
+%- spectral params
 FREQ_LIMITS = [1,100];
 CYCLE_LIMITS = [3,0.8];
-SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
+SPEC_MODE = 'psd'; %options: 'psd','fft','pburg','pmtm'
 FREQ_FAC = 4;
 PAD_RATIO = 2;
+%* kmeans clustering N
+% (06/14/2023) JS, trying 9 for Older adults
+KMEANS_CLUSTER_N = 9;
 %- datetime override
-dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
+% dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
+dt = '06122023_MIM_OAN79_subset_prep_verified_gait';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
@@ -163,10 +167,9 @@ end
                     'CYCLE_LIMITS',CYCLE_LIMITS,...
                     'FREQ_FAC',FREQ_FAC,...
                     'PAD_RATIO',PAD_RATIO,...
-                    'DO_ERSP_CALC',false,...
-                    'DO_SPEC_CALC',false,...
-                    'KMEANS_CLUSTER_N',10,...
-                    'PAD_RATIO',4);
+                    'DO_ERSP_CALC',DO_ERSP_CALC,...
+                    'DO_SPEC_CALC',DO_SPEC_CALC,...
+                    'KMEANS_CLUSTER_N',KMEANS_CLUSTER_N);
 %## PCA reduction algorithm
 %- RECALCULATE ICAACT MATRICES
 %     ALLEEG = eeg_checkset(ALLEEG,'loaddata');
@@ -178,7 +181,10 @@ end
 %     end
 % [STUDY,ALLEEG,~,~] = cluster_pca_reduce(STUDY,ALLEEG);
 %## ICA reduction algorithm
-[STUDY,~,~] = cluster_ica_reduce(STUDY);
+% [STUDY,~,~] = cluster_ica_reduce(STUDY);
+%## RV reduction algorithm
+% (06/14/2023) JS, using minimum or rv now
+[STUDY,~,~] = cluster_rv_reduce(STUDY,ALLEEG);
 %## ADD ANATOMICAL LABELS
 [~, atlas_cell] = add_anatomical_labels(STUDY,ALLEEG);
 STUDY.etc.add_anatomical_labels = atlas_cell;
