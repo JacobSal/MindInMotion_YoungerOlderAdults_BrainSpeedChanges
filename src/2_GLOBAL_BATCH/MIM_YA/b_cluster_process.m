@@ -99,10 +99,9 @@ FREQ_FAC = 4;
 PAD_RATIO = 2;
 %* kmeans clustering N
 % (06/14/2023) JS, trying 9 for Older adults
-KMEANS_CLUSTER_N = 9;
+KMEANS_CLUSTER_N = 12;
 %- datetime override
-% dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
-dt = '06122023_MIM_OAN79_subset_prep_verified_gait';
+dt = '06282023_MIM_YAN33_subset_prep_verified_gait';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
