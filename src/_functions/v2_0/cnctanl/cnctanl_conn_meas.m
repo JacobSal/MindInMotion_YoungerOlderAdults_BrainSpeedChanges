@@ -256,7 +256,7 @@ for cond_i = 1:length(ALLEEG)
                                             'minimizer', 'min', ...
                                             'prclim', 90);
     tmp_morder(cond_i) = ceil(mean(ALLEEG(cond_i).CAT.IC.hq.popt));
-    saveas(handles,[save_dir filesep sprintf('%s_orderResults.fig',ALLEEG(cond_i).subject)]);
+    saveas(handles,[save_dir filesep sprintf('%s_%i_orderResults.fig',ALLEEG(cond_i).subject,cond_i)]);
     close(handles);
 end
 ModelOrder = ceil(mean(tmp_morder));
@@ -374,7 +374,7 @@ for cond_i = 1:length(ALLEEG)
                                          {ALLEEG(cond_i).CAT.VALIDATION.PCstats},         ...
                                          {ALLEEG(cond_i).CAT.VALIDATION.stabilitystats});                                        
     % If you want to save this figure you can uncomment the following lines:
-    saveas(handles,[save_dir filesep sprintf('%s_validationResults.fig',ALLEEG(cond_i).subject)]);
+    saveas(handles,[save_dir filesep sprintf('%s_%i_validationResults.fig',ALLEEG(cond_i).subject,cond_i)]);
     close(handles);
 
     % To automatically determine whether our model accurately fits the data you
@@ -413,6 +413,7 @@ disp('===================================')
 
 %## TIME
 toc
+end
 %% SUBFUNCTIONS
 
 %% DOCUMENTATION PER FUNCTION 

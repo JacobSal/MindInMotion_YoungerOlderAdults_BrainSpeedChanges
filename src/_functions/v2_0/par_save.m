@@ -50,41 +50,34 @@ fname_ext = p.Results.fname_ext;
 if ~ispc
     % convert path to os
     pathIn = convertPath2UNIX(fPath);
-    if ~isempty(fname_ext)
-        fnames = strsplit(fName,'.');
-        fnames{1} = [fnames{1} fname_ext];
-        fName = join(fnames,'.');
-        fName = fName{1};
-    end
-    % set save path
-    %- if filename is included in path
-    if ~isempty(fName)
-        savePath = [pathIn filesep fName];
-    else
-        savePath = pathIn;
-    end
-    % save
-%     save(savePath,'SAVEVAR','-v7.3');
-    save(savePath,'SAVEVAR','-v6');
-    fprintf('\nSaving %s to\n%s\n',fName,savePath);
 else
     %- convert path to os
     pathIn = convertPath2Drive(fPath);
-    %- set save path
-    if ~isempty(fname_ext)
-        fnames = strsplit(fName,'.');
-        fnames{1} = [fnames{1} fname_ext];
-        fName = join(fnames,'.');
-        fName = fName{1};
-    end
-    %- if filename is included in path
-    if ~isempty(fName)
-        savePath = [pathIn filesep fName];
-    else
-        savePath = pathIn;
-    end
-    %- save
-%     save(savePath,'SAVEVAR','-v7.3');
-    save(savePath,'SAVEVAR','-v6');
-    fprintf('\nSaving %s to\n%s\n',fName,savePath);
 end
+if ~isempty(fname_ext)
+    fnames = strsplit(fName,'.');
+    fnames{1} = [fnames{1} fname_ext];
+    fName = join(fnames,'.');
+    fName = fName{1};
+end
+% set save path
+%- if filename is included in path
+if ~isempty(fName)
+    savePath = [pathIn filesep fName];
+else
+    savePath = pathIn;
+end
+%- save
+%     val = GetSize(SAVEVAR);
+s = whos('SAVEVAR');
+fprintf(1,'%s is %0.2g bytes\n',fName,s.bytes);
+fprintf('\nSaving %s to\n%s\n',fName,savePath);
+if s.bytes >= 2e9
+    fprintf('\nSaving %s using ''v7.3'' to\n%s\n',fName,savePath);
+    save(savePath,'SAVEVAR','-v7.3');
+else
+    fprintf('\nSaving %s using ''v6'' to\n%s\n',fName,savePath);
+    save(savePath,'SAVEVAR','-v6');
+end
+end
+
