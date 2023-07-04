@@ -1,4 +1,4 @@
-function [STUDY,ALLEEG] = mim_create_study(ALLEEG,study_fName,study_fPath,varargin)
+function [STUDY,ALLEEG] = nj_create_study(ALLEEG,study_fName,study_fPath,varargin)
 %MIM_CREATE_STUDY Summary of this function goes here
 % CAT CODE
 %  _._     _,-'""`-._
@@ -12,7 +12,6 @@ function [STUDY,ALLEEG] = mim_create_study(ALLEEG,study_fName,study_fPath,vararg
 %## TIME
 tic
 %## DEFINE DEFAULTS
-
 %## Define Parser
 p = inputParser;
 %## REQUIRED
@@ -45,7 +44,7 @@ THRESH_BRAIN_SCORE = 8;
 %## DIPOLE REJECTION
 % parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
 parfor subj_i = 1:length(ALLEEG)
-    reject_struct = mim_reject_ics(ALLEEG(subj_i),ALLEEG(subj_i).filepath);
+    reject_struct = nj_reject_ics(ALLEEG(subj_i),ALLEEG(subj_i).filepath);
     tmp_bad = setdiff(find((1:size(ALLEEG(subj_i).icaweights,1))),find((reject_struct.IC_all_brain >= THRESH_BRAIN_SCORE & reject_struct.IC_all_brain ~= 9)));
     tmp_good = [find(reject_struct.IC_all_brain >= THRESH_BRAIN_SCORE & reject_struct.IC_all_brain ~= 9)];
     ALLEEG(subj_i).etc.urreject = [];
@@ -110,24 +109,18 @@ end
 ALLEEG = TMP_ALLEEG(~cellfun(@isempty,TMP_ALLEEG));
 %% CREATE STUDY
 % initiailize study
-fprintf('\n==== Making Study Modifications ====\n');
+fprintf('\n==== Making Study Modifications ====\n')
 [STUDY, ALLEEG] = std_editset([],ALLEEG,...
                                 'updatedat','off',...
                                 'savedat','off',...
                                 'name',study_fName,...
                                 'filename',study_fName,...
                                 'filepath',study_fPath);
-% make sure all .mat files have a .fdt file associated with it.
-% (03/08/23) why were these turned off? <-- to save memory!! (03/16/2023),
-% use eeglab_options to set memory options so it doesn't conflict.
-% (08/28/22) updatedat turnned off 
-% (08/28/22) savedat turned off
-% [STUDY, ALLEEG] = std_editset(STUDY,ALLEEG,...
-%                                 'updatedat','off',...
-%                                 'savedat','off','resave','on',...
-%                                 'commands', {'dipselect',0.2},...
-%                                 'filename',studyName,...
-%                                 'filepath',studyDir);
+%## (NJ) DIPOLE STRUCT
+% STUDY.urcluster = tmp_cluster;
+% STUDY.cluster = tmp_cluster;
+% STUDY.etc.rmvd_subj.inds = tmp_rmv_subjs;
+%## SAVE
 % parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
 parfor subj_i = 1:length(ALLEEG)
     ALLEEG(subj_i).etc.full_setfile.filename = ALLEEG(subj_i).filename;
@@ -135,9 +128,6 @@ parfor subj_i = 1:length(ALLEEG)
     ALLEEG(subj_i).filename = sprintf('%s_%s_ICA_TMPEEG',ALLEEG(subj_i).subject,'reducedcomps');
     ALLEEG(subj_i) = pop_saveset(ALLEEG(subj_i),'filename',ALLEEG(subj_i).filename,'filepath',ALLEEG(subj_i).filepath);
 end
-[STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG); 
-% [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
-%                                         study_fName,study_fPath,...
-%                                         'RESAVE_DATASETS','on');
+[STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
 end
-
+%% SUBFUNCTIONS

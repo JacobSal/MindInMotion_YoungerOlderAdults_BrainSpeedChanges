@@ -77,7 +77,7 @@ addOptional(p,'conditions',CONDITIONS,cnd_validFcn);
 addOptional(p,'groups',GROUPS,grp_validFcn);
 addOptional(p,'sessions',SESSIONS,sess_validFcn);
 %## PARAMETER
-addParameter(p,'SAVE_EEG',SAVE_EEG,@islogical);
+% addParameter(p,'SAVE_EEG',SAVE_EEG,@islogical);
 addParameter(p,'CHANLOCS_FPATHS',CHANLOCS_FPATHS,cfp_validFcn);
 parse(p,fNames,fPaths,subjectNames,save_dir,varargin{:});
 %## SET DEFAULTS
@@ -86,7 +86,7 @@ parse(p,fNames,fPaths,subjectNames,save_dir,varargin{:});
 conditions          = p.Results.conditions;
 groups              = p.Results.groups;
 sessions            = p.Results.sessions;
-bool_save_eeg       = p.Results.SAVE_EEG;
+% bool_save_eeg       = p.Results.SAVE_EEG;
 chanlocs_fPaths     = p.Results.CHANLOCS_FPATHS;
 %% ===================================================================== %%
 %## CREATE STUDY
@@ -163,12 +163,17 @@ parfor subj_i=1:length(fNames)
         EEG.condition = char(conditions{subj_i});
         EEG.session = char(sessions{subj_i});
         EEG = eeg_checkset(EEG,'eventconsistency');
-        if bool_save_eeg
-            fprintf(1,'Saving Subject %s\n',EEG.subject);
-            [EEG] = pop_saveset(EEG,'savemode','twofiles',...
-                'filename',fName,...
-                'filepath',fPath);
-        end
+        fprintf(1,'Saving Subject %s\n',EEG.subject);
+        [EEG] = pop_saveset(EEG,'savemode','twofiles',...
+            'filename',fName,...
+            'filepath',fPath);
+
+%         if bool_save_eeg
+%             fprintf(1,'Saving Subject %s\n',EEG.subject);
+%             [EEG] = pop_saveset(EEG,'savemode','twofiles',...
+%                 'filename',fName,...
+%                 'filepath',fPath);
+%         end
     else
         EEG = pop_loadset('filepath',fPath,'filename',fName);
     end

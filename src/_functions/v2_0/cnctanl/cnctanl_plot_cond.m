@@ -48,8 +48,8 @@ MARK_CHARS = {':o','-o','--o','-x','--x',':x','-^','--^',':^'};
 cond_picks = 1:length(conditions);
 X_LIM = [0.5,length(cond_picks)+0.5];
 % Y_LIM = [-0.01,0.15];
-% Y_LIM = [0,0.125];
-Y_LIM = [-0.1,0.1];
+Y_LIM = [0,0.15];
+% Y_LIM = [-0.1,0.1];
 % Y_LIM = [-0.4,0.4];
 
 x = 1:length(cond_picks);
