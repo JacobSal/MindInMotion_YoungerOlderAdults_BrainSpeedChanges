@@ -109,11 +109,7 @@ COND_DESIGNS = {speed_trials,terrain_trials};
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- datetime override
-% dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
-% dt = '05012023_MIM_OA_subset_N85_speed_terrain_merge';
-% dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
-% dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
-dt = '06122023_MIM_OAN79_subset_prep_verified_gait';
+dt = '06282023_MIM_OAN79_subset_prep_verified_gait';
 %- epoching params
 % TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};

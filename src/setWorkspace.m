@@ -90,7 +90,7 @@ else
     %- Conn SUBMODS
     SUBMODULES = {'fieldtrip','eeglab','SIFT','postAmicaUtility',...
         'Granger_Geweke_Causality',...
-        'ICLabel','Viewprops1.5.4'};
+        'ICLabel','Viewprops1.5.4','PowPowCAT3.0'};
     SUBMODULES_GENPATH = {};
     SUBMODULES_ITERS = (1:length(SUBMODULES));
 end

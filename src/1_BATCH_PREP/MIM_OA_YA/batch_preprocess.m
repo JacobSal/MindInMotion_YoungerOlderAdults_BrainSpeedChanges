@@ -97,7 +97,8 @@ SUBJ_NO_MRI = {'H2010', 'H2036', 'H2041', 'H2072', 'H3018','H3120'};
 SUBJ_1YA = {'H1002','H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1018','H1019','H1020',...
     'H1022','H1024','H1026','H1027','H1029','H1030','H1031','H1032','H1033','H1034','H1035',...
     'H1036','H1037','H1038','H1039','H1041','H1042','H1044','H1045','H1047','H1047'}; % JACOB,SAL (04/18/2023)
-SUBJ_2MA = {'H2002', 'H2007', 'H2008', 'H2013', 'H2015', 'H2017', ...
+
+SUBJ_2MA = {'H2017', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
     'H2020', 'H2021', 'H2022', 'H2023',...
     'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2037', 'H2038',...
     'H2039', 'H2042', 'H2052', 'H2059', 'H2062', 'H2082',...
@@ -116,19 +117,20 @@ SUBJ_3MA = {'H3029','H3034','H3039','H3042','H3046',...
 % GROUP_NAMES = {'H1000''s'}; 
 % SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
 %- (OA) Subject Picks 
-% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%- (VARIOUS) Subjct Picks
 SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
 GROUP_NAMES = {'H2000''s','H3000''s'}; 
-SUBJ_ITERS = {[9],[]};
+SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
+%- (VARIOUS) Subjct Picks
+% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
+% GROUP_NAMES = {'H2000''s','H3000''s'}; 
+% SUBJ_ITERS = {[9],[]};
 %% (PROCESSING PARAMS) ================================================= %%
 %## hard define
 %- dataset name
 DATA_SET = 'MIM_dataset';
 %- datetime override
-OA_PREP_FNAME = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
+% OA_PREP_FNAME = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
+OA_PREP_FNAME = '07122023_OAN79_iccRX0p9_iccREMG0p3'; % JACOB,SAL(04/10/2023)
 %## soft define
 %- path for local data
 DATA_DIR = [source_dir filesep '_data'];

@@ -8,7 +8,7 @@
 %   Summary: This code was modified from
 %
 %- run sh
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/AS_proc/run_conn_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/AS/run_d_conn_process.sh
 
 %{
 %## RESTORE MATLAB
@@ -41,7 +41,7 @@ else  % isunix
 end
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'AS_proc'];
+run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'AS'];
 %% DEFINE SOURCE DIRECTORY & CD ======================================== %%
 %- cd to source directory
 cd(run_dir)
@@ -122,6 +122,7 @@ DATA_DIR = [source_dir filesep '_data'];
 % OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
+% study_fName_2 = sprintf('%s_CONN_study',[EVENT_COND_COMBOS{:}]);
 study_save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 study_load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 conn_save_dir = [study_save_dir filesep '_figs' filesep 'conn'];
@@ -218,8 +219,8 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
         tmp{subj_i} = EEG;
         fprintf(['error. identifier: %s\n',...
                  'error. %s\n',...
-                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
-        disp(e);
+                 'error. on subject %s\n',...
+                 'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
     end
 end
 pop_editoptions('option_computeica',0);
@@ -227,7 +228,7 @@ pop_editoptions('option_computeica',0);
 % [ALLEEG,MAIN_STUDY] = parfunc_rmv_subjs(tmp,MAIN_STUDY,rmv_subj);
 %- Save
 [MAIN_STUDY,ALLEEG] = parfunc_save_study(MAIN_STUDY,ALLEEG,...
-                                        study_fName_2,study_save_dir,...
+                                        study_fName_1,study_save_dir,...
                                         'STUDY_COND',[]);
 %% Version History
 %{

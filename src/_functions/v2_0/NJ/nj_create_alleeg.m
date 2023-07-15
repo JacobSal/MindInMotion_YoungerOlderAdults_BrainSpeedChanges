@@ -1,4 +1,4 @@
-function [ALLEEG] = as_create_alleeg(fNames,fPaths,subjectNames,save_dir,varargin)
+function [ALLEEG] = nj_create_alleeg(fNames,fPaths,subjectNames,save_dir,varargin)
 %MIM_CREATE_ALLEEG Summary of this function goes here
 %   Detailed explanation goes here
 %   IN: 
@@ -131,7 +131,8 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
             catch e
                 fprintf(['error. identifier: %s\n',...
                      'error. %s\n',...
-                     'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+                     'error. on subject %s\n',...
+                     'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
                 EEG = bem_eeglab_dipfit(EEG,COORD_TRANSFORM_MNI,MNI_MRI,MNI_VOL,MNI_CHAN_1005,DIP_NUM,DIP_PLOT)
             end
         end

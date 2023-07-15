@@ -7,7 +7,7 @@
 %   Previous Version: n/a
 %   Summary: 
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/MIM_OA/run_d_conn_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/NJ/run_d_conn_process.sh
 
 %{
 %## RESTORE MATLAB
@@ -82,51 +82,14 @@ else
     'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
     SLURM_POOL_SIZE = 1;
 end
-%% (DATASET INFORMATION) =============================================== %%
-%## (MIND IN MOTION) DATASET SPECIFIC (05/24/2023)
-SUBJ_NORUN = {'H2012_FU', 'H2013_FU', 'H2018_FU', 'H2020_FU', 'H2021_FU',...
-            'H3024_Case','H3029_FU','H3039_FU','H3063_FU','NH3021_Case', 'NH3023_Case','NH3025_Case', 'NH3030_FU',...
-            'NH3068_FU', 'NH3036_FU', 'NH3058_FU'};
-SUBJ_MISSING_TRIAL_DATA = {'H1008','H2012','H2018','H3024','NH3002', 'NH3004','NH3009',...
-    'NH3023','NH3027', 'NH3028', 'NH3129', 'NH3040'};
-SUBJ_NO_MRI = {'H2010', 'H2036', 'H2041', 'H2072', 'H3018','H3120'};
-SUBJ_1YA = {'H1002','H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1018','H1019','H1020',...
-    'H1022','H1024','H1026','H1027','H1029','H1030','H1031','H1032','H1033','H1034','H1035',...
-    'H1036','H1037','H1038','H1039','H1041','H1042','H1044','H1045','H1047','H1047'}; % JACOB,SAL (04/18/2023)
-SUBJ_2MA = {'H2017', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
-    'H2020', 'H2021', 'H2022', 'H2023',...
-    'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2037', 'H2038',...
-    'H2039', 'H2042', 'H2052', 'H2059', 'H2062', 'H2082',...
-    'H2090', 'H2095', 'H2111', 'H2117'};
-SUBJ_3MA = {'H3029','H3034','H3039','H3042','H3046',...
-    'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107',...
-    'NH3006', 'NH3007', 'NH3008', 'NH3010',...
-    'NH3021', 'NH3025', 'NH3026',...
-    'NH3030', 'NH3036',...
-    'NH3041', 'NH3043', 'NH3051', 'NH3054', 'NH3055', 'NH3056', 'NH3058',...
-    'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
-    'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
-    'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
-%- (OY) Subject Picks 
-% SUBJ_PICS = {SUBJ_1YA}; 
-% GROUP_NAMES = {'H1000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
-%- (OA) Subject Picks 
-SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-GROUP_NAMES = {'H2000''s','H3000''s'}; 
-SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %% (PARAMETERS) ======================================================== %%
 %## Hard Defines
 %- datset name
-DATA_SET = 'MIM_dataset';
+DATA_SET = 'jacobsenN_dataset';
 %- datetime override
-% dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
-%- study group and saving
-% SAVE_EEG = false; %true;
-% OVERRIDE_DIPFIT = true;
+dt = '06292023_NJ_Standing';
 %- epoching params
-% TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
-TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+TRIAL_TYPES = {'pre','post'};
 %- connecitivty modeling
 CONN_FREQS = (1:100);
 CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
@@ -163,9 +126,28 @@ else
     else
         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
     end
-    %## (AS) ATTACH CLUSTER
-%     MAIN_STUDY.cluster = MAIN_STUDY.urcluster;
-    [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(MAIN_STUDY);
+    %## load chang's algorithmic clustering
+    %* cluster parameters
+    pick_cluster = 12;
+    clustering_weights.dipoles = 5;
+    clustering_weights.scalp = 5;
+    clustering_weights.ersp = 0;
+    clustering_weights.spec = 0;
+    cluster_alg = 'kmeans';
+    do_multivariate_data = 1;
+    evaluate_method = 'min_rv';
+    clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
+        '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
+        '_spec_',num2str(clustering_weights.spec)];
+    %* load cluster information
+    cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
+    outputdir = [cluster_load_dir filesep 'clustering_solutions' filesep clustering_method,...
+        filesep num2str(pick_cluster) filesep evaluate_method];
+    tmp = load([outputdir filesep sprintf('cluster_update_%i.mat',pick_cluster)]);
+    cluster_update = tmp.cluster_update;
+    STUDY.cluster = cluster_update;
+    %- get inds
+    [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
 end
 %% INITIALIZE PARFOR LOOP VARS
 if exist('SLURM_POOL_SIZE','var')
@@ -195,12 +177,12 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
     if isempty(EEG.icaact)
         fprintf('%s) Recalculating ICA activations\n',EEG.subject);
         EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
-        EEG.icaact = reshape(EEG.icaact,size(EEG.icaact,1),EEG.pnts,EEG.trials);
+        EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     end
     fprintf('%s) Processing componets:\n',EEG.subject)
     fprintf('%i,',components'); fprintf('\n');
     %- re-epoch
-    ALLEEG = cell(1,length(TRIAL_TYPES));
+    ALLEEG = cell(1,length(EVENT_COND_COMBOS));
     for i = 1:length(EEG.etc.cond_files)
         if ~ispc
             ALLEEG{i} = pop_loadset('filepath',convertPath2UNIX(EEG.etc.cond_files(i).fPath),'filename',EEG.etc.cond_files(i).fName);
@@ -238,8 +220,8 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
         tmp{subj_i} = EEG;
         fprintf(['error. identifier: %s\n',...
                  'error. %s\n',...
-                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
-        disp(e);
+                 'error. on subject %s\n',...
+                 'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
     end
 end
 pop_editoptions('option_computeica',0);
@@ -247,7 +229,7 @@ pop_editoptions('option_computeica',0);
 % [ALLEEG,MAIN_STUDY] = parfunc_rmv_subjs(tmp,MAIN_STUDY,rmv_subj);
 %- Save
 [MAIN_STUDY,tmp] = parfunc_save_study(MAIN_STUDY,tmp,...
-                                        study_fName_2,study_save_dir,...
+                                        study_fName_1,study_save_dir,...
                                         'STUDY_COND',[]);
 %% Version History
 %{

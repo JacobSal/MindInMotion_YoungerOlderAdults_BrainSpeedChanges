@@ -85,7 +85,7 @@ end
 %% (PARAMETERS) ======================================================== %%
 %## Hard Defines
 %- spec generation parameters
-RECOMPUTE_SPEC = false;
+RECOMPUTE_SPEC = false; % [true|false]
 FREQ_FAC = 4;
 FREQ_LIMITS = [1,70];
 SPEC_MODE = 'psd'; %'fft'; %'psd'; 
@@ -113,7 +113,9 @@ DATA_SET = 'MIM_dataset';
 % dt = '05012023_MIM_OA_subset_N85_speed_terrain_merge';
 % dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
 % dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
-dt = '06122023_MIM_OAN79_subset_prep_verified_gait';
+% dt = '06122023_MIM_OAN79_subset_prep_verified_gait';
+% dt = '06282023_MIM_OAN79_subset_prep_verified_gait';
+dt = '07112023_MIM_OAN79_subset_prep_verified_gait';
 %- epoching params
 % TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
@@ -142,13 +144,31 @@ else
     else
         [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',load_dir);
     end
+    %## load chang's algorithmic clustering
+    %* cluster parameters
+    pick_cluster = 12;
+    clustering_weights.dipoles = 5;
+    clustering_weights.scalp = 5;
+    clustering_weights.ersp = 0;
+    clustering_weights.spec = 0;
+    cluster_alg = 'kmeans';
+    do_multivariate_data = 1;
+    evaluate_method = 'min_rv';
+    clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
+        '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
+        '_spec_',num2str(clustering_weights.spec)];
+    %* load cluster information
+    cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
+    outputdir = [cluster_load_dir filesep 'clustering_solutions' filesep clustering_method,...
+        filesep num2str(pick_cluster) filesep evaluate_method];
+    tmp = load([outputdir filesep sprintf('cluster_update_%i.mat',pick_cluster)]);
+    cluster_update = tmp.cluster_update;
+    STUDY.cluster = cluster_update;
+    %- get inds
     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
 end
 %-
 inds = main_cl_inds(2:end); %[2,3,4,7,8,9];
-% STUDY.cluster = STUDY.etc.cluster_save;
-% disp(STUDY.cluster);
-% disp(STUDY.urcluster);
 %% (PRECOMPUTE MEASURES) COMPUTE SPECTRUMS
 if RECOMPUTE_SPEC
     fprintf('Running Spectrum Calculation...');
@@ -182,8 +202,9 @@ end
 %{
 %## custom
 inds = [2,3,4,7,8,9];
+
 [~] = std_dipplot(STUDY,ALLEEG,'clusters',inds,...
-            'mode','multicolor','figure','on',');
+            'mode','multicolor','figure','on');
 fig_i = get(groot,'CurrentFigure');
 saveas(fig_i,[save_dir filesep sprintf('partDipPlot_top.jpg')]);
 view([45,0,0])
@@ -234,7 +255,8 @@ saveas(fig_i,[save_dir filesep sprintf('allSpecPlot.jpg')]);
 fprintf('==== Making Topograph Plots ====\n');
 std_topoplot(STUDY,ALLEEG,'clusters',2:length(STUDY.cluster));
 fig_i = get(groot,'CurrentFigure');
-fig_i.Position = [500 300 1080 720];
+% fig_i.Position = [500 300 1080 720];
+set(fig_i,'position',[16 582 1340 751],'color','w')
 saveas(fig_i,[save_dir filesep sprintf('allTopoPlot.fig')]);
 saveas(fig_i,[save_dir filesep sprintf('allTopoPlot.jpg')]);
 close all
@@ -305,7 +327,7 @@ for des_i = 1:length(COND_DESIGNS)
         for i = 1:length(fig_i.Children(2).Children)
             set(fig_i.Children(2).Children(i),'LineWidth',1.5);
             set(fig_i.Children(2).Children(i),'Color',horzcat(cc(iter,:),0.6));
-            if iter == length(cc)
+            if iter == size(cc,1)
                 iter = 1;
             else
                 iter = iter + 1;

@@ -59,7 +59,7 @@ for i = 2:length(STUDY.cluster)
     cfg.output     = 'multiple';
     cfg.atlas      = atlas;
     cfg.inputcoord = 'mni';
-    %- (01/19/2023), JS: Changingf cfg.sphere from 1 to 3 (1mm vs 3mm)
+    %- (01/19/2023), JS: Changing cfg.sphere from 1 to 3 (1mm vs 3mm)
     cfg.sphere = 3;
     labels = ft_volumelookup(cfg, atlas);
     if ~isempty(labels)

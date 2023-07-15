@@ -7,6 +7,7 @@
 %   Previous Version: n/a
 %   Summary: 
 
+%- run sh
 % sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/NJ/run_a_epoch_process.sh
 
 %{
@@ -84,13 +85,29 @@ else
 end
 %% (DATASET INFORMATION) =============================================== %%
 %## DATASET SPECIFIC
-SUBJ_RISERS = {'S25','S26','S27','S28','S29','S30','S31','S32','S33','S34',...
+SUBJ_STANDING_OLD = {'S25','S26','S27','S28','S29','S30','S31','S32','S33','S34',...
                      'S35','S36','S37','S38','S39','S40','S41','S42','S43','S44',...
                      'S46','S47','S48'};
-SUBJ_FALLERS = {};
-SUBJ_PICS = {SUBJ_RISERS,SUBJ_FALLERS};
-SUBJ_ITERS = {1:length(SUBJ_RISERS),1:length(SUBJ_FALLERS)};
-GROUP_NAMES = {'risers','fallers'};
+SUBJ_STANDING = {'S25','S26','S27','S28','S29','S30','S31','S32','S33','S34',...
+                 'S35','S36','S37','S38','S39','S41','S42','S43','S44',...
+                 'S46','S47','S48'};
+SUBJ_GAIT = {'S18','S19','S20','S21','S22','S23','S24','S25','S26','S27',...
+             'S28','S29','S30','S31','S32','S33','S34',...
+             'S35','S36','S37','S38','S39','S41','S42','S43','S44',...
+             'S46','S47','S48'};
+%- STANDING OLD GROUP      
+% SUBJ_PICS = {SUBJ_STANDING_OLD};
+% SUBJ_ITERS = {1:length(SUBJ_STANDING_OLD)};
+% GROUP_NAMES = {'young adults'};
+%- STANDING GROUP
+SUBJ_PICS = {SUBJ_STANDING};
+SUBJ_ITERS = {1:length(SUBJ_STANDING)};
+GROUP_NAMES = {'young adults'};
+%- GAIT GROUP
+% SUBJ_PICS = {SUBJ_GAIT};
+% SUBJ_ITERS = {1:length(SUBJ_GAIT)};
+% GROUP_NAMES = {'young adults'};
+
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- study group and saving
@@ -100,7 +117,7 @@ SAVE_ALLEEG = true;
 SUFFIX_PATH_EPOCHED = 'EPOCHED';
 SESSION_NUMBER = '1';
 TRIAL_TYPES = {'pre','post'};
-EPOCH_TIME_LIMITS = [-1,4]; 
+EPOCH_TIME_LIMITS = [-1,3]; 
 % ESTIMATED_TRIAL_LENGTH = 3*60; % trial length in seconds
 WINDOW_LENGTH = 6; % sliding window length in seconds
 PERCENT_OVERLAP = 0.0; % percent overlap between epochs
@@ -112,6 +129,8 @@ FREQ_FAC = 4;
 PAD_RATIO = 2;
 %- datetime override
 dt = '06292023_NJ_Standing';
+SUBFOLDER_CHAR = 'standing';
+% dt = 'test';
 %- hardcode data_dir
 DATA_SET = 'jacobsenN_dataset';
 %## soft define
@@ -145,7 +164,7 @@ for group_i = 1:length(SUBJ_ITERS)
     %## Assigning paths for .set, headmodel,& channel file
     for subj_i = sub_idx
         %- ICA fPaths
-        fPaths{cnt} = [OUTSIDE_DATA_DIR filesep SUBJ_PICS{group_i}{subj_i}];
+        fPaths{cnt} = [OUTSIDE_DATA_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep SUBFOLDER_CHAR];
 %         fPaths{cnt} = [load_dir filesep SUBJ_PICS{group_i}{subj_i} filesep 'ICA'];
         tmp = dir([fPaths{cnt} filesep '*.set']);
         fNames{cnt} = tmp.name;
@@ -156,7 +175,7 @@ for group_i = 1:length(SUBJ_ITERS)
 %         dipfit_norm_fPaths{cnt} = [fPaths{cnt} filesep 'dipfit_fem_norm.mat'];
         %- Prints
         fprintf('==== Subject %s Paths ====\n',SUBJ_PICS{group_i}{subj_i})
-        fprintf('ICA Exists: %i\n',(exist([fPaths{cnt} filesep fNames{cnt}],'file') && exist([fPaths{cnt} filesep 'W'],'file')))
+        fprintf('ICA Exists: %i\n',exist([fPaths{cnt} filesep fNames{cnt}],'file'))
 %         fprintf('DIPFIT Exists: %i\n',exist(dipfit_fPaths{cnt},'file'));
 %         fprintf('Normalized DIPFIT Exists: %i\n',exist(dipfit_norm_fPaths{cnt},'file'));
         cnt = cnt + 1;
@@ -223,6 +242,7 @@ rmv_subj = zeros(1,length(MAIN_ALLEEG));
 %% GENERATE EPOCH MAIN FUNC
 %## PARFOR LOOP
 parfor (subj_i = LOOP_VAR,POOL_SIZE)
+% for subj_i = LOOP_VAR
     %## LOAD EEG DATA
     EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
     fprintf('Running subject %s\n',EEG.subject)
@@ -252,17 +272,21 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
             for i = 1:length(ALLEEG)
                 %- save each parsed trial/condition to own folder to help save
                 %memory. EEGLAB is weird like that.
-                REGEX_FNAME = 'cond_%s';
-                tmp_fPath = [epoched_fPath filesep sprintf(REGEX_FNAME,ALLEEG(i).condition)];
+                REGEX_FNAME = 'cond_%i';
+                tmp_fPath = [epoched_fPath filesep sprintf(REGEX_FNAME,i)];
                 if ~exist(tmp_fPath,'dir')
                     mkdir(tmp_fPath)
                 end
                 [~] = pop_saveset(ALLEEG(i),...
-                    'filepath',tmp_fPath,'filename',sprintf([REGEX_FNAME '.set'],ALLEEG(i).condition));
+                    'filepath',tmp_fPath,'filename',sprintf([REGEX_FNAME '.set'],i));
                 cond_files(i).fPath = tmp_fPath;
-                cond_files(i).fName = sprintf([REGEX_FNAME '.set'],ALLEEG(i).condition);
+                cond_files(i).fName = sprintf([REGEX_FNAME '.set'],i);
             end
         end
+        %## MERGE SETS
+        ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
+        ALLEEG.etc.cond_files = cond_files;
+        %## TIMEWARPING?
 %         if ~isempty(timewarp_struct)
 %             ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
 %             ALLEEG.etc.cond_files = cond_files;
@@ -303,7 +327,8 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
         tmp{subj_i} = []; %EEG;
         fprintf(['error. identifier: %s\n',...
                  'error. %s\n',...
-                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+                 'error. on subject %s\n',...
+                 'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
     end
 
 end

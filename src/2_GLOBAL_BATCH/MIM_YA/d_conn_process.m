@@ -238,7 +238,8 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
         tmp{subj_i} = EEG;
         fprintf(['error. identifier: %s\n',...
                  'error. %s\n',...
-                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+                 'error. on subject %s\n',...
+                 'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
         disp(e);
     end
 end

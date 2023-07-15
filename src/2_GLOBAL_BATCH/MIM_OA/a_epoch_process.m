@@ -127,26 +127,36 @@ SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 % SUBJ_PICS = {SUBJ_DEBUG};
 % GROUP_NAMES = {'debug'}; 
 % SUBJ_ITERS = {1:length(SUBJ_DEBUG)};
+%- test
+% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
+% GROUP_NAMES = {'H2000''s','H3000''s'}; 
+% SUBJ_ITERS = {[1,2],[1,2]};
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- study group and saving
+SESSION_NUMBER = '1';
 SAVE_ALLEEG = true;
 SAVE_EEG = true; %true;
 OVERRIDE_DIPFIT = true;
-%- MIM specific epoching
-EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 %- epoching params
-SUFFIX_PATH_EPOCHED = 'EPOCHED';
-SESSION_NUMBER = '1';
-% TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
-TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-EPOCH_TIME_LIMITS = [-1,4]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
-% ESTIMATED_TRIAL_LENGTH = 3*60; % trial length in seconds
+DO_SLIDING_WINDOW = false;
+%* sliding window
 WINDOW_LENGTH = 6; % sliding window length in seconds
 PERCENT_OVERLAP = 0.0; % percent overlap between epochs
+%* gait
+EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
+STD_TIMEWARP = 3;
+EPOCH_TIME_LIMITS = [-1,4.25]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
 TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
+if DO_SLIDING_WINDOW
+    SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
+    TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
+else
+    SUFFIX_PATH_EPOCHED = 'GAIT_EPOCHED';
+    TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+end
 %- eeglab_cluster.m spectral params
 FREQ_LIMITS = [1,100];
 CYCLE_LIMITS = [3,0.8];
@@ -157,7 +167,10 @@ PAD_RATIO = 2;
 % dt = '05182023_MIM_OA_subset_N85_oldpipe';
 % dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
 % dt = '06122023_MIM_OAN79_subset_prep_verified_gait';
-dt = '06282023_MIM_OAN79_subset_prep_verified_gait';
+% dt = '06282023_MIM_OAN79_subset_prep_verified_gait';
+% dt = '07112023_MIM_OAN79_subset_prep_verified_gait';
+% dt = 'test';
+dt = '07152023_MIM_OAN79_subset_prep_verified_gait';
 %- Subject Directory information
 OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 %## soft define
@@ -290,8 +303,10 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
     %- parse
     try
         %## EPOCH
-        [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,EPOCH_TIME_LIMITS); %,...
-%             'PERENT_OVERLAP',PERCENT_OVERLAP,'WINDOW_LENGTH',WINDOW_LENGTH);
+        [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,DO_SLIDING_WINDOW,...
+            'EPOCH_TIME_LIMITS',EPOCH_TIME_LIMITS,...
+            'STD_TIMEWARP',STD_TIMEWARP,...
+            'COND_CHARS',TRIAL_TYPES);
         %## REMOVE USELESS EVENT FIELDS
         cond_files = struct('fPath',[],'fName',[]);
         if SAVE_ALLEEG
@@ -311,22 +326,27 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
         end
         ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
         ALLEEG.etc.cond_files = cond_files;
-        %- timewarp for across condition
-        timewarp = make_timewarp(ALLEEG,TIMEWARP_EVENTS,'baselineLatency',0, ...
-                'maxSTDForAbsolute',inf,...
-                'maxSTDForRelative',inf);
-        %- subject specific warpto (later use to help calc grand avg warpto across subjects)
-        timewarp.warpto = nanmedian(timewarp.latencies);        
-        goodepochs  = sort([timewarp.epochs]);
-        %- probably not needed? 
-        sedi = setdiff(1:length(ALLEEG.epoch),goodepochs);
-        %- reject outlier strides
-        ALLEEG = pop_select(ALLEEG,'notrial',sedi);
-        %- store timewarp structure in EEG
-        ALLEEG.timewarp = timewarp;
-%         disp(EEG.subject); disp(allWarpTo); disp(grandAvgWarpTo);
-        %- store condition-by-conditino timewarpings
-        ALLEEG.etc.timewarp_by_cond = timewarp_struct;
+        %## timewarp for across condition
+        if ~DO_SLIDING_WINDOW
+            timewarp = make_timewarp(ALLEEG,TIMEWARP_EVENTS,'baselineLatency',0, ...
+                    'maxSTDForAbsolute',inf,...
+                    'maxSTDForRelative',inf);
+            %- subject specific warpto (later use to help calc grand avg warpto across subjects)
+            timewarp.warpto = nanmedian(timewarp.latencies);        
+            goodepochs  = sort([timewarp.epochs]);
+            %- probably not needed? 
+            sedi = setdiff(1:length(ALLEEG.epoch),goodepochs);
+            %- reject outlier strides
+            ALLEEG = pop_select(ALLEEG,'notrial',sedi);
+            %- store timewarp structure in EEG
+            ALLEEG.timewarp = timewarp;
+    %         disp(EEG.subject); disp(allWarpTo); disp(grandAvgWarpTo);
+            %- store condition-by-conditino timewarpings
+            ALLEEG.etc.timewarp_by_cond = timewarp_struct;
+            %## STRUCT EDITS
+            ALLEEG.urevent = []; % might be needed
+            ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
+        end
         %## STRUCT EDITS
         ALLEEG.urevent = []; % might be needed
         ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
@@ -347,7 +367,8 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
         tmp{subj_i} = []; %EEG;
         fprintf(['error. identifier: %s\n',...
                  'error. %s\n',...
-                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+                 'error. on subject %s\n',...
+                 'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
     end
 
 end

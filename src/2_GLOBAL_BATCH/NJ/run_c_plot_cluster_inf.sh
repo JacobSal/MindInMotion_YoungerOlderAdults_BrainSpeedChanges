@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=25 # Number of CPU cores per task
 #SBATCH --mem-per-cpu=15000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
-#SBATCH --time=03:00:00 # Time limit hrs:min:sec
+#SBATCH --time=06:00:00 # Time limit hrs:min:sec
 #SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/NJ/_hpg_logs/%j_NJ_c_plot_cluster_inf.log # Standard output
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
