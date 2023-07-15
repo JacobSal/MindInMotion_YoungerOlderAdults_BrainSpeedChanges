@@ -7,8 +7,8 @@
 %   Previous Version: n/a
 %   Summary: 
 
-%- run .shf
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM/c_ersp_plotting.sh
+%- run .sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/run_c_ersp_plotting.sh
 
 %{
 %## RESTORE MATLAB
@@ -41,7 +41,7 @@ else  % isunix
 end
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '3_ANALYZE' filesep 'MIM'];
+run_dir = [source_dir filesep '3_ANALYZE' filesep 'MIM_OA'];
 %% CD ================================================================== %%
 %- cd to run directory
 cd(run_dir)
@@ -86,7 +86,7 @@ DATA_SET = 'MIM_dataset';
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %- compute measures for spectrum and ersp
 RECOMPUTE_SPEC = false;
-RECOMPUTE_ERSP = false;
+RECOMPUTE_ERSP = true;
 DO_TIMEWARP = true;
 DO_BASELINE_CORRECTION = false; %false;
 % DO_CUSTOM_SUBBASELINE = true;
@@ -126,7 +126,9 @@ ERSP_NACCU = 2000;
 %- datetime override
 % dt = '05012023_MIM_OA_subset_N85_speed_terrain_merge';
 % dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
-dt = '06122023_MIM_OAN79_subset_prep_verified_gait';
+% dt = '06122023_MIM_OAN79_subset_prep_verified_gait';
+% dt = '06282023_MIM_OAN79_subset_prep_verified_gait';
+dt = '07112023_MIM_OAN79_subset_prep_verified_gait';
 %## Soft Define
 study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 DATA_DIR = [source_dir filesep '_data'];
@@ -153,6 +155,27 @@ else
     else
         [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',load_dir);
     end
+    %## load chang's algorithmic clustering
+    %* cluster parameters
+    pick_cluster = 12;
+    clustering_weights.dipoles = 5;
+    clustering_weights.scalp = 5;
+    clustering_weights.ersp = 0;
+    clustering_weights.spec = 0;
+    cluster_alg = 'kmeans';
+    do_multivariate_data = 1;
+    evaluate_method = 'min_rv';
+    clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
+        '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
+        '_spec_',num2str(clustering_weights.spec)];
+    %* load cluster information
+    cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
+    outputdir = [cluster_load_dir filesep 'clustering_solutions' filesep clustering_method,...
+        filesep num2str(pick_cluster) filesep evaluate_method];
+    tmp = load([outputdir filesep sprintf('cluster_update_%i.mat',pick_cluster)]);
+    cluster_update = tmp.cluster_update;
+    STUDY.cluster = cluster_update;
+    %- get inds
     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
 end
 %% combine groups?
@@ -179,7 +202,8 @@ TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. m
 b_lims =[grandAvgWarpTo(1) grandAvgWarpTo(5)];
 % ERSP_CROP_TIMES=[grandAvgWarpTo(1)+abs(ALLEEG(1).etc.epoch.epoch_limits(1))*1000, grandAvgWarpTo(5)];
 ERSP_CROP_TIMES=[grandAvgWarpTo(1), grandAvgWarpTo(5)];
-fprintf('Using timewarp limits: [%0.1g,%0.1f]\n',b_lims(1),b_lims(2));
+fprintf('Using timewarp limits: [%0.4g,%0.4f]\n',b_lims(1),b_lims(2));
+disp(grandAvgWarpTo);
 %## ersp plot per cluster per condition
 %- params (06/09/2023) JS
 % STUDY = pop_statparams(STUDY,'condstats',ERSP_CONDSTATS,...
@@ -329,7 +353,7 @@ for des_i = 1:length(COND_DESIGNS)
         %- across condition plot
         titles_ersp = std_figtitle('threshold', STAT_ALPHA, 'mcorrect', ERSP_MCORRECT,...
                                 'condstat', ERSP_CONDSTATS,...
-                                'statistics', 'Fieldtrip Montecarlo w/ Cluster',... %STAT_MODE,... %'fieldtrip cluster',... %ERSP_STAT_METHOD,...
+                                'statistics', STAT_MODE,... %STAT_MODE,... %'fieldtrip cluster',... %ERSP_STAT_METHOD,...
                                 'condnames', COND_DESIGNS{des_i},...
                                 'clustname', STUDY.cluster(cluster_i).name,...
                                 'subject', [], 'datatype', 'ersp', 'plotmode', 'normal', ...
@@ -338,7 +362,6 @@ for des_i = 1:length(COND_DESIGNS)
         allersp = ersp_data;
         alltimes = ersp_times;
         allfreqs = ersp_freqs;
-        
         %## subtract out average ersp (SINGLTRIALS MUST BE OFF)
         % (06/02/2023), JS this doesnt seem to sufficiently baseline
         % conditions, moving toward a more analytic approach
@@ -402,6 +425,13 @@ for des_i = 1:length(COND_DESIGNS)
         % Problem with logging the output after baseline subtraction.
         % (06/02/2023): JS I'm trying this again, going to try and extract
         % each epoch using event structure and sort into conditions.
+        %## Cropping Indicies
+        crop_inds = (alltimes>=ERSP_CROP_TIMES(1) & alltimes<=ERSP_CROP_TIMES(2));
+        alltimes = alltimes(crop_inds);
+        for cond_i = 1:length(allersp)
+            allersp{cond_i} = allersp{cond_i}(:,crop_inds,:);
+        end
+        %## BASELINE GAIT CYCLES
         for cond_i = 1:length(allersp)
             %- interesting way to baseline using mean across trials and
             %time
@@ -449,12 +479,7 @@ for des_i = 1:length(COND_DESIGNS)
 %                                         'naccu',ERSP_NACCU,...
 %                                         'alpha',ERSP_ALPHA,...
 %                                         'mcorrect',ERSP_MCORRECT,'mode','fieldtrip');
-        %## Cropping Indicies
-        crop_inds = (alltimes>=ERSP_CROP_TIMES(1) & alltimes<=ERSP_CROP_TIMES(2));
-        alltimes = alltimes(crop_inds);
-        for cond_i = 1:length(allersp)
-            allersp{cond_i} = allersp{cond_i}(:,crop_inds,:);
-        end
+        
         [pcond_ersp,pgroup_ersp,pinter_ersp,stat_cond,stat_group,stat_inter] = std_stat(allersp,...
                 'condstats', ERSP_CONDSTATS,...
                 'groupstats',ERSP_GROUPSTATS,...
@@ -466,27 +491,67 @@ for des_i = 1:length(COND_DESIGNS)
         %- plot
         std_plottf(alltimes, allfreqs, allersp,...
                            'datatype', 'ersp', ...
-                           'groupstats', stat_group,...
-                           'condstats', stat_cond,...
-                           'interstats', stat_inter,...
+                           'groupstats', pgroup_ersp,...
+                           'condstats', pcond_ersp,...
+                           'interstats', pinter_ersp,...
                            'plotmode', 'normal',...
-                           'unitx',XAXIS_LABEL,...
                            'titles', titles_ersp,...
-                           'events', {},... %ersp_event_names,...
-                           'unitcolor', COLORAXIS_LABEL,...
-                           'chanlocs', ERSP_CHANLOCS,... %ALLEEG(1).chanlocs.labels,...
                            'caxis',ERSP_CAXIS,...
                            'freqscale',ERSP_FREQSCALE,...
                            'ersplim',[],...
-                           'threshold',ERSP_ALPHA,'effect','main',...
-                           'maskdata','off','averagemode','rms');
+                           'effect','main',...
+                           'threshold',ERSP_ALPHA,...
+                           'maskdata','off','averagemode','ave');
+%         std_plottf(alltimes, allfreqs, allersp,...
+%                            'datatype', 'ersp', ...
+%                            'groupstats', stat_group,...
+%                            'condstats', stat_cond,...
+%                            'interstats', stat_inter,...
+%                            'plotmode', 'normal',...
+%                            'unitx',XAXIS_LABEL,...
+%                            'titles', titles_ersp,...
+%                            'events', {},... %ersp_event_names,...
+%                            'unitcolor', COLORAXIS_LABEL,...
+%                            'chanlocs', ERSP_CHANLOCS,... %ALLEEG(1).chanlocs.labels,...
+%                            'caxis',ERSP_CAXIS,...
+%                            'freqscale',ERSP_FREQSCALE,...
+%                            'ersplim',[],...
+%                            'threshold',ERSP_ALPHA,'effect','main',...
+%                            'maskdata','off','averagemode','rms');
         fig_i = get(groot,'CurrentFigure');
+        set(fig_i,'Position',[100 100 1620 300]);
+%         grandAvgWarpTo = [0,262,706,981,1414];
+        for i = [2,4,5,6]
+%             axes(fig_i.Children(2));
+            tmp = fig_i.Children(i);
+            set(tmp,'YTick',log([4.01,8,13,30,50,99.4843])); 
+            set(tmp,'YTickLabel',{'4','8','13','30','50','100'},'Fontsize',12);
+            ylabel(tmp,sprintf('Frequency (Hz)'),'fontsize',16,'fontweight','bold');
+            xlabel(tmp,'Time (ms)','Fontsize',16,'fontweight','bold');
+            set(tmp,'XTick',grandAvgWarpTo)
+            xx = num2cell(grandAvgWarpTo);
+            xx = cellfun(@num2str,xx,'UniformOutput',false);
+%             set(tmp,'XTickLabel',xx)
+            set(tmp,'XTickLabel',{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'});
+            xlabel(tmp,'Time (ms)','Fontsize',16,'fontweight','bold');
+            xline(tmp,grandAvgWarpTo(1),'k--');
+            xline(tmp,grandAvgWarpTo(2),'k--');
+            xline(tmp,grandAvgWarpTo(3),'k--');
+            xline(tmp,grandAvgWarpTo(4),'k--');
+            xline(tmp,grandAvgWarpTo(5),'k--');
+        end
         fig_i.Name = sprintf('Cluster %i) ERSP averages across Conditions',cluster_i);
-%         for i = 3:length(fig_i.Children)
-%         end
-%         fig_i.Children(4).YScale = 'log';
         saveas(fig_i,[save_dir filesep sprintf('custom2_Cond_ersp_%i_%s.fig',cluster_i,[COND_DESIGNS{des_i}{:}])]);
         saveas(fig_i,[save_dir filesep sprintf('custom2_Cond_ersp_%i_%s.jpg',cluster_i,[COND_DESIGNS{des_i}{:}])]);
+        
+        %{
+        %## temporary save
+        tmp = fig_i.FileName;
+        tmp = strsplit(tmp,'.');
+        tmp{2} = 'jpg';
+        tmp = strjoin(tmp,'.');
+        saveas(fig_i,tmp);
+        %}
         
     end
 end

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=MIM_PLOT # Job name
+#SBATCH --job-name=MIM_OA_PLOT # Job name
 #SBATCH --mail-type=ALL # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=jsalminen@ufl.edu # Where to send mail
 #SBATCH --nodes=1 # Use one node

@@ -7,6 +7,7 @@
 %   Previous Version: n/a
 %   Summary: s
 
+%- run .sh
 % sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/AS/run_d_conn_plotting.sh
 
 %{

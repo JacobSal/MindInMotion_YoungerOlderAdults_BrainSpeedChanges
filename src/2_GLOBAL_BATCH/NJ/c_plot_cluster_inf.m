@@ -21,7 +21,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-%% REQUIRED SETUP 4 ALL SCRIPTS
+%% (REQUIRED SETUP 4 ALL SCRIPTS) ====================================== %%
 %- DATE TIME
 dt = datetime;
 dt.Format = 'MMddyyyy';
@@ -32,21 +32,17 @@ fprintf(1,'Current User: %s\n',USER_NAME);
 % cfname_path    = mfilename('fullpath');
 % cfpath = strsplit(cfname_path,filesep);
 % cd(cfpath);
-%% PATH TO YOUR GITHUB REPO
+%% (EDIT: PATH TO YOUR GITHUB REPO) ==================================== %%
 %- GLOBAL VARS
 REPO_NAME = 'par_EEGProcessing';
 %- determine OS
 if strncmp(computer,'PC',2)
-    DO_UNIX = false;
-    PATH_EXT = 'M';
     PATH_ROOT = ['M:' filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 else  % isunix
-    DO_UNIX = true;
-    PATH_EXT = 'dferris';
     PATH_ROOT = [filesep 'blue' filesep 'dferris',...
         filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 end
-%% SETWORKSPACE
+%% DEFINE SOURCE DIRECTORY & CD ======================================== %%
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
 run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'NJ'];
@@ -55,11 +51,11 @@ cd(source_dir)
 %- addpath for local folder
 addpath(source_dir)
 addpath(run_dir)
-%- set workspace
+%% SET WORKSPACE ======================================================= %%
 global ADD_CLEANING_SUBMODS
 ADD_CLEANING_SUBMODS = false;
 setWorkspace
-%% PARPOOL SETUP
+%% PARPOOL SETUP ======================================================= %%
 if ~ispc
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
@@ -73,8 +69,6 @@ if ~ispc
     pp = parcluster('local');
     %- Number of workers for processing (NOTE: this number should be higher
     %then the number of iterations in your for loop)
-    % pp.NumWorkers = POOL_SIZE-3;
-    % pp.NumThreads = 1;
     fprintf('Number of workers: %i\n',pp.NumWorkers);
     fprintf('Number of threads: %i\n',pp.NumThreads);
     %- make meta data dire1ory for slurm
@@ -88,84 +82,38 @@ else
     'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
     SLURM_POOL_SIZE = 1;
 end
-%% ================================================================= %%
-%## PATHS
+%% (PARAMETERS) ======================================================== %%
+%## Hard Defines
+%- spec generation parameters
+RECOMPUTE_SPEC = true;
+FREQ_FAC = 4;
+FREQ_LIMITS = [1,70];
+SPEC_MODE = 'psd'; %'fft'; %'psd'; 
+%- spec plotting parameters
+SPEC_FREQLIMITS = [3,50];
+SPEC_NACCU = 2000;
+% SPEC_XLIM = [1,100];
+SPEC_YLIM = [-30,-8];
+SPEC_CONDSTATS = 'on';        % ['on'|'off]
+SPEC_STAT_METHOD = 'perm';    % ['param'|'perm'|'bootstrap']
+SPEC_ALPHA = 0.05;           % [NaN|alpha], Significance threshold (0<alpha<<1)
+SPEC_MCORRECT = 'cluster'; %fdr
+SPEC_GROUPSTATS = 'off';
+SPEC_STAT_MODE = 'fieldtrip'; 
+SPEC_STAT_FTMETHOD = 'montecarlo';
+SPEC_SINGLETRIALS = 'off' ;  %['on'|'off'] load single trials spectral data (if available). Default is 'off'.
+%- 
+TRIAL_TYPES = {'pre','post'};
+COND_DESIGNS = {{'pre','post'}};
 %- hardcode data_dir
-DATA_SET = 'MIM_dataset';
-DATA_DIR = [source_dir filesep '_data'];
-%- path for local data
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-SUBJINF_DIR = [DATA_DIR filesep DATA_SET filesep '_subjinf'];
-%## DATASET SPECIFIC
-%- MIND IN MOTION (SUBSET (03/10/2023)
-SUBJ_NORUN = {'H2012_FU', 'H2013_FU', 'H2018_FU', 'H2020_FU', 'H2021_FU',...
-            'H3024_Case','H3029_FU','H3039_FU','H3063_FU','NH3021_Case', 'NH3023_Case','NH3025_Case', 'NH3030_FU',...
-            'NH3068_FU', 'NH3036_FU', 'NH3058_FU'};
-SUBJ_MISSING_TRIAL_DATA = {'H2012','H2018','H3024','NH3002', 'NH3004','NH3009',...
-    'NH3023','NH3027', 'NH3028', 'NH3129', 'NH3040'};
-
-SUBJ_2HMA = {'H2017', 'H2010', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
-    'H2020', 'H2021', 'H2022', 'H2023',...
-    'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2036', 'H2037', 'H2038',...
-    'H2039', 'H2041', 'H2042', 'H2052', 'H2059', 'H2062', 'H2072', 'H2082',...
-    'H2090', 'H2095', 'H2111', 'H2117'};
-SUBJ_3NHMA = {'H3018','H3029','H3034','H3039','H3042','H3046',...
-    'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107','H3120',...
-    'NH3006', 'NH3007', 'NH3008', 'NH3010',...
-    'NH3021', 'NH3025', 'NH3026',...
-    'NH3030', 'NH3036',...
-    'NH3041', 'NH3043', 'NH3051', 'NH3054', 'NH3055', 'NH3056', 'NH3058',...
-    'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
-    'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
-    'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
-%- Subject Picks
-SUBJ_PICS = {SUBJ_2HMA,SUBJ_3NHMA};
-GROUP_NAMES = {'H2000''s','H3000''s'};
-SUBJ_ITERS = {1:length(SUBJ_2HMA),1:length(SUBJ_3NHMA)}; 
-%- Subject Directory Information
-OA_PREP_FPATH = '07042023_OA_prep_verified'; % JACOB,SAL(04/10/2023)
-OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
-%% ===================================================================== %%
-%## PROCESSING PARAMS
-% pop_editoptions('option_parallel',1);
-params = [];
-%- study group and saving
-params.OVERRIDE_DIPFIT =  true;
-% SAVE_EEG = false; % saves EEG structures throughout processing
-%- component rejection crit
-params.THRESHOLD_DIPFIT_RV = 0.15;
-params.THRESHOLD_BRAIN_ICLABEL = 0.50;
-%- MIM specific epoching
-params.EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
-%- connectivity process
-params.CONN_FREQS = (1:100);
-params.CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
-%- subj_i_genConnMeas
-params.CNCTANL_TOOLBOX = 'sift'; %'bsmart'
-params.WINDOW_LENGTH = 0.5;
-params.WINDOW_STEP_SIZE = 0.025;
-params.NEW_SAMPLE_RATE = [];
-params.DO_BOOTSTRAP = true;
-% ASSIGN_BOOTSTRAP_MEAN = false;
-% SAVE_CONN_BOOTSTRAP = false;
-%- subj_i_genConnStats
-params.DO_PHASE_RND = true;
-%- eeglab_cluster.m spectral params
-params.FREQ_LIMITS = [1,100];
-params.CYCLE_LIMITS = [3,0.8];
-params.SPEC_MODE = 'fft'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
-params.FREQ_FAC = 4;
-params.PAD_RATIO = 2;
-%% global script chain (VERSION 1)
+DATA_SET = 'jacobsenN_dataset';
 %- datetime override
-% dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
-dt = '05012023_MIM_OA_subset_N85_speed_terrain_merge';
-%## PATH & TEMP STUDY NAME
-%- hard define
-load_trials = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-study_fName_3 = sprintf('%s_EPOCH_study',[load_trials{:}]);
-%- soft define
-save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
+dt = '06292023_NJ_Standing';
+%## Soft Defines
+DATA_DIR = [source_dir filesep '_data'];
+STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
+study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep '_figs'];
 load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
 if ~exist(save_dir,'dir')
@@ -173,158 +121,212 @@ if ~exist(save_dir,'dir')
 end
 %% LOAD STUDIES && ALLEEGS
 if exist('SLURM_POOL_SIZE','var')
-    POOL_SIZE = min([SLURM_POOL_SIZE,length(load_trials)*4]);
+    POOL_SIZE = min([SLURM_POOL_SIZE,length(TRIAL_TYPES)*4]);
 else
     POOL_SIZE = 1;
 end
 %- Create STUDY & ALLEEG structs
-if ~exist([load_dir filesep study_fName_3 '.study'],'file')
+if ~exist([load_dir filesep study_fName_1 '.study'],'file')
     error('ERROR. study file does not exist');
 else
     if ~ispc
-        [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_3 '_UNIX.study'],'filepath',load_dir);
+        [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',load_dir);
     else
-        [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_3 '.study'],'filepath',load_dir);
+        [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',load_dir);
     end
     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
 end
-% STUDY.cluster = STUDY.etc.cluster_save;
-% disp(STUDY.cluster);
-% disp(STUDY.urcluster);
+%-
+%{
+cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
+pick_cluster = 12;
+clustering_weights.dipoles = 5;
+clustering_weights.scalp = 5;
+clustering_weights.ersp = 0;
+clustering_weights.spec = 0;
+cluster_alg = 'kmeans';
+do_multivariate_data = 1;
+evaluate_method = 'min_rv';
+clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
+    '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
+    '_spec_',num2str(clustering_weights.spec)];
+outputdir = [cluster_load_dir filesep 'clustering_solutions' filesep clustering_method filesep num2str(pick_cluster) filesep evaluate_method];
+tmp = load(fullfile(outputdir,['cluster_update',num2str(pick_cluster),'.mat']));
+STUDY.cluster = tmp.cluster_update;
+%}
+%-
+%% (PRECOMPUTE MEASURES) COMPUTE SPECTRUMS
+if RECOMPUTE_SPEC
+    fprintf('Running Spectrum Calculation...');
+    parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
+        EEG = ALLEEG(subj_i);
+        tmp = STUDY;
+        EEG = eeg_checkset(EEG,'loaddata');
+        if isempty(EEG.icaact)
+            fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+            EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+        end
+        EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
+        %- overrride datasetinfo to trick std_precomp to run.
+        tmp.datasetinfo = STUDY.datasetinfo(subj_i);
+        tmp.datasetinfo(1).index = 1;
+        [~, ~] = std_precomp(tmp, EEG,...
+                    'components',...
+                    'recompute','on',...
+                    'spec','on',...
+                    'savetrials','on',...
+                    'specparams',...
+                    {'specmode',SPEC_MODE,'freqfac',FREQ_FAC,...
+                    'freqrange',FREQ_LIMITS,'logtrials','on'});
+    end
+end
 %% PLOT DIPOLES, PSD'S, && TOPOPLOTS
-plot_fNames = {'allDipPlot_top','allDipPlot_sagittal','allDipPlot_coronal','allSpecPlot','allTopoPlot'};
-plot_chk = cellfun(@(x) ~exist([save_dir filesep sprintf('%s.jpg',x)],'file'),plot_fNames);
-if any(plot_chk) || true
-    fprintf('==== Making Dipole Plots ====\n');
+% fprintf('==== Making Dipole Plots ====\n');
 %     [~] = std_dipplot(STUDY,ALLEEG,'clusters',2:length(STUDY.cluster),...
 %             'mode','multicolor','figure','on');
-    %- main plot
-    %{
-    [~] = std_dipplot(STUDY,ALLEEG,'clusters',main_cl_inds(2:end),...
-                'mode','multicolor','figure','on');
+%- main plot
+%{
+%## custom
+inds = [2,3,4,7,8,9];
+
+[~] = std_dipplot(STUDY,ALLEEG,'clusters',inds,...
+            'mode','multicolor','figure','on');
+fig_i = get(groot,'CurrentFigure');
+saveas(fig_i,[save_dir filesep sprintf('partDipPlot_top.jpg')]);
+view([45,0,0])
+saveas(fig_i,[save_dir filesep sprintf('partDipPlot_sagittal.jpg')]);
+view([0,-45,0])
+saveas(fig_i,[save_dir filesep sprintf('partDipPlot_coronal.jpg')]);
+%##
+[~] = std_dipplot(STUDY,ALLEEG,'clusters',main_cl_inds(2:end),...
+            'mode','multicolor','projlines','off');
+fig_i = get(groot,'CurrentFigure');
+saveas(fig_i,[save_dir filesep sprintf('allDipPlot_top.jpg')]);
+view([45,0,0])
+saveas(fig_i,[save_dir filesep sprintf('allDipPlot_sagittal.jpg')]);
+view([0,-45,0])
+saveas(fig_i,[save_dir filesep sprintf('allDipPlot_coronal.jpg')]);
+%## outlier plot
+[~] = std_dipplot(STUDY,ALLEEG,'clusters',outlier_cl_inds,...
+            'mode','multicolor','figure','on');
+fig_i = get(groot,'CurrentFigure');
+saveas(fig_i,[save_dir filesep sprintf('outlierDipPlot_top.jpg')]);
+view([45,0,0])
+saveas(fig_i,[save_dir filesep sprintf('outlierDipPlot_sagittal.jpg')]);
+view([0,-45,0])
+saveas(fig_i,[save_dir filesep sprintf('outlierDipPlot_coronal.jpg')]);
+%##
+for cluster_i = inds
+    std_dipplot(STUDY,ALLEEG,'clusters',cluster_i);
     fig_i = get(groot,'CurrentFigure');
-    saveas(fig_i,[save_dir filesep sprintf('allDipPlot_top.jpg')]);
+%     saveas(fig_i,[save_dir filesep sprintf('DipPlot_0.fig')]);
+    saveas(fig_i,[save_dir filesep sprintf('cl%i_DipPlot_top.jpg',cluster_i)]);
     view([45,0,0])
-    saveas(fig_i,[save_dir filesep sprintf('allDipPlot_sagittal.jpg')]);
+%     saveas(fig_i,[save_dir filesep sprintf('allDipPlot_1.fig')]);
+    saveas(fig_i,[save_dir filesep sprintf('cl%i_allDipPlot_sagittal.jpg',cluster_i)]);
     view([0,-45,0])
-    saveas(fig_i,[save_dir filesep sprintf('allDipPlot_coronal.jpg')]);
-    %- outlier plot
-    [~] = std_dipplot(STUDY,ALLEEG,'clusters',outlier_cl_inds,...
-                'mode','multicolor','figure','on');
-    fig_i = get(groot,'CurrentFigure');
-    saveas(fig_i,[save_dir filesep sprintf('outlierDipPlot_top.jpg')]);
-    view([45,0,0])
-    saveas(fig_i,[save_dir filesep sprintf('outlierDipPlot_sagittal.jpg')]);
-    view([0,-45,0])
-    saveas(fig_i,[save_dir filesep sprintf('outlierDipPlot_coronal.jpg')]);
-    %}
-    %{
+%     saveas(fig_i,[save_dir filesep sprintf('allDipPlot_2.fig')]);
+    saveas(fig_i,[save_dir filesep sprintf('cl%i_allDipPlot_coronal.jpg',cluster_i)]);
+end
+%}
+%- Spec plot
+fprintf('==== Making Spectogram Plots ====\n');
+std_specplot(STUDY,ALLEEG,'clusters',main_cl_inds,...
+    'freqrange',[1,100]);
+fig_i = get(groot,'CurrentFigure');
+fig_i.Position = [500 300 1080 720];
+saveas(fig_i,[save_dir filesep sprintf('allSpecPlot.fig')]);
+saveas(fig_i,[save_dir filesep sprintf('allSpecPlot.jpg')]);
+%- Topo plot
+fprintf('==== Making Topograph Plots ====\n');
+std_topoplot(STUDY,ALLEEG,'clusters',2:length(STUDY.cluster));
+fig_i = get(groot,'CurrentFigure');
+fig_i.Position = [500 300 1080 720];
+saveas(fig_i,[save_dir filesep sprintf('allTopoPlot.fig')]);
+saveas(fig_i,[save_dir filesep sprintf('allTopoPlot.jpg')]);
+close all
+%{
+%## POP VIEW PROPS
+if ~exist([save_dir filesep 'component_props'],'dir') 
+    mkdir([save_dir filesep 'component_props']);
+    %## RECALCULATE ICAACT MATRICES
+    ALLEEG = eeg_checkset(ALLEEG,'loaddata');
+    for subj_i = 1:length(ALLEEG)
+        if isempty(ALLEEG(subj_i).icaact)
+            fprintf('%s) Recalculating ICA activations\n',ALLEEG(subj_i).subject);
+            ALLEEG(subj_i).icaact = (ALLEEG(subj_i).icaweights*ALLEEG(subj_i).icasphere)*ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:);
+            ALLEEG(subj_i).icaact    = reshape( ALLEEG(subj_i).icaact, size(ALLEEG(subj_i).icaact,1), ALLEEG(subj_i).pnts, ALLEEG(subj_i).trials);
+        end
+    end
     for cluster_i = 2:length(STUDY.cluster)
-        std_dipplot(STUDY,ALLEEG,'clusters',cluster_i);
-        fig_i = get(groot,'CurrentFigure');
-    %     saveas(fig_i,[save_dir filesep sprintf('DipPlot_0.fig')]);
-        saveas(fig_i,[save_dir filesep sprintf('cl%i_DipPlot_top.jpg',cluster_i)]);
-        view([45,0,0])
-    %     saveas(fig_i,[save_dir filesep sprintf('allDipPlot_1.fig')]);
-        saveas(fig_i,[save_dir filesep sprintf('cl%i_allDipPlot_sagittal.jpg',cluster_i)]);
-        view([0,-45,0])
-    %     saveas(fig_i,[save_dir filesep sprintf('allDipPlot_2.fig')]);
-        saveas(fig_i,[save_dir filesep sprintf('cl%i_allDipPlot_coronal.jpg',cluster_i)]);
-    end
-    %}
-    %- Spec plot
-    fprintf('==== Making Spectogram Plots ====\n');
-    std_specplot(STUDY,ALLEEG,'clusters',main_cl_inds,...
-        'freqrange',[1,100]);
-    fig_i = get(groot,'CurrentFigure');
-    fig_i.Position = [500 300 1080 720];
-    saveas(fig_i,[save_dir filesep sprintf('allSpecPlot.fig')]);
-    saveas(fig_i,[save_dir filesep sprintf('allSpecPlot.jpg')]);
-    %- Topo plot
-    fprintf('==== Making Topograph Plots ====\n');
-    std_topoplot(STUDY,ALLEEG,'clusters',2:length(STUDY.cluster));
-    fig_i = get(groot,'CurrentFigure');
-    fig_i.Position = [500 300 1080 720];
-    saveas(fig_i,[save_dir filesep sprintf('allTopoPlot.fig')]);
-    saveas(fig_i,[save_dir filesep sprintf('allTopoPlot.jpg')]);
-    close all
-    %## POP VIEW PROPS
-    if ~exist([save_dir filesep 'component_props'],'dir') 
-        mkdir([save_dir filesep 'component_props']);
-        %## RECALCULATE ICAACT MATRICES
-        ALLEEG = eeg_checkset(ALLEEG,'loaddata');
-        for subj_i = 1:length(ALLEEG)
-            if isempty(ALLEEG(subj_i).icaact)
-                fprintf('%s) Recalculating ICA activations\n',ALLEEG(subj_i).subject);
-                ALLEEG(subj_i).icaact = (ALLEEG(subj_i).icaweights*ALLEEG(subj_i).icasphere)*ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:);
-                ALLEEG(subj_i).icaact    = reshape( ALLEEG(subj_i).icaact, size(ALLEEG(subj_i).icaact,1), ALLEEG(subj_i).pnts, ALLEEG(subj_i).trials);
-            end
-        end
-        for cluster_i = 2:length(STUDY.cluster)
-            sets_clust = STUDY.cluster(cluster_i).sets;
-            for i = 1:length(sets_clust)
-                subj_i = sets_clust(i);
-                comps_clust = STUDY.cluster(cluster_i).comps(i);
-                hold on;
-                pop_prop_extended(ALLEEG(subj_i),0,comps_clust,NaN,...
-                {'freqrange',[1 65],'freqfac',4,'limits',[1,60,-30,0]});
-                fig = get(groot,'CurrentFigure');
-                fig.Name = sprintf('%s_cluster%i_ic%i',...
-                                    cluster_i,ALLEEG(subj_i).subject,comps_clust);
-                fig.Position = [500 300 1280 720]; 
-                hold off;
-                
+        sets_clust = STUDY.cluster(cluster_i).sets;
+        for i = 1:length(sets_clust)
+            subj_i = sets_clust(i);
+            comps_clust = STUDY.cluster(cluster_i).comps(i);
+            hold on;
+            pop_prop_extended(ALLEEG(subj_i),0,comps_clust,NaN,...
+            {'freqrange',[1 65],'freqfac',4,'limits',[1,60,-30,0]});
+            fig = get(groot,'CurrentFigure');
+            fig.Name = sprintf('%s_cluster%i_ic%i',...
+                                cluster_i,ALLEEG(subj_i).subject,comps_clust);
+            fig.Position = [500 300 1280 720]; 
+            hold off;
+
 %                 saveas(fig,[save_dir filesep 'component_props' filesep sprintf('cluster%i_%s_viewprops_ic%i.fig',cluster_i,ALLEEG(subj_i).subject,comps_clust)]);
-                saveas(fig,[save_dir filesep 'component_props' filesep sprintf('cluster%i_%s_viewprops_ic%i.png',cluster_i,ALLEEG(subj_i).subject,comps_clust)]);
+            saveas(fig,[save_dir filesep 'component_props' filesep sprintf('cluster%i_%s_viewprops_ic%i.png',cluster_i,ALLEEG(subj_i).subject,comps_clust)]);
 %                 savefig(fig,[save_dir filesep 'component_props' filesep sprintf('cluster%i_%s_viewprops_ic%i.fig',cluster_i,ALLEEG(subj_i).subject,comps_clust)]);
-                close all
-            end
+            close all
         end
     end
-    close all
 end
-
-%%
-condstats = 'on';        % ['on'|'off]
-statsMethod = 'perm';    % ['param'|'perm'|'bootstrap']
-Alpha = 0.05;           % [NaN|alpha], Significance threshold (0<alpha<<1)
-mcorrect = 'cluster'; %fdr
-groupstats = 'off';
-mode = 'fieldtrip';
-singletrials = 'off' ;  %['on'|'off'] load single trials spectral data (if available). Default is 'off'.
-%- 
-speed_trials = {'0p25','0p5','0p75','1p0'};
-terrain_trials = {'flat','low','med','high'};
-COND_DESIGNS = {speed_trials,terrain_trials};
-FREQ_LIMITS = [1,100]; %(1:100);
-% des_i = 1;
-% cluster_i = 2;
-%%
-for subj_i = 1:length(ALLEEG)
-    ALLEEG(subj_i).group = 'Older Adults';
-    STUDY.datasetinfo(subj_i).group = 'Older Adults';
-end
-STUDY = pop_statparams(STUDY, 'condstats', condstats,...
-                    'method',statsMethod,...
-                    'singletrials',singletrials,'mode',mode,'fieldtripalpha',Alpha,...
-                    'fieldtripmethod','montecarlo','fieldtripmcorrect',mcorrect,'fieldtripnaccu',10000);
-
+close all
+%}
+%% ASSIGN GROUP NAME & STUDY STATS
+STUDY = pop_statparams(STUDY, 'condstats', SPEC_CONDSTATS,...
+                    'method',SPEC_STAT_METHOD,...
+                    'singletrials',SPEC_SINGLETRIALS,'mode',SPEC_STAT_MODE,'fieldtripalpha',SPEC_ALPHA,...
+                    'fieldtripmethod',SPEC_STAT_FTMETHOD,'fieldtripmcorrect',SPEC_MCORRECT,'fieldtripnaccu',SPEC_NACCU);
+%% MAKEDESIGN & PLOT
 for des_i = 1:length(COND_DESIGNS)
+    %-
+    [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
+            'subjselect', {ALLEEG.subject},...
+            'variable1','type',...
+            'values1', COND_DESIGNS{des_i});
     for cluster_i = main_cl_inds
-        %-
-        [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
-                'subjselect', {ALLEEG.subject},...
-                'variable1','cond',...
-                'values1', COND_DESIGNS{des_i});
         %-
     %     [STUDY, specdata, specfreqs, pgroup, pcond, pinter] = std_specplot(STUDY, ALLEEG,...
     %             'clusters',cluster_i,'comps','all','subject','','freqrange', FREQ_LIMITS,'subtractsubjectmean','on');
         %-
         [STUDY, specdata, specfreqs, pgroup, pcond, pinter] = std_specplot(STUDY, ALLEEG,...
-                'clusters',cluster_i,'freqrange', FREQ_LIMITS,'plotmode','condensed','plotconditions','together'); %'plotgroups','together'
+                'clusters',cluster_i,'freqrange',SPEC_FREQLIMITS,'plotmode','condensed',...
+                'plotconditions','together','ylim',SPEC_YLIM); %'plotgroups','together'
         fig_i = get(groot,'CurrentFigure');
+        %- set figure line colors
+        cc = linspecer(length(COND_DESIGNS{des_i}));
+        iter = 1;
+        for i = 1:length(fig_i.Children(2).Children)
+            set(fig_i.Children(2).Children(i),'LineWidth',1.5);
+            set(fig_i.Children(2).Children(i),'Color',horzcat(cc(iter,:),0.6));
+            if iter == size(cc,1)
+                iter = 1;
+            else
+                iter = iter + 1;
+            end                
+        end
+        %- tight layout
+        % (06/22/2023) JS, seems like changing the Position property also
+        % erases the statistics bar. Not sure how to fix?
+%         set(fig_i.Children(2),'Position',[0.26,0.26,0.54,0.51]); %DEFAULT
+%         set(fig_i.Children(3),'Position',[0.26,0.2345,0.54,0.0255]); %DEFAULT
+        set(fig_i.Children(2),'Position',[0.15,0.15,0.8,0.8]) %Default:[0.26,0.26,0.54,0.51]; Position::[left margin, lower margin, right margin, upper margin]
+        set(fig_i.Children(3),'Position',[0.15,0.15-0.0255,0.8,0.0255]) %Default:[0.26,0.2345,0.54,0.0255]
+        set(fig_i.Children(1),'Location','southeast') %reset Legend
+        drawnow;
+        %- save
         saveas(fig_i,[save_dir filesep sprintf('%i_%s_specplot.fig',cluster_i,[COND_DESIGNS{des_i}{:}])]);
         saveas(fig_i,[save_dir filesep sprintf('%i_%s_specplot.jpg',cluster_i,[COND_DESIGNS{des_i}{:}])]);
+        close(fig_i)
     end
 end
 %% Version History

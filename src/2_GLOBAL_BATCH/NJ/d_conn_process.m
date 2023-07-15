@@ -82,19 +82,10 @@ else
     'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
     SLURM_POOL_SIZE = 1;
 end
-%% (DATASET INFORMATION) =============================================== %%
-%## DATASET SPECIFIC
-SUBJ_RISERS = {'S25','S26','S27','S28','S29','S30','S31','S32','S33','S34',...
-                     'S35','S36','S37','S38','S39','S40','S41','S42','S43','S44',...
-                     'S46','S47','S48'};
-SUBJ_FALLERS = {};
-SUBJ_PICS = {SUBJ_RISERS,SUBJ_FALLERS};
-SUBJ_ITERS = {1:length(SUBJ_RISERS),1:length(SUBJ_FALLERS)};
-GROUP_NAMES = {'risers','fallers'};
 %% (PARAMETERS) ======================================================== %%
 %## Hard Defines
 %- datset name
-DATA_SET = 'MIM_dataset';
+DATA_SET = 'jacobsenN_dataset';
 %- datetime override
 dt = '06292023_NJ_Standing';
 %- epoching params
@@ -126,17 +117,36 @@ end
 %% LOAD EPOCH STUDY
 %- Create STUDY & ALLEEG structs
 if ~exist([study_load_dir filesep study_fName_1 '.study'],'file')
-    error('ERROR. study file does not exist');
-    exit(); %#ok<UNRCH>
+    error('ERROR. study file %s does not exist',[study_load_dir filesep study_fName_1 '.study']);
 else
     if ~ispc
         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',study_load_dir);
     else
         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
     end
-    %## (AS) ATTACH CLUSTER
-%     MAIN_STUDY.cluster = MAIN_STUDY.urcluster;
-    [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(MAIN_STUDY);
+     %## load chang's algorithmic clustering
+    %* cluster parameters
+    pick_cluster = 12;
+    clustering_weights.dipoles = 1;
+    clustering_weights.scalp = 0;
+    clustering_weights.ersp = 0;
+    clustering_weights.spec = 0;
+    cluster_alg = 'kmeans';
+    do_multivariate_data = 1;
+    evaluate_method = 'min_rv';
+    clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
+        '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
+        '_spec_',num2str(clustering_weights.spec)];
+    %* load cluster information
+    cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
+    outputdir = [cluster_load_dir filesep 'clustering_solutions' filesep clustering_method,...
+        filesep num2str(pick_cluster) filesep evaluate_method];
+    tmp = load([outputdir filesep sprintf('cluster_update_%i.mat',pick_cluster)]);
+    cluster_update = tmp.cluster_update;
+    STUDY.cluster = cluster_update;
+    %- get inds
+    [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
+
 end
 %% INITIALIZE PARFOR LOOP VARS
 if exist('SLURM_POOL_SIZE','var')
@@ -209,7 +219,8 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
         tmp{subj_i} = EEG;
         fprintf(['error. identifier: %s\n',...
                  'error. %s\n',...
-                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+                 'error. on subject %s\n',...
+                 'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
         disp(e);
     end
 end
@@ -218,7 +229,7 @@ pop_editoptions('option_computeica',0);
 % [ALLEEG,MAIN_STUDY] = parfunc_rmv_subjs(tmp,MAIN_STUDY,rmv_subj);
 %- Save
 [MAIN_STUDY,tmp] = parfunc_save_study(MAIN_STUDY,tmp,...
-                                        study_fName_2,study_save_dir,...
+                                        study_fName_1,study_save_dir,...
                                         'STUDY_COND',[]);
 %% Version History
 %{

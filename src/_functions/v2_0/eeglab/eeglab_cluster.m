@@ -202,3 +202,7 @@ STUDY.urcluster = STUDY.cluster;
 % check the STUDY & ALLEEG for consistency, and save.
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
 end
+
+function custom_cluster(STUDY,ALLEEG,kmeans_cluster_n)
+
+end

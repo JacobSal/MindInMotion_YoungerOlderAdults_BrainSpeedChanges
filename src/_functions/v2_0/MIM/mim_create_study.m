@@ -12,7 +12,7 @@ function [STUDY,ALLEEG] = mim_create_study(ALLEEG,study_fName,study_fPath,vararg
 %## TIME
 tic
 %## DEFINE DEFAULTS
-
+THRESH_BRAIN_SCORE = 8;
 %## Define Parser
 p = inputParser;
 %## REQUIRED
@@ -33,21 +33,17 @@ if ~exist(study_fPath,'dir')
     mkdir(study_fPath);
 end
 %% ===================================================================== %%
-THRESH_BRAIN_SCORE = 8;
-% POOL_SIZE = 15;
-% pp = gcp('nocreate');
-% disp(pp);
-% if ~isfield(pp,'NumWorkers')
-%     POOL_SIZE = 1;
-% else
-%     POOL_SIZE = pp.NumWorkers;
-% end
+tmp_rmv_subjs = zeros(1,length(ALLEEG));
 %## DIPOLE REJECTION
-% parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
 parfor subj_i = 1:length(ALLEEG)
+% for subj_i = 1:length(ALLEEG)
+    %- use rejection criteria to determine bad ic's
     reject_struct = mim_reject_ics(ALLEEG(subj_i),ALLEEG(subj_i).filepath);
-    tmp_bad = setdiff(find((1:size(ALLEEG(subj_i).icaweights,1))),find((reject_struct.IC_all_brain >= THRESH_BRAIN_SCORE & reject_struct.IC_all_brain ~= 9)));
-    tmp_good = [find(reject_struct.IC_all_brain >= THRESH_BRAIN_SCORE & reject_struct.IC_all_brain ~= 9)];
+    %- log good & bad components
+    chk = (reject_struct.IC_all_brain >= THRESH_BRAIN_SCORE & reject_struct.IC_all_brain ~= 9);
+    chk_powpow = unique(find(chk),reject_struct.IC_powpow_rej);
+    tmp_bad = setdiff(find((1:size(ALLEEG(subj_i).icaweights,1))),chk_powpow);
+    tmp_good = chk_powpow;
     ALLEEG(subj_i).etc.urreject = [];
     ALLEEG(subj_i).etc.urreject.crit = [];
     ALLEEG(subj_i).etc.urreject.ic_keep = [];
@@ -62,7 +58,66 @@ parfor subj_i = 1:length(ALLEEG)
         ALLEEG(subj_i).etc.urreject.dipfit = ALLEEG(subj_i).dipfit;
         fprintf('** Subject %s has %i brain components\n',ALLEEG(subj_i).subject, length(tmp_good));
     end
+    %- remove IC's from struct
+    if length(ALLEEG(subj_i).etc.urreject.ic_keep) < 2 %|| isempty(ALLEEG(subj_i).etc.urreject)
+        fprintf('** Subject %s rejected.\n',ALLEEG(subj_i).subject);
+        tmp_rmv_subjs(subj_i) = 1;
+    else
+        % (07/06/2023) JS, make sure to checkset before editing
+        % EEG.icachansind otherwise dialogue box will appear and make
+        % things not work on hpg.
+%         ALLEEG(subj_i) = eeg_checkset(ALLEEG(subj_i),'loaddata');
+%         ALLEEG(subj_i).icachansind = ALLEEG(subj_i).etc.urreject.ic_keep;
+%         if isempty(ALLEEG(subj_i).icaact)
+%             fprintf('%s) Recalculating ICA activations\n',ALLEEG(subj_i).subject);
+%             ALLEEG(subj_i).icaact = (ALLEEG(subj_i).icaweights*ALLEEG(subj_i).icasphere)*ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:);
+% %             ALLEEG(subj_i).icaact = reshape(ALLEEG(subj_i).icaact,size(ALLEEG(subj_i).icaact,1),ALLEEG(subj_i).pnts,ALLEEG(subj_i).trials);
+%         end
+%         ica_weights = (ALLEEG(subj_i).icaact/ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:))/ALLEEG(subj_i).icasphere;
+%         ica_winv = (ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:)/ALLEEG(subj_i).icaact);
+%         tmp = sum(sqrt((ALLEEG(subj_i).icaweights-ica_weights).^2),[1,2]);
+%         fprintf('%7ssum(sqrt((icaweights_new-icaweights_old).^2)) = %0.3f\n','',tmp);
+%         %## Update ALLEEG & comps_out
+%         ALLEEG(subj_i).icaweights = ica_weights;
+%         ALLEEG(subj_i).icawinv = ica_winv;
+        %- (07/06/2023) JS, code taken from EEGLAB
+        components = ALLEEG(subj_i).etc.urreject.ic_rej;
+        fprintf('Computing projection and removing %d components ....\n', length(components));
+        component_keep = setdiff_bc(1:size(ALLEEG(subj_i).icaweights,1), components);
+        compproj = ALLEEG(subj_i).icawinv(:, component_keep)*eeg_getdatact(ALLEEG(subj_i), 'component', component_keep, 'reshape', '2d');
+        compproj = reshape(compproj, size(compproj,1), ALLEEG(subj_i).pnts, ALLEEG(subj_i).trials);
+        ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:,:) = compproj;
+        ALLEEG(subj_i).setname = [ ALLEEG(subj_i).setname ' pruned with ICA'];
+        ALLEEG(subj_i).icaact  = [];
+        goodinds    = setdiff_bc(1:size(ALLEEG(subj_i).icaweights,1), components);
+        ALLEEG(subj_i).icawinv     = ALLEEG(subj_i).icawinv(:,goodinds);
+        ALLEEG(subj_i).icaweights  = ALLEEG(subj_i).icaweights(goodinds,:);
+        ALLEEG(subj_i).specicaact  = [];
+        ALLEEG(subj_i).specdata    = [];
+        ALLEEG(subj_i).reject      = [];
+
+        %- iclabel mdos
+        if isfield(ALLEEG(subj_i).etc, 'ic_classification')
+            if isfield(ALLEEG(subj_i).etc.ic_classification, 'ICLabel') 
+                if isfield(ALLEEG(subj_i).etc.ic_classification.ICLabel, 'classifications')
+                    if ~isempty(ALLEEG(subj_i).etc.ic_classification.ICLabel.classifications)
+                        ALLEEG(subj_i).etc.ic_classification.ICLabel.classifications = ALLEEG(subj_i).etc.ic_classification.ICLabel.classifications(goodinds,:);
+                    end
+                end
+            end
+        end
+        %- dipfit mods
+        try
+            ALLEEG(subj_i).dipfit.model = ALLEEG(subj_i).dipfit.model(goodinds);
+        catch e
+            fprintf(['error. identifier: %s\n',...
+                 'error. %s\n',...
+                 'error. on subject %s\n',...
+                 'stack. %s\n'],e.identifier,e.message,ALLEEG(subj_i).subject,getReport(e));
+        end
+    end
 end
+ALLEEG = ALLEEG(~logical(tmp_rmv_subjs));
 %% REMOVE COMPS (version 1)
 % (06/17/2023) JS, changing line 70 from < 3 to <= 3 (losing subjects w/ 3
 % brain comps)
@@ -81,33 +136,31 @@ end
 % brain comps)
 % (06/20/2023) JS, removing pop_subcomp from pipeline as it removes ~4
 % subjects who have 2 brain components. changing to < 2.
-tmp_rmv_subjs = zeros(1,length(ALLEEG));
-TMP_ALLEEG = cell(1,length(ALLEEG));
-for subj_i = 1:length(ALLEEG)
-    EEG = ALLEEG(subj_i);
-    if length(EEG.etc.urreject.ic_keep) < 2 || isempty(EEG.etc.urreject)
-        fprintf('** Subject %s rejected.\n',EEG.subject);
-        tmp_rmv_subjs(subj_i) = 1;
-    else
-        EEG.icachansind = EEG.etc.urreject.ic_keep;
-        EEG = eeg_checkset(EEG,'loaddata');
-        if isempty(EEG.icaact)
-            fprintf('%s) Recalculating ICA activations\n',EEG.subject);
-            EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
-%             EEG.icaact = reshape(EEG.icaact,size(EEG.icaact,1),EEG.pnts,EEG.trials);
-        end
-        ica_weights = (EEG.icaact/EEG.data(EEG.icachansind,:))/EEG.icasphere;
-        ica_winv = (EEG.data(EEG.icachansind,:)/EEG.icaact);
-        tmp = sum(sqrt((EEG.icaweights-ica_weights).^2),[1,2]);
-        fprintf('%7ssum(sqrt((icaweights_new-icaweights_old).^2)) = %0.3f\n','',tmp);
-        %## Update ALLEEG & comps_out
-        EEG.icaweights = ica_weights;
-        EEG.icawinv = ica_winv;
-        TMP_ALLEEG{subj_i} = EEG;
-    end
-end
+% tmp_rmv_subjs = zeros(1,length(ALLEEG));
+% TMP_ALLEEG = cell(1,length(ALLEEG));
+% parfor subj_i = 1:length(ALLEEG)
+%     if length(ALLEEG(subj_i).etc.urreject.ic_keep) < 2 || isempty(ALLEEG(subj_i).etc.urreject)
+%         fprintf('** Subject %s rejected.\n',ALLEEG(subj_i).subject);
+% %         tmp_rmv_subjs(subj_i) = 1;
+%     else
+%         ALLEEG(subj_i).icachansind = ALLEEG(subj_i).etc.urreject.ic_keep;
+%         ALLEEG(subj_i) = eeg_checkset(ALLEEG(subj_i),'loaddata');
+%         if isempty(ALLEEG(subj_i).icaact)
+%             fprintf('%s) Recalculating ICA activations\n',ALLEEG(subj_i).subject);
+%             ALLEEG(subj_i).icaact = (ALLEEG(subj_i).icaweights*ALLEEG(subj_i).icasphere)*ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:);
+% %             ALLEEG(subj_i).icaact = reshape(ALLEEG(subj_i).icaact,size(ALLEEG(subj_i).icaact,1),ALLEEG(subj_i).pnts,ALLEEG(subj_i).trials);
+%         end
+%         ica_weights = (ALLEEG(subj_i).icaact/ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:))/ALLEEG(subj_i).icasphere;
+%         ica_winv = (ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:)/ALLEEG(subj_i).icaact);
+%         tmp = sum(sqrt((ALLEEG(subj_i).icaweights-ica_weights).^2),[1,2]);
+%         fprintf('%7ssum(sqrt((icaweights_new-icaweights_old).^2)) = %0.3f\n','',tmp);
+%         %## Update ALLEEG & comps_out
+%         ALLEEG(subj_i).icaweights = ica_weights;
+%         ALLEEG(subj_i).icawinv = ica_winv;
+%     end
+% end
 % ALLEEG = ALLEEG(~logical(tmp_rmv_subjs));
-ALLEEG = TMP_ALLEEG(~cellfun(@isempty,TMP_ALLEEG));
+% ALLEEG = TMP_ALLEEG(~cellfun(@isempty,TMP_ALLEEG));
 %% CREATE STUDY
 % initiailize study
 fprintf('\n==== Making Study Modifications ====\n');

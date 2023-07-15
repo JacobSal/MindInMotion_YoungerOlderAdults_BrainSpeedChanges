@@ -7,7 +7,8 @@
 %   Previous Version: n/a
 %   Summary: 
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/AS_proc/run_plot_ica_info.sh
+%- run .sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/AS/run_c_plot_cluster_inf.sh
 
 %{
 %## RESTORE MATLAB
@@ -21,7 +22,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-%% REQUIRED SETUP 4 ALL SCRIPTS
+%% (EDIT: PATH TO YOUR GITHUB REPO) ==================================== %%
 %- DATE TIME
 dt = datetime;
 dt.Format = 'MMddyyyy';
@@ -32,7 +33,7 @@ fprintf(1,'Current User: %s\n',USER_NAME);
 % cfname_path    = mfilename('fullpath');
 % cfpath = strsplit(cfname_path,filesep);
 % cd(cfpath);
-%% PATH TO YOUR GITHUB REPO
+%% (EDIT: PATH TO YOUR GITHUB REPO) ==================================== %%
 %- GLOBAL VARS
 REPO_NAME = 'par_EEGProcessing';
 %- determine OS
@@ -42,16 +43,16 @@ else  % isunix
     PATH_ROOT = [filesep 'blue' filesep 'dferris',...
         filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 end
-%% SETWORKSPACE
+%% DEFINE SOURCE DIRECTORY & CD ======================================== %%
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '2_GLOBAL_BATCH'  filesep 'AS_proc'];
+run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'AS'];
 %- cd to source directory
 cd(source_dir)
 %- addpath for local folder
 addpath(source_dir)
 addpath(run_dir)
-%- set workspace
+%% SET WORKSPACE ======================================================= %%
 global ADD_CLEANING_SUBMODS
 ADD_CLEANING_SUBMODS = false;
 setWorkspace
@@ -93,7 +94,7 @@ SUBJ_ITERS = {(1:length(SUBJ_PICS{1}))};
 fprintf('\nData Processing Parameters\n');
 %## Hard Defines
 %- dataset specific
-RECOMPUTE_SPEC = false;
+RECOMPUTE_SPEC = true;
 FREQ_FAC = 4;
 FREQ_LIMITS = [1,70];
 SPEC_MODE = 'psd'; %'fft'; %'psd'; 

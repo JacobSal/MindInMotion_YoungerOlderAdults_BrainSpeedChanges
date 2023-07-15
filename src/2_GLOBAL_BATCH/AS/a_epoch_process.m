@@ -8,7 +8,7 @@
 %   Summary: This code was modified from
 
 %- run sh
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/AS_proc/run_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/AS/run_a_epoch_process.sh
 
 %{
 %## RESTORE MATLAB
@@ -33,7 +33,7 @@ fprintf(1,'Current User: %s\n',USER_NAME);
 % cfname_path    = mfilename('fullpath');
 % cfpath = strsplit(cfname_path,filesep);
 % cd(cfpath);
-%% PATH TO YOUR GITHUB REPO
+%% (EDIT: PATH TO YOUR GITHUB REPO) ==================================== %%
 %- GLOBAL VARS
 REPO_NAME = 'par_EEGProcessing';
 %- determine OS
@@ -43,16 +43,16 @@ else  % isunix
     PATH_ROOT = [filesep 'blue' filesep 'dferris',...
         filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 end
-%% SETWORKSPACE
+%% DEFINE SOURCE DIRECTORY & CD ======================================== %%
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'AS_proc'];
+run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'AS'];
 %- cd to source directory
 cd(source_dir)
 %- addpath for local folder
 addpath(source_dir)
 addpath(run_dir)
-%- set workspace
+%% SET WORKSPACE ======================================================= %%
 global ADD_CLEANING_SUBMODS
 ADD_CLEANING_SUBMODS = false;
 setWorkspace
@@ -106,6 +106,7 @@ SAVE_ALLEEG = true;
 % EVENT_FIELD_PARSER = 'type';
 % COND_CHARS = {'cooperative','competitive'};
 % COND_CHARS = {'human','BM'};
+EVENTS_TIMEWARP = {'Subject_hit','Subject_receive','Subject_hit'};
 COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
 EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 EPOCH_TIME_LIMITS = [-0.5,2];
@@ -188,35 +189,35 @@ fprintf('\nCreating .study files\n');
 %## Create STUDY & ALLEEG structs
 if ~exist([save_dir filesep study_fName_1 '.study'],'file') %|| true
     fprintf(1,'\n==== CLUSTERING SUBJECT DATA ====\n');
-    [ALLEEG] = as_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
+    [MAIN_ALLEEG] = as_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
                         conditions,groups,sessions);
-    [MAIN_STUDY,ALLEEG] = as_create_study(ALLEEG,cluster_info_fpath,study_fName_1,save_dir);
-    [MAIN_STUDY,ALLEEG] = std_checkset(MAIN_STUDY,ALLEEG);
-    [MAIN_STUDY,ALLEEG] = parfunc_save_study(MAIN_STUDY,ALLEEG,...
+    [MAIN_STUDY,MAIN_ALLEEG] = as_create_study(MAIN_ALLEEG,cluster_info_fpath,study_fName_1,save_dir);
+    [MAIN_STUDY,MAIN_ALLEEG] = std_checkset(MAIN_STUDY,MAIN_ALLEEG);
+    [MAIN_STUDY,MAIN_ALLEEG] = parfunc_save_study(MAIN_STUDY,MAIN_ALLEEG,...
                                             study_fName_1,save_dir,...
                                             'RESAVE_DATASETS','on');
     fprintf(1,'\n==== DONE: CLUSTERING SUBJECT DATA ====\n');
 else
     fprintf(1,'\n==== LOADING CLUSTER STUDY DATA ====\n');
     if ~ispc
-        [~,ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',save_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',save_dir);
     else
-        [~,ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',save_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',save_dir);
     end
     fprintf(1,'\n==== DONE: LOADING CLUSTER STUDY DATA ====\n');
 end
 %% INITIALIZE PARFOR LOOP VARS
 fprintf('\nInitialize PARFOR Loop Vars\n');
 if exist('SLURM_POOL_SIZE','var')
-    POOL_SIZE = min([SLURM_POOL_SIZE,length(ALLEEG)]);
+    POOL_SIZE = min([SLURM_POOL_SIZE,length(MAIN_ALLEEG)]);
 else
     POOL_SIZE = 1;
 end
-fPaths = {ALLEEG.filepath};
-fNames = {ALLEEG.filename};
-LOOP_VAR = 1:length(ALLEEG);
-tmp = cell(1,length(ALLEEG));
-rmv_subj = zeros(1,length(ALLEEG));
+fPaths = {MAIN_ALLEEG.filepath};
+fNames = {MAIN_ALLEEG.filename};
+LOOP_VAR = 1:length(MAIN_ALLEEG);
+tmp = cell(1,length(MAIN_ALLEEG));
+rmv_subj = zeros(1,length(MAIN_ALLEEG));
 %- clear vars for memory
 % clear MAIN_ALLEEG
 %% GENERATE EPOCH MAIN FUNC
@@ -243,7 +244,8 @@ for subj_i = LOOP_VAR
     end
     try
         %## EPOCH
-        ALLEEG = as_parse_trials(EEG,EPOCH_TIME_LIMITS); %,...
+        [ALLEEG,timewarp_struct] = as_parse_trials(EEG,EPOCH_TIME_LIMITS,...
+            'EVENTS_TIMEWARP',EVENTS_TIMEWARP); %,...
                 %'EVENT_FIELD_TRIAL',COND_FIELD_PARSER,...
                 %'EVENT_FIELD_CONDITION',EVENT_FIELD_PARSER);
         %## REMOVE USELESS EVENT FIELDS
@@ -257,9 +259,6 @@ for subj_i = LOOP_VAR
             if isfield(ALLEEG(i).event,'code')
                 ALLEEG(i).event = rmfield(ALLEEG(i).event,'code');
             end
-%             if isfield(ALLEEG(i).event,'urevent')
-%                 ALLEEG(i).event = rmfield(ALLEEG(i).event,'urevent');
-%             end
             if isfield(ALLEEG(i).event,'bvtime')
                 ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvtime');
             end
@@ -289,9 +288,26 @@ for subj_i = LOOP_VAR
         end
         ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
         ALLEEG.etc.cond_files = cond_files;
-        %- STRUCT EDITS
+        %## AGGREGATE TIMEWARP
+        %- timewarp for across condition
+        timewarp = make_timewarp(ALLEEG,EVENTS_TIMEWARP,'baselineLatency',0, ...
+                'maxSTDForAbsolute',inf,...
+                'maxSTDForRelative',inf);
+        %- subject specific warpto (later use to help calc grand avg warpto across subjects)
+        timewarp.warpto = nanmedian(timewarp.latencies);        
+        goodepochs  = sort([timewarp.epochs]);
+        %- probably not needed? 
+        sedi = setdiff(1:length(ALLEEG.epoch),goodepochs);
+        %- reject outlier strides
+        ALLEEG = pop_select(ALLEEG,'notrial',sedi);
+        %- store timewarp structure in EEG
+        ALLEEG.timewarp = timewarp;
+%         disp(EEG.subject); disp(allWarpTo); disp(grandAvgWarpTo);
+        %- store condition-by-conditino timewarpings
+        ALLEEG.etc.timewarp_by_cond = timewarp_struct;
+        %## STRUCT EDITS
         ALLEEG.urevent = []; % might be needed
-        ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
+%         ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
         %- 
         ALLEEG = eeg_checkset(ALLEEG,'eventconsistency');
         ALLEEG = eeg_checkset(ALLEEG);

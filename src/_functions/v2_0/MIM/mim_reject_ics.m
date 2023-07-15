@@ -25,6 +25,12 @@ fprintf('EEGLAB path: %s\n',PATH_EEGLAB);
 %- ICLabel version 
 ICLABEL_VERSION = 'lite';
 %- 
+DO_POWPOWCAT = true;
+upperFreqLimit = 100; %Frequency in Hz
+inputDataType = 2; %1, electrode data; 2, ICA time series
+methodType = 2;%1, Pearson's correlation; 2, Speaman's correlation
+numIterations = 1000;
+%-
 fit_range = 2:40; % Original setting 2:100. now changed to 2:40 (2022-1-2)
 classes_to_keep = 1; % Brain components
 thresholds_keep = [0.5,0.75,0.9]; % percentages to threshold the ICLabel brain label by for keeping
@@ -105,6 +111,7 @@ numICs = 1:size(EEG.icawinv,2);
 IC_RV = vertcat(EEG.dipfit.model.rv);
 IC_POSXYZ = vertcat(EEG.dipfit.model.posxyz);
 ICs_RVthreshold_keep = find(IC_RV <= THRESHOLD_RV_BRAIN & all(~isnan(IC_POSXYZ),2));
+
 %% ===================================================================== %%
 %## Gather all IC rejection criteria
 %-
@@ -147,10 +154,39 @@ IC_all_brain(All_IC_criteria.Spectra.keep) = IC_all_brain(All_IC_criteria.Spectr
 IC_all_brain(All_IC_criteria.RV.keep) = IC_all_brain(All_IC_criteria.RV.keep)+5;
 IC_all_brain(size(EEG.icawinv,2)-5:size(EEG.icawinv,2)) = IC_all_brain(size(EEG.icawinv,2)-5:size(EEG.icawinv,2))-1;
 
+%%
+%## (Criteria 5)  PowPowCat
+% PowPow Cat Cross-Frequency Power-Power Coupling Analysis: A Useful Cross-Frequency Measure to Classify ICA-Decomposed EEG
+% It takes a long time to run. should pick only the ones that are
+% classified as 'brain'
+DO_POWPOW_PLOT = true;
+if DO_POWPOWCAT
+%     IC_powpow = find(Output_ICRejection.IC_all_brain >= 8);
+    fprintf('PowPowCAT parameters:\n upperFreqLimit= %i Hz\n inputDataType = ICs\n methodType= Spearman''s correlation (non-parametric)\n numIterations = %i\n',upperFreqLimit,numIterations);
+    %run PowPowCAT
+    IC_powpow = find(IC_all_brain >= 7);
+    % make a copy of EEG for powpowcat processing only
+    if ~isempty(IC_powpow)
+        EEG_powpow = EEG;
+        EEG_powpow.icaact = EEG.icaact(IC_powpow,:);
+        EEG_powpow = calc_PowPowCAT(EEG_powpow,upperFreqLimit,inputDataType,methodType,numIterations);
+        EEG_powpow.setname = 'powpowcat';
+        Plot35IcPushbutton_powpow(EEG_powpow,length(IC_powpow),IC_powpow)
+        fig_i = get(groot,'CurrentFigure');
+        saveas(fig_i,[save_dir filesep 'powpowcat.fig']);
+        saveas(fig_i,[save_dir filesep 'powpowcat.jpg']);
+    end
+    %- save EEG powpowcat?
+    badPPC_IC = PowPowCat_ICrej(EEG_powpow,DO_POWPOW_PLOT,save_dir);
+end
+
+%% SAVE OUTPUT
+
 Output_ICRejection.All_IC_criteria = All_IC_criteria;
 Output_ICRejection.IC_all_brain = IC_all_brain;
 Output_ICRejection.IC_all_muscle = IC_all_muscle;
 Output_ICRejection.IC_all_eye = IC_all_eye;
+Output_ICRejection.IC_powpow_rej = badPPC_IC;
 Output_ICRejection.Cleaning_Params = EEG.etc.Params;
 %- save Output_ICRejection
 fileName = [save_dir filesep sprintf('%s_ICRej.mat',EEG.subject)];
@@ -315,6 +351,9 @@ if DO_PLOTTING
     saveas(fig_i,[save_dir filesep 'potential_brain_components_allcritera_customElectrode.fig']);
     saveas(fig_i,[save_dir filesep 'potential_brain_components_allcritera_customElectrode.jpg']);
     
+    %## (PLOT 8) POWPOWCAT
+    
+
 end
 end
 

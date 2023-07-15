@@ -67,6 +67,7 @@ if DO_SLIDING_WINDOW
         TMP_EEG.etc.epoch.condition = COND_CHARS_SLIDING_WINDOW{i};
         TMP_EEG.etc.epoch.epoch_limits = WINDOW_LENGTH;
         TMP_EEG.etc.epoch.perc_overlap = PERCENT_OVERLAP;
+        TMP_EEG.condition = COND_CHARS_SLIDING_WINDOW{i};
         ALLEEG{i} = TMP_EEG;
         timewarp_struct{i} = struct([]);
     end
