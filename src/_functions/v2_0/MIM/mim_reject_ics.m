@@ -26,6 +26,7 @@ fprintf('EEGLAB path: %s\n',PATH_EEGLAB);
 ICLABEL_VERSION = 'lite';
 %- 
 DO_POWPOWCAT = true;
+DO_POWPOW_PLOT = false;
 upperFreqLimit = 100; %Frequency in Hz
 inputDataType = 2; %1, electrode data; 2, ICA time series
 methodType = 2;%1, Pearson's correlation; 2, Speaman's correlation
@@ -159,29 +160,35 @@ IC_all_brain(size(EEG.icawinv,2)-5:size(EEG.icawinv,2)) = IC_all_brain(size(EEG.
 % PowPow Cat Cross-Frequency Power-Power Coupling Analysis: A Useful Cross-Frequency Measure to Classify ICA-Decomposed EEG
 % It takes a long time to run. should pick only the ones that are
 % classified as 'brain'
-DO_POWPOW_PLOT = true;
+
 if DO_POWPOWCAT
 %     IC_powpow = find(Output_ICRejection.IC_all_brain >= 8);
     fprintf('PowPowCAT parameters:\n upperFreqLimit= %i Hz\n inputDataType = ICs\n methodType= Spearman''s correlation (non-parametric)\n numIterations = %i\n',upperFreqLimit,numIterations);
     %run PowPowCAT
     IC_powpow = find(IC_all_brain >= 7);
+%     IC_powpow = find(IC_all_brain >= 5);
     % make a copy of EEG for powpowcat processing only
     if ~isempty(IC_powpow)
         EEG_powpow = EEG;
         EEG_powpow.icaact = EEG.icaact(IC_powpow,:);
+%         EEG_powpow = pop_subcomp(EEG,IC_powpow,0,1);
         EEG_powpow = calc_PowPowCAT(EEG_powpow,upperFreqLimit,inputDataType,methodType,numIterations);
         EEG_powpow.setname = 'powpowcat';
         Plot35IcPushbutton_powpow(EEG_powpow,length(IC_powpow),IC_powpow)
         fig_i = get(groot,'CurrentFigure');
         saveas(fig_i,[save_dir filesep 'powpowcat.fig']);
         saveas(fig_i,[save_dir filesep 'powpowcat.jpg']);
+        %- save EEG powpowcat?
+        inds = PowPowCat_ICrej(EEG_powpow,DO_POWPOW_PLOT,save_dir);
+        badPPC_IC = IC_powpow(inds);
+    else
+        badPPC_IC = [];
     end
-    %- save EEG powpowcat?
-    badPPC_IC = PowPowCat_ICrej(EEG_powpow,DO_POWPOW_PLOT,save_dir);
+else
+    badPPC_IC = [];
 end
 
 %% SAVE OUTPUT
-
 Output_ICRejection.All_IC_criteria = All_IC_criteria;
 Output_ICRejection.IC_all_brain = IC_all_brain;
 Output_ICRejection.IC_all_muscle = IC_all_muscle;

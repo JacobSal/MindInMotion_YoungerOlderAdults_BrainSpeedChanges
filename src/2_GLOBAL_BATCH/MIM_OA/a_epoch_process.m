@@ -170,7 +170,9 @@ PAD_RATIO = 2;
 % dt = '06282023_MIM_OAN79_subset_prep_verified_gait';
 % dt = '07112023_MIM_OAN79_subset_prep_verified_gait';
 % dt = 'test';
-dt = '07152023_MIM_OAN79_subset_prep_verified_gait';
+% dt = '07152023_MIM_OAN79_subset_prep_verified_gait';
+% dt = '07162023_MIM_OAN79_subset_prep_verified_gait';
+dt = '07172023_nopowpowrej_test';
 %- Subject Directory information
 OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 %## soft define
@@ -308,6 +310,27 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
             'STD_TIMEWARP',STD_TIMEWARP,...
             'COND_CHARS',TRIAL_TYPES);
         %## REMOVE USELESS EVENT FIELDS
+        for i = 1:length(ALLEEG)
+            if isfield(ALLEEG(i).event,'trialName')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'trialName');
+            end
+            if isfield(ALLEEG(i).event,'channel')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'channel');
+            end
+            if isfield(ALLEEG(i).event,'code')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'code');
+            end
+            if isfield(ALLEEG(i).event,'bvtime')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvtime');
+            end
+            if isfield(ALLEEG(i).event,'bvmknum')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvmknum');
+            end
+            if isfield(ALLEEG(i).event,'datetime')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'datetime');
+            end
+        end
+        %## SAVE EEG's AS INDIVIDUAL FILES (CONNECTIVITY)
         cond_files = struct('fPath',[],'fName',[]);
         if SAVE_ALLEEG
             for i = 1:length(ALLEEG)

@@ -35,21 +35,30 @@ end
 %% ===================================================================== %%
 tmp_rmv_subjs = zeros(1,length(ALLEEG));
 %## DIPOLE REJECTION
+brain_ics_count = zeros(length(ALLEEG),1);
+brain_ics_scores = cell(length(ALLEEG),1);
+powpow_rej_count = zeros(length(ALLEEG),1);
+all_rej_count = zeros(length(ALLEEG),1);
+powpow_rej_nums = cell(length(ALLEEG),1);
+brain_ic_nums = cell(length(ALLEEG),1);
+all_rej_nums = cell(length(ALLEEG),1);
+subj_str = cell(length(ALLEEG),1);
 parfor subj_i = 1:length(ALLEEG)
 % for subj_i = 1:length(ALLEEG)
     %- use rejection criteria to determine bad ic's
     reject_struct = mim_reject_ics(ALLEEG(subj_i),ALLEEG(subj_i).filepath);
     %- log good & bad components
     chk = (reject_struct.IC_all_brain >= THRESH_BRAIN_SCORE & reject_struct.IC_all_brain ~= 9);
-    chk_powpow = unique(find(chk),reject_struct.IC_powpow_rej);
-    tmp_bad = setdiff(find((1:size(ALLEEG(subj_i).icaweights,1))),chk_powpow);
-    tmp_good = chk_powpow;
+    chk_w_powpow = unique(cat(1,find(chk),reject_struct.IC_powpow_rej));
+    tmp_bad = setdiff(find((1:size(ALLEEG(subj_i).icaweights,1))),chk_w_powpow);
+    tmp_good = chk_w_powpow';
     ALLEEG(subj_i).etc.urreject = [];
     ALLEEG(subj_i).etc.urreject.crit = [];
     ALLEEG(subj_i).etc.urreject.ic_keep = [];
     ALLEEG(subj_i).etc.urreject.ic_rej = [];
     ALLEEG(subj_i).etc.urreject.dipfit = [];
     if isempty(tmp_good)
+        tmp_good = 0;
         fprintf('** Subject %s has 0 brain components\n',ALLEEG(subj_i).subject);
     else
         ALLEEG(subj_i).etc.urreject.crit = reject_struct;
@@ -58,6 +67,34 @@ parfor subj_i = 1:length(ALLEEG)
         ALLEEG(subj_i).etc.urreject.dipfit = ALLEEG(subj_i).dipfit;
         fprintf('** Subject %s has %i brain components\n',ALLEEG(subj_i).subject, length(tmp_good));
     end
+    %- table printouts
+    brain_ics_count(subj_i) = length(tmp_good);
+    powpow_rej_count(subj_i) = length(reject_struct.IC_powpow_rej);
+    all_rej_count(subj_i) = length(tmp_bad);
+    tmp = reject_struct.IC_powpow_rej;
+    if ~isempty(tmp)
+        powpow_rej_nums{subj_i} = ['[' sprintf('%i,',tmp(1:end-1)) sprintf('%i',tmp(end)) ']']; %reject_struct.IC_powpow_rej;
+    else
+        powpow_rej_nums{subj_i} = '';
+    end
+    if ~isempty(tmp_good)
+        brain_ic_nums{subj_i} = ['[' sprintf('%i,',tmp_good(1:end-1)) sprintf('%i',tmp_good(end)) ']']; %sprintf('%i,',tmp_good); %tmp_good;
+    else
+        brain_ic_nums{subj_i} = '';
+    end
+    if ~isempty(tmp_bad)
+        all_rej_nums{subj_i} = ['[' sprintf('%i,',tmp_bad(1:end-1)) sprintf('%i',tmp_bad(end)) ']']; %sprintf('%i,',tmp_bad); %tmp_bad
+    else
+        all_rej_nums{subj_i} = '';
+    end
+    tmp = reject_struct.IC_all_brain;
+    tmp = tmp(chk);
+    if ~isempty(tmp)
+        brain_ics_scores{subj_i} = ['[' sprintf('%i,',tmp(1:end-1)) sprintf('%i',tmp(end)) ']']; %sprintf('%i,',tmp(chk)); %tmp(chk);
+    else
+        brain_ics_scores{subj_i} = '';
+    end
+    subj_str{subj_i} = ALLEEG(subj_i).subject;
     %- remove IC's from struct
     if length(ALLEEG(subj_i).etc.urreject.ic_keep) < 2 %|| isempty(ALLEEG(subj_i).etc.urreject)
         fprintf('** Subject %s rejected.\n',ALLEEG(subj_i).subject);
@@ -95,7 +132,6 @@ parfor subj_i = 1:length(ALLEEG)
         ALLEEG(subj_i).specicaact  = [];
         ALLEEG(subj_i).specdata    = [];
         ALLEEG(subj_i).reject      = [];
-
         %- iclabel mdos
         if isfield(ALLEEG(subj_i).etc, 'ic_classification')
             if isfield(ALLEEG(subj_i).etc.ic_classification, 'ICLabel') 
@@ -118,6 +154,10 @@ parfor subj_i = 1:length(ALLEEG)
     end
 end
 ALLEEG = ALLEEG(~logical(tmp_rmv_subjs));
+%% WRITE TO XLSX
+tmp_table = table(brain_ics_count,powpow_rej_count,all_rej_count,powpow_rej_nums,brain_ic_nums,...
+    all_rej_nums,brain_ics_scores,'RowNames',subj_str);
+writetable(tmp_table,[study_fPath filesep 'rejection_crit.xlsx'],'WriteRowNames',true,'WriteVariableNames',true) 
 %% REMOVE COMPS (version 1)
 % (06/17/2023) JS, changing line 70 from < 3 to <= 3 (losing subjects w/ 3
 % brain comps)

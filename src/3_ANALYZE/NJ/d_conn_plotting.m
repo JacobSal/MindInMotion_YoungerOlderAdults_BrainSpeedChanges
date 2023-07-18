@@ -84,7 +84,8 @@ end
 %- hardcode data_dir
 DATA_SET = 'jacobsenN_dataset';
 %- datetime override
-dt = '06292023_NJ_Standing';
+% dt = '06292023_NJ_Standing';
+dt = '07162023_NJ_standing_customheadmods';
 %- connectiviy specific
 CONN_METHODS = {'dDTF','GGC','dDTF08'}; % AS (06/22/2023)
 conn_meas = 'dDTF08';
@@ -116,17 +117,39 @@ else
     else
         [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',load_dir);
     end
+    %## load chang's algorithmic clustering
+    %* cluster parameters
+    pick_cluster = 8;
+    clustering_weights.dipoles = 1;
+    clustering_weights.scalp = 0;
+    clustering_weights.ersp = 0;
+    clustering_weights.spec = 0;
+    cluster_alg = 'kmeans';
+    do_multivariate_data = 1;
+    evaluate_method = 'min_rv';
+    clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
+        '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
+        '_spec_',num2str(clustering_weights.spec)];
+    %* load cluster information
+    cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
+    outputdir = [cluster_load_dir filesep clustering_method,...
+        filesep num2str(pick_cluster)];
+    tmp = load([outputdir filesep sprintf('cluster_update_%i.mat',pick_cluster)]);
+    cluster_update = tmp.cluster_update;
+    STUDY.cluster = cluster_update;
+    %- get inds
     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
 end
-%%
-%## CONN MAT PARAMS
+%%  LOAD CONNECTIVITY DATA
 % CLUSTER_ITERS = [2,3,4,5,6,7,8,9];
 % CLUSTER_ASSIGNMENTS = {'RPPa','LPPa','PFC','LSM','ROc','ACC','RSM','Cerr'};
 % CLUSTER_ITERS = [2,3,4,5,6,7,8,9];
 % CLUSTER_ASSIGNMENTS = {'Cune','RSM','Cerr','ACC','RPPa','LPPa','LSM','LOc'};
 % CLUSTER_ITERS = [3,4,5,6,7,8,9,10,11,12];
-CLUSTER_ITERS = [2,3,4,5,6,7,8,9,10,11];
-CLUSTER_ASSIGNMENTS = {'cl2','cl3','cl4','cl5','cl6','cl7','cl8','cl9','cl10','cl1'}; % (06/27/2023) JS, unsure on these as of yet.
+% CLUSTER_ITERS = [2,3,4,5,6,7,8,9,10,11];
+% CLUSTER_ASSIGNMENTS = {'cl2','cl3','cl4','cl5','cl6','cl7','cl8','cl9','cl10','cl1'}; % (06/27/2023) JS, unsure on these as of yet.
+CLUSTER_ITERS = [3,4,5,6,7,8,9,10];
+CLUSTER_ASSIGNMENTS = {'cl3','cl4','cl5','cl6','cl7','cl8','cl9','cl10'}; % (06/27/2023) JS, unsure on these as of yet.
 
 % CLUSTER_ASSIGNMENTS = {'RTemp','LTemp','Precuneus','RSuppMotor','LPPa','LSM','RSM','LTemp','Cing','LSuppMotor'}; % (06/27/2023) JS, unsure on these as of yet.
 % SUBJS_TEST = 1:length(ALLEEG);
@@ -197,66 +220,20 @@ for subj_i = 1:length(ALLEEG)
         continue;
     end
 end
-%{
-% hlpr = fields(ALLEEG(subj_i).etc.js_processing(cond_i).META);
-for freq_i = FREQ_INTS
-    fprintf('==== Processing Frequency Iter %i ====',freq_i);
-    %- loop through each condition   
-    for cond_i = 1:length(load_trials)
-        %## LOOP PARAMS
-        sub_cond_i = cond_i + find(strcmp(load_trials{1},TRIAL_TYPES))-1; % offset for weirdness
-        clusterNames = cell(1,length(CLUSTER_ASSIGNMENTS));
-        name_trial = load_trials{cond_i};
-        mat_nan = nan(length(STUDY.cluster),length(STUDY.cluster),length(ALLEEG));
-        ALLEEG = ALLEEGS{cond_i};
-        %## LOOP PATHING
-        
-        %## LOOP MEAT
-        %- loop through subjects in each condition
-        for subj_i = 1:length(ALLEEG)
-            chk = (comps_out(subj_i,1:end)>0);
-            if any(chk)
-                fprintf('%s) Frequencies: %sHz\n',ALLEEG(subj_i).subject,...
-                    FREQS_SUBPATH);
-                statMat = ALLEEG(subj_i).etc.js_processing(sub_cond_i).META.(conn_meas).connExtract(freq_i).mats;
-                comps = ALLEEG(subj_i).etc.js_processing(sub_cond_i).META.connComponents';
-                meanMat = squeeze(statMat(1,:,:));
-    %             stdvMat = squeeze(statMat(2,:,:));
-    %             medMat = squeeze(statMat(3,:,:));
-                clust_idx = zeros(1,length(comps));
-                comp_idx = zeros(1,length(comps));
-                fprintf('%s) Number of absent connections: %i\n',ALLEEG(subj_i).subject,...
-                    sum(isnan(meanMat(:))));
-                for i = 1:length(comps)
-                    chk = find(comps(i) == comps_out(subj_i,1:end));
-                    if ~isempty(chk)
-                        clust_idx(i) = chk;
-                        comp_idx(i) = i;
-                    end
-                end
-                clust_idx = clust_idx(clust_idx ~= 0);
-                comp_idx = comp_idx(comp_idx ~= 0);
-                if ~isempty(comp_idx)
-                    val_in = meanMat(comp_idx,comp_idx);
-                    val_in(isnan(val_in)) = 0;
-                    mat_nan(clust_idx,clust_idx,subj_i) = val_in;
-                else
-                    continue;
-                end                    
-            else
-                continue;
-            end
-        end
-        %- store
-        mat_out_nan(:,:,:,cond_i,freq_i) = mat_nan;
-    end
-end
-%}
+tmp_struct = struct('dims',{'from_clusters','to_clusters','conditions','frequencies'},...
+    'conditions',conn_conds,...
+    'cluster_nums',CLUSTER_ITERS,...
+    'cluster_names',CLUSTER_ASSIGNMENTS,...
+    'frequency_bands',uniq_freqs,...
+    'connectivity_mat',mat_out_nan);
+par_save(tmp_struct,save_dir,'all_subj_connectivity.mat');
+
 %% CONNECITIVITY CHORD PLOTS
-BASELINE_INT = 1;
+BASELINE_INT = 1; % [[] | INT];
 for freq_i = size(uniq_freqs,1)
     baseline = nanmean(mat_out_nan(:,:,:,BASELINE_INT,freq_i),3);
-    for cond_i = 1:length(conn_conds)
+    test_conds = setdiff(1:length(conn_conds),BASELINE_INT);
+    for cond_i = test_conds
 %         sub_cond_i = cond_i + find(strcmp(load_trials{1},TRIAL_TYPES))-1; % offset for weirdness
         tmp = uniq_freqs(freq_i,uniq_freqs(freq_i,:)>0);
         FREQS_SUBPATH = sprintf('%i-%i',...
@@ -279,8 +256,8 @@ for freq_i = size(uniq_freqs,1)
         end
         %## PLOT
         %- assign matrix
-%         tmp = nanmean(mat_out_nan(:,:,:,cond_i,freq_i),3); %nanmean(mat_nan,3);
-        tmp = nanmean(mat_out_nan(:,:,:,cond_i,freq_i),3) - baseline;
+        tmp = nanmean(mat_out_nan(:,:,:,cond_i,freq_i),3); %nanmean(mat_nan,3);
+%         tmp = nanmean(mat_out_nan(:,:,:,cond_i,freq_i),3) - baseline;
         I = eye(size(tmp));
         I = (I == 0);
         tmp = tmp.*I;
@@ -339,8 +316,8 @@ for freq_i = 1:size(uniq_freqs,1)
         end
         %## PLOT
         %- assign matrix
-%         tmp = nanmean(mat_out_nan(:,:,:,cond_i,freq_i),3); %nanmean(mat_nan,3);
-        tmp = nanmean(mat_out_nan(:,:,:,cond_i,freq_i),3) - baseline;
+        tmp = nanmean(mat_out_nan(:,:,:,cond_i,freq_i),3); %nanmean(mat_nan,3);
+%         tmp = nanmean(mat_out_nan(:,:,:,cond_i,freq_i),3) - baseline;
         I = eye(size(tmp));
         I = (I == 0);
         tmp = tmp.*I;

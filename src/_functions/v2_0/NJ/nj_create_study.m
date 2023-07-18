@@ -34,7 +34,6 @@ if ~exist(study_fPath,'dir')
 end
 %% ===================================================================== %%
 %## DIPOLE REJECTION
-
 tmp_rmv_subjs = zeros(1,length(ALLEEG));
 %## DIPOLE REJECTION
 parfor subj_i = 1:length(ALLEEG)

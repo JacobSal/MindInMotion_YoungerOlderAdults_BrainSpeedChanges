@@ -157,9 +157,9 @@ else
     end
     %## load chang's algorithmic clustering
     %* cluster parameters
-    pick_cluster = 12;
-    clustering_weights.dipoles = 5;
-    clustering_weights.scalp = 5;
+    pick_cluster = 15;
+    clustering_weights.dipoles = 1;
+    clustering_weights.scalp = 0;
     clustering_weights.ersp = 0;
     clustering_weights.spec = 0;
     cluster_alg = 'kmeans';
@@ -170,8 +170,8 @@ else
         '_spec_',num2str(clustering_weights.spec)];
     %* load cluster information
     cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
-    outputdir = [cluster_load_dir filesep 'clustering_solutions' filesep clustering_method,...
-        filesep num2str(pick_cluster) filesep evaluate_method];
+    outputdir = [cluster_load_dir filesep clustering_method,...
+        filesep num2str(pick_cluster)];
     tmp = load([outputdir filesep sprintf('cluster_update_%i.mat',pick_cluster)]);
     cluster_update = tmp.cluster_update;
     STUDY.cluster = cluster_update;
@@ -326,6 +326,10 @@ COLORAXIS_LABEL = 'dB';
 ERSP_FREQSCALE = 'log'; % 'native', 'LOG'
 ERSP_CHANLOCS = struct('labels', {});
 %%
+for subj_i = 1:length(ALLEEG)
+    ALLEEG(subj_i).group = tmp_group_unif{subj_i};
+    STUDY.datasetinfo(subj_i).group = tmp_group_unif{subj_i};
+end
 for des_i = 1:length(COND_DESIGNS)
     fprintf('==== Making Study Design ====\n');
     [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
@@ -425,13 +429,27 @@ for des_i = 1:length(COND_DESIGNS)
         % Problem with logging the output after baseline subtraction.
         % (06/02/2023): JS I'm trying this again, going to try and extract
         % each epoch using event structure and sort into conditions.
+        
         %## Cropping Indicies
         crop_inds = (alltimes>=ERSP_CROP_TIMES(1) & alltimes<=ERSP_CROP_TIMES(2));
         alltimes = alltimes(crop_inds);
         for cond_i = 1:length(allersp)
             allersp{cond_i} = allersp{cond_i}(:,crop_inds,:);
         end
-        %## BASELINE GAIT CYCLES
+        %## Across Design Baselineing
+        %{
+        tmp_allersp = [allersp{:}];
+        tmp_allersp = reshape(tmp_allersp,size(allersp{1},1),size(allersp{1},2),size(allersp{1},3)*length(allersp));
+        tmp = mean(tmp_allersp,3);
+        tmp = mean(tmp,2);
+        tmp_std = std(tmp,[],2);
+        tmp = repmat(tmp,1,size(tmp_allersp,2)); 
+        tmp_std = repmat(tmp_std,1,size(tmp_allersp,2));
+        for cond_i = 1:length(allersp)
+            allersp{cond_i} = allersp{cond_i} - tmp;
+        end
+        %}
+        %## Within Each Condition Baselineing
         for cond_i = 1:length(allersp)
             %- interesting way to baseline using mean across trials and
             %time
@@ -479,7 +497,6 @@ for des_i = 1:length(COND_DESIGNS)
 %                                         'naccu',ERSP_NACCU,...
 %                                         'alpha',ERSP_ALPHA,...
 %                                         'mcorrect',ERSP_MCORRECT,'mode','fieldtrip');
-        
         [pcond_ersp,pgroup_ersp,pinter_ersp,stat_cond,stat_group,stat_inter] = std_stat(allersp,...
                 'condstats', ERSP_CONDSTATS,...
                 'groupstats',ERSP_GROUPSTATS,...
@@ -491,9 +508,9 @@ for des_i = 1:length(COND_DESIGNS)
         %- plot
         std_plottf(alltimes, allfreqs, allersp,...
                            'datatype', 'ersp', ...
-                           'groupstats', pgroup_ersp,...
-                           'condstats', pcond_ersp,...
-                           'interstats', pinter_ersp,...
+                           'groupstats', stat_group,...
+                           'condstats', stat_cond,...
+                           'interstats', stat_inter,...
                            'plotmode', 'normal',...
                            'titles', titles_ersp,...
                            'caxis',ERSP_CAXIS,...

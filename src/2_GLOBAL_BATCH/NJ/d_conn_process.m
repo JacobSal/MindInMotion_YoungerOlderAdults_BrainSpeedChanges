@@ -87,7 +87,7 @@ end
 %- datset name
 DATA_SET = 'jacobsenN_dataset';
 %- datetime override
-dt = '06292023_NJ_Standing';
+dt = '07162023_NJ_standing_customheadmods';
 %- epoching params
 TRIAL_TYPES = {'pre','post'};
 %- connecitivty modeling
@@ -124,9 +124,9 @@ else
     else
         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
     end
-     %## load chang's algorithmic clustering
+    %## load chang's algorithmic clustering
     %* cluster parameters
-    pick_cluster = 12;
+    pick_cluster = 8;
     clustering_weights.dipoles = 1;
     clustering_weights.scalp = 0;
     clustering_weights.ersp = 0;
@@ -139,14 +139,13 @@ else
         '_spec_',num2str(clustering_weights.spec)];
     %* load cluster information
     cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
-    outputdir = [cluster_load_dir filesep 'clustering_solutions' filesep clustering_method,...
-        filesep num2str(pick_cluster) filesep evaluate_method];
+    outputdir = [cluster_load_dir filesep clustering_method,...
+        filesep num2str(pick_cluster)];
     tmp = load([outputdir filesep sprintf('cluster_update_%i.mat',pick_cluster)]);
     cluster_update = tmp.cluster_update;
-    STUDY.cluster = cluster_update;
+    MAIN_STUDY.cluster = cluster_update;
     %- get inds
-    [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
-
+    [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(MAIN_STUDY);
 end
 %% INITIALIZE PARFOR LOOP VARS
 if exist('SLURM_POOL_SIZE','var')

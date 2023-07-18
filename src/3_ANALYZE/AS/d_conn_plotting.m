@@ -206,61 +206,14 @@ for subj_i = 1:length(ALLEEG)
         continue;
     end
 end
-%{
-% hlpr = fields(ALLEEG(subj_i).etc.js_processing(cond_i).META);
-for freq_i = FREQ_INTS
-    fprintf('==== Processing Frequency Iter %i ====',freq_i);
-    %- loop through each condition   
-    for cond_i = 1:length(load_trials)
-        %## LOOP PARAMS
-        sub_cond_i = cond_i + find(strcmp(load_trials{1},TRIAL_TYPES))-1; % offset for weirdness
-        clusterNames = cell(1,length(CLUSTER_ASSIGNMENTS));
-        name_trial = load_trials{cond_i};
-        mat_nan = nan(length(STUDY.cluster),length(STUDY.cluster),length(ALLEEG));
-        ALLEEG = ALLEEGS{cond_i};
-        %## LOOP PATHING
-        
-        %## LOOP MEAT
-        %- loop through subjects in each condition
-        for subj_i = 1:length(ALLEEG)
-            chk = (comps_out(subj_i,1:end)>0);
-            if any(chk)
-                fprintf('%s) Frequencies: %sHz\n',ALLEEG(subj_i).subject,...
-                    FREQS_SUBPATH);
-                statMat = ALLEEG(subj_i).etc.js_processing(sub_cond_i).META.(conn_meas).connExtract(freq_i).mats;
-                comps = ALLEEG(subj_i).etc.js_processing(sub_cond_i).META.connComponents';
-                meanMat = squeeze(statMat(1,:,:));
-    %             stdvMat = squeeze(statMat(2,:,:));
-    %             medMat = squeeze(statMat(3,:,:));
-                clust_idx = zeros(1,length(comps));
-                comp_idx = zeros(1,length(comps));
-                fprintf('%s) Number of absent connections: %i\n',ALLEEG(subj_i).subject,...
-                    sum(isnan(meanMat(:))));
-                for i = 1:length(comps)
-                    chk = find(comps(i) == comps_out(subj_i,1:end));
-                    if ~isempty(chk)
-                        clust_idx(i) = chk;
-                        comp_idx(i) = i;
-                    end
-                end
-                clust_idx = clust_idx(clust_idx ~= 0);
-                comp_idx = comp_idx(comp_idx ~= 0);
-                if ~isempty(comp_idx)
-                    val_in = meanMat(comp_idx,comp_idx);
-                    val_in(isnan(val_in)) = 0;
-                    mat_nan(clust_idx,clust_idx,subj_i) = val_in;
-                else
-                    continue;
-                end                    
-            else
-                continue;
-            end
-        end
-        %- store
-        mat_out_nan(:,:,:,cond_i,freq_i) = mat_nan;
-    end
-end
-%}
+tmp_struct = struct('dims',{'from_clusters','to_clusters','conditions','frequencies'},...
+    'conditions',conn_conds,...
+    'cluster_nums',CLUSTER_ITERS,...
+    'cluster_names',CLUSTER_ASSIGNMENTS,...
+    'frequency_bands',uniq_freqs,...
+    'connectivity_mat',mat_out_nan);
+par_save(tmp_struct,save_dir,'all_subj_connectivity.mat');
+
 %% CONNECITIVITY CHORD PLOTS
 BASELINE_INT = 1;
 for freq_i = size(uniq_freqs,1)
