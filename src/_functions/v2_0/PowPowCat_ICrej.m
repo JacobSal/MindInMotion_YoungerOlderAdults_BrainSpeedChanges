@@ -36,7 +36,7 @@ tic
 %## DEFINE DEFAULTS
 %- Cutoff for Correlations ot determine bad components
 % NOTE: correlation coefficient threshold, 0.5-0.7= moderate correlation
-BAD_IC_CUTOFF = 0.25; 
+BAD_IC_CUTOFF = 0.3; 
 % NOTE (07/15/2023), Originally at 0.3; setting to 0.25 to be more
 % aggressive on cleaning.
 %-
@@ -156,6 +156,7 @@ if do_plot
     close(myfig);
     %}
     %## (PLOT 3)
+    %{
     %- plot bad ICs spectral covariance subplot dimensions
     if length(bad_ics_out)>5
         M = 2;
@@ -193,6 +194,7 @@ if do_plot
     saveas(myfig,[save_dir_1 filesep sprintf('%s_BadSpectralCovariance_%i.jpg',EEG.subject,IC-1)]);
     fprintf('Summary of ICs with bad spectral covariance stored here: %s\n',[save_dir,'\Summary']);
     close(myfig);
+    %}
 end
 %## TIME
 toc
