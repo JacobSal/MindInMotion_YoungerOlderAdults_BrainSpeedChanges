@@ -93,13 +93,21 @@ function [fig] = mim_vis_TimeFreqCell(EEG,conn_meas,comp_names,color_lim,i,j)
     ConnMatrix = EEG.CAT.Conn.(conn_meas);
     erWinCenterTimes = EEG.CAT.Conn.erWinCenterTimes;
     origFreqValues = EEG.CAT.Conn.freqs;
+    %-
+    if isfield(EEG.CAT,'masked_conn')
+        connmethods = EEG.CAT.configs.est_mvarConnectivity.connmethods;
+        for conn_i = 1:length(connmethods)
+            EEG.CAT.Conn.(connmethods{conn_i})=EEG.CAT.masked_conn.(connmethods{conn_i});
+        end
+    end
     %- extract the stats matrix for this pair 
     if isfield(EEG.CAT, 'Stats')
         if ~isempty(EEG.CAT.Stats.(conn_meas))
             subargs.thresholding = [];
             subargs.thresholding.arg_selection = 'Statistics';
-            subargs.thresholding.sigthreshmethod = 'pval';
-            subargs.thresholding.alpha.alpha = 0.05;
+            subargs.thresholding.sigthreshmethod = 'pval'; %'ci';
+%             subargs.thresholding.sigthreshmethod = 'ci';
+            subargs.thresholding.alpha.alpha = 0.01;
 %                         subargs.thresholding.alpha = 0.01;
             subargs.thresholding.plotci = [];
         else

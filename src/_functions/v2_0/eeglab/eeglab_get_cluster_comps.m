@@ -1,4 +1,4 @@
-function [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY,varargin)
+function [comps_out,main_cl_inds,outlier_cl_inds,valid_clusters] = eeglab_get_cluster_comps(STUDY,varargin)
 %EEGLAB_GET_CLUSTER_COMPS Summary of this function goes here
 %   Function generates a matrix (NxM, N = number of clusters, M = number of
 %   subjects) of DOUBLES. Each element in the matrix is the component
@@ -44,6 +44,9 @@ for clus_i = 2:length(STUDY.cluster)
         outlier_cl_inds(clus_i) = 1;
     end
 end
+tmp = cellfun(@length,cellfun(@unique,{STUDY.cluster.sets},'UniformOutput',false),'UniformOutput',false);
+tmp = cell2mat(tmp);
+valid_clusters = find(tmp(3:end)>=0.5*(length(STUDY.subject)))+2;
 %- remove all outlier cluster components
 comps_out = comps_out(logical(main_cl_inds),:);
 main_cl_inds = find(main_cl_inds);

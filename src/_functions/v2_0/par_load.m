@@ -4,14 +4,12 @@ function [OUTVAR] = par_load(fPath,fName,varargin)
 %
 %   IN:
 %       REQUIRED:
-%           path, CHAR
+%           fPath, CHAR
 %               path to the folder where your file is held
 %           fName, CHAR
 %               file name & extension (e.g., 'INEEG.mat')
-%           osName, CHAR
-%               Operating system load format (options: 'DOS', 'UNIX')
 %       OPTIONAL:
-%           ext, CHAR (default: [])
+%           path_ext, CHAR (default: [])
 %               extension for operating system conversion see.
 %               convertPath2Drive.m & convertPath2UNIX.m
 %       PARAMETER:
