@@ -101,7 +101,7 @@ else
     FIELDTRIP_PATH = '/blue/dferris/jsalminen/GitHub/par_EEGProcessing/submodules/fieldtrip';
 end
 %- compute measures for spectrum and ersp
-RECOMPUTE_SPEC = true;
+RECOMPUTE_SPEC = false;
 RECOMPUTE_ERSP = false;
 DO_TIMEWARP = true;
 DO_BASELINE_CORRECTION = false; %false;
@@ -199,12 +199,13 @@ else
 end
 % all_subjStr = {ALLEEG.subject};
 %## POOL LOADING
-fprintf('Loading STUDY & ALLEEG\n');
-if exist('SLURM_POOL_SIZE','var')
-    POOL_SIZE = min([SLURM_POOL_SIZE,length(ALLEEG)]);
-else
-    POOL_SIZE = 1;
-end
+POOL_SIZE = 5;
+% fprintf('Loading STUDY & ALLEEG\n');
+% if exist('SLURM_POOL_SIZE','var')
+%     POOL_SIZE = min([SLURM_POOL_SIZE,length(ALLEEG)]);
+% else
+%     POOL_SIZE = 1;
+% end
 %% CALCULATE GRANDAVERAGE WARPTOs
 for subj_i = 1:length(ALLEEG)
     %- assign percondition timewarping
@@ -233,6 +234,12 @@ STUDY = pop_statparams(STUDY,'condstats',ERSP_CONDSTATS,...
         'fieldtripmethod',FIELDTRIP_METHOD,'fieldtripmcorrect',ERSP_MCORRECT,'fieldtripnaccu',ERSP_NACCU);
 STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_SUBBASELINE,...
       'ersplim',ERSP_CAXIS,'freqrange',ERSP_FREQLIMITS);
+tmp_group_orig = cell(length(ALLEEG),1);
+tmp_group_unif = cell(length(ALLEEG),1);
+for subj_i = 1:length(ALLEEG)
+    tmp_group_orig{subj_i} = ALLEEG(subj_i).group;
+    tmp_group_unif{subj_i} = 'Older Adults';
+end
 %% (PRECOMPUTE MEASURES) COMPUTE SPECTRUMS
 if RECOMPUTE_SPEC
     parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
@@ -372,13 +379,13 @@ saveas(gcf, [save_dir filesep 'cluster_kmeans_eval.fig'])
 saveas(gcf, [save_dir filesep 'cluster_kmeans_eval.jpg'])
 %% (Step 2) CALCULATE REPEATED CLUSTERED SOLUTIONS
 %- NOTE: the clustering solutions are not exactly the same but not super different
-for clust_i = MIN_ICS:mean_IC_allSub
+parfor (clust_i = MIN_ICS:mean_IC_allSub,POOL_SIZE)
     clustering_solutions = repeated_clustering(STUDY,ALLEEG, n_iterations, clust_i, outlier_sigma, STUDY.etc.clustering.preclustparams);
     cluster_dir = [save_dir filesep clustering_method filesep num2str(clust_i)];
     if ~exist(cluster_dir,'dir')
         mkdir(cluster_dir);
     end
-    save([cluster_dir filesep sprintf('clustering_solutions_%i.mat',clust_i)],'clustering_solutions');
+    par_save(clustering_solutions,cluster_dir,sprintf('clustering_solutions_%i.mat',clust_i));
     %## Use RV to Choose Components
     [cluster_update] = evaluate_cluster(STUDY,ALLEEG,clustering_solutions,'min_rv');
     %## Look up cluster centroid Brodmann area
@@ -424,7 +431,7 @@ for clust_i = MIN_ICS:mean_IC_allSub
         cl =  cellstr(atlas_name{i,1});
         fprintf('%s\t\t%s\n',cl{:},label{:})
     end
-    save([cluster_dir filesep sprintf('cluster_update_%i.mat',clust_i)],'cluster_update');
+    par_save(cluster_update,cluster_dir,sprintf('cluster_update_%i.mat',clust_i));
 end
 
 %% (STEP 3) PLOT ERSPs, DIPOLEs, & PSDs
@@ -434,50 +441,34 @@ XAXIS_LABEL = 'ms';
 COLORAXIS_LABEL = 'dB';
 ERSP_FREQSCALE = 'log'; % 'native', 'LOG'
 ERSP_CHANLOCS = struct('labels', {});
-tmp_group_orig = cell(length(ALLEEG),1);
-tmp_group_unif = cell(length(ALLEEG),1);
-for subj_i = 1:length(ALLEEG)
-    tmp_group_orig{subj_i} = ALLEEG(subj_i).group;
-    tmp_group_unif{subj_i} = 'Older Adults';
-end
 RUN_CLUSTERS = (MIN_ICS:mean_IC_allSub);
 RUN_CLUSTERS = RUN_CLUSTERS(RUN_CLUSTERS>=12);
 for clust_i = RUN_CLUSTERS
     cluster_dir = [save_dir filesep clustering_method filesep num2str(clust_i)];
-    tmp = load([cluster_dir filesep sprintf('cluster_update_%i.mat',clust_i)]);
-    cluster_update = tmp.cluster_update;
+    cluster_update = par_load(cluster_dir,sprintf('cluster_update_%i.mat',clust_i));
     STUDY.cluster = cluster_update;
-    numSubj_per_cluster = cellfun(@length,cellfun(@unique, {STUDY.cluster.sets},'UniformOutput', false),'UniformOutput', false);
-    numSubj_per_cluster = cell2mat(numSubj_per_cluster);
-    valid_cluster = find(numSubj_per_cluster(3:end)>=0.5*(length(STUDY.subject)))+2;
+    [comps_out,main_cl_inds,outlier_cl_inds,valid_cluster] = eeglab_get_cluster_comps(STUDY);
+    fprintf('Clusters with more than 50%% of subjects:'); fprintf('%i,',valid_cluster(1:end-1)); fprintf('%i',valid_cluster(end)); fprintf('\n');
+    fprintf('Main cluster numbers:'); fprintf('%i,',main_cl_inds(1:end-1)); fprintf('%i',main_cl_inds(end)); fprintf('\n');
     %## Update 7/20/2022 - Plot clustering results for AHA proposal
     % Plot scalp topographs which also need to be averaged? 
-    if ~isfield(STUDY.cluster,'topo'), STUDY.cluster(1).topo = []; end
-    for clus = 3:length(STUDY.cluster) % For each cluster requested
-        if isempty(STUDY.cluster(clus).topo)
+    if ~isfield(STUDY.cluster,'topo') 
+        STUDY.cluster(1).topo = [];
+    end
+    for i = main_cl_inds % For each cluster requested
+        if isempty(STUDY.cluster(i).topo)
             % Using this custom modified code to allow taking average within participant for each cluster
-            STUDY = std_readtopoclust_CL(STUDY,ALLEEG, clus);
+            STUDY = std_readtopoclust_CL(STUDY,ALLEEG, i);
         end
     end
     %% ASSIGN GROUP NAME & STUDY STATS
-    for subj_i = 1:length(ALLEEG)
-        ALLEEG(subj_i).group = tmp_group_orig{subj_i};
-        STUDY.datasetinfo(subj_i).group = tmp_group_orig{subj_i};
-    end
-    [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
-            'subjselect', {ALLEEG.subject},...
-            'variable1','group',...
-            'values1',unique({ALLEEG.group}));
     %- get non-outlier clusters
 %     [~,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
     %- Plot topographies 
-%     [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
-%             'subjselect', {ALLEEG.subject},...
-%             'variable1','group',...
-%             'values1',unique({ALLEEG.group}),...
-%             'variable2',COND_EVENT_CHAR,...
-%             'values2', COND_DESIGNS{des_i});
-    
+    for subj_i = 1:length(ALLEEG)
+        ALLEEG(subj_i).group = tmp_group_unif{subj_i};
+        STUDY.datasetinfo(subj_i).group = tmp_group_unif{subj_i};
+    end
     figure;
     std_topoplot_CL(STUDY,valid_cluster,'together');
     set(gcf,'position',[16 582 1340 751],'color','w')
@@ -507,7 +498,20 @@ for clust_i = RUN_CLUSTERS
 %     saveas(gcf,fullfile(cluster_dir,'Cluster_dipole_plot_allaveraged.fig'));
     saveas(gcf,fullfile(cluster_dir,'Cluster_dipole_plot_allaveraged.jpg'));
     %- Spec plot
-%     pop_erpparams()
+    for subj_i = 1:length(ALLEEG)
+        ALLEEG(subj_i).group = tmp_group_orig{subj_i};
+        STUDY.datasetinfo(subj_i).group = tmp_group_orig{subj_i};
+    end
+    %     [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
+    %             'subjselect', {ALLEEG.subject},...
+    %             'variable1','group',...
+    %             'values1',unique({ALLEEG.group}),...
+    %             'variable2',COND_EVENT_CHAR,...
+    %             'values2', COND_DESIGNS{des_i});
+    [STUDY] = std_makedesign(STUDY, ALLEEG, 1,...
+            'subjselect', {ALLEEG.subject},...
+            'variable1','group',...
+            'values1',unique({ALLEEG.group}));
     fprintf('==== Making Spectogram Plots ====\n');
     std_specplot(STUDY,ALLEEG,'clusters',valid_cluster,...
         'freqrange',SPEC_FREQLIMITS);
@@ -544,6 +548,7 @@ for clust_i = RUN_CLUSTERS
             'values2', COND_DESIGNS{des_i});
         %}
         %## group only differences
+        %{
         group_only_flag = true;
         for subj_i = 1:length(ALLEEG)
             ALLEEG(subj_i).group = tmp_group_orig{subj_i};
@@ -553,8 +558,9 @@ for clust_i = RUN_CLUSTERS
             'subjselect', {ALLEEG.subject},...
             'variable1','group',...
             'values1',unique({ALLEEG.group}));
+        %}
         %## conditions across all older subjects
-        %{
+        
         for subj_i = 1:length(ALLEEG)
             ALLEEG(subj_i).group = tmp_group_unif{subj_i};
             STUDY.datasetinfo(subj_i).group = tmp_group_unif{subj_i};
@@ -563,15 +569,16 @@ for clust_i = RUN_CLUSTERS
             'subjselect', {ALLEEG.subject},...
             'variable1',COND_EVENT_CHAR,...
             'values1', COND_DESIGNS{des_i});
-        %}
-        for cluster_i = valid_cluster
+       
+        parfor (j = 1:length(valid_cluster),POOL_SIZE)
+            cluster_i = valid_cluster(j);
             %% (ERSP PLOT 2) CUSTOM
             %- load ERSP data using std_readdat
             %* (06/04/2023) JS, could try and load a subject at a time,
             % baseline, then stack them together to plot)
             %* (06/10/2023) JS, removing timerange loading, need to custom
             %prune later
-            [STUDY, ersp_data, ersp_times, ersp_freqs, ~, params_ersp] = std_readdata(STUDY,ALLEEG,...
+            [~, ersp_data, ersp_times, ersp_freqs, ~, params_ersp] = std_readdata(STUDY,ALLEEG,...
                             'clusters',cluster_i,'singletrials',ERSP_SINGLETRIALS,... 
                             'datatype','ersp','freqrange',ERSP_FREQLIMITS,...
                             'design',des_i);
@@ -635,6 +642,8 @@ for clust_i = RUN_CLUSTERS
                 %- subtract out baseline from all trials.
                 allersp{cond_i} = allersp{cond_i} - tmp;
             end
+            %## MULTI SUBJECT ANALYSIS
+            %{
             [pcond_ersp,pgroup_ersp,pinter_ersp,stat_cond,stat_group,stat_inter] = std_stat(allersp,...
                     'condstats', ERSP_CONDSTATS,...
                     'groupstats',ERSP_GROUPSTATS,...
@@ -680,6 +689,47 @@ for clust_i = RUN_CLUSTERS
 %             saveas(fig_i,[cluster_dir filesep sprintf('ersp_%i_%s.fig',cluster_i,[COND_DESIGNS{des_i}{:}])]);
             saveas(fig_i,[cluster_dir filesep sprintf('ersp_%i_%s.jpg',cluster_i,[COND_DESIGNS{des_i}{:}])]);
             close(fig_i)
+            %}
+            %## SINGLE SUBJECT LOOP
+            for subj_i = 1:size(allersp{1},1)
+                tmp_ersp = cell(size(allersp));
+                for cond_i = 1:length(allersp)
+                    tmp_ersp{cond_i} = allersp{cond_i}(:,:,subj_i);
+                end
+                %- plot
+                std_plottf(alltimes, allfreqs, tmp_ersp,...
+                               'datatype', 'ersp', ...
+                               'plotmode', 'normal',...
+                               'titles', titles_ersp,...
+                               'caxis',ERSP_CAXIS,...
+                               'freqscale',ERSP_FREQSCALE,...
+                               'ersplim',[],...
+                               'maskdata','off','averagemode','rms');
+                fig_i = get(groot,'CurrentFigure');
+                set(fig_i,'Position',[100 100 1620 300]);
+                for i = [2,4,5,6]
+                    tmp = fig_i.Children(i);
+                    set(tmp,'YTick',log([4.01,8,13,30,50,99.4843])); 
+                    set(tmp,'YTickLabel',{'4','8','13','30','50','100'},'Fontsize',12);
+                    ylabel(tmp,sprintf('Frequency (Hz)'),'fontsize',16,'fontweight','bold');
+                    xlabel(tmp,'Time (ms)','Fontsize',16,'fontweight','bold');
+                    set(tmp,'XTick',grandAvgWarpTo)
+                    xx = num2cell(grandAvgWarpTo);
+                    xx = cellfun(@num2str,xx,'UniformOutput',false);
+                    set(tmp,'XTickLabel',{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'});
+                    xlabel(tmp,'Time (ms)','Fontsize',16,'fontweight','bold');
+                    xline(tmp,grandAvgWarpTo(1),'k--');
+                    xline(tmp,grandAvgWarpTo(2),'k--');
+                    xline(tmp,grandAvgWarpTo(3),'k--');
+                    xline(tmp,grandAvgWarpTo(4),'k--');
+                    xline(tmp,grandAvgWarpTo(5),'k--');
+                end
+                fig_i.Name = sprintf('Cluster %i) ERSP averages across Conditions',cluster_i);
+    %             saveas(fig_i,[cluster_dir filesep sprintf('ersp_%i_%s.fig',cluster_i,[COND_DESIGNS{des_i}{:}])]);
+                saveas(fig_i,[cluster_dir filesep sprintf('%s_ersp_%i_%s.jpg',ALLEEG(subj_i).subject,cluster_i,[COND_DESIGNS{des_i}{:}])]);
+                close(fig_i)
+            end
+            
         end
         if group_only_flag
             break
@@ -725,12 +775,13 @@ for clust_i = RUN_CLUSTERS
             'variable1',COND_EVENT_CHAR,...
             'values1', COND_DESIGNS{des_i});
         %}
-        for cluster_i = valid_cluster
+        parfor (j = 1:length(valid_cluster),POOL_SIZE)
+            cluster_i = valid_cluster(j);
             %-
         %     [STUDY, specdata, specfreqs, pgroup, pcond, pinter] = std_specplot(STUDY, ALLEEG,...
         %             'clusters',cluster_i,'comps','all','subject','','freqrange', FREQ_LIMITS,'subtractsubjectmean','on');
             %-
-            [STUDY, ~, ~, ~, ~, ~] = std_specplot(STUDY, ALLEEG,...
+            [~, ~, ~, ~, ~, ~] = std_specplot(STUDY, ALLEEG,...
                     'clusters',cluster_i,'freqrange',SPEC_FREQLIMITS,'plotmode','condensed',...
                     'plotconditions','together','ylim',SPEC_YLIM); %'plotgroups','together'
             fig_i = get(groot,'CurrentFigure');

@@ -207,18 +207,30 @@ for subj_i = 1:length(ALLEEG)
     end
 end
 tmp_struct = struct('dims',{'from_clusters','to_clusters','conditions','frequencies'},...
-    'conditions',conn_conds,...
+    'conditions',{conn_conds},...
     'cluster_nums',CLUSTER_ITERS,...
-    'cluster_names',CLUSTER_ASSIGNMENTS,...
+    'cluster_names',{CLUSTER_ASSIGNMENTS},...
     'frequency_bands',uniq_freqs,...
     'connectivity_mat',mat_out_nan);
 par_save(tmp_struct,save_dir,'all_subj_connectivity.mat');
-
+%% MAKE CONDITIONS SUBJ STACKS
+if ~exist([save_dir filesep 'groupsift'],'dir')
+    mkdir([save_dir filesep 'groupsift'])
+end
+parfor subj_i = 1:length(ALLEEG)
+    EEG = ALLEEG(subj_i);
+    [EEG,stats_bootstrap,stats_nonzero] = cnctanl_bootstrap_test(EEG);
+    for cond_i = 1:length(EEG)
+        pop_saveset(EEG(cond_i),'filename',EEG(cond_i).filename,'filepath',[save_dir filesep 'groupsift']);
+    end
+end
 %% CONNECITIVITY CHORD PLOTS
-BASELINE_INT = 1;
-for freq_i = size(uniq_freqs,1)
+%{
+BASELINE_INT = 1; % [[] | INT];
+for freq_i = 1:size(uniq_freqs,1)
     baseline = nanmean(mat_out_nan(:,:,:,BASELINE_INT,freq_i),3);
-    for cond_i = 1:length(conn_conds)
+    test_conds = setdiff(1:length(conn_conds),BASELINE_INT);
+    for cond_i = test_conds
 %         sub_cond_i = cond_i + find(strcmp(load_trials{1},TRIAL_TYPES))-1; % offset for weirdness
         tmp = uniq_freqs(freq_i,uniq_freqs(freq_i,:)>0);
         FREQS_SUBPATH = sprintf('%i-%i',...
@@ -229,7 +241,7 @@ for freq_i = size(uniq_freqs,1)
         end
         %- plot
         cnt = 1;
-        for i = main_cl_inds
+        for i = 1:length(STUDY.cluster)
             N = length(STUDY.cluster(i).sets);
     %         clusterNames{i} = sprintf('(N=%i) Cluster %i',N,i);
             if any(i == CLUSTER_ITERS)
@@ -240,6 +252,7 @@ for freq_i = size(uniq_freqs,1)
             end
         end
         %## PLOT
+        plot_clusts = CLUSTER_ITERS; %1:length(CLUSTER_ITERS);
         %- assign matrix
         tmp = nanmean(mat_out_nan(:,:,:,cond_i,freq_i),3); %nanmean(mat_nan,3);
 %         tmp = nanmean(mat_out_nan(:,:,:,cond_i,freq_i),3) - baseline;
@@ -248,8 +261,8 @@ for freq_i = size(uniq_freqs,1)
         tmp = tmp.*I;
         tmp(tmp == 0) = nan();
         %- delte unused clusters
-        tmp = tmp(CLUSTER_ITERS,:);
-        tmp = tmp(:,CLUSTER_ITERS);
+        tmp = tmp(plot_clusts,:);
+        tmp = tmp(:,plot_clusts);
         group_1 = zeros(length(tmp(:)),1);
         group_2 = zeros(length(tmp(:)),1);
         cnt = 1;
@@ -267,11 +280,66 @@ for freq_i = size(uniq_freqs,1)
         sign_in(isnan(sign_in)) = 1;
         chord_plot_in = table(group_1,group_2,data_in,sign_in);
         h = chordPlot(clusterNames,chord_plot_in);
-       
         fig_i = get(groot,'CurrentFigure');
-        saveas(fig_i,[save_sub_figs filesep sprintf('%s_meanMat_%s.fig','clusters',conn_conds{cond_i})]);
-        saveas(fig_i,[save_sub_figs filesep sprintf('%s_meanMat_%s.jpg','clusters',conn_conds{cond_i})]);
+%         saveas(fig_i,[save_sub_figs filesep sprintf('%s_chord_%s.fig','clusters',conn_conds{cond_i})]);
+        saveas(fig_i,[save_sub_figs filesep sprintf('%s_chord_%s.jpg','clusters',conn_conds{cond_i})]);
         close(fig_i)
+    end
+end
+%}
+%% CONNECTIVITY MATRICIES BASELINED
+BASELINE_INT = 1;
+for freq_i = 1:size(uniq_freqs,1)
+    baseline = nanmean(mat_out_nan(:,:,:,BASELINE_INT,freq_i),3);
+    test_conds = setdiff(1:length(conn_conds),BASELINE_INT);
+    for cond_i = test_conds
+        tmp = uniq_freqs(freq_i,uniq_freqs(freq_i,:)>0);
+        FREQS_SUBPATH = sprintf('%i-%i',...
+                    tmp(1),tmp(end));
+        save_sub_figs = [save_dir filesep 'cluster_mats' filesep FREQS_SUBPATH];
+        if ~exist(save_sub_figs,'dir')
+            mkdir(save_sub_figs);
+        end
+        %- plot
+        cnt = 1;
+        for i = 1:length(STUDY.cluster)
+            N = length(STUDY.cluster(i).sets);
+    %         clusterNames{i} = sprintf('(N=%i) Cluster %i',N,i);
+            if any(i == CLUSTER_ITERS)
+                %- assign name if available
+                idx = find(i == CLUSTER_ITERS);
+                clusterNames{idx} = sprintf('(N=%i) %s',N,CLUSTER_ASSIGNMENTS{(i == CLUSTER_ITERS)});
+                cnt = cnt + 1;            
+            end
+        end
+        %## PLOT
+        %- assign matrix
+%         tmp = nanmean(mat_out_nan(:,:,:,cond_i,freq_i),3); %nanmean(mat_nan,3);
+        tmp = nanmean(mat_out_nan(:,:,:,cond_i,freq_i),3) - baseline;
+        I = eye(size(tmp));
+        I = (I == 0);
+        tmp = tmp.*I;
+        tmp(tmp == 0) = nan();
+    %     tmp = log(tmp);
+        %- delte unused clusters
+        tmp = tmp(CLUSTER_ITERS,:);
+        tmp = tmp(:,CLUSTER_ITERS);
+        tmp_mat_nan = mat_nan;
+        tmp_mat_nan = squeeze(tmp_mat_nan(CLUSTER_ITERS,:,:));
+        tmp_mat_nan = squeeze(tmp_mat_nan(:,CLUSTER_ITERS,:));
+        %- plot
+        figure;
+        hnd = heatmap(tmp,'Colormap',jet); %,'CellLabelColor', 'None');
+        title(sprintf('''%s'' Connectivity mean across clusters',conn_conds{cond_i}));
+        hnd.YDisplayLabels = clusterNames;
+        hnd.XDisplayLabels = clusterNames;
+        hnd.ColorLimits = [0,0.05];
+        hnd.GridVisible = 'off';
+        hnd.CellLabelFormat = '%0.1g';
+        fig_i = get(groot,'CurrentFigure');
+%         saveas(fig_i,[save_sub_figs filesep sprintf('%s_meanMatbased_%s.fig','clusters',conn_conds{cond_i})]);
+        saveas(fig_i,[save_sub_figs filesep sprintf('%s_meanMatbased_%s.jpg','clusters',conn_conds{cond_i})]);
+%         close(fig_i)
     end
 end
 %% CONNECTIVITY MATRICIES
@@ -324,12 +392,13 @@ for freq_i = 1:size(uniq_freqs,1)
         hnd.GridVisible = 'off';
         hnd.CellLabelFormat = '%0.1g';
         fig_i = get(groot,'CurrentFigure');
-        saveas(fig_i,[save_sub_figs filesep sprintf('%s_meanMat_%s.fig','clusters',conn_conds{cond_i})]);
+%         saveas(fig_i,[save_sub_figs filesep sprintf('%s_meanMat_%s.fig','clusters',conn_conds{cond_i})]);
         saveas(fig_i,[save_sub_figs filesep sprintf('%s_meanMat_%s.jpg','clusters',conn_conds{cond_i})]);
 %         close(fig_i)
     end
 end
 %% Condition Comparisons
+%{
 %- if using comp selection
 for freq_i = 1:size(uniq_freqs,1)
     store_val_raw = zeros(2,size(mat_out_nan,3),length(conn_conds));
@@ -367,7 +436,9 @@ for freq_i = 1:size(uniq_freqs,1)
         done = [done i];
     end
 end
+%}
 %% VISUALIZE TIME FREQ GRID (components to component)
+%{
 %## TIMEFREQ AVG PLOT
 for cond_i = 1:length(conn_conds)
     %- loop through subjects in each condition
@@ -398,6 +469,7 @@ for cond_i = 1:length(conn_conds)
             error('%s does not exist.\nRun GLOBAL_BATCH to generate nonzero test values',[fPath filesep [chk{1}, '_NonZero.mat']]);
         else
             EEG.CAT.Stats = par_load(fPath,[chk{1}, '_NonZero.mat'],[]);
+%             tmpstats = par_load(fPath,[chk{1}, '_NonZero.mat'],[]);
         end
         fprintf('done.\n')
         %## LOOP PATHS
@@ -411,13 +483,6 @@ for cond_i = 1:length(conn_conds)
         orig_cl = orig_cl(2:end);
         [tmpcl,idxcl] = sort(orig_cl);
         display_names = cell(1,length(tmpcl));
-%         for i = idxcl
-%             if i == 1
-%                 continue;
-%             else
-%                 display_names{i} = sprintf('%s_ic%i',CLUSTER_ASSIGNMENTS{i-1},orig_cl(i));
-%             end    
-%         end
         for i = 1:length(idxcl)
             display_names{idxcl(i)} = sprintf('%s_ic%i',CLUSTER_ASSIGNMENTS{idxcl(i)},orig_cl(idxcl(i)));
         end
@@ -436,7 +501,165 @@ for cond_i = 1:length(conn_conds)
         close all
     end
 end
+%}
+%% BOOTSTRAP PLOTS
+%{
+for subj_i = 1:length(ALLEEG)
+    %## LOAD SUBJECT CAT.Stats
+    EEG = ALLEEG(subj_i);
+    [EEG,stats_bootstrap] = cnctanl_bootstrap_test(EEG);
+     for cond_i = 1:length(EEG)
+        %## LOOP PATHS
+        figs_save_dir = [save_dir filesep 'indvidual_bootsrap_TxF_conn' filesep conn_conds{cond_i} filesep sprintf('%s',EEG.subject)];
+        if ~exist(figs_save_dir,'dir')
+            mkdir(figs_save_dir)
+        end
+        %## LOOP MEAT
+        %- generate display names based on CLUSTER_ASSIGNMENTS
+        orig_cl = squeeze(comps_out(:,subj_i));
+        orig_cl = orig_cl(2:end);
+        [tmpcl,idxcl] = sort(orig_cl);
+        display_names = cell(1,length(tmpcl));
+        for i = 1:length(idxcl)
+            display_names{idxcl(i)} = sprintf('%s_ic%i',CLUSTER_ASSIGNMENTS{idxcl(i)},orig_cl(idxcl(i)));
+        end
+        idxcl = idxcl(tmpcl~=0);
+        idx = ~cellfun(@isempty, display_names);
+        display_names = display_names(idx);
+        display_names = display_names(idxcl);
+        %- assign component indicies from EEG structure
+        comp_indxs = EEG(cond_i).CAT.curComps;
+        %- plot
+        cnctanl_vis_timefreq(EEG(cond_i),comp_indxs,...
+            'CONN_MEASURES',{conn_meas},...
+            'SAVE_DIR',figs_save_dir,...
+            'DISPLAY_NAMES',display_names,...
+            'COLOR_LIM',[0,0.005])
+        close all
+     end
+end
+%}
+%% MASKED PLOTS
+%{
+%## MAKS VALUES
+for subj_i = 1:length(ALLEEG)
+    EEG = ALLEEG(subj_i);
+    [EEG,stats_bootstrap,stats_nonzero] = cnctanl_bootstrap_test(EEG);
+    for cond_i = 1:length(EEG)
+        tmpstats = EEG(cond_i).CAT.Stats;
+        EEG(cond_i).CAT=rmfield(EEG(cond_i).CAT,'Stats');
+        %## LOOP PATHS
+        figs_save_dir = [save_dir filesep 'indvidual_bsnz_TxF_conn' filesep conn_conds{cond_i} filesep sprintf('%s',EEG.subject)];
+        if ~exist(figs_save_dir,'dir')
+            mkdir(figs_save_dir)
+        end
+        %## LOOP MEAT
+        %- generate display names based on CLUSTER_ASSIGNMENTS
+        orig_cl = squeeze(comps_out(:,subj_i));
+        orig_cl = orig_cl(2:end);
+        [tmpcl,idxcl] = sort(orig_cl);
+        display_names = cell(1,length(tmpcl));
+        for i = 1:length(idxcl)
+            display_names{idxcl(i)} = sprintf('%s_ic%i',CLUSTER_ASSIGNMENTS{idxcl(i)},orig_cl(idxcl(i)));
+        end
+        idxcl = idxcl(tmpcl~=0);
+        idx = ~cellfun(@isempty, display_names);
+        display_names = display_names(idx);
+        display_names = display_names(idxcl);
+        %-
+        sigthreshmethod = 'pval';
+        OrigConnMatrix = EEG.CAT.masked_conn.(conn_meas); %EEG.CAT.Conn.(conn_meas);
+        ConnMatrix = EEG.CAT.Conn.(conn_meas);
+        erWinCenterTimes = EEG.CAT.Conn.erWinCenterTimes;
+        origFreqValues = EEG.CAT.Conn.freqs;
+        %- extract the stats matrix for this pair 
+        if isfield(EEG.CAT, 'Stats')      
+            StatsMatrix = EEG.CAT.Stats.(conn_meas).(sigthreshmethod);
+            %- Stats extract
+            if isequal(size(StatsMatrix),size(ConnMatrix))
+                Sji = squeeze(StatsMatrix(i,j,:,:));
+                Sij = squeeze(StatsMatrix(j,i,:,:));
+            elseif size(StatsMatrix,1)==2 && ndims(StatsMatrix)==5
+                Sji = permute(squeeze(squeeze(StatsMatrix(:,i,j,:,:))),[2 3 1]);
+                Sij = permute(squeeze(squeeze(StatsMatrix(:,j,i,:,:))),[2 3 1]);
+            else
+                Sji = StatsMatrix;
+                Sij = StatsMatrix;
+            end
+            %- statistics definition if available
+            if ~isempty(Sji)
+                StatsMatrix(1,:,:,:,:) = Sji;
+                StatsMatrix(2,:,:,:,:) = Sij;
+            end
+        else
+            StatsMatrix = [];
+           thresholding = 'None';
+        end
+        %- assign component indicies from EEG structure
+        comp_indxs = EEG(cond_i).CAT.curComps;
+        vis_TimeFreqCell('ConnMatrix',OrigConnMatrix,...
+            'alltimes',erWinCenterTimes,...
+            'allfreqs',origFreqValues,...
+            'StatsMatrix',StatsMatrix,...
+            'thresholding',{'Statistics','plotci',true,'sigthreshmethod',sigthreshmethod,'alpha',0.05})
+%         cnctanl_vis_timefreq(EEG(cond_i),comp_indxs,...
+%             'CONN_MEASURES',{conn_meas},...
+%             'SAVE_DIR',figs_save_dir,...
+%             'DISPLAY_NAMES',display_names,...
+%             'COLOR_LIM',[0,0.005])
+    end
+end
+%}
+%% TEST TIMEFREQ GRID
+for subj_i = 1:length(ALLEEG)
+    EEG = ALLEEG(subj_i);
+    [EEG,stats_bootstrap,stats_nonzero] = cnctanl_bootstrap_test(EEG);
+    for stat_i = 1:2
+        for cond_i = 1:length(EEG)
+            if stat_i == 1
+                EEG(cond_i).CAT.Stats = stats_bootstrap;
+            else
+                EEG(cond_i).CAT.Stats = stats_nonzero{cond_i};
+            end
+            %## LOOP PATHS
+            figs_save_dir = [save_dir filesep 'indvidual_bsnz_TxF_conn' filesep conn_conds{cond_i} filesep sprintf('%s',EEG(1).subject)];
+            if ~exist(figs_save_dir,'dir')
+                mkdir(figs_save_dir)
+            end
+            %## LOOP MEAT
+            %- generate display names based on CLUSTER_ASSIGNMENTS
+            orig_cl = squeeze(comps_out(:,subj_i));
+            orig_cl = orig_cl(2:end);
+            [tmpcl,idxcl] = sort(orig_cl);
+            display_names = cell(1,length(tmpcl));
+            for i = 1:length(idxcl)
+                display_names{idxcl(i)} = sprintf('%s_ic%i',CLUSTER_ASSIGNMENTS{idxcl(i)},orig_cl(idxcl(i)));
+            end
+            idxcl = idxcl(tmpcl~=0);
+            idx = ~cellfun(@isempty, display_names);
+            display_names = display_names(idx);
+            display_names = display_names(idxcl);
+            %##
+            [handles,g] = vis_TimeFreqGrid('ALLEEG',EEG,'Conn',EEG(cond_i).CAT.Conn,...
+                'plotCondDiff',{'condOrder',{'pre','post'}},...
+                'stats',EEG(cond_i).CAT.Stats,...
+                'vismode','TimeXFrequency',... %'TimeXFrequency','TimeXCausality','FrequencyXCausality');
+                'msubset','all',...
+                'MatrixLayout',{'Full','estimator',conn_meas,'clim',[0,0.005]},...
+                'thresholding',{'Statistics','plotci',true,'sigthreshmethod','pval','alpha',0.05},...
+                'freqscale','log',...
+                'NodeLabels',display_names,...
+                'topoplot','Topoplot');
+
+            fig_i = get(groot,'CurrentFigure');
+            saveas(fig_i,[figs_save_dir filesep sprintf('%i_TimeFreqChart_%s.fig',stat_i,conn_meas)]);
+            saveas(fig_i,[figs_save_dir filesep sprintf('%i_TimeFreqChart_%s.jpg',stat_i,conn_meas)]);
+        end
+    end
+end
+% vis_TimeFreqGrid()
 %% ANOVAS AGGREGATE ALL
+%{
 freq_i = 1;
 unravel_out = squeeze(mat_out_nan(:,:,:,:,freq_i));
 unravel_out = unravel_out(:);
@@ -461,7 +684,9 @@ for cond_i = 1:size(mat_out_nan,4)
         end
     end
 end
+%}
 %%
+%{
 %- subselect component
 % CLUST_I = 2;
 % CLUST_J = 3;
@@ -525,6 +750,7 @@ for i = 1:length(CLUSTER_ASSIGNMENTS)
         saveas(fig_i,[figs_save_dir filesep sprintf('Violin_avg.jpg')]);
     end
 end
+%}
 %% Helper Code
 %{
 delete STUDY ALLEEG

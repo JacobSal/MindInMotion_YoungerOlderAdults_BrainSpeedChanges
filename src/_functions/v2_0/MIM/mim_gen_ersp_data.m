@@ -1,5 +1,5 @@
-function [] = mim_gen_ersp_data(STUDY,ALLEEG,tmpSTUDY,tmpSTUDY_commonbase, ...
-    myErspParams,clusternum,outputdir,file_keyword,varargin)
+function [spec_fpaths,spec_ss_fpaths,ersp_fpaths,ersp_norm_fpaths,ersp_normcb_fpaths] = mim_gen_ersp_data(STUDY,ALLEEG,warping_times,...
+    ersp_load_params,save_dir,varargin)
 % CAT CODE
 %  _._     _,-'""`-._
 % (,-.`._,'(       |\`-/|
@@ -13,79 +13,219 @@ function [] = mim_gen_ersp_data(STUDY,ALLEEG,tmpSTUDY,tmpSTUDY_commonbase, ...
 % Copyright (C) Jacob Salminen, jsalminen@ufl.edu
 %## TIME
 tic
-%## DEFINE DEFAULTS
+%## DEFINE DEFAULTS 
+DO_SPEC_CALC = true;
+DO_ERSP_CALC = true;
+STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
+    'method','perm',... % ['param'|'perm'|'bootstrap']
+    'singletrials','off',... % ['on'|'off'] load single trials spectral data (if available). Default is 'off'.
+    'mode','fieldtrip',... % ['eeglab'|'fieldtrip']
+    'fieldtripalpha',0.05,... % [NaN|alpha], Significance threshold (0<alpha<<1)
+    'fieldtripmethod','montecarlo',... %[('montecarlo'/'permutation')|'parametric']
+    'fieldtripmcorrect','cluster',...  % ['cluster'|'fdr']
+    'fieldtripnaccu',2000);
+SPEC_PARAMS = struct('freqrange',[1,100],...
+    'subject','',...
+    'comps','all');
+ERSP_PARAMS = struct('subbaseline','on',...
+    'timerange',[warping_times(1) warping_times(5)],...
+    'ersplim',[-2,2],...
+    'freqrange',[1,200]);
 %## Define Parser
 p = inputParser;
 %## REQUIRED
 addRequired(p,'STUDY',@isstruct);
 addRequired(p,'ALLEEG',@isstruct);
-addRequired(p,'study_fName',@ischar);
-addRequired(p,'study_fPath',@ischar);
+addRequired(p,'warping_times',@isnumeric);
+addRequired(p,'ersp_load_params',@isstruct);
+addRequired(p,'save_dir',@ischar);
 %## OPTIONAL
 %## PARAMETER
-parse(p,ALLEEG,study_fName,study_fPath,varargin{:});
+addParameter(p,'DO_SPEC_CALC',DO_SPEC_CALC,@islogical);
+addParameter(p,'DO_ERSP_CALC',DO_ERSP_CALC,@islogical);
+addParameter(p,'ERSP_PARAMS',ERSP_PARAMS,@isstruct);
+addParameter(p,'SPEC_PARAMS',SPEC_PARAMS,@isstruct);
+addParameter(p,'STAT_PARAMS',STAT_PARAMS,@isstruct);
+parse(p,STUDY,ALLEEG,warping_times,ersp_load_params,save_dir,varargin{:});
 %## SET DEFAULTS
 %- OPTIONALS
 %- PARAMETER
 %##
-% DIP_NUM = 1;
-% DIP_PLOT = 'off';
 %## MAKE DIRS
-if ~exist(study_fPath,'dir')
-    mkdir(study_fPath);
+if ~exist(save_dir,'dir')
+    mkdir(save_dir);
 end
+ERSP_PARAMS = p.Results.ERSP_PARAMS;
+SPEC_PARAMS = p.Results.SPEC_PARAMS;
+STAT_PARAMS = p.Results.STAT_PARAMS;
+DO_SPEC_CALC = p.Results.DO_SPEC_CALC;
+DO_ERSP_CALC = p.Results.DO_ERSP_CALC;
 %% ===================================================================== %%
-%
-%{
-        disp('Gathering esrp WITHOUT single trial normalization or any normalization')
-        tic
-        [STUDY,allerspdata, alltimes, allfreqs, pgroup,pcon,pinter] = std_erspplot(STUDY, ALLEEG, 'clusters', clusternum,...
-            'freqrange', [0 200]); %PLOTS THE ENTIRE cluster_i'th CLUSTER ,% did I apply subtractsubjectmean???, no correction at all with the current setting
-        save(fullfile(outputdir,['readESRP_', num2str(STUDY.currentdesign),file_keyword,'.mat']), 'allerspdata', 'alltimes', 'allfreqs', 'pgroup', 'pcon', 'pinter');
-        saveas(gcf,fullfile(outputdir,['Design',num2str(STUDY.currentdesign),file_keyword, '_All_Comps_ERSP.fig']))
-        close
-        toc
-%}
-        % ----------------------------------------
-        % In the std_erspplot_customParams, it also had the
-        % std_readata_customParams. 
-        disp('Gathering esrp after baseline correction using warp(1) to warp(5)')
-        tic
-        disp(tmpSTUDY.etc.statistics)
-        disp(myErspParams);
-        [tmpSTUDY,allerspdata2, alltimes2, allfreqs2, pgroup2,pcon2,pinter2] = std_erspplot_customParams(tmpSTUDY, ALLEEG, myErspParams, 'clusters', clusternum,...
-            'freqrange', [0 200]); 
-        save(fullfile(outputdir,['readESRP_', num2str(STUDY.currentdesign),file_keyword,'_subBase.mat']), 'allerspdata2', 'alltimes2', 'allfreqs2', 'pgroup2', 'pcon2', 'pinter2');
-        saveas(gcf,fullfile(outputdir,['Design',num2str(STUDY.currentdesign),file_keyword, '_All_Comps_ERSP_subBase.fig']))
-% 
-%             toc
-
-        % ---------------------------------------- Commonbase!!!
-        disp('Gathering esrp after baseline correction using warp(1) to warp(5) and apply commonbase')
-        tic
-        disp(tmpSTUDY_commonbase.etc.statistics)
-        disp(tmpSTUDY_commonbase.etc.erspparams)
-        [tmpSTUDY_commonbase_out,allerspdata3, alltimes3, allfreqs3, pgroup3,pcon3,pinter3] = std_erspplot_customParams(tmpSTUDY_commonbase, ALLEEG, myErspParams, 'clusters', clusternum,...
-            'freqrange', [0 200]); 
-        save(fullfile(outputdir,['readESRP_', num2str(STUDY.currentdesign),file_keyword,'_subBase_commonBase.mat']), 'allerspdata3', 'alltimes3', 'allfreqs3', 'pgroup3', 'pcon3', 'pinter3');
-        saveas(gcf,fullfile(outputdir,['Design',num2str(STUDY.currentdesign),file_keyword, '_All_Comps_ERSP_subBase_commonBase.fig']))
-
-                        % ---------------------------------------- Commonbase!!!
-%}
-%{
-        disp('Gathering esrp after fulltrial correction and baseline correction using warp(1) to warp(5) and apply commonbase')
-        tic
-        disp(tmpSTUDY_commonbase.etc.statistics)
-        disp(tmpSTUDY_commonbase.etc.erspparams)
-        % if trialbase = 'on', no commonbaseline subtraction is
-        % performed in newtimefbaseln
-        [tmpSTUDY_commonbase_out,allerspdata4, alltimes4, allfreqs4, pgroup4,pcon4,pinter4] = std_erspplot_customParams(tmpSTUDY_commonbase, ALLEEG, myErspParams_trialbasefull,...
-            'clusters', clusternum,...
-            'freqrange', [0 200]); 
-        save(fullfile(outputdir,['readESRP_', num2str(STUDY.currentdesign),file_keyword,'_subBase_fullTrialbase_commonBase.mat']), 'allerspdata4', 'alltimes4', 'allfreqs4', 'pgroup4', 'pcon4', 'pinter4');
-        saveas(gcf,fullfile(outputdir,['Design',num2str(STUDY.currentdesign),file_keyword, '_All_Comps_ERSP_subBase_fullTrialbase_commonBase.fig']))
-        %}
-        % 
-%}
+%## PARAMS SETUP
+tmpSTUDY = pop_statparams(STUDY, 'condstats', STAT_PARAMS.condstats,...
+        'method',STAT_PARAMS.method,...
+        'singletrials',STAT_PARAMS.singletrials,'mode',STAT_PARAMS.mode,...
+        'fieldtripalpha',STAT_PARAMS.fieldtripalpha,'fieldtripmethod',STAT_PARAMS.fieldtripmethod,...
+        'fieldtripmcorrect',STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',STAT_PARAMS.fieldtripnaccu);
+tmpSTUDY_commonbase = pop_erspparams(tmpSTUDY, 'subbaseline',ERSP_PARAMS.subbaseline,...
+        'timerange',ERSP_PARAMS.timerange, 'ersplim',ERSP_PARAMS.ersplim);  % 'subbaseline' - ['on'|'off'] subtract the same baseline across conditions for ERSP     
+[~,main_cl_inds,~,valid_clusters] = eeglab_get_cluster_comps(STUDY);
+CLUSTER_PICKS = main_cl_inds;
+%-
+spec_fpaths = cell(length(STUDY.design),length(CLUSTER_PICKS));
+spec_ss_fpaths = cell(length(STUDY.design),length(CLUSTER_PICKS));
+ersp_fpaths = cell(length(STUDY.design),length(CLUSTER_PICKS));
+ersp_norm_fpaths = cell(length(STUDY.design),length(CLUSTER_PICKS));
+ersp_normcb_fpaths = cell(length(STUDY.design),length(CLUSTER_PICKS));
+%% SPECTRUM CALCULATIONS
+if DO_SPEC_CALC
+    for des_i = 1:length(STUDY.design)
+        store_1 = cell(1,length(CLUSTER_PICKS));
+        store_2 = cell(1,length(CLUSTER_PICKS));
+        STUDY.currentdesign = des_i;
+        design_char = [];
+        for i = 1:length(STUDY.design(des_i).variable)
+            if i==1
+                design_char = [STUDY.design(des_i).variable(1).value{:}];
+            else
+                design_char = [design_char '_' STUDY.design(des_i).variable(i).value{:}];
+            end
+        end
+        %## Compute Specs
+        parfor i = 1:length(CLUSTER_PICKS)
+            cluster_i = CLUSTER_PICKS(i);
+            %##
+            fprintf('Computing specdata for cluster %i...\n',cluster_i)
+            tic
+            try
+                [~,specdata,specfreqs,pgroup,pcond,pinter] = std_specplot(STUDY, ALLEEG, 'clusters',cluster_i,...
+                    'comps',SPEC_PARAMS.comps,'subject',SPEC_PARAMS.subject,'freqrange',SPEC_PARAMS.freqrange);
+                %- save dat
+                spec_data = struct('specdata',specdata,'specfreqs',specfreqs,...
+                    'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
+                par_save(spec_data,save_dir,sprintf('spec_data_cl%i_%s.mat',cluster_i,design_char));
+                store_1{i} = [save_dir filesep sprintf('spec_data_cl%i_%s.mat',cluster_i,design_char)];
+                %- save fig
+                fig_i = get(groot,'CurrentFigure');
+    %             fig_i.Position = [500 300 1480 920];
+                saveas(fig_i,[save_dir filesep sprintf('spec_plot_cl%i_%s_allcomps',cluster_i,design_char)])
+            catch e
+                fprintf(['error. identifier: %s\n',...
+                     'error. %s\n',...
+                     'stack. %s\n'],e.identifier,e.message,getReport(e));
+            end
+            toc
+            %##
+            fprintf('Computing specdata with substracted subject mean for cluster %i...\n',cluster_i)
+            tic
+            try
+                [~,specdata,specfreqs,pgroup,pcond,pinter] = std_specplot(STUDY, ALLEEG, 'clusters',cluster_i,...
+                    'comps',SPEC_PARAMS.comps,'subject',SPEC_PARAMS.subject,'freqrange',SPEC_PARAMS.freqrange,'subtractsubjectmean','on');
+                %- save dat
+                spec_data = struct('specdata',specdata,'specfreqs',specfreqs,...
+                    'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
+                par_save(spec_data,save_dir,sprintf('spec_data_cl%i_%s_subtractmean.mat',cluster_i,design_char));
+                store_2{i} = [save_dir filesep sprintf('spec_data_cl%i_%s_subtractmean.mat',cluster_i,design_char)];
+                %- save fig
+                fig_i = get(groot,'CurrentFigure');
+    %             fig_i.Position = [500 300 1480 920];
+                saveas(fig_i,[save_dir filesep sprintf('spec_plot_cl%i_%s_allcomps_subtractsubjectmean',cluster_i,design_char)])
+            catch e
+                fprintf(['error. identifier: %s\n',...
+                     'error. %s\n',...
+                     'stack. %s\n'],e.identifier,e.message,getReport(e));
+            end
+            toc 
+            fprintf('done.\n')
+            close all
+        end
+        spec_fpaths(des_i,:) = store_1;
+        spec_ss_fpaths(des_i,:) = store_2;
+    end
+end
+%% ERSP CALCULATIONS
+% NOTE (07/18/2023) std_ersplot_customParams.m has edits (find:'Chang') as
+% well as a call to another edited function std_readata_customParams.m
+if DO_ERSP_CALC
+    for des_i = 1:length(STUDY.design)
+        store_1 = cell(1,length(CLUSTER_PICKS));
+        store_2 = cell(1,length(CLUSTER_PICKS));
+        store_3 = cell(1,length(CLUSTER_PICKS));
+        STUDY.currentdesign = des_i;
+        design_char = [];
+        for i = 1:length(STUDY.design(des_i).variable)
+            if i==1
+                design_char = [STUDY.design(des_i).variable(1).value{:}];
+            else
+                design_char = [design_char '_' STUDY.design(des_i).variable(i).value{:}];
+            end
+        end
+        parfor i = 1:length(CLUSTER_PICKS)
+            cluster_i = CLUSTER_PICKS(i);
+            % ----------------------------------------------------------- %
+            %## ERSP calculation for no normalization 
+            fprintf('Gathering ERSP without any normalization for cluster %i\n',cluster_i)
+            tic
+            [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot(STUDY,ALLEEG,'clusters',cluster_i,...
+                'freqrange',ERSP_PARAMS.freqrange); %PLOTS THE ENTIRE cluster_i'th CLUSTER ,% did I apply subtractsubjectmean???, no correction at all with the current setting
+            %- save dat
+            ersp_data = struct('allerspdata',allerspdata,'alltimes',alltimes,'allfreqs',allfreqs,...
+                'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
+            par_save(ersp_data,save_dir,sprintf('ersp_data_cl%i_%s.mat',cluster_i,STUDY.design));
+            store_1{i} = [save_dir filesep sprintf('ersp_data_cl%i_%s.mat',cluster_i,STUDY.design)];
+            %- save fig
+            fig_i = get(groot,'CurrentFigure');
+%             fig_i.Position = [500 300 1480 920];
+            saveas(fig_i,[save_dir filesep sprintf('allcomps_ersp_plot_cl%i_%s',cluster_i,design_char)])
+            close(fig_i)
+            toc
+            % ----------------------------------------------------------- %
+            %## ERSP calculation for normalization 
+            fprintf('Gathering ERSP after baseline correction using times {%0.2f,%0.2f] for cluster %i\n',warping_times(1),warping_times(5),cluster_i)
+            tic
+            disp(tmpSTUDY.etc.statistics)
+            disp(ersp_load_params.common_base);
+            [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot_customParams(tmpSTUDY,ALLEEG,ersp_load_params.common_base,'clusters',cluster_i,...
+                'freqrange',ERSP_PARAMS.freqrange);
+            %- save dat
+            ersp_data = struct('allerspdata',allerspdata,'alltimes',alltimes,'allfreqs',allfreqs,...
+                'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
+            par_save(ersp_data,save_dir,sprintf('ersp_data_cl%i_%s_subbaselined.mat',cluster_i,design_char));
+            store_2{i} = [save_dir filesep sprintf('ersp_data_cl%i_%s_subbaselined.mat',cluster_i,design_char)];
+            %- save fig
+            fig_i = get(groot,'CurrentFigure');
+%             fig_i.Position = [500 300 1480 920];
+            saveas(fig_i,[save_dir filesep sprintf('ersp_plot_cl%i_%s_allcomps_subbaselined',cluster_i,design_char)])
+            close(fig_i)
+            toc
+            % ----------------------------------------------------------- %
+            disp('Gathering esrp after baseline correction using warp(1) to warp(5) and apply commonbase')
+            tic
+            disp(tmpSTUDY_commonbase.etc.statistics)
+            disp(tmpSTUDY_commonbase.etc.erspparams)
+            [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot_customParams(tmpSTUDY_commonbase,ALLEEG,ersp_load_params.common_base,'clusters',cluster_i,...
+                'freqrange',ERSP_PARAMS.freqrange); 
+            %- save dat
+            ersp_data = struct('allerspdata',allerspdata,'alltimes',alltimes,'allfreqs',allfreqs,...
+                'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
+            par_save(ersp_data,save_dir,sprintf('spec_data_cl%i_%s_subbaselined_commonbase.mat',cluster_i,design_char));
+            store_3{i} = [save_dir filesep sprintf('spec_data_cl%i_%s_subbaselined_commonbase.mat',cluster_i,design_char)];
+            ersp
+            %- save fig
+            fig_i = get(groot,'CurrentFigure');
+%             fig_i.Position = [500 300 1480 920];
+            saveas(fig_i,[save_dir filesep sprintf('ersp_plot_cl%i_%s_allcomps_subbaselined_commonbase',cluster_i,design_char)])
+            close(fig_i)
+        end
+        ersp_fpaths(des_i,:) = store_1;
+        ersp_norm_fpaths(des_i,:) = store_2;
+        ersp_normcb_fpaths(des_i,:) = store_3;
+    end
+end
+STUDY.etc.mim_gen_ersp_data = struct('ersp_fpaths',ersp_fpaths,...
+    'spec_fpaths',spec_fpaths,...
+    'spec_ss_fpaths',spec_ss_fpaths,...
+    'ersp_norm_fpaths',ersp_norm_fpaths,...
+    'ersp_normcb_fpaths',ersp_normcb_fpaths);
 end
 
