@@ -1,4 +1,4 @@
-%   Project Title: Run a graph analysis for multiple subjects
+d%   Project Title: Run a graph analysis for multiple subjects
 %
 %   Code Designer: Jacob salminen
 %

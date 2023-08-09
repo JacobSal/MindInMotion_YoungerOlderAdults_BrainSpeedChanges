@@ -38,6 +38,7 @@ CNCTANL_TOOLBOX = 'sift';
 WINDOW_LENGTH = 0.5; % length of sliding window in time(s)
 WINDOW_STEP_SIZE = 0.025; % sliding amount in time(s)
 FREQ_BANDS = {FREQS;1:7;7:12;12:28;28:48;48:60};
+
 %## define Parser
 p = inputParser;
 %## define REQUIRED

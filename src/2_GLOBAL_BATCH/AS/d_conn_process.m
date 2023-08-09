@@ -106,7 +106,8 @@ DO_PHASE_RND = true;
 %- datetime override
 % dt = '05252023_bounces_1h2h2bm_JS';
 % dt = '06122023_bounces_1h2h2bm_JS';
-dt = '06152023_bounces_1h2h2bm_JS';
+% dt = '06152023_bounces_1h2h2bm_JS';
+dt = '07272023_bounces_1h_2h_2bm_JS';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);

@@ -7,7 +7,7 @@
 %   Previous Version: n/a
 %   Summary: 
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/NJ/run_d_conn_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_OA/run_d_conn_process.sh
 
 %{
 %## RESTORE MATLAB
@@ -85,11 +85,12 @@ end
 %% (PARAMETERS) ======================================================== %%
 %## Hard Defines
 %- datset name
-DATA_SET = 'jacobsenN_dataset';
+DATA_SET = 'MIM_dataset';
 %- datetime override
-dt = '06292023_NJ_Standing';
+% dt = '07152023_MIM_OAN79_subset_prep_verified_gait';
+dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
 %- epoching params
-TRIAL_TYPES = {'pre','post'};
+TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %- connecitivty modeling
 CONN_FREQS = (1:100);
 CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
@@ -128,9 +129,9 @@ else
     end
     %## load chang's algorithmic clustering
     %* cluster parameters
-    pick_cluster = 12;
-    clustering_weights.dipoles = 5;
-    clustering_weights.scalp = 5;
+    pick_cluster = 14;
+    clustering_weights.dipoles = 1;
+    clustering_weights.scalp = 0;
     clustering_weights.ersp = 0;
     clustering_weights.spec = 0;
     cluster_alg = 'kmeans';
@@ -141,13 +142,11 @@ else
         '_spec_',num2str(clustering_weights.spec)];
     %* load cluster information
     cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
-    outputdir = [cluster_load_dir filesep 'clustering_solutions' filesep clustering_method,...
-        filesep num2str(pick_cluster) filesep evaluate_method];
-    tmp = load([outputdir filesep sprintf('cluster_update_%i.mat',pick_cluster)]);
-    cluster_update = tmp.cluster_update;
-    STUDY.cluster = cluster_update;
+    cluster_dir = [cluster_load_dir filesep clustering_method filesep num2str(pick_cluster)];
+    cluster_update = par_load(cluster_dir,sprintf('cluster_update_%i.mat',pick_cluster));
+    MAIN_STUDY.cluster = cluster_update;
     %- get inds
-    [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
+    [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(MAIN_STUDY);
 end
 %% INITIALIZE PARFOR LOOP VARS
 if exist('SLURM_POOL_SIZE','var')
@@ -182,7 +181,7 @@ parfor (subj_i = 1:length(LOOP_VAR),POOL_SIZE)
     fprintf('%s) Processing componets:\n',EEG.subject)
     fprintf('%i,',components'); fprintf('\n');
     %- re-epoch
-    ALLEEG = cell(1,length(EVENT_COND_COMBOS));
+    ALLEEG = cell(1,length(TRIAL_TYPES));
     for i = 1:length(EEG.etc.cond_files)
         if ~ispc
             ALLEEG{i} = pop_loadset('filepath',convertPath2UNIX(EEG.etc.cond_files(i).fPath),'filename',EEG.etc.cond_files(i).fName);
