@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=D_CONN_PLOTTING # Job name
+#SBATCH --job-name=AS_CONN_PLOTTING # Job name
 #SBATCH --mail-type=ALL # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=jsalminen@ufl.edu # Where to send mail
 #SBATCH --nodes=1 # Use one node

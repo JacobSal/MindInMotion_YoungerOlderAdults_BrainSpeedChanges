@@ -109,7 +109,7 @@ SAVE_ALLEEG = true;
 EVENTS_TIMEWARP = {'Subject_hit','Subject_receive','Subject_hit'};
 COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
 EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
-EPOCH_TIME_LIMITS = [-0.5,2];
+EPOCH_TIME_LIMITS = [0,0]; % (07/27/2023) this doesn't do anything
 % PARSE_TYPE = 'Custom';
 %- eeglab_cluster.m spectral params
 % FREQ_LIMITS = [1,100];
@@ -118,7 +118,8 @@ EPOCH_TIME_LIMITS = [-0.5,2];
 % FREQ_FAC = 4;
 % PAD_RATIO = 2;
 %- datetime override
-dt = '06152023_bounces_1h2h2bm_JS';
+% dt = '06152023_bounces_1h2h2bm_JS';
+dt = '07272023_bounces_1h_2h_2bm_JS';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -275,15 +276,15 @@ for subj_i = LOOP_VAR
             for i = 1:length(ALLEEG)
                 %- save each parsed trial/condition to own folder to help save
                 %memory. EEGLAB is weird like that.
-                REGEX_FNAME = 'cond_%i';
-                tmp_fPath = [epoched_fPath filesep sprintf(REGEX_FNAME,i)];
+                REGEX_FNAME = 'cond_%s';
+                tmp_fPath = [epoched_fPath filesep sprintf(REGEX_FNAME,ALLEEG(i).condition)];
                 if ~exist(tmp_fPath,'dir')
                     mkdir(tmp_fPath)
                 end
                 [~] = pop_saveset(ALLEEG(i),...
-                    'filepath',tmp_fPath,'filename',sprintf([REGEX_FNAME '.set'],i));
+                    'filepath',tmp_fPath,'filename',sprintf([REGEX_FNAME '.set'],ALLEEG(i).condition));
                 cond_files(i).fPath = tmp_fPath;
-                cond_files(i).fName = sprintf([REGEX_FNAME '.set'],i);
+                cond_files(i).fName = sprintf([REGEX_FNAME '.set'],ALLEEG(i).condition);
             end
         end
         ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);

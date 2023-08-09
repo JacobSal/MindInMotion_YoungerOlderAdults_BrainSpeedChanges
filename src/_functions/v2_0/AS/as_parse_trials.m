@@ -67,6 +67,7 @@ if DO_SLIDING_WINDOW
         [TMP_EEG] = sliding_window_epoch(EEG,REGEXP_BOUNCES{i},WINDOW_LENGTH,...
             PERCENT_OVERLAP,EVENT_FIELD_CONDITION,APPROX_TRIAL_LENGTH);
         TMP_EEG.etc.epoch.type='sliding-window';
+%         TMP_EEG.condition = REGEXP_BOUNCES;
         %## STORE IN ALLEEG
         ALLEEG{cnt} = TMP_EEG;
         timewarp_struct{cnt} = struct([]);
@@ -111,6 +112,9 @@ else
             %## Select Bounce Events
             TMP_TMP_EEG = pop_selectevent(EEG,'bounces',BOUNCES_CHARS{i},...
                 'deleteevents','off','deleteepochs','on','invertepochs','off');
+            %- Remove baseline 150ms before receive or hit?
+%             TMP_TMP_EEG = pop_rmbase(TMP_TMP_EEG,[epoch_limits(1)*1000 epoch_limits(1)+500+150] ,[]);
+%             TMP_TMP_EEG = eeg_checkset(TMP_TMP_EEG);
             %## Timewarp Bounce events
             [TMP_TMP_EEG] = timewarp_epoch(TMP_TMP_EEG,...
                 EVENTS_TIMEWARP,STD_TIMEWARP);
@@ -119,6 +123,7 @@ else
             TMP_TMP_EEG.etc.epoch.condition = [BOUNCES_CHARS{i} '_' TYPE_CHARS{j}];
 %             TMP_TMP_EEG.etc.epoch.epoch_limits = ;
             TMP_TMP_EEG.filename = sprintf('%s_%s_%s_EPOCH_TMPEEG.set',TMP_TMP_EEG.subject,BOUNCES_CHARS{i},TYPE_CHARS{j});
+            TMP_TMP_EEG.condition = [BOUNCES_CHARS{i} '_' TYPE_CHARS{j}];
             %## STORE IN ALLEEG
             ALLEEG{cnt} = TMP_TMP_EEG;
             timewarp_struct{cnt} = TMP_TMP_EEG.timewarp;

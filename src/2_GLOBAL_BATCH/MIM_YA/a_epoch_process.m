@@ -93,7 +93,7 @@ SUBJ_MISSING_TRIAL_DATA = {'H1008','H2012','H2018','H3024','NH3002', 'NH3004','N
 SUBJ_NO_MRI = {'H2010', 'H2036', 'H2041', 'H2072', 'H3018','H3120'};
 SUBJ_1YA = {'H1002','H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1018','H1019','H1020',...
     'H1022','H1024','H1026','H1027','H1029','H1030','H1031','H1032','H1033','H1034','H1035',...
-    'H1036','H1037','H1038','H1039','H1041','H1042','H1044','H1045','H1047','H1047'}; % JACOB,SAL (04/18/2023)
+    'H1036','H1037','H1038','H1039','H1041','H1042','H1044','H1045','H1047'}; % JACOB,SAL (04/18/2023)
 SUBJ_2MA = {'H2017', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
     'H2020', 'H2021', 'H2022', 'H2023',...
     'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2037', 'H2038',...
@@ -138,15 +138,15 @@ SESSION_NUMBER = '1';
 SAVE_ALLEEG = true;
 SAVE_EEG = true; %true;
 OVERRIDE_DIPFIT = true;
-%- MIM specific epoching
-EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 %- epoching params
-DO_SLIDING_WINDOW = true;
+DO_SLIDING_WINDOW = false;
 %* sliding window
 WINDOW_LENGTH = 6; % sliding window length in seconds
 PERCENT_OVERLAP = 0.0; % percent overlap between epochs
 %* gait
-EPOCH_TIME_LIMITS = [-1,3]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
+EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
+STD_TIMEWARP = 3;
+EPOCH_TIME_LIMITS = [-1,4]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
 TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 if DO_SLIDING_WINDOW
     SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
@@ -162,7 +162,8 @@ SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
 FREQ_FAC = 4;
 PAD_RATIO = 2;
 %- datetime override
-dt = '07082023_MIM_YAN33_subset_prep_verified_gait';
+% dt = '07082023_MIM_YAN33_subset_prep_verified_gait';
+dt = '07222023_MIM_YAN33_subset_prep_verified_gait_conn';
 %- Subject Directory information
 OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 %## soft define
@@ -274,7 +275,6 @@ rmv_subj = zeros(1,length(MAIN_ALLEEG));
 %% GENERATE EPOCH MAIN FUNC
 %## PARFOR LOOP
 parfor (subj_i = LOOP_VAR,POOL_SIZE)
-% for subj_i = LOOP_VAR
     %## LOAD EEG DATA
     EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
     fprintf('Running subject %s\n',EEG.subject)
@@ -297,10 +297,31 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
     try
         %## EPOCH
         [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,DO_SLIDING_WINDOW,...
-            'WINDOW_LENGTH',WINDOW_LENGTH,...
-            'PERCENT_OVERLAP',PERCENT_OVERLAP); %,...
-%             'PERENT_OVERLAP',PERCENT_OVERLAP,'WINDOW_LENGTH',WINDOW_LENGTH);
+            'EPOCH_TIME_LIMITS',EPOCH_TIME_LIMITS,...
+            'STD_TIMEWARP',STD_TIMEWARP,...
+            'COND_CHARS',TRIAL_TYPES);
         %## REMOVE USELESS EVENT FIELDS
+        for i = 1:length(ALLEEG)
+            if isfield(ALLEEG(i).event,'trialName')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'trialName');
+            end
+            if isfield(ALLEEG(i).event,'channel')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'channel');
+            end
+            if isfield(ALLEEG(i).event,'code')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'code');
+            end
+            if isfield(ALLEEG(i).event,'bvtime')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvtime');
+            end
+            if isfield(ALLEEG(i).event,'bvmknum')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvmknum');
+            end
+            if isfield(ALLEEG(i).event,'datetime')
+                ALLEEG(i).event = rmfield(ALLEEG(i).event,'datetime');
+            end
+        end
+        %## SAVE EEG's AS INDIVIDUAL FILES (CONNECTIVITY)
         cond_files = struct('fPath',[],'fName',[]);
         if SAVE_ALLEEG
             for i = 1:length(ALLEEG)
@@ -340,6 +361,9 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
             ALLEEG.urevent = []; % might be needed
             ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
         end
+        %## STRUCT EDITS
+        ALLEEG.urevent = []; % might be needed
+        ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
         %- checks
         ALLEEG = eeg_checkset(ALLEEG,'eventconsistency');
         ALLEEG = eeg_checkset(ALLEEG);
@@ -400,7 +424,7 @@ tmp = cellfun(@(x) [[]; x], tmp);
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                         STUDY.filename,STUDY.filepath,...
                                         'RESAVE_DATASETS','on');
-                                        
+                                          
 %% Version History
 %{
 v2.0; (04/28/2023) JS: Splitting up the epoching, plotting, and

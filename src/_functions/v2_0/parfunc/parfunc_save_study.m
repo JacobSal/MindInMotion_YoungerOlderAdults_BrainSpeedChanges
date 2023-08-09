@@ -54,6 +54,7 @@ fprintf(1,'\n==== SAVING STUDY ''%s'' ====\n',STUDY_FNAME);
 usave = sprintf('%s_UNIX.study',STUDY_FNAME);
 dsave = sprintf('%s.study',STUDY_FNAME);
 if ~ispc
+    %- make path conversions based on pathing
     for subj_i = 1:length(STUDY.datasetinfo)
         STUDY.datasetinfo(subj_i).filepath = ALLEEG(subj_i).filepath;
         STUDY.datasetinfo(subj_i).filename = ALLEEG(subj_i).filename;
@@ -76,6 +77,7 @@ if ~ispc
     [~,~] = pop_savestudy( tmp, ALLEEG,...
                         'filename',dsave,'filepath',STUDY_FPATH,'resavedatasets',RESAVE_DATASETS);
 else
+    %- make path conversions based on pathing
     for subj_i = 1:length(STUDY.datasetinfo)
         STUDY.datasetinfo(subj_i).filepath = ALLEEG(subj_i).filepath;
         STUDY.datasetinfo(subj_i).filename = ALLEEG(subj_i).filename;

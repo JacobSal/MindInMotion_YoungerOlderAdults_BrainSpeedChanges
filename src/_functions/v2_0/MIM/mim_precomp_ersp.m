@@ -18,8 +18,10 @@ tic
 %- hard defines (for now 07/16/2023)
 %- ERSP PARAMS
 DO_PARALLEL = 'off';
-ERSP_FREQLIMITS = [3,60];
-DO_BASELINE_CORRECTION = false; %false;
+ERSP_SUBBASELINE = 'on';
+ERSP_TIMERANGE = [warping_times(1) warping_times(5)];
+ERSP_LIM = [-2,2];
+ERSP_FREQRANGE = [1,200];
 %- soft defines
 %## TIME
 tic
@@ -32,13 +34,33 @@ addRequired(p,'warping_times',@isnumeric);
 %## OPTIONAL
 %## PARAMETER
 addParameter(p,'DO_BASELINE_CORRECTION',DO_BASELINE_CORRECTION,@islogical);
-addParameter(p,'ERSP_FREQLIMITS',ERSP_FREQLIMITS,@islogical);
+addParameter(p,'DO_PARALLEL',DO_PARALLEL,@ischar
+addParameter(p,'ERSP_SUBBASELINE',ERSP_SUBBASELINE,@ischar);
+addParameter(p,'ERSP_TIMERANGE',ERSP_TIMERANGE,@isnumeric);
+addParameter(p,'ERSP_LIM',ERSP_LIM,@isnumeric);
+addParameter(p,'ERSP_FREQRANGE',ERSP_FREQRANGE,@isnumeric);
 parse(p,STUDY,ALLEEG,warping_times,varargin{:});
 %## SET DEFAULTS
 %- PARAMETER
 DO_BASELINE_CORRECTION = p.Results.DO_BASELINE_CORRECTION;
-ERSP_FREQLIMITS = p.Results.ERSP_FREQLIMITS;
+DO_PARALLEL = p.Results.DO_PARALLEL;
+ERSP_SUBBASELINE = p.Results.ERSP_SUBBASELINE;
+ERSP_TIMERANGE = p.Results.ERSP_TIMERANGE;
+ERSP_LIM = p.Results.ERSP_LIM;
+ERSP_FREQRANGE = p.Results.ERSP_FREQRANGE;
+
 %% ===================================================================== %%
+STUDY = pop_statparams(STUDY, 'condstats', STAT_PARAMS.condstats,...
+        'method',STAT_PARAMS.method,...
+        'singletrials',STAT_PARAMS.singletrials,'mode',STAT_PARAMS.mode,...
+        'fieldtripalpha',STAT_PARAMS.fieldtripalpha,'fieldtripmethod',STAT_PARAMS.fieldtripmethod,...
+        'fieldtripmcorrect',STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',STAT_PARAMS.fieldtripnaccu);
+
+STUDY = pop_erspparams(tmpSTUDY, 'subbaseline',ERSP_PARAMS.subbaseline,...
+        'timerange',ERSP_PARAMS.timerange, 'ersplim',ERSP_PARAMS.ersplim);  % 'subbaseline' - ['on'|'off'] subtract the same baseline across conditions for ERSP     
+[~,main_cl_inds,~,valid_clusters] = eeglab_get_cluster_comps(STUDY);
+CLUSTER_PICKS = main_cl_inds;
+%##
 parfor subj_i=1:length(ALLEEG)
     exitcode = 0;
     try
@@ -89,6 +111,10 @@ parfor subj_i=1:length(ALLEEG)
 exitcode=1;
 quit(exitcode)
 end
+[~, ersp_data, ersp_times, ersp_freqs, ~, params_ersp] = std_readdata(STUDY,ALLEEG,...
+                            'clusters',cluster_i,'singletrials',ERSP_SINGLETRIALS,... 
+                            'datatype','ersp','freqrange',ERSP_FREQLIMITS,...
+                            'design',des_i);
 %% ALTERNATIVE (not subject specific for timewarping...
 %{
 if DO_BASELINE_CORRECTION

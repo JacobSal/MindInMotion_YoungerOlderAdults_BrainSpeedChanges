@@ -34,6 +34,7 @@ function [ALLEEG] = cnctanl_conn_meas(ALLEEG,comps,conn_measures,varargin)
 %## TIME
 tic
 %## DEFINE DEFAULTS
+
 FREQS = (1:60);
 WINDOW_LENGTH = 0.5; % time (s)
 WINDOW_STEP_SIZE = 0.025; % time (s)
@@ -41,16 +42,16 @@ SAMPLING_RATE  = []; % empty (i.e., []) or integer
 VERBOSITY_LEVEL = 1;
 GUI_MODE = 'nogui';
 %- figure savepath
-save_dir = ALLEEG(1).filepath;
-sd_validfunc = (@(x) exist(save_dir,'dir'));
+sd_validfunc = (@(x) exist(x,'dir'));
 %## PARSE
 p = inputParser;
 %## REQUIRED
 addRequired(p,'ALLEEG',@isstruct)
 addRequired(p,'comps',@isnumeric)
 addRequired(p,'conn_measures',@iscell)
+addRequired(p,'save_dir',sd_validfunc)
 %## OPTIONAL
-addOptional(p,'save_dir',save_dir,sd_validfunc)
+
 %## PARAMETER
 addParameter(p,'FREQS',FREQS, @isnumeric) 
 addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH, @isnumeric) % number of current set in previous load
@@ -58,6 +59,7 @@ addParameter(p,'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE, @isnumeric) % MIM folder ove
 addParameter(p,'SAMPLING_RATE',SAMPLING_RATE, @isnumeric)
 addParameter(p,'GUI_MODE',GUI_MODE, @ischar)
 addParameter(p,'VERBOSITY_LEVEL',VERBOSITY_LEVEL, @isnumeric)
+
 parse(p, ALLEEG, comps, conn_measures, varargin{:});
 
 %## SET DEFAULTS

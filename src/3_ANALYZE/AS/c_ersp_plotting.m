@@ -93,7 +93,7 @@ CYCLE_LIMITS = [3,0.8];
 SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
 FREQ_FAC = 4;
 %- statistics & conditions
-COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
+COND_CHARS = {'1Bounce_Human','2Bounce_Human','0Bounce_BM'}; %'1Bounce_BM'
 EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 test_1 = {'1Bounce_Human','2Bounce_Human'};
 test_2 = {'2Bounce_Human','2Bounce_BM'};

@@ -100,13 +100,13 @@ SUBJ_GAIT = {'S18','S19','S20','S21','S22','S23','S24','S25','S26','S27',...
 % SUBJ_ITERS = {1:length(SUBJ_STANDING_OLD)};
 % GROUP_NAMES = {'young adults'};
 %- STANDING GROUP
-SUBJ_PICS = {SUBJ_STANDING};
-SUBJ_ITERS = {1:length(SUBJ_STANDING)};
-GROUP_NAMES = {'young adults'};
-%- GAIT GROUP
-% SUBJ_PICS = {SUBJ_GAIT};
-% SUBJ_ITERS = {1:length(SUBJ_GAIT)};
+% SUBJ_PICS = {SUBJ_STANDING};
+% SUBJ_ITERS = {1:length(SUBJ_STANDING)};
 % GROUP_NAMES = {'young adults'};
+%- GAIT GROUP
+SUBJ_PICS = {SUBJ_GAIT};
+SUBJ_ITERS = {1:length(SUBJ_GAIT)};
+GROUP_NAMES = {'young adults'};
 %- TEST
 % SUBJ_PICS = {SUBJ_STANDING};
 % SUBJ_ITERS = {[1,2]};
@@ -117,7 +117,7 @@ GROUP_NAMES = {'young adults'};
 %- save epoch'd eegs as seperate files (for connectivity)
 SAVE_ALLEEG = true;
 %- epoching params
-DO_SLIDING_WINDOW = true;
+DO_SLIDING_WINDOW = false;
 %* sliding window
 WINDOW_LENGTH = 6; % sliding window length in seconds
 PERCENT_OVERLAP = 0.0; % percent overlap between epochs
@@ -136,9 +136,11 @@ end
 %- Dataset Params
 %* datetime override
 % dt = '06292023_NJ_Standing';
-dt = '07162023_NJ_standing_customheadmods';
+% dt = '07162023_NJ_standing_customheadmods';
+dt = '08062023_NJ_gait_customheadmods';
 % dt = 'test';
-SUBFOLDER_CHAR = 'standing';
+% SUBFOLDER_CHAR = 'standing';
+SUBFOLDER_CHAR = 'gait';
 SESSION_NUMBER = '1';
 %* hardcode data_dir
 DATA_SET = 'jacobsenN_dataset';

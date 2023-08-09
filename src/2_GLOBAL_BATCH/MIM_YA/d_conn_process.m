@@ -121,6 +121,7 @@ SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 DATA_SET = 'MIM_dataset';
 %- datetime override
 % dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
+dt = '07222023_MIM_YAN33_subset_prep_verified_gait_conn';
 %- study group and saving
 % SAVE_EEG = false; %true;
 % OVERRIDE_DIPFIT = true;
@@ -163,8 +164,25 @@ else
     else
         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
     end
-    %## (AS) ATTACH CLUSTER
-%     MAIN_STUDY.cluster = MAIN_STUDY.urcluster;
+    %## load chang's algorithmic clustering
+    %* cluster parameters
+    pick_cluster = 21;
+    clustering_weights.dipoles = 1;
+    clustering_weights.scalp = 0;
+    clustering_weights.ersp = 0;
+    clustering_weights.spec = 0;
+    cluster_alg = 'kmeans';
+    do_multivariate_data = 1;
+    evaluate_method = 'min_rv';
+    clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
+        '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
+        '_spec_',num2str(clustering_weights.spec)];
+    %* load cluster information
+    cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
+    cluster_dir = [cluster_load_dir filesep clustering_method filesep num2str(pick_cluster)];
+    cluster_update = par_load(cluster_dir,sprintf('cluster_update_%i.mat',pick_cluster));
+    MAIN_STUDY.cluster = cluster_update;
+    %- get inds
     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(MAIN_STUDY);
 end
 %% INITIALIZE PARFOR LOOP VARS
