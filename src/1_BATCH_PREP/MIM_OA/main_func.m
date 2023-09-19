@@ -70,7 +70,7 @@ mim_config.std_threshold = 3;
 %- ICanClean parameters
 mim_config.ICC.params=[];
 mim_config.ICC.params.windowLength = 2; % 2023-1-10 Ryan said 2 is better % previously used 1; % sliding window that gets cleaned 
-mim_config.ICC.params.rhoSqThres_source = 0.55; % 2023-1-10 Use 0.65 for 4sec window %Default 0.9, NH3066 try 0.8, H3063 = 0.95, NH3068, H3072 try 0.85
+mim_config.ICC.params.rhoSqThres_source = 0.65; % 2023-1-10 Use 0.65 for 4sec window %Default 0.9, NH3066 try 0.8, H3063 = 0.95, NH3068, H3072 try 0.85
 %* (07/11/2023) JS, trying rhoSqThres_source 0.65
 %* (07/12/2023) JS, trying rhoSqThres_source 0.9 as a less aggressive cutoff 
 %* (07/14/2023) JS, trying rhoSqThres_source 0.55 as a  more aggressive cutoff
@@ -80,7 +80,7 @@ mim_config.ICC.params.extraTime_pre = 1; % 2023-1-10 Ryan said use 1 (2-MiM_conf
 mim_config.ICC.params.extraTime_post = 1; %MiM_config.ICC.params.extraTime_pre; %wider window for stats
 %- ICanClean Muscle parameters
 mim_config.ICC_muscle.params = mim_config.ICC.params;
-mim_config.ICC_muscle.params.rhoSqThres_source = 0.3; %with 4sec window, 0.9 is too high, 0 bad sources get removed...- -(EMG without highpass filter)
+mim_config.ICC_muscle.params.rhoSqThres_source = 0.4; %with 4sec window, 0.9 is too high, 0 bad sources get removed...- -(EMG without highpass filter)
 %* (07/11/2023) JS, trying rhoSqThres_source 0.4
 %* (07/12/2023) JS, trying rhoSqThres_source 0.3  as a more conservative cutoff 
 %- ICanClean Canonical Correlation Analysis parameters
@@ -145,7 +145,7 @@ parse(p,subj_char,save_fPath,fOutput,fDataset,varargin{:});
 mim_config.CleanEEG_output     = [fOutput filesep 'clean'];
 mim_config.amicaEEG_output     = [fOutput filesep 'clean'];
 %% ===================================================================== %%
-%% SCRIPT PART 1
+%## (SCRIPT PART 1)
 EEG = [];
 ALLEEG = [];
 %## Find All Trials of Interest
@@ -168,7 +168,10 @@ for trial_i = nTrials
     [ALLEEG, EEG, CURRENTSET] = eeg_store( ALLEEG, EEG, 0 ); %append to new EEG to ALLEEG
 
     %% Deal with trial cropping
-    [DoCrop, ExactCrop, DoCrop_loadsol, ExactCrop_loadsol ] = CropTrialCheckFunc_checkLoadsol(subj_char,fileList(trial_i).name(1:end-4),...
+    fprintf('Cropping trial %i for subject %s',trial_i,subj_char)
+%     [DoCrop, ExactCrop, DoCrop_loadsol, ExactCrop_loadsol ] = CropTrialCheckFunc_checkLoadsol(subj_char,fileList(trial_i).name(1:end-4),...
+%         mim_config.subjMgmtFolder);
+    [ DoCrop, ExactCrop, DoCrop_loadsol, ExactCrop_loadsol ] = mim_check_trials(subj_char,fileList(trial_i).name(1:end-4),...
         mim_config.subjMgmtFolder);
     if DoCrop_loadsol % 
         % remove gait events not in the ExactCrop_loadsol range

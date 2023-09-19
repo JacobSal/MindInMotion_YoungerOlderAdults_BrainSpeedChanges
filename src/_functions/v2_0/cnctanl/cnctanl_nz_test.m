@@ -8,6 +8,7 @@ ALPHA = 0.05;
 CONN_METHODS = {};
 SAVE_DIR = EEG.filepath;
 DISPLAYNAMES = {};
+DO_PLOT = true;
 %-
 % CLIM = [0,0.005];
 % FREQSCALE = 'log';
@@ -21,9 +22,11 @@ addParameter(p,'SAVE_DIR',SAVE_DIR,@ischar)
 addParameter(p,'CONN_METHODS',CONN_METHODS,@iscell)
 addParameter(p,'ALPHA',ALPHA,@isnumeric)
 addParameter(p,'DISPLAYNAMES',DISPLAYNAMES,@iscell);
+addParameter(p,'DO_PLOT',DO_PLOT,@islogical);
 parse(p, EEG, varargin{:});
 CONN_METHODS = p.Results.CONN_METHODS;
 ALPHA = p.Results.ALPHA;
+DO_PLOT = p.Results.DO_PLOT;
 SAVE_DIR = p.Results.SAVE_DIR;
 DISPLAYNAMES = p.Results.DISPLAYNAMES;
 %% ===================================================================== %%
@@ -53,10 +56,12 @@ parfor cond_i = 1:length(EEG.etc.cond_files)
 end
 ALLEEG = cellfun(@(x) [[],x],ALLEEG);
 %## 0) Make unthresheld plot
-for cond_i = 1:length(ALLEEG)
-    Stats = [];
-    for meth_i = 1:length(CONN_METHODS)
-        tf_plot(ALLEEG(cond_i),{ALLEEG(cond_i).condition},Stats,ALLEEG(cond_i).CAT.Conn,CONN_METHODS{meth_i},'nonzero','nothresh',DISPLAYNAMES,SAVE_DIR);
+if DO_PLOT
+    for cond_i = 1:length(ALLEEG)
+        Stats = [];
+        for meth_i = 1:length(CONN_METHODS)
+            tf_plot(ALLEEG(cond_i),{ALLEEG(cond_i).condition},Stats,ALLEEG(cond_i).CAT.Conn,CONN_METHODS{meth_i},'nonzero','nothresh',DISPLAYNAMES,SAVE_DIR);
+        end
     end
 end
 %## 1) Nonzero test for phase randomized data
@@ -87,17 +92,19 @@ for cond_i = 1:length(ALLEEG)
     ALLEEG(cond_i).CAT.Stats = Stats;
     nonzero_stats{cond_i} = Stats;
     for meth_i = 1:length(CONN_METHODS)
-        [conn_masked] = tf_plot(ALLEEG(cond_i),{ALLEEG(cond_i).condition},...
-            Stats,ALLEEG(cond_i).CAT.Conn,CONN_METHODS{meth_i},'nonzero',...
-            'thresh',DISPLAYNAMES,SAVE_DIR);
-        if isfield(ALLEEG(cond_i).CAT,'Stats')
-            stat_thresh = ALLEEG(cond_i).CAT.Stats.(CONN_METHODS{meth_i}).pval < ALPHA;
+        if DO_PLOT
+            [conn_masked] = tf_plot(ALLEEG(cond_i),{ALLEEG(cond_i).condition},...
+                Stats,ALLEEG(cond_i).CAT.Conn,CONN_METHODS{meth_i},'nonzero',...
+                'thresh',DISPLAYNAMES,SAVE_DIR);
+            if isfield(ALLEEG(cond_i).CAT,'Stats')
+                stat_thresh = ALLEEG(cond_i).CAT.Stats.(CONN_METHODS{meth_i}).pval < ALPHA;
+            end
+            %- connectivity extraction
+    %         conn_masked_2  = squeeze(ALLEEG(cond_i).CAT.Conn.(CONN_METHODS{meth_i})(:,:,:,:)).*squeeze(stat_thresh(:,:,:,:));
+    %         disp(squeeze(conn_masked_2(1,3,:,:)));
+    %         disp(squeeze(conn_masked(1,3,:,:)));
+            phasernd_maskedconn{cond_i,meth_i} = conn_masked; %conn_masked
         end
-        %- connectivity extraction
-%         conn_masked_2  = squeeze(ALLEEG(cond_i).CAT.Conn.(CONN_METHODS{meth_i})(:,:,:,:)).*squeeze(stat_thresh(:,:,:,:));
-%         disp(squeeze(conn_masked_2(1,3,:,:)));
-%         disp(squeeze(conn_masked(1,3,:,:)));
-        phasernd_maskedconn{cond_i,meth_i} = conn_masked; %conn_masked
     end
     close all
 end

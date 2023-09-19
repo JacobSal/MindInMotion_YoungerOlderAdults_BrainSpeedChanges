@@ -85,7 +85,6 @@ function STUDY = std_dipplot_CL(STUDY, ALLEEG, varargin)
 cls = []; % plot all clusters in STUDY
 figureon = 1; % plot on a new figure
 mode = 'apart';
-
 STUDY = pop_dipparams(STUDY, 'default');
 
 opt_dipplot = {'projlines',STUDY.etc.dipparams.projlines, 'axistight', STUDY.etc.dipparams.axistight, 'projimg', STUDY.etc.dipparams.projimg, 'spheres', 'on', 'dipolelength', 0, 'density', STUDY.etc.dipparams.density};
@@ -110,6 +109,7 @@ for k = 3:2:nargin
                 end
             end
             if length(cls) == 1, mode = 'apart'; else mode = 'together'; end
+%             COLOR_OPTS = linspecer(length(cls));
         case 'comps'
             if strcmpi(STUDY.etc.dipparams.density, 'on')
                 disp('Single dipole should not be plotted using dipole density, reverting to dipole plotting');
@@ -144,6 +144,7 @@ if strcmpi(mode, 'together')
         opt_dipplot{end} = 'off';
     end
 end
+COLOR_OPTS = linspecer(length(cls)+1);
 
 % select clusters to plot
 % -----------------------
@@ -622,25 +623,29 @@ if strcmpi(mode, 'multicolor')
   %%%%%%%%%%%%%%%%%%%%% color list %%%%%%%%%%%%%%%%%%%%%
   % This color list was developped for std_envtopo
   % modified from dipgroups below
-  colors{1}  = [1 1 1];            % White
-  colors{2}  = [1 1 0];            % Yellow
-  colors{3}  = [1 0 1];            % Fuchsia
-  colors{4}  = [1 0 0];            % Red
-  colors{5}  = [0.875 0.875 0.875]; % Silver
-  colors{6}  = [0.5 0.5 0.5];      % Gray
-  colors{7}  = [0.5 0.5 0];        % Olive
-  colors{8}  = [0.5 0 0.5];        % Purple
-  colors{9}  = [0.5 0 0];          % Maroon
-  colors{10} = [0 1 1];            % Aqua
-  colors{11} = [0 1 0];            % Lime
-  colors{12} = [0 0.5 0.5];        % Teal
-  colors{13} = [0 0.5 0];          % Green
-  colors{14} = [0 0 1];            % Blue
-  colors{15} = [0 0 0.5];          % Navy
-  colors{16} = [0 0 0];            % Black
-  % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-  % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-  colors = colors([4 13 14 3 11 10 9 7 8 12 15 6 1 ]);
+%   colors{1}  = [1 1 1];            % White
+%   colors{2}  = [1 1 0];            % Yellow
+%   colors{3}  = [1 0 1];            % Fuchsia
+%   colors{4}  = [1 0 0];            % Red
+%   colors{5}  = [0.875 0.875 0.875]; % Silver
+%   colors{6}  = [0.5 0.5 0.5];      % Gray
+%   colors{7}  = [0.5 0.5 0];        % Olive
+%   colors{8}  = [0.5 0 0.5];        % Purple
+%   colors{9}  = [0.5 0 0];          % Maroon
+%   colors{10} = [0 1 1];            % Aqua
+%   colors{11} = [0 1 0];            % Lime
+%   colors{12} = [0 0.5 0.5];        % Teal
+%   colors{13} = [0 0.5 0];          % Green
+%   colors{14} = [0 0 1];            % Blue
+%   colors{15} = [0 0 0.5];          % Navy
+%   colors{16} = [0 0 0];            % Black
+%   % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+%   % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+%   colors = colors([4 13 14 3 11 10 9 7 8 12 15 6 1 ]);
+    colors = cell(1,length(COLOR_OPTS));
+      for i = 1:size(COLOR_OPTS,1)
+          colors{i} = COLOR_OPTS(i,:);
+      end
   fig_h = figure;
   orient tall
   set(fig_h,'Color', 'black');
@@ -770,28 +775,39 @@ if strcmpi(mode,'together_averaged_multicolor')
       %%%%%%%%%%%%%%%%%%%%% color list %%%%%%%%%%%%%%%%%%%%%
       % This color list was developped for std_envtopo
       % modified from dipgroups below
-      colors{1}  = [1 1 1];            % White
-      colors{2}  = [1 1 0];            % Yellow
-      colors{3}  = [1 0 1];            % Fuchsia
-      colors{4}  = [1 0 0];            % Red
-%       colors{5}  = [0.875 0.875 0.875]; % Silver
-%       colors{6}  = [0.5 0.5 0.5];      % Gray
-      colors{5}  = [250 140 0]/255;    % oragne
-      colors{6}  = [210 173 255]/255;   % purple
-      colors{7}  = [0.5 0.5 0];        % Olive
-      colors{8}  = [0.5 0 0.5];        % Purple
-      colors{9}  = [0.5 0 0];          % Maroon
-      colors{10} = [0 1 1];            % Aqua
-      colors{11} = [0 1 0];            % Lime
-      colors{12} = [0 0.5 0.5];        % Teal
-      colors{13} = [0 0.5 0];          % Green
-      colors{14} = [0 0 1];            % Blue
-      colors{15} = [0 0 0.5];          % Navy
-      colors{16} = [0.3 0.3 0.3];            % Gray
-      % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-      % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-      colors = colors([4 11 14 2 13 10 5 12 15 16 ]);
-    N = length(cls);
+%       if length(cls) < 16
+%           colors{1}  = [1 1 1];            % White
+%           colors{2}  = [1 1 0];            % Yellow
+%           colors{3}  = [1 0 1];            % Fuchsia
+%           colors{4}  = [1 0 0];            % Red
+%     %       colors{5}  = [0.875 0.875 0.875]; % Silver
+%     %       colors{6}  = [0.5 0.5 0.5];      % Gray
+%           colors{5}  = [250 140 0]/255;    % oragne
+%           colors{6}  = [210 173 255]/255;   % purple
+%           colors{7}  = [0.5 0.5 0];        % Olive
+%           colors{8}  = [0.5 0 0.5];        % Purple
+%           colors{9}  = [0.5 0 0];          % Maroon
+%           colors{10} = [0 1 1];            % Aqua
+%           colors{11} = [0 1 0];            % Lime
+%           colors{12} = [0 0.5 0.5];        % Teal
+%           colors{13} = [0 0.5 0];          % Green
+%           colors{14} = [0 0 1];            % Blue
+%           colors{15} = [0 0 0.5];          % Navy
+%           colors{16} = [0.3 0.3 0.3];            % Black
+%           % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+%           % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+%           colors = colors([4 11 14 2 13 10 5 12 15 16 1 ]);
+%       else
+%           colors = cell(1,length(COLOR_OPTS));
+%           for i = 1:length(COLOR_OPTS)
+%               colors{i} = COLOR_OPTS(i,:);
+%           end
+%       end
+      colors = cell(1,size(COLOR_OPTS,1));
+      for i = 1:size(COLOR_OPTS,1)
+          colors{i} = COLOR_OPTS(i,:);
+      end
+      N = length(cls);
     rowcols(2) = ceil(sqrt(N)); % Number of rows in the subplot figure.
     rowcols(1) = ceil(N/rowcols(2));
     fig_h = figure; 
@@ -943,27 +959,31 @@ if strcmpi(mode,'together_averaged_multicolor_separate')
       %%%%%%%%%%%%%%%%%%%%% color list %%%%%%%%%%%%%%%%%%%%%
       % This color list was developped for std_envtopo
       % modified from dipgroups below
-      colors{1}  = [1 1 1];            % White
-      colors{2}  = [1 1 0];            % Yellow
-      colors{3}  = [1 0 1];            % Fuchsia
-      colors{4}  = [1 0 0];            % Red
-%       colors{5}  = [0.875 0.875 0.875]; % Silver
-%       colors{6}  = [0.5 0.5 0.5];      % Gray
-      colors{5}  = [250 140 0]/255;    % oragne
-      colors{6}  = [210 173 255]/255;   % purple
-      colors{7}  = [0.5 0.5 0];        % Olive
-      colors{8}  = [0.5 0 0.5];        % Purple
-      colors{9}  = [0.5 0 0];          % Maroon
-      colors{10} = [0 1 1];            % Aqua
-      colors{11} = [0 1 0];            % Lime
-      colors{12} = [0 0.5 0.5];        % Teal
-      colors{13} = [0 0.5 0];          % Green
-      colors{14} = [0 0 1];            % Blue
-      colors{15} = [0 0 0.5];          % Navy
-      colors{16} = [0.3 0.3 0.3];            % Black
-      % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-      % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-      colors = colors([4 11 14 2 13 10 5 12 15 16 1 ]);
+%       colors{1}  = [1 1 1];            % White
+%       colors{2}  = [1 1 0];            % Yellow
+%       colors{3}  = [1 0 1];            % Fuchsia
+%       colors{4}  = [1 0 0];            % Red
+% %       colors{5}  = [0.875 0.875 0.875]; % Silver
+% %       colors{6}  = [0.5 0.5 0.5];      % Gray
+%       colors{5}  = [250 140 0]/255;    % oragne
+%       colors{6}  = [210 173 255]/255;   % purple
+%       colors{7}  = [0.5 0.5 0];        % Olive
+%       colors{8}  = [0.5 0 0.5];        % Purple
+%       colors{9}  = [0.5 0 0];          % Maroon
+%       colors{10} = [0 1 1];            % Aqua
+%       colors{11} = [0 1 0];            % Lime
+%       colors{12} = [0 0.5 0.5];        % Teal
+%       colors{13} = [0 0.5 0];          % Green
+%       colors{14} = [0 0 1];            % Blue
+%       colors{15} = [0 0 0.5];          % Navy
+%       colors{16} = [0.3 0.3 0.3];            % Black
+%       % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+%       % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+%       colors = colors([4 11 14 2 13 10 5 12 15 16 1 ]);
+    colors = cell(1,size(COLOR_OPTS,1));
+      for i = 1:size(COLOR_OPTS,1)
+          colors{i} = COLOR_OPTS(i,:);
+      end
     N = length(cls);
     rowcols(2) = ceil(sqrt(N)); % Number of rows in the subplot figure.
     rowcols(1) = ceil(N/rowcols(2));
@@ -1112,27 +1132,38 @@ if strcmpi(mode,'together_averaged_only')
       %%%%%%%%%%%%%%%%%%%%% color list %%%%%%%%%%%%%%%%%%%%%
       % This color list was developped for std_envtopo
       % modified from dipgroups below
-      colors{1}  = [1 1 1];            % White
-      colors{2}  = [1 1 0];            % Yellow
-      colors{3}  = [1 0 1];            % Fuchsia
-      colors{4}  = [1 0 0];            % Red
-%       colors{5}  = [0.875 0.875 0.875]; % Silver
-%       colors{6}  = [0.5 0.5 0.5];      % Gray
-      colors{5}  = [250 140 0]/255;    % oragne
-      colors{6}  = [210 173 255]/255;   % purple
-      colors{7}  = [0.5 0.5 0];        % Olive
-      colors{8}  = [0.5 0 0.5];        % Purple
-      colors{9}  = [0.5 0 0];          % Maroon
-      colors{10} = [0 1 1];            % Aqua
-      colors{11} = [0 1 0];            % Lime
-      colors{12} = [0 0.5 0.5];        % Teal
-      colors{13} = [0 0.5 0];          % Green
-      colors{14} = [0 0 1];            % Blue
-      colors{15} = [0 0 0.5];          % Navy
-      colors{16} = [0.3 0.3 0.3];            % Black
-      % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-      % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-      colors = colors([4 11 14 2 13 10 5 12 15 16 1 ]);
+%       if length(cls) < 16
+%           colors{1}  = [1 1 1];            % White
+%           colors{2}  = [1 1 0];            % Yellow
+%           colors{3}  = [1 0 1];            % Fuchsia
+%           colors{4}  = [1 0 0];            % Red
+%     %       colors{5}  = [0.875 0.875 0.875]; % Silver
+%     %       colors{6}  = [0.5 0.5 0.5];      % Gray
+%           colors{5}  = [250 140 0]/255;    % oragne
+%           colors{6}  = [210 173 255]/255;   % purple
+%           colors{7}  = [0.5 0.5 0];        % Olive
+%           colors{8}  = [0.5 0 0.5];        % Purple
+%           colors{9}  = [0.5 0 0];          % Maroon
+%           colors{10} = [0 1 1];            % Aqua
+%           colors{11} = [0 1 0];            % Lime
+%           colors{12} = [0 0.5 0.5];        % Teal
+%           colors{13} = [0 0.5 0];          % Green
+%           colors{14} = [0 0 1];            % Blue
+%           colors{15} = [0 0 0.5];          % Navy
+%           colors{16} = [0.3 0.3 0.3];            % Black
+%           % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+%           % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+%           colors = colors([4 11 14 2 13 10 5 12 15 16 1 ]);
+%       else
+%           colors = cell(1,length(COLOR_OPTS));
+%           for i = 1:length(COLOR_OPTS)
+%               colors{i} = COLOR_OPTS(i,:);
+%           end
+%       end
+    colors = cell(1,size(COLOR_OPTS,1));
+      for i = 1:size(COLOR_OPTS,1)
+          colors{i} = COLOR_OPTS(i,:);
+      end
     N = length(cls);
     rowcols(2) = ceil(sqrt(N)); % Number of rows in the subplot figure.
     rowcols(1) = ceil(N/rowcols(2));
@@ -1591,27 +1622,30 @@ function [cluster_dip_models, options] = dipgroups(ALLEEG, STUDY, cls, comp_to_d
         %%%%%%%%%%%%%%%%%%%%% color list %%%%%%%%%%%%%%%%%%%%%
         % This color list was developped for std_envtopo
         % 16 colors names officially supported by W3C specification for HTML
-        colors{1,1}  = [1 1 1];            % White
-        colors{2,1}  = [1 1 0];            % Yellow
-        colors{3,1}  = [1 0 1];            % Fuchsia
-        colors{4,1}  = [1 0 0];            % Red
-        colors{5,1}  = [0.75  0.75  0.75]; % Silver
-        colors{6,1}  = [0.5 0.5 0.5];      % Gray
-        colors{7,1}  = [0.5 0.5 0];        % Olive
-        colors{8,1}  = [0.5 0 0.5];        % Purple
-        colors{9,1}  = [0.5 0 0];          % Maroon
-        colors{10,1} = [0 1 1];            % Aqua
-        colors{11,1} = [0 1 0];            % Lime
-        colors{12,1} = [0 0.5 0.5];        % Teal
-        colors{13,1} = [0 0.5 0];          % Green
-        colors{14,1} = [0 0 1];            % Blue
-        colors{15,1} = [0 0 0.5];          % Navy
-        colors{16,1} = [0 0 0];            % Black
-        % Silver is twice brighter because silver is used for a background color
-        colors{5,1} = [0.875 0.875 0.875];
-        % Choosing and sorting 12 colors for line plot, namely Red, Blue, Green, Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, and Gray
-        selectedcolors = colors([4 13 14 3 11 10 9 7 8 12 15 6]);
-
+%         colors{1,1}  = [1 1 1];            % White
+%         colors{2,1}  = [1 1 0];            % Yellow
+%         colors{3,1}  = [1 0 1];            % Fuchsia
+%         colors{4,1}  = [1 0 0];            % Red
+%         colors{5,1}  = [0.75  0.75  0.75]; % Silver
+%         colors{6,1}  = [0.5 0.5 0.5];      % Gray
+%         colors{7,1}  = [0.5 0.5 0];        % Olive
+%         colors{8,1}  = [0.5 0 0.5];        % Purple
+%         colors{9,1}  = [0.5 0 0];          % Maroon
+%         colors{10,1} = [0 1 1];            % Aqua
+%         colors{11,1} = [0 1 0];            % Lime
+%         colors{12,1} = [0 0.5 0.5];        % Teal
+%         colors{13,1} = [0 0.5 0];          % Green
+%         colors{14,1} = [0 0 1];            % Blue
+%         colors{15,1} = [0 0 0.5];          % Navy
+%         colors{16,1} = [0 0 0];            % Black
+%         % Silver is twice brighter because silver is used for a background color
+%         colors{5,1} = [0.875 0.875 0.875];
+%         % Choosing and sorting 12 colors for line plot, namely Red, Blue, Green, Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, and Gray
+%         selectedcolors = colors([4 13 14 3 11 10 9 7 8 12 15 6]);
+    colors = cell(1,size(COLOR_OPTS,1));
+      for i = 1:size(COLOR_OPTS,1)
+          colors{i} = COLOR_OPTS(i,:);
+      end
     % determine the new dip colors
     for n = 1:length(subj_groupnum)
         dip_color{1,n}=selectedcolors{subj_groupnum(n,1)+1};

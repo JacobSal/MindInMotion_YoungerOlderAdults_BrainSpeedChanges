@@ -1,4 +1,4 @@
-function [ALLEEG,timewarp_struct] = nj_parse_trials(EEG,do_sliding_window,varargin)
+function [ALLEEG,timewarp_struct] = nj_parse_trials(EEG,epoch_method,varargin)
 %NJ_EPOCH_DATA Summary of this function goes here
 %   This is a CUSTOM function
 %   IN: 
@@ -21,15 +21,23 @@ COND_CHAR_FIELD = 'type';
 WINDOW_LENGTH = 6; % sliding window length in seconds
 PERCENT_OVERLAP = 0.0; % percent overlap between epochs
 APPROX_TRIAL_LENGTH = 3*60; % seconds
-%- event timewarp params
-EPOCH_TIME_LIMITS = [-1,3]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
-EVENTS_TIMEWARP = {'RHS','LTO','LHS','RTO','RHS'};
+%- gait timewarp params
+EPOCH_TIME_LIMITS = [-1,3];
+TIMEWARP_EVENTS = {'RHS','LTO','LHS','RTO','RHS'};
 STD_TIMEWARP = 3; %2.5;
 BASELINE_TIMELIMITS = [];
-if do_sliding_window
-    COND_CHARS = {'pre','post'};
-else
-    COND_CHARS = {};
+%- epoching params
+switch epoch_method
+    case 'sliding_window_standing'
+        COND_CHAR_FIELD = 'type';
+        COND_CHARS = {'pre','post'};
+    case 'sliding_window_gait'
+        COND_CHAR_FIELD = 'cond';
+        COND_CHARS = {'B1','B2','B3','P1','P2','SB1','SB2','none'};
+    case 'gait_notimewarp'
+        COND_CHARS = {'B1','B2','B3','P1','P2','SB1','SB2','none'};
+    otherwise
+        error('error. choose a valid EPOCH_METHOD');        
 end
 %- soft defines
 %## TIME
@@ -38,17 +46,17 @@ tic
 p = inputParser;
 %## REQUIRED
 addRequired(p,'EEG',@isstruct);
-addRequired(p,'do_sliding_window',@islogical);
+addRequired(p,'epoch_method',@ischar);
 %## OPTIONAL
 %## PARAMETER
 addParameter(p,'COND_CHARS',COND_CHARS,@iscell);
 addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH,@isnumeric);
 addParameter(p,'PERCENT_OVERLAP',PERCENT_OVERLAP,@isnumeric);
 addParameter(p,'EPOCH_TIME_LIMITS',EPOCH_TIME_LIMITS,@isnumeric);
-addParameter(p,'EVENTS_TIMEWARP',EVENTS_TIMEWARP,@iscell);
+addParameter(p,'TIMEWARP_EVENTS',TIMEWARP_EVENTS,@iscell);
 addParameter(p,'STD_TIMEWARP',STD_TIMEWARP,@isnumeric);
 addParameter(p,'BASELINE_TIMELIMITS',BASELINE_TIMELIMITS,(@(x) isnumeric(x) || isempty(x)));
-parse(p,EEG,do_sliding_window,varargin{:});
+parse(p,EEG,epoch_method,varargin{:});
 %## SET DEFAULTS
 %- PARAMETER
 %* sliding window params
@@ -57,7 +65,7 @@ WINDOW_LENGTH = p.Results.WINDOW_LENGTH;
 COND_CHARS = p.Results.COND_CHARS;
 %* gait params
 EPOCH_TIME_LIMITS = p.Results.EPOCH_TIME_LIMITS;
-EVENTS_TIMEWARP = p.Results.EVENTS_TIMEWARP;
+TIMEWARP_EVENTS = p.Results.TIMEWARP_EVENTS;
 STD_TIMEWARP = p.Results.STD_TIMEWARP;
 BASELINE_TIMELIMITS = p.Results.BASELINE_TIMELIMITS;
 if isempty(BASELINE_TIMELIMITS)
@@ -66,31 +74,64 @@ end
 %% ===================================================================== %%
 %## STEP 2) EPOCHING
 %* empty ALLEEG structure for repopulating
-if do_sliding_window
-    %- (NJ new standing data 07/16/2023) make data continuous first to
-    %avoid eeg_checksset error
-    EEG = eeglab_makecontinuous(EEG);
-    %- (NJ) sliding window
-    ALLEEG = cell(1,length(COND_CHARS)); 
-    timewarp_struct = cell(1,length(COND_CHARS));
-    for i = 1:length(COND_CHARS)
-        fprintf(1,'\n==== %s: Processing trial %s ====\n',EEG.subject,COND_CHARS{i});
-        [TMP_EEG] = sliding_window_epoch(EEG,COND_CHARS{i},WINDOW_LENGTH,PERCENT_OVERLAP,...
-            COND_CHAR_FIELD,APPROX_TRIAL_LENGTH);
-        %- check to make sure a number isn't the first character
-        chk = regexp(COND_CHARS{i},'\d');
-        if any(chk)
-            COND_CHARS{i} = sprintf('x%s',COND_CHARS{i});
+switch epoch_method
+    case {'sliding_window_standing','sliding_window_gait'}
+        %- (NJ new standing data 07/16/2023) make data continuous first to
+        %avoid eeg_checksset error
+        EEG = eeglab_makecontinuous(EEG);
+        %- (NJ) sliding window
+        ALLEEG = cell(1,length(COND_CHARS)); 
+        timewarp_struct = cell(1,length(COND_CHARS));
+        for i = 1:length(COND_CHARS)
+            fprintf(1,'\n==== %s: Processing trial %s ====\n',EEG.subject,COND_CHARS{i});
+            [TMP_EEG] = sliding_window_epoch(EEG,COND_CHARS{i},WINDOW_LENGTH,PERCENT_OVERLAP,...
+                COND_CHAR_FIELD,APPROX_TRIAL_LENGTH);
+            %- check to make sure a number isn't the first character
+            chk = regexp(COND_CHARS{i},'\d');
+            if any(chk)
+                COND_CHARS{i} = sprintf('x%s',COND_CHARS{i});
+            end
+            TMP_EEG.etc.epoch.type = 'sliding_window';
+            TMP_EEG.filename = sprintf('%s_%s_EPOCH_TMPEEG.set',TMP_EEG.subject,COND_CHARS{i});
+            TMP_EEG.etc.epoch.condition = COND_CHARS{i};
+            TMP_EEG.etc.epoch.epoch_limits = WINDOW_LENGTH;
+            TMP_EEG.etc.epoch.perc_overlap = PERCENT_OVERLAP;
+            TMP_EEG.condition = COND_CHARS{i};
+            ALLEEG{i} = TMP_EEG;
+            timewarp_struct{i} = struct([]);
         end
-        TMP_EEG.etc.epoch.type = 'sliding_window';
-        TMP_EEG.filename = sprintf('%s_%s_EPOCH_TMPEEG.set',TMP_EEG.subject,COND_CHARS{i});
-        TMP_EEG.etc.epoch.condition = COND_CHARS{i};
-        TMP_EEG.etc.epoch.epoch_limits = WINDOW_LENGTH;
-        TMP_EEG.etc.epoch.perc_overlap = PERCENT_OVERLAP;
-        TMP_EEG.condition = COND_CHARS{i};
-        ALLEEG{i} = TMP_EEG;
-        timewarp_struct{i} = struct([]);
-    end
+    case 'gait_notimewarp'
+        %- (NJ new standing data 07/16/2023) make data continuous first to
+        %avoid eeg_checksset error
+        EEG = eeglab_makecontinuous(EEG);
+        %- (Noelle J) Gait No Timewarp
+        ALLEEG = cell(1,length(COND_CHARS)); 
+        timewarp_struct = cell(1,length(COND_CHARS));
+        TMP_EEG = pop_epoch( EEG, {  'RHS'  }, EPOCH_TIME_LIMITS, 'newname', sprintf('Merged datasets %s epochs',EEG.subject), 'epochinfo', 'yes'); 
+        TMP_EEG = eeg_checkset(TMP_EEG);
+        TMP_EEG = pop_rmbase(TMP_EEG, BASELINE_TIMELIMITS ,[]); % Remove baseline from an epoched dataset.[-1500 2998] = baseline latency range, is it removing the mean during each gait cycle
+        TMP_EEG = eeg_checkset(TMP_EEG);
+        for i = 1:length(COND_CHARS)
+            fprintf(1,'\n==== %s: Processing trial %s ====\n',TMP_EEG.subject,COND_CHARS{i});
+            %- GAIT TIMEWARP: MIM specific function
+            TMP_TMP_EEG = timewarp_epoch(TMP_EEG,COND_CHARS{i},...
+                TIMEWARP_EVENTS,STD_TIMEWARP);
+            TMP_TMP_EEG.etc.epoch_type = 'gait_timewarp';
+            TMP_TMP_EEG.filename = sprintf('%s_%s_EPOCH_TMPEEG.set',TMP_TMP_EEG.subject,COND_CHARS{i});
+            TMP_TMP_EEG.condition = COND_CHARS{i};
+%             %- check to make sure a number isn't the first character
+%             chk = regexp(COND_CHARS{i},'\d');
+%             if any(chk)
+%                 COND_CHARS{i} = sprintf('x%s',COND_CHARS{i});
+%             end
+            TMP_TMP_EEG.etc.epoch.condition = COND_CHARS{i};
+            TMP_TMP_EEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
+            ALLEEG{i} = TMP_TMP_EEG;
+            timewarp_struct{i} = TMP_TMP_EEG.timewarp;
+        end
+        timewarp_struct = cellfun(@(x) [[]; x], timewarp_struct);
+    otherwise
+        error('error. choose a valide epoch_method...');
 end
 fprintf(1,'\n==== DONE: EPOCHING ====\n');
 %- concatenate ALLEEG
@@ -100,7 +141,7 @@ end
 %## SUBFUNCTION
 function [EEG] = timewarp_epoch(EEG,cond_char,EVENTS_TIMEWARP,STD_TIMEWARP)
 %- seconds to epoch relative to first RHS
-EEG = pop_selectevent(EEG, 'cond',cond_char,'deleteevents','off','deleteepochs','on','invertepochs','off'); 
+EEG = pop_selectevent(EEG, 'cond',cond_char,'deleteevents','off','deleteepochs','on','invertepochs','off');
 %- setup timewarp structure
 timewarp = make_timewarp(EEG,EVENTS_TIMEWARP,'baselineLatency',0, ...
         'maxSTDForAbsolute',STD_TIMEWARP,...

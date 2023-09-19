@@ -41,7 +41,8 @@ addRequired(p,'save_dir',@ischar);
 %## PARAMETER
 addParameter(p,'SPEC_PARAMS',SPEC_PARAMS,@isstruct);
 addParameter(p,'STAT_PARAMS',STAT_PARAMS,@isstruct);
-parse(p,STUDY,ALLEEG,warping_times,des_i,cluster_i,design_char,save_dir,varargin{:});
+parse(p,STUDY,ALLEEG,warping_times,des_i,cluster_i,...
+    design_char,save_dir,varargin{:});
 %## SET DEFAULTS
 %- OPTIONALS
 %- PARAMETER

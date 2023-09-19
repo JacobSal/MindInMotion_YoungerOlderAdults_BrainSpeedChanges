@@ -124,7 +124,7 @@ PATHS.path4EEGlab = [submodules_dir filesep 'eeglab'];
 %- _functions folder
 PATHS.path4functions = [PATHS.path4src filesep '_functions' filesep FUNCTIONS_VERSION];
 a_ftmp = unix_genpath(PATHS.path4functions);
-a_ftmp = split(a_ftmp,';'); a_ftmp = a_ftmp(~cellfun(@isempty,a_ftmp));
+a_ftmp = split(a_ftmp,DELIM); a_ftmp = a_ftmp(~cellfun(@isempty,a_ftmp));
 cellfun(@(x) path(path,x),a_ftmp);
 cellfun(@(x) fprintf('Adding functions in: %s...\n',x),a_ftmp);
 clear a_ftmp

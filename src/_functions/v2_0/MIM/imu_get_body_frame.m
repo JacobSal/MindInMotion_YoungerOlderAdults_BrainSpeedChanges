@@ -33,21 +33,25 @@ if ~which('quaternRotate')
 end
 HPfilter_passBand   = 0.2; %Hi Colton. Ryan here. I decided to with 0.2 Hz instead of 0.25. Let me know how it looks
 LPfilter_passBand   = 20; %Hz
-MIM_R_FOLDER        = ['R:' filesep 'Ferris-Lab' filesep 'share' filesep 'MindInMotion'];
+% MIM_R_FOLDER        = ['R:' filesep 'Ferris-Lab' filesep 'share' filesep 'MindInMotion'];
+% MIM_R_FOLDER = [filesep 'blue' filesep 'jsalminen' filesep 'GitHub' filesep 'par_EEGProcessing',...
+%     filesep 'src' filesep '_data' filesep 'MIM_dataset' filesep '_studies' filesep 'subject_mgmt'];
+% TRIAL_CROPPING_FNAME = 'Trial_Cropping_V2_test.xlsx';
+TRIAL_CROPPING_XLSX = ['R:' filesep 'Ferris-Lab' filesep 'share' filesep 'MindInMotion' filesep 'Trial_Cropping_V2_test.xlsx'];
 %## PARSE
 p = inputParser;
 %## REQUIRED
 addRequired(p,'EEG_IMU',@isstruct);
 addRequired(p,'save_dir',@ischar);
 %## OPTIONAL
-addParameter(p,'MIM_R_FOLDER',MIM_R_FOLDER,@ischar);
+addParameter(p,'TRIAL_CROPPING_XLSX',TRIAL_CROPPING_XLSX,@ischar);
 %## PARAMETER
 parse(p, EEG_IMU, save_dir, varargin{:});
 %## SET DEFAULTS
 %- OPTIONALS
 
 %- PARAMETER
-
+TRIAL_CROPPING_XLSX = p.Results.TRIAL_CROPPING_XLSX;
 %- PERMS
 %% ===================================================================== %%
 %## Cropping parameters from problematic IMU excel
@@ -58,9 +62,17 @@ crop_idxs = cell(1,length(unique({EEG_IMU.event.trialName})));
 for trial_i = 1:length(unique({EEG_IMU.event.trialName}))
     [~,idx_end] = regexp(EEG_IMU.event(trial_i).trialName,sprintf('%s_',EEG_IMU.subject));
     trial_name = EEG_IMU.event(trial_i).trialName; trial_name = trial_name(idx_end+1:end);
-    [ do_crop{trial_i}, crop_idxs{trial_i} ] = mim_check_trials(EEG_IMU.subject,trial_name,fullfile(MIM_R_FOLDER,'Trial_Cropping.xlsx')); %grabbing cropping times if needed
-    if do_crop{trial_i}
-        fprintf('Cropping data for subject %s and trial %s',EEG_IMU.subject,trial_name);
+    num_check = regexp(trial_name,'\d');
+    trial_num = str2double(trial_name(num_check(end)));
+    if trial_num <= 2
+        [ do_crop{trial_i}, crop_idxs{trial_i}, ~, ~ ] = mim_check_trials(EEG_IMU.subject,trial_name,TRIAL_CROPPING_XLSX); %grabbing cropping times if needed
+        if do_crop{trial_i}
+            fprintf('Cropping data for subject %s and trial %s',EEG_IMU.subject,trial_name);
+        end
+    else
+        fprintf('Trial number is %i, not performing cropping for %s...\n',trial_num,trial_name);
+        do_crop{trial_i} = false;
+        crop_idxs{trial_i} = [];
     end
 end
 toc
@@ -112,17 +124,20 @@ world_frame_pos = ( cumtrapz((world_frame_vel))*(1/EEG_IMU.srate) ); %m
 world_frame_pos = FilterIMUfunction(world_frame_pos,HPfilter_passBand,LPfilter_passBand, EEG_IMU.srate);
 
 %% PLOTS
+%-
+% trial_name = EEG_IMU.event(TRIAL_IND).trialName;
+TRIAL_CHAR_TO_TEST = 'low'; % flat, low, med, high, 0p25, 0p5, 0p75, 1p0
+SAMPLES_TO_PLOT = 500;
 %- prep
-ind_1 = randi(length(EEG_IMU.times)-1001);
-ind_2 = ind_1+1000;
+inds = cellfun(@(x) contains(x,TRIAL_CHAR_TO_TEST),{EEG_IMU.event.trialName});
+[~,TRIAL_IND] = find(inds,1,'first');
+trial_idxs = [EEG_IMU.event(TRIAL_IND).latency, EEG_IMU.event(TRIAL_IND+1).latency];
+ind_1 = trial_idxs(1)+500;
+ind_2 = trial_idxs(1)+SAMPLES_TO_PLOT+500;
 time = EEG_IMU.times(ind_1:ind_2)/1000;
-idx_1 = find([EEG_IMU.event.latency] <= ind_1,1,'last');
-idx_2 = find([EEG_IMU.event.latency] >= ind_2,1,'first');
-if strcmp(EEG_IMU.event(idx_1).trialName,EEG_IMU.event(idx_2).trialName)
-    trial_name = EEG_IMU.event(idx_1).trialName;
-else
-    trial_name = 'UNKNOWN TRIAL';
-end
+% idx_1 = find([EEG_IMU.event.latency] <= ind_1,1,'last');
+% idx_2 = find([EEG_IMU.event.latency] >= ind_2,1,'first');
+trial_name = EEG_IMU.event(TRIAL_IND).trialName;
 % plot 1
 gyrX = sensor_frame_gyro(ind_1:ind_2,1);
 gyrY = sensor_frame_gyro(ind_1:ind_2,2);
@@ -187,7 +202,7 @@ ax(2) = subplot(2,1,2);
     hold on;
     plot(time, w_posX, 'r');
     plot(time, w_posY, 'g');
-    plot(time, w_posZ, 'b');s
+    plot(time, w_posZ, 'b');
     title('Position Estimate');
     xlabel('Time (s)');
     ylabel('Position (m)');
@@ -228,8 +243,8 @@ for trial_i = 1:length(unique({EEG_IMU.event.trialName}))
     figure('Name',sprintf('Subject-%s_Trial-%s',EEG_IMU.subject,EEG_IMU.event(cnt).trialName));
     hold on;
     if do_crop{trial_i}
-        ExactCropLatency = round(EEG.srate*crop_idxs{trial_i}+1);
-        nPairsTemp = size(ExactCrop);
+        ExactCropLatency = round(EEG_IMU.srate*crop_idxs{trial_i}+1);
+        nPairsTemp = size(crop_idxs{trial_i});
         nPairsReal = nPairsTemp(1); %roundabout way but length does work for 2x2 matrix as well
         for pair_i = 1:1:nPairsReal
             UsefulCropLatencies = ExactCropLatency(pair_i,1):ExactCropLatency(pair_i,2);
@@ -248,18 +263,30 @@ for trial_i = 1:length(unique({EEG_IMU.event.trialName}))
     saveas(fig_i,[save_dir filesep sprintf('stateSpaceValid_%s.jpg',EEG_IMU.event(cnt).trialName)]);
     cnt = cnt + 2;
 end
-
+close all;
+%% IMU 6DOF MOVIE (takes a lot of time to render)
+TRIAL_CHAR_TO_TEST = 'low'; % flat, low, med, high, 0p25, 0p5, 0p75, 1p0
+% SAMPLES_TO_PLOT = 500;
+%- prep
+inds = cellfun(@(x) contains(x,TRIAL_CHAR_TO_TEST),{EEG_IMU.event.trialName});
+[~,TRIAL_IND] = find(inds,1,'first');
+trial_idxs = [EEG_IMU.event(TRIAL_IND).latency, EEG_IMU.event(TRIAL_IND+1).latency];
+trial_idxs = [trial_idxs(1)+500,trial_idxs(1)+SAMPLES_TO_PLOT+500];
+trial_name = EEG_IMU.event(TRIAL_IND).trialName;
+pos_in = pos_est_VAF(trial_idxs(1):trial_idxs(2),:);
+rot_in = quatern2rotMat(quaternConj(sensor_frame_ori(trial_idxs(1):trial_idxs(2),:)));
+disp_imu_movie(pos_in,rot_in,[save_dir filesep sprintf('6DOF_movie_%s',trial_name)]);
 %% make new EEG set with A/P M/L vert positions
 NEW_EEG_IMU = EEG_IMU;
 NEW_EEG_IMU.data = world_frame_pos';
 NEW_EEG_IMU.pnts = size(NEW_EEG_IMU.data,2);
-
+NEW_EEG_IMU.etc.sensor_frame_ori = sensor_frame_ori;
 %no fancy pca. use estimate of average Front, Left, Up frame 
 NEW_EEG_IMU.data(1:3,:) = pos_est_VAF';
 NEW_EEG_IMU.data(4:6,:) = vel_est_VAF';
 NEW_EEG_IMU.data(7:9,:) = acc_est_VAF';
-NEW_EEG_IMU.data(10:12,:) = nan([3, size(sensor_frame_ori,1)]); %fill with nan for now because I don't know what this would be. We probably don't need it anyway
-
+NEW_EEG_IMU.data(10:13,:) = (sensor_frame_ori)'; %nan([3, size(sensor_frame_ori,1)]); %fill with nan for now because I don't know what this would be. We probably don't need it anyway
+% quatern2rotMat(sensor_frame_ori)';
 NEW_EEG_IMU.chanlocs(1).labels  = 'xPos';
 NEW_EEG_IMU.chanlocs(2).labels  = 'yPos';
 NEW_EEG_IMU.chanlocs(3).labels  = 'zPos';
@@ -269,9 +296,10 @@ NEW_EEG_IMU.chanlocs(6).labels  = 'zVel';
 NEW_EEG_IMU.chanlocs(7).labels  = 'xAcc';
 NEW_EEG_IMU.chanlocs(8).labels  = 'yAcc';
 NEW_EEG_IMU.chanlocs(9).labels  = 'zAcc';
-NEW_EEG_IMU.chanlocs(10).labels = 'xRot';
-NEW_EEG_IMU.chanlocs(11).labels = 'yRot';
-NEW_EEG_IMU.chanlocs(12).labels = 'zRot';
+NEW_EEG_IMU.chanlocs(10).labels = 'q1';
+NEW_EEG_IMU.chanlocs(11).labels = 'qi';
+NEW_EEG_IMU.chanlocs(12).labels = 'qj';
+NEW_EEG_IMU.chanlocs(12).labels = 'qk';
 %##
 toc
 end

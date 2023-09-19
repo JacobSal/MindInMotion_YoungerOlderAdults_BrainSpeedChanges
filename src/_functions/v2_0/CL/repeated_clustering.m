@@ -65,3 +65,4 @@ fprintf('Clustering %d times...\n', n_iterations)
     clustering_solutions.parameters.outlier_sigma = outlier_sigma;
     clustering_solutions.parameters.n_clust = n_clust;
     clustering_solutions.parameters.n_iterations = n_iterations;
+end

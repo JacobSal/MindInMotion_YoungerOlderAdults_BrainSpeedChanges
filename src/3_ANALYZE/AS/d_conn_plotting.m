@@ -88,7 +88,8 @@ EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 %- datetime override
 % dt = '05252023_bounces_1h2h2bm_JS';
 % dt = '06122023_bounces_1h2h2bm_JS';
-dt = '06152023_bounces_1h2h2bm_JS';
+% dt = '06152023_bounces_1h2h2bm_JS';
+dt = '07272023_bounces_1h_2h_2bm_JS';
 %- connectiviy specific
 CONN_METHODS = {'dDTF','GGC','dDTF08'}; % AS (06/22/2023)
 CONN_MEAS_ANLYZ = 'dDTF08';
@@ -206,25 +207,6 @@ for subj_i = 1:length(ALLEEG)
     end
 end
 
-%% MAKE CONDITIONS SUBJ STACKS
-% if ~exist([save_dir filesep 'groupsift'],'dir')
-%     mkdir([save_dir filesep 'groupsift'])
-% end
-% parfor subj_i = 1:length(ALLEEG)
-%     EEG = ALLEEG(subj_i);
-%     [EEG,stats_bootstrap,cond_bootstrap,stats_nonzero] = as_cnct_stat_test(EEG);
-%     for cond_i = 1:length(EEG)
-%         EEG{cond_i}.CAT.PConn = [];
-%         pop_saveset(EEG(cond_i),'filename',EEG(cond_i).filename,'filepath',[save_dir filesep 'groupsift']);
-%     end
-% end
-% tmp_struct = struct('dims',{'from_clusters','to_clusters','conditions','frequencies'},...
-%     'conditions',{conn_conds},...
-%     'cluster_nums',CLUSTER_ITERS,...
-%     'cluster_names',{CLUSTER_ASSIGNMENTS},...
-%     'frequency_bands',uniq_freqs,...
-%     'connectivity_mat',mat_out_nan);
-% par_save(tmp_struct,save_dir,'all_subj_connectivity.mat');
 %% CONNECTIVITY MATRICIES BASELINED
 BASELINE_INT = 2;
 for freq_i = 1:size(uniq_freqs,1)
@@ -464,6 +446,10 @@ for freq_i = 1:length(FREQ_BANDS)
         baseline = squeeze(conn_store(:,:,freq_i,:,BASELINE_INT));
         FREQS_SUBPATH = sprintf('%i-%i',...
                     FREQ_BANDS{freq_i}(1),FREQ_BANDS{freq_i}(end));
+        save_sub_figs = [save_dir filesep 'box3d_plots' filesep FREQS_SUBPATH];
+        if ~exist(save_sub_figs,'dir')
+            mkdir(save_sub_figs);
+        end
         tmp_in = squeeze(conn_store(:,:,freq_i,:,cond_i));
         %- (1) baseline to average
         tmp_in = tmp_in - nanmean(baseline,3);
@@ -472,7 +458,7 @@ for freq_i = 1:length(FREQ_BANDS)
 %         for subj_i = 1:size(tmp_in,3)
 %             tmp_in(:,:,subj_i) = tmp_in(:,:,subj_i) - baseline(:,:,subj_i);
 %         end
-        tmp_in = reshape(tmp_in,[size(tmp_in,3),size(tmp_in,1),size(tmp_in,2)]);
+%         tmp_in = reshape(tmp_in,[size(tmp_in,3),size(tmp_in,1),size(tmp_in,2)]);
         
         %- delete unused clusters
         tmp_in = tmp_in(:,CLUSTER_ITERS,:);
@@ -482,7 +468,7 @@ for freq_i = 1:length(FREQ_BANDS)
         %- plot edits
         fig_i = get(groot,'CurrentFigure');
         tmp = strsplit(conn_conds{cond_i},'_');
-        tmp = strsplit(tmp{2},'.');
+        tmp = strsplit(strjoin(tmp(2:end),' '),'.');
         title(sprintf('(%s) condition %s',FREQS_SUBPATH,tmp{1}));
         fig_i.Children(2).YTick = [1:length(CLUSTER_ASSIGNMENTS)];
         fig_i.Children(2).YTickLabel = CLUSTER_ASSIGNMENTS;
@@ -490,6 +476,8 @@ for freq_i = 1:length(FREQ_BANDS)
         fig_i.Children(2).XTick = [1:length(CLUSTER_ASSIGNMENTS)];
         fig_i.Children(2).XTickLabel = CLUSTER_ASSIGNMENTS;
         fig_i.Children(2).XTickLabelRotation = 45;
+%         saveas(fig_i,[save_sub_figs filesep sprintf('nonzero_3dbox_%i.fig',cond_i)]);
+        saveas(fig_i,[save_sub_figs filesep sprintf('nonzero_3dbox_%i.jpg',cond_i)]);
     end
 end
 %% CONNECTIVITY MATRICIES

@@ -1,4 +1,4 @@
-function [ALLEEG,timewarp_struct] = as_parse_trials(EEG,epoch_limits,varargin)
+function [ALLEEG,timewarp_struct] = as_parse_trials(EEG,varargin)
 %MIM_PARSE_TRIALS Summary of this function goes here
 %   This is a CUSTOM function
 %   IN: 
@@ -18,131 +18,254 @@ function [ALLEEG,timewarp_struct] = as_parse_trials(EEG,epoch_limits,varargin)
 tic
 %## PARAMS
 %- (ADMIN PARAMS)
-
-%- event timewarp params
-% BASELINE_LATENCY_MS = 100;
-% COND_FIELD2PARSE = 'bounces';
-CONDLABEL_CHARS = {'competitive','cooperative','moving_serve','stationary_serve'};
-BOUNCES_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; % {'Serve_Human'}
-TYPE_CHARS = {'Subject_hit'}; %{'Subject_receive'};
+EPOCH_METHOD = 'sliding_window';
+STRUCT_FIELD_COND = 'bounces';
+STRUCT_FIELD_EVENT = 'cond';
+EVENT_CHARS = {};
+EVENTS_TIMEWARP = {};
+COND_CHARS = {};
+REGEXP_COND = '\s';
 STD_TIMEWARP = 3;
-BOUNCES_EVENTS_TIMEWARP = {'Subject_hit','Subject_receive','Subject_hit'}; %{'Subject_receive','Subject_hit','Subject_receive'};
-%- sliding window params
-DO_SLIDING_WINDOW = false;
-REGEXP_BOUNCES = {'Human','BM'};
-EVENT_FIELD_CONDITION = 'bounces';
 APPROX_TRIAL_LENGTH = 3*60; % seconds
 PERCENT_OVERLAP = 0;
-WINDOW_LENGTH = 5;
+WINDOW_LENGTH = 0;
+EPOCH_LENGTH_TIMELIM = [0,1];
+%-
+EPOCH_PARAMS = [];
+EPOCH_PARAMS.epoch_method = EPOCH_METHOD;
+EPOCH_PARAMS.event_chars = EVENT_CHARS;
+EPOCH_PARAMS.events_timewarp = EVENTS_TIMEWARP;
+EPOCH_PARAMS.cond_chars = COND_CHARS;
+EPOCH_PARAMS.std_timewarp = STD_TIMEWARP;
+EPOCH_PARAMS.struct_field_cond = STRUCT_FIELD_COND;
+EPOCH_PARAMS.struct_field_event = STRUCT_FIELD_EVENT;
+EPOCH_PARAMS.percent_overlap = PERCENT_OVERLAP;
+EPOCH_PARAMS.window_length = WINDOW_LENGTH;
+EPOCH_PARAMS.regexp_slidingwindow = REGEXP_COND;
+EPOCH_PARAMS.approx_trial_length = APPROX_TRIAL_LENGTH;
+EPOCH_PARAMS.epoch_length_timelim = EPOCH_LENGTH_TIMELIM;
+%- event timewarp params
+% TIMEWARP_PARAMS = {'epoch_method','timewarp',...
+%     'event_chars',{},...
+%     'events_timewarp',{},...
+%     'cond_chars',{},...
+%     'std_timewarp',3,...
+%     'struct_field_cond',STRUCT_FIELD_COND,...
+%     'struct_field_event',STRUCT_FIELD_EVENT};
+% %- event-locked params
+% EVENTLOCK_PARAMS = {'epoch_method','event_locked',...
+%     'event_chars',{},...
+%     'events_timewarp',{},...
+%     'cond_chars',{},...
+%     'std_timewarp',3,...
+%     'struct_field_cond',STRUCT_FIELD_COND,...
+%     'struct_field_event',STRUCT_FIELD_EVENT};
+% %- sliding window params
+% SLIDING_WINDOW_STRUCT = {'epoch_method','sliding_window',...
+%     'regexp_bounces',{'Human','BM'},...
+%     'percent_overlap',0,...
+%     'window_length',5};
 %## TIME
 tic
 %## INITIATE PARSER
 p = inputParser;
 %## REQUIRED
 addRequired(p,'EEG',@isstruct);
-addRequired(p,'epoch_limits',@isnumeric);
 %## OPTIONAL
 %## PARAMETER
-addParameter(p,'PERCENT_OVERLAP',PERCENT_OVERLAP,@ischar);
-addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH,@ischar);
-addParameter(p,'EVENTS_TIMEWARP',BOUNCES_EVENTS_TIMEWARP,@iscell);
-parse(p,EEG,epoch_limits,varargin{:});
+addParameter(p,'epoch_params',EPOCH_PARAMS,@isstruct);
+% addParameter(p,'epoch_method',EPOCH_METHOD,@ischar);
+% addParameter(p,'event_chars',EVENT_CHARS,@iscell);
+% addParameter(p,'events_timewarp',EVENTS_TIMEWARP,@iscell);
+% addParameter(p,'cond_chars',COND_CHARS,@iscell);
+% addParameter(p,'std_timewarp',STD_TIMEWARP,@isnumeric);
+% addParameter(p,'struct_field_cond',STRUCT_FIELD_COND,@ischar);
+% addParameter(p,'struct_field_event',STRUCT_FIELD_EVENT,@ischar);
+% addParameter(p,'percent_overlap',PERCENT_OVERLAP,@isnumeric);
+% addParameter(p,'window_length',WINDOW_LENGTH,@isnumeric);
+% addParameter(p,'regexp_slidingwindow',REGEXP_COND,@ischar);
+% addParameter(p,'approx_trial_length',APPROX_TRIAL_LENGTH,@isnumeric);
+% addParameter(p,'epoch_length_timelim',EPOCH_LENGTH_TIMELIM,@isnumeric);
+parse(p,EEG,varargin{:});
 %## SET DEFAULTS
 %- OPTIONALS
 %- PARAMETER
-PERCENT_OVERLAP = p.Results.PERCENT_OVERLAP;
-WINDOW_LENGTH = p.Results.WINDOW_LENGTH;
-EVENTS_TIMEWARP = p.Results.EVENTS_TIMEWARP;
+epoch_params = p.Results.epoch_params;
+% event_chars = p.Results.event_chars;
+% events_timewarp = p.Results.events_timewarp;
+% cond_chars = p.Results.cond_chars;
+% std_timewarp = p.Results.std_timewarp;
+% struct_field_cond = p.Results.struct_field_cond;
+% struct_field_event = p.Results.struct_field_event;
+% percent_overlap = p.Results.percent_overlap;
+% window_length = p.Results.window_length;
+% regexp_slidingwindow = p.Results.regexp_slidingwindow;
+% approx_trial_length = p.Results.approx_trial_length;
+% epoch_length_timelim = p.Results.epoch_length_timelim;
+EPOCH_PARAMS_FIELDS = {'epoch_method','event_chars','events_timewarp',...
+    'cond_chars','std_timewarp','struct_field_cond','struct_field_event',...
+    'percent_overlap','window_length','regexp_slidingwindow','approx_trial_length',...
+    'epoch_length_timelim'};
+for f_i = 1:length(EPOCH_PARAMS_FIELDS)
+    if ~isfield(epoch_params,EPOCH_PARAMS_FIELDS{f_i})
+        epoch_params.(EPOCH_PARAMS_FIELDS{f_i}) = EPOCH_PARAMS.(EPOCH_PARAMS_FIELDS{f_i});
+    end
+end
+epoch_method = epoch_params.epoch_method;
+event_chars = epoch_params.event_chars;
+events_timewarp = epoch_params.events_timewarp;
+cond_chars = epoch_params.cond_chars;
+std_timewarp = epoch_params.std_timewarp;
+struct_field_cond = epoch_params.struct_field_cond;
+struct_field_event = epoch_params.struct_field_event;
+percent_overlap = epoch_params.percent_overlap;
+window_length = epoch_params.window_length;
+regexp_slidingwindow = epoch_params.regexp_slidingwindow;
+approx_trial_length = epoch_params.approx_trial_length;
+epoch_length_timelim = epoch_params.epoch_length_timelim;
 %% ===================================================================== %%
 %- empty ALLEEG structure for repopulating
-if DO_SLIDING_WINDOW
-    %## SLIDING WINDOW CODE
-    ALLEEG = cell(1,length(REGEXP_BOUNCES)); 
-    timewarp_struct = cell(1,length(REGEXP_BOUNCES));
-    cnt = 1;
-    %- NOTE: (03/29/2023) JS, may still be buggy for amanda's data
-    %will need to make changes to this function to adapt to
-    %amanda's event data.
-    for i = 1:length(REGEXP_BOUNCES)
-        [TMP_EEG] = sliding_window_epoch(EEG,REGEXP_BOUNCES{i},WINDOW_LENGTH,...
-            PERCENT_OVERLAP,EVENT_FIELD_CONDITION,APPROX_TRIAL_LENGTH);
-        TMP_EEG.etc.epoch.type='sliding-window';
-%         TMP_EEG.condition = REGEXP_BOUNCES;
-        %## STORE IN ALLEEG
-        ALLEEG{cnt} = TMP_EEG;
-        timewarp_struct{cnt} = struct([]);
-    end
-else
-    %## EVENT TIMEWARPING CODE
-    ALLEEG = cell(length(TYPE_CHARS)*length(BOUNCES_CHARS),1); 
-    timewarp_struct = cell(1,length(TYPE_CHARS)*length(BOUNCES_CHARS));
-    cnt = 1;
-    for j = 1:length(TYPE_CHARS)
-        %{
-        %## Extract Epochs & Remove Baseline
-        %## Amanda's data already epoched so this code chunk is not needed 
-        TMP_EEG = pop_epoch(EEG,TYPE_CHARS(j),epoch_limits,...
-            'newname',sprintf('Merged datasets %s epochs',EEG.subject),'epochinfo', 'yes');
-        TMP_EEG = eeg_checkset(TMP_EEG);
-        %- Remove baseline 150ms before receive or hit
-        TMP_EEG = pop_rmbase(TMP_EEG,[epoch_limits(1)*1000 epoch_limits(2)*1000-epoch_limits(2)*1000-BASELINE_LATENCY_MS] ,[]);
-        TMP_EEG = eeg_checkset(TMP_EEG);
-        %}
-        %{
-        for i = 1:length(CONDLABEL_CHARS)
-            fprintf(1,'\n==== Processing ''%s'' ====\n',CONDLABEL_CHARS{i});
-            %## select condition events
-            TMP_TMP_EEG = pop_selectevent(EEG,'condlabel',CONDLABEL_CHARS{i},...
-                'deleteevents','off','deleteepochs','on','invertepochs','off'); 
-            %## Timewarp condition events
-            [TMP_TMP_EEG] = as_timewarp_epoch(TMP_TMP_EEG,...
-                EVENTS_TIMEWARP,STD_TIMEWARP);
-            %## set parameters
-            TMP_TMP_EEG.etc.epoch_type = sprintf('timewarp-%s',TYPE_CHARS{j});
-            TMP_TMP_EEG.condition = [CONDLABEL_CHARS{i} '_' TYPE_CHARS{j}];
-            TMP_TMP_EEG.filename = sprintf('%s_%s_%s_EPOCH_TMPEEG.set',TMP_TMP_EEG.subject,CONDLABEL_CHARS{i},TYPE_CHARS{j});
+switch epoch_method
+    case 'sliding_window'
+        %## SLIDING WINDOW CODE
+        ALLEEG = cell(1,length(regexp_slidingwindow)); 
+        timewarp_struct = cell(1,length(regexp_slidingwindow));
+        cnt = 1;
+        %- NOTE: (03/29/2023) JS, may still be buggy for amanda's data
+        %will need to make changes to this function to adapt to
+        %amanda's event data.
+        for i = 1:length(regexp_slidingwindow)
+            [TMP_EEG] = sliding_window_epoch(EEG,regexp_slidingwindow{i},window_length,...
+                percent_overlap,struct_field_cond,approx_trial_length);
+            TMP_EEG.etc.epoch.type='sliding-window';
+    %         TMP_EEG.condition = REGEXP_BOUNCES;
             %## STORE IN ALLEEG
-            ALLEEG{cnt} = TMP_TMP_EEG;
-            timewarp_struct{cnt} = TMP_TMP_EEG.timewarp;
-            cnt=cnt+1;
+            ALLEEG{cnt} = TMP_EEG;
+            timewarp_struct{cnt} = struct([]);
         end
-        %}
-        for i = 1:length(BOUNCES_CHARS)
-            fprintf(1,'\n==== Processing ''%s'' ====\n',BOUNCES_CHARS{i});
-            %## Select Bounce Events
-            TMP_TMP_EEG = pop_selectevent(EEG,'bounces',BOUNCES_CHARS{i},...
-                'deleteevents','off','deleteepochs','on','invertepochs','off');
-            %- Remove baseline 150ms before receive or hit?
-%             TMP_TMP_EEG = pop_rmbase(TMP_TMP_EEG,[epoch_limits(1)*1000 epoch_limits(1)+500+150] ,[]);
-%             TMP_TMP_EEG = eeg_checkset(TMP_TMP_EEG);
-            %## Timewarp Bounce events
-            [TMP_TMP_EEG] = timewarp_epoch(TMP_TMP_EEG,...
-                EVENTS_TIMEWARP,STD_TIMEWARP);
-            %## set parameters
-            TMP_TMP_EEG.etc.epoch_type = sprintf('timewarp-%s',TYPE_CHARS{j});
-            TMP_TMP_EEG.etc.epoch.condition = [BOUNCES_CHARS{i} '_' TYPE_CHARS{j}];
-%             TMP_TMP_EEG.etc.epoch.epoch_limits = ;
-            TMP_TMP_EEG.filename = sprintf('%s_%s_%s_EPOCH_TMPEEG.set',TMP_TMP_EEG.subject,BOUNCES_CHARS{i},TYPE_CHARS{j});
-            TMP_TMP_EEG.condition = [BOUNCES_CHARS{i} '_' TYPE_CHARS{j}];
-            %## STORE IN ALLEEG
-            ALLEEG{cnt} = TMP_TMP_EEG;
-            timewarp_struct{cnt} = TMP_TMP_EEG.timewarp;
-            cnt=cnt+1;
+    case 'timewarp'
+        %## EVENT TIMEWARPING CODE
+        ALLEEG = cell(length(event_chars)*length(cond_chars),1); 
+        timewarp_struct = cell(1,length(event_chars)*length(cond_chars));
+        cnt = 1;
+        for j = 1:length(event_chars)
+            %{
+            %## Extract Epochs & Remove Baseline
+            %## Amanda's data already epoched so this code chunk is not needed 
+            TMP_EEG = pop_epoch(EEG,event_chars(j),epoch_limits,...
+                'newname',sprintf('Merged datasets %s epochs',EEG.subject),'epochinfo', 'yes');
+            TMP_EEG = eeg_checkset(TMP_EEG);
+            %- Remove baseline 150ms before receive or hit
+            TMP_EEG = pop_rmbase(TMP_EEG,[epoch_limits(1)*1000 epoch_limits(2)*1000-epoch_limits(2)*1000-BASELINE_LATENCY_MS] ,[]);
+            TMP_EEG = eeg_checkset(TMP_EEG);
+            %}
+            %{
+            for i = 1:length(CONDLABEL_CHARS)
+                fprintf(1,'\n==== Processing ''%s'' ====\n',CONDLABEL_CHARS{i});
+                %## select condition events
+                TMP_TMP_EEG = pop_selectevent(EEG,'condlabel',CONDLABEL_CHARS{i},...
+                    'deleteevents','off','deleteepochs','on','invertepochs','off'); 
+                %## Timewarp condition events
+                [TMP_TMP_EEG] = as_timewarp_epoch(TMP_TMP_EEG,...
+                    EVENTS_TIMEWARP,STD_TIMEWARP);
+                %## set parameters
+                TMP_TMP_EEG.etc.epoch_type = sprintf('timewarp-%s',event_chars{j});
+                TMP_TMP_EEG.condition = [CONDLABEL_CHARS{i} '_' event_chars{j}];
+                TMP_TMP_EEG.filename = sprintf('%s_%s_%s_EPOCH_TMPEEG.set',TMP_TMP_EEG.subject,CONDLABEL_CHARS{i},event_chars{j});
+                %## STORE IN ALLEEG
+                ALLEEG{cnt} = TMP_TMP_EEG;
+                timewarp_struct{cnt} = TMP_TMP_EEG.timewarp;
+                cnt=cnt+1;
+            end
+            %}
+            for i = 1:length(cond_chars)
+                fprintf(1,'\n==== Processing ''%s'' ====\n',cond_chars{i});
+                %## Select Bounce Events
+                TMP_TMP_EEG = pop_selectevent(EEG,'bounces',cond_chars{i},...
+                    'deleteevents','off','deleteepochs','on','invertepochs','off');
+                %- Remove baseline 150ms before receive or hit?
+    %             TMP_TMP_EEG = pop_rmbase(TMP_TMP_EEG,[epoch_limits(1)*1000 epoch_limits(1)+500+150] ,[]);
+    %             TMP_TMP_EEG = eeg_checkset(TMP_TMP_EEG);
+                %## Timewarp Bounce events
+                [TMP_TMP_EEG] = timewarp_epoch(TMP_TMP_EEG,...
+                    events_timewarp,std_timewarp);
+                %## set parameters
+                TMP_TMP_EEG.etc.epoch_type = sprintf('timewarp-%s',event_chars{j});
+                TMP_TMP_EEG.etc.epoch.condition = [cond_chars{i} '_' event_chars{j}];
+    %             TMP_TMP_EEG.etc.epoch.epoch_limits = ;
+                TMP_TMP_EEG.filename = sprintf('%s_%s_%s_EPOCH_TMPEEG.set',TMP_TMP_EEG.subject,cond_chars{i},event_chars{j});
+                TMP_TMP_EEG.condition = [cond_chars{i} '_' event_chars{j}];
+                %## STORE IN ALLEEG
+                ALLEEG{cnt} = TMP_TMP_EEG;
+                timewarp_struct{cnt} = TMP_TMP_EEG.timewarp;
+                cnt=cnt+1;
+            end
         end
-    end
+    case 'event_locked'
+        %## EVENT TIMEWARPING CODE
+        ALLEEG = cell(length(event_chars)*length(cond_chars),1); 
+        timewarp_struct = cell(1,length(event_chars)*length(cond_chars));
+        cnt = 1;
+        for j = 1:length(event_chars)
+            %## Extract Epochs & Remove Baseline
+            %## Amanda's data already epoched so this code chunk is not needed 
+            TMP_EEG = pop_epoch(EEG,event_chars(j),epoch_length_timelim,...
+                'newname',sprintf('Merged datasets %s epochs',EEG.subject),'epochinfo', 'yes');
+            TMP_EEG = eeg_checkset(TMP_EEG);
+            %- Remove baseline 150ms before receive or hit
+%             TMP_EEG = pop_rmbase(TMP_EEG,[epoch_length_timelim(1)*1000 epoch_length_timelim(2)*1000-epoch_length_timelim(2)*1000-BASELINE_LATENCY_MS] ,[]);
+%             TMP_EEG = eeg_checkset(TMP_EEG);
+            %{
+            for i = 1:length(CONDLABEL_CHARS)
+                fprintf(1,'\n==== Processing ''%s'' ====\n',CONDLABEL_CHARS{i});
+                %## select condition events
+                TMP_TMP_EEG = pop_selectevent(EEG,'condlabel',CONDLABEL_CHARS{i},...
+                    'deleteevents','off','deleteepochs','on','invertepochs','off'); 
+                %## Timewarp condition events
+                [TMP_TMP_EEG] = as_timewarp_epoch(TMP_TMP_EEG,...
+                    events_timewarp,STD_TIMEWARP);
+                %## set parameters
+                TMP_TMP_EEG.etc.epoch_type = sprintf('timewarp-%s',event_chars{j});
+                TMP_TMP_EEG.condition = [CONDLABEL_CHARS{i} '_' event_chars{j}];
+                TMP_TMP_EEG.filename = sprintf('%s_%s_%s_EPOCH_TMPEEG.set',TMP_TMP_EEG.subject,CONDLABEL_CHARS{i},event_chars{j});
+                %## STORE IN ALLEEG
+                ALLEEG{cnt} = TMP_TMP_EEG;
+                timewarp_struct{cnt} = TMP_TMP_EEG.timewarp;
+                cnt=cnt+1;
+            end
+            %}
+            for i = 1:length(cond_chars)
+                fprintf(1,'\n==== Processing ''%s'' ====\n',cond_chars{i});
+                %## Select Bounce Events
+                TMP_TMP_EEG = pop_selectevent(TMP_EEG,struct_field_cond,cond_chars{i},...
+                    'deleteevents','off','deleteepochs','on','invertepochs','off');
+                %## set parameters
+                TMP_TMP_EEG.etc.epoch_type = sprintf('timewarp-%s',event_chars{j});
+                TMP_TMP_EEG.etc.epoch.condition = [cond_chars{i} '_' event_chars{j}];
+    %             TMP_TMP_EEG.etc.epoch.epoch_length_timelim = ;
+                TMP_TMP_EEG.filename = sprintf('%s_%s_%s_EPOCH_TMPEEG.set',TMP_TMP_EEG.subject,cond_chars{i},event_chars{j});
+                TMP_TMP_EEG.condition = [cond_chars{i} '_' event_chars{j}];
+                %## STORE IN ALLEEG
+                ALLEEG{cnt} = TMP_TMP_EEG;
+                timewarp_struct{cnt} = struct([]);
+                cnt=cnt+1;
+            end
+        end
 end
 fprintf(1,'\n==== DONE: EPOCHING ====\n');
 %- concatenate ALLEEG
 ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
-timewarp_struct = cellfun(@(x) [[]; x], timewarp_struct);
+if ~isempty(timewarp_struct{1})
+    timewarp_struct = cellfun(@(x) [[], x], timewarp_struct);
+end
 %##
 toc
 end
 %% ===================================================================== %%
 %## SUBFUNCTION
-function [EEG] = timewarp_epoch(EEG,EVENTS_TIMEWARP,STD_TIMEWARP)
+function [EEG] = timewarp_epoch(EEG,events_timewarp,STD_TIMEWARP)
 %- setup timewarp structure
-timewarp = make_timewarp(EEG,EVENTS_TIMEWARP,'baselineLatency',0, ...
+timewarp = make_timewarp(EEG,events_timewarp,'baselineLatency',0, ...
         'maxSTDForAbsolute',STD_TIMEWARP,...
         'maxSTDForRelative',STD_TIMEWARP);
 %subject specific warpto (later use to help calc grand avg warpto across subjects)

@@ -181,7 +181,8 @@ end
 %## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
 fss = cell(1,length(ALLEEG));
 for subj_i = 1:length(ALLEEG)
-    fss{subj_i} = fields(ALLEEG{subj_i});
+    fss{subj_i} = fields(ALLEEG{subj_i})';
+    disp(size(fields(ALLEEG{subj_i})'));
 end
 fss = unique([fss{:}]);
 fsPrev = fss;
@@ -189,16 +190,17 @@ for subj_i = 1:length(ALLEEG)
     EEG = ALLEEG{subj_i};
     fs = fields(EEG);
     % delete fields not present in other structs.
-    out = cellfun(@(x) any(strcmp(x,fsPrev)),fs,'UniformOutput',false); 
+    out = cellfun(@(x) any(strcmp(x,fs)),fsPrev,'UniformOutput',false); 
     out = [out{:}];
-    addFs = fs(~out);
+    addFs = fsPrev(~out);
     if any(~out)
         for j = 1:length(addFs)
             EEG.(addFs{j}) = [];
             fprintf('%s) Adding fields %s\n',EEG.subject,addFs{j})
         end
     end 
-    ALLEEG{subj_i} = EEG;
+%     ALLEEG{subj_i} = EEG;
+    ALLEEG{subj_i} = orderfields(EEG);
 end
 %- CONCATENATE ALLEEG
 ALLEEG = cellfun(@(x) [[]; x], ALLEEG);

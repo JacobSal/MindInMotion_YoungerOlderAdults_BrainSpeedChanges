@@ -71,7 +71,7 @@ end
 %     val = GetSize(SAVEVAR);
 s = whos('SAVEVAR');
 fprintf(1,'%s is %0.2g bytes\n',fName,s.bytes);
-fprintf('\nSaving %s to\n%s\n',fName,savePath);
+% fprintf('\nSaving %s to\n%s\n',fName,savePath);
 if s.bytes >= 2e9
     fprintf('\nSaving %s using ''v7.3'' to\n%s\n',fName,savePath);
     save(savePath,'SAVEVAR','-v7.3');

@@ -78,6 +78,56 @@ fprintf('Running dipole fitting on directory: %s\n',working_dir);
 %- load vol.mat
 tmp = load([working_dir filesep 'vol.mat']);
 vol = tmp.vol;
+%
+%## Create headmodel
+%# fieldtrip segmentation
+% cfg           = [];
+% cfg.spmmethod = 'old';%new method output is weird
+% cfg.output    = {'gray','white','csf','skull','scalp'};
+% segmentedmri  = ft_volumesegment(cfg, mri_acpc_rs);
+% 
+% % saves to current folder, instead save to patient file? for now saved to SourceLocalization folder
+% disp(segmentedmri)
+% 
+% % --- plot
+% seg_i = ft_datatype_segmentation(segmentedmri,'segmentationstyle','indexed');
+% 
+% cfg              = [];
+% cfg.funparameter = 'tissue'; % They did an update on May.2021 in source code but not the tutorial -`д´-
+% cfg.anaparameter = 'anatomy';
+% cfg.funcolormap  = jet(6); % distinct color per tissue
+% cfg.location     = 'center';
+% cfg.atlas        = seg_i;    % the segmentation can also be used as atlas
+% 
+% % check segmentation quality - It's kind of bad?!!
+% ft_sourceplot(cfg, seg_i);%this plot cannot be generated...I don't know why
+% saveas(gcf,fullfile(save_headmodel_folder,'segmentation.fig'));
+% 
+% %# Create mesh
+% cfg        = [];
+% cfg.shift  = 0.3;
+% cfg.method = 'hexahedral';
+% 
+% mesh = ft_prepare_mesh(cfg,segmentedmri);
+% 
+% figure;
+% ft_plot_mesh(mesh, 'surfaceonly', 'yes','facecolor','b','edgecolor', 'none', 'facealpha', 0.4);
+% save(fullfile(save_headmodel_folder,'mesh.mat'),'mesh') 
+% cfg        = [];
+% cfg.method = 'simbio';
+% cfg.conductivity = zeros(1,5);
+% scale = 1;
+% % order follows mesh.tissyelabel , CAUTIOUS!!!! OMg this is not the same order as in the segmentation
+% cfg.conductivity(find(strcmp(mesh.tissuelabel,'csf'))) = 1.65*scale;
+% cfg.conductivity(find(strcmp(mesh.tissuelabel,'gray'))) = 0.33*scale;
+% cfg.conductivity(find(strcmp(mesh.tissuelabel,'scalp'))) = 0.33*scale;
+% cfg.conductivity(find(strcmp(mesh.tissuelabel,'skull'))) = 0.0042*scale;
+% cfg.conductivity(find(strcmp(mesh.tissuelabel,'white'))) = 0.126*scale;
+% cfg.conductivity(find(strcmp(mesh.tissuelabel,'air'))) = 2.5*10^(-14)*scale;
+% 
+% vol        = ft_prepare_headmodel(cfg, mesh);
+% 
+% save(fullfile(save_headmodel_folder,'vol.mat'),'vol','-v7.3') 
 %- load elec_aligned.mat
 tmp = load([working_dir filesep 'elec_aligned.mat']);
 try

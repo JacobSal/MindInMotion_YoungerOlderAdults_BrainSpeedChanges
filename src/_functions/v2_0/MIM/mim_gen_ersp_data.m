@@ -1,4 +1,4 @@
-function [STUDY,ersp_savef,ersp_subbase_savef,ersp_subbase_combase_savef] = mim_gen_ersp_data(STUDY,ALLEEG,warping_times,...
+function [STUDY,ersp_savef,ersp_subbase_savef,ersp_subbase_combase_savef,ersp_singletrial_subbase_savef] = mim_gen_ersp_data(STUDY,ALLEEG,warping_times,...
     ersp_load_params,des_i,cluster_i,design_char,save_dir,varargin)
 % CAT CODE
 %  _._     _,-'""`-._
@@ -55,6 +55,12 @@ end
 ERSP_PARAMS = p.Results.ERSP_PARAMS;
 STAT_PARAMS = p.Results.STAT_PARAMS;
 %% ===================================================================== %%
+ersp_savef = {};
+ersp_subbase_savef = {};
+ersp_subbase_combase_savef = {};
+ersp_singletrial_subbase_savef = {};
+%- override
+% STAT_PARAMS.singletrials = 'on';
 %## PARAMS SETUP
 tmpSTUDY = pop_statparams(STUDY, 'condstats', STAT_PARAMS.condstats,...
         'method',STAT_PARAMS.method,...
@@ -66,8 +72,6 @@ tmpSTUDY_commonbase = pop_erspparams(tmpSTUDY, 'subbaseline','on',...
 %% ERSP CALCULATIONS
 % NOTE (07/18/2023) std_ersplot_customParams.m has edits (find:'Chang') as
 % well as a call to another edited function std_readata_customParams.m
-            
-% ----------------------------------------------------------- %
 %## ERSP calculation for no normalization 
 fprintf('Gathering ERSP without any normalization for cluster %i\n',cluster_i)
 tic
@@ -91,7 +95,7 @@ catch e
         'stack. %s\n'],e.identifier,e.message,getReport(e));
 end
 toc
-% ----------------------------------------------------------- %
+%% ===================================================================== %%
 %## ERSP calculation for normalization 
 fprintf('Gathering ERSP after baseline correction using times {%0.2f,%0.2f] for cluster %i\n',warping_times(1),warping_times(5),cluster_i);
 tic
@@ -100,6 +104,15 @@ try
 %                 disp(ersp_load_params.common_base);
     [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot_customParams(tmpSTUDY,ALLEEG,ersp_load_params,'clusters',cluster_i,...
         'freqrange',ERSP_PARAMS.freqrange,'design',des_i);
+    %## DEBUG std_readdata
+    %{
+    params = tmpSTUDY.etc.erspparams;
+    params.concatenate = 'off';
+    stats = tmpSTUDY.etc.statistics;
+    opt.datatype = 'ersp';  = []; opt.clusters = cluster_i; 
+    [~, allersp, alltimes, allfreqs, events, paramsersp] = std_readdata_customParams(tmpSTUDY, ALLEEG, ersp_load_params, 'clusters', opt.clusters, 'datatype', opt.datatype, ...
+            'component', opt.comps, 'singletrials', stats.singletrials, 'subbaseline', params.subbaseline, 'timerange', params.timerange, 'freqrange', params.freqrange, 'design', des_i, 'concatenate', params.concatenate);
+    %}
     %- save dat
     ersp_data = struct('allerspdata',{allerspdata},'alltimes',{alltimes},'allfreqs',{allfreqs},...
         'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
@@ -117,7 +130,8 @@ catch e
         'stack. %s\n'],e.identifier,e.message,getReport(e));
 end
 toc 
-% ----------------------------------------------------------- %
+%% ===================================================================== %%
+
 fprintf('Gathering ERSP after baseline correction and common baseline using times {%0.2f,%0.2f] for cluster %i\n',warping_times(1),warping_times(5),cluster_i);
 tic
 try
@@ -143,6 +157,30 @@ catch e
 end
 toc
 
+%% ===================================================================== %%
+%- override
+%{
+STAT_PARAMS.singletrials = 'on';
+tmpSTUDY = pop_statparams(STUDY, 'condstats', STAT_PARAMS.condstats,...
+        'method',STAT_PARAMS.method,...
+        'singletrials',STAT_PARAMS.singletrials,'mode',STAT_PARAMS.mode,...
+        'fieldtripalpha',STAT_PARAMS.fieldtripalpha,'fieldtripmethod',STAT_PARAMS.fieldtripmethod,...
+        'fieldtripmcorrect',STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',STAT_PARAMS.fieldtripnaccu);
+params = tmpSTUDY.etc.erspparams;
+params.concatenate = 'off';
+stats = tmpSTUDY.etc.statistics;
+opt.datatype = 'ersp';
+opt.clusters = cluster_i; 
+opt.comps = [];
+[~, allersp, alltimes, allfreqs, ~, ~] = std_readdata_customParams(tmpSTUDY, ALLEEG, ersp_load_params, 'clusters', opt.clusters, 'datatype', opt.datatype, ...
+        'component', opt.comps, 'singletrials', stats.singletrials, 'subbaseline', params.subbaseline, 'timerange', params.timerange, 'freqrange', params.freqrange, 'design', des_i, 'concatenate', params.concatenate);
+[allerspdata,~,~] = mim_prune_ersp_trials(tmpSTUDY,allersp,cluster_i,des_i);
+%- save dat
+ersp_data = struct('allerspdata',{allerspdata},'alltimes',{alltimes},'allfreqs',{allfreqs},...
+    'pgroup',{[]},'pcond',{[]},'pinter',{[]});
+par_save(ersp_data,save_dir,sprintf('spec_data_cl%i_%s_singletrials_subbaselined.mat',cluster_i,design_char));
+ersp_singletrial_subbase_savef = [save_dir filesep sprintf('spec_data_cl%i_%s_singletrials_subbaselined.mat',cluster_i,design_char)];
+%}
 %## time
 toc(tic1)
 end
