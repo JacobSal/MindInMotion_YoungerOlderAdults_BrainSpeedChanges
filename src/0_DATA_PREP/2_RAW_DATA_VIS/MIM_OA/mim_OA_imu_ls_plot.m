@@ -675,8 +675,10 @@ for meas_i = 1:length(meas_names)
                 out = fitlm(x_vals,y_vals); %fitlm(tb,mdl_spec);
 %                 p = plot(ax,out.Residuals.Raw',x_vals);
                 p = plot(ax,out);
-                p(end-1,1).Visible='off';
+                 p(end-1,1).Visible='off';
                 p(end,1).Visible='off';
+                p(1).Visible = 'off'; %[0,0,0,0.2];
+                p(2).Color = [0,0,0.7,0.60];
 %                 plot(ax,x_vals,y_vals);
             end
         end
@@ -812,8 +814,8 @@ for meas_i = 1:length(meas_names)
     %-
     shift = 0;
     mdl_spec='Var1~1+Var2';
-    for g_i=1:size(cond_1,2)
-        tmp = cat(2,cond_1{:,g_i});
+    for g_i=1:size(cond_2,2)
+        tmp = cat(2,cond_2{:,g_i});
         for subj_i = 1:size(cond_1{1,1},1)
             if all(~isnan(tmp(subj_i,:)))
                 y_vals = tmp(subj_i,:);
@@ -824,6 +826,8 @@ for meas_i = 1:length(meas_names)
                 p = plot(ax,out);
                 p(end-1,1).Visible='off';
                 p(end,1).Visible='off';
+                p(1).Visible = 'off'; %[0,0,0,0.2];
+                p(2).Color = [0,0,0.7,0.60];
 %                 plot(ax,x_vals,y_vals);
             end
         end
@@ -1340,8 +1344,10 @@ for meas_i = 1:length(meas_names)
                 out = fitlm(x_vals,y_vals); %fitlm(tb,mdl_spec);
 %                 p = plot(ax,out.Residuals.Raw',x_vals);
                 p = plot(ax,out);
-                p(end-1,1).Visible='off';
+                 p(end-1,1).Visible='off';
                 p(end,1).Visible='off';
+                p(1).Visible = 'off'; %[0,0,0,0.2];
+                p(2).Color = [0,0,0.7,0.60];
 %                 plot(ax,x_vals,y_vals);
             end
         end
@@ -1513,9 +1519,9 @@ for meas_i = 1:length(meas_names)
     %-
     shift = 0;
     mdl_spec='Var1~1+Var2';
-    for g_i=1:size(cond_1,2)
-        tmp = cat(2,cond_1{:,g_i});
-        for subj_i = 1:size(cond_1{1,1},1)
+    for g_i=1:size(cond_2,2)
+        tmp = cat(2,cond_2{:,g_i});
+        for subj_i = 1:size(cond_2{1,1},1)
             if all(~isnan(tmp(subj_i,:)))
                 y_vals = tmp(subj_i,:);
                 x_vals = xticks((1:length(tmp(subj_i,:)))+shift);
@@ -1523,26 +1529,28 @@ for meas_i = 1:length(meas_names)
                 out = fitlm(x_vals,y_vals); %fitlm(tb,mdl_spec);
 %                 p = plot(ax,out.Residuals.Raw',x_vals);
                 p = plot(ax,out);
-                p(end-1,1).Visible='off';
+                 p(end-1,1).Visible='off';
                 p(end,1).Visible='off';
+                p(1).Visible = 'off'; %[0,0,0,0.2];
+                p(2).Color = [0,0,0.7,0.60];
 %                 plot(ax,x_vals,y_vals);
             end
         end
         shift = shift + length(tmp(1,:));
     end
     %- set group labels
-    if size(cond_1,2) == 2
+    if size(cond_2,2) == 2
         shift = 0;
-        for g_i = 1:size(cond_1,2)
+        for g_i = 1:size(cond_2,2)
             text(0.25+shift,-0.15,0,char(group_names(g_i)),'FontSize',11,'FontWeight','bold','HorizontalAlignment','center',...
                 'Units','normalized');
     %         text(nanmean(xticks(cnt_g))-0.20,-17,char(group_names(g_i)),'FontSize',11);
     %         disp(xticks(cnt_g))
             shift = shift+0.50;
         end
-    elseif size(cond_1,2) == 3
+    elseif size(cond_2,2) == 3
         shift = 0;
-        for g_i = 1:size(cond_1,2)
+        for g_i = 1:size(cond_2,2)
             text(0.15+shift,-0.15,0,char(group_names(g_i)),'FontSize',11,'FontWeight','bold','HorizontalAlignment','center',...
                 'Units','normalized');
     %         text(nanmean(xticks(cnt_g))-0.20,-17,char(group_names(g_i)),'FontSize',11);

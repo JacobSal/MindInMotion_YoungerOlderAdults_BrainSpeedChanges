@@ -98,7 +98,7 @@ for i = 1:length(CLUSTERS_TO_PLOT)
             set(fig_i,'Units','inches','Position',[3 3 6 5])
             set(fig_i,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
 %             fig_i.Position = %SPEC_SING_POS;
-            disp(get(fig_i,'Position'));
+%             disp(get(fig_i,'Position'));
             %- set figure line colors
             cc = linspecer(length(STUDY.design(des_i).variable.value));
             iter = 1;
@@ -118,9 +118,8 @@ for i = 1:length(CLUSTERS_TO_PLOT)
             set(fig_i.Children(2),'Position',[0.20,0.20,0.7,0.7]) %Default:[0.26,0.26,0.54,0.51]; Position::[left margin, lower margin, right margin, upper margin]
             set(fig_i.Children(3),'Position',[0.20,0.20-0.0255,0.7,0.0255]) %Default:[0.26,0.2345,0.54,0.0255]
             set(fig_i.Children(1),'Location','northeast') %reset Legend
-            
-            for i = 2:length(fig_i.Children)
-                set(fig_i.Children(i),'FontName','Arial','FontSize',12,'FontWeight','bold')
+            for c_i = 2:length(fig_i.Children)
+                set(fig_i.Children(c_i),'FontName','Arial','FontSize',12,'FontWeight','bold')
 %                 set(fig_i.Children(i),'OuterPosition',[0 0 1 1]);
             end
             hold off;

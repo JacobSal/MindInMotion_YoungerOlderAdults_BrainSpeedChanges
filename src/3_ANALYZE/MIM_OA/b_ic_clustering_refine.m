@@ -503,6 +503,7 @@ if DO_K_ICPRUNE
             mim_custom_spec_plots(TMP_STUDY,TMP_ALLEEG,cluster_dir,...
                 'CLUSTERS_TO_PLOT',CLUSTER_PICKS);
             %- ASSIGN DESIGNS
+            %{
             %* combine groups
             for subj_i = 1:length(TMP_ALLEEG)
                 TMP_ALLEEG(subj_i).group = tmp_group_orig{subj_i};
@@ -516,7 +517,7 @@ if DO_K_ICPRUNE
             %- SPECTRUM PLOTS
             mim_custom_spec_plots(TMP_STUDY,TMP_ALLEEG,cluster_dir,...
                 'CLUSTERS_TO_PLOT',CLUSTER_PICKS);
-            
+            %}
             %## PLOT CLUSTER BASE INFORMATION
             %- CLUSTER DIPOLES, TOPOS
             mim_gen_cluster_figs(TMP_STUDY,TMP_ALLEEG,cluster_dir,...
