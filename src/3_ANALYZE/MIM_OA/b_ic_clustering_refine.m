@@ -331,13 +331,8 @@ STUDY_COND_DESI = {{'subjselect',{},...
             {'subjselect',{},...
             'variable1','cond','values1',{'0p25','0p5','0p75','1p0'},...
             'variable2','group','values2',{}}};
-STUDY_GROUP_DESI = {{'subjselect',{},...
-            'variable1','cond','values1',{'flat','low','med','high'},...
-            'variable2','group','values2',unique({STUDY.datasetinfo.group})},...
-            {'subjselect',{},...
-            'variable2','cond','values1',{'0p25','0p5','0p75','1p0'},...
-            'variable2','group','values2',unique({STUDY.datasetinfo.group})}};
 %%
+%{
 if DO_K_ICPRUNE 
 %     for i = 1:length(MIN_ICS_SUBJ)
     parfor (i = 1:length(MIN_ICS_SUBJ),length(MIN_ICS_SUBJ))
@@ -439,6 +434,7 @@ if DO_K_ICPRUNE
                                             'RESAVE_DATASETS','off');
     end
 end
+%}
 %%
 if DO_K_ICPRUNE
     parfor (i = 1:length(MIN_ICS_SUBJ),length(MIN_ICS_SUBJ))
@@ -457,6 +453,12 @@ if DO_K_ICPRUNE
                 [TMP_STUDY,TMP_ALLEEG] = pop_loadstudy('filename',[study_fName '.study'],'filepath',tmp_dir);
             end
         end
+        STUDY_GROUP_DESI = {{'subjselect',{},...
+            'variable1','cond','values1',{'flat','low','med','high'},...
+            'variable2','group','values2',unique({TMP_STUDY.datasetinfo.group})},...
+            {'subjselect',{},...
+            'variable2','cond','values1',{'0p25','0p5','0p75','1p0'},...
+            'variable2','group','values2',unique({TMP_STUDY.datasetinfo.group})}};
         %## grab subjects for study designs
         tmp_group_orig = cell(length(TMP_ALLEEG),1);
         tmp_group_unif = cell(length(TMP_ALLEEG),1);
@@ -487,7 +489,7 @@ if DO_K_ICPRUNE
             %- clusters to plot
             CLUSTER_PICKS = main_cl_inds(2:end); %valid_clusters; %main_cl_inds(2:end); %valid_clusters
             %## PLOT spectrum based information
-            
+            %{
             %- ASSIGN DESIGNS
             %* combine groups
             for subj_i = 1:length(TMP_ALLEEG)
@@ -502,8 +504,9 @@ if DO_K_ICPRUNE
             %- SPECTRUM PLOTS
             mim_custom_spec_plots(TMP_STUDY,TMP_ALLEEG,cluster_dir,...
                 'CLUSTERS_TO_PLOT',CLUSTER_PICKS);
+            %}
             %- ASSIGN DESIGNS
-            %{
+            
             %* combine groups
             for subj_i = 1:length(TMP_ALLEEG)
                 TMP_ALLEEG(subj_i).group = tmp_group_orig{subj_i};
@@ -517,7 +520,6 @@ if DO_K_ICPRUNE
             %- SPECTRUM PLOTS
             mim_custom_spec_plots(TMP_STUDY,TMP_ALLEEG,cluster_dir,...
                 'CLUSTERS_TO_PLOT',CLUSTER_PICKS);
-            %}
             %## PLOT CLUSTER BASE INFORMATION
             %- CLUSTER DIPOLES, TOPOS
             mim_gen_cluster_figs(TMP_STUDY,TMP_ALLEEG,cluster_dir,...
@@ -528,6 +530,7 @@ if DO_K_ICPRUNE
     end
 end
 %%
+%{
 parfor (i = 1:length(MIN_ICS_SUBJ),length(MIN_ICS_SUBJ))
     study_fName = sprintf('temp_study_rejics%i',MIN_ICS_SUBJ(i));
     tmp_dir = [save_dir filesep sprintf('icrej_%i',MIN_ICS_SUBJ(i))];
@@ -691,3 +694,4 @@ parfor (i = 1:length(MIN_ICS_SUBJ),length(MIN_ICS_SUBJ))
     end
           
 end
+%}

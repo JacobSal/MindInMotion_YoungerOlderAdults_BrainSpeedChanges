@@ -183,109 +183,71 @@ CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'icrej_6'],...
     [SUB_DIR filesep 'icrej_5']};
 POSS_CLUSTER_CHARS = {};
 %% (STEP 2) PLOT
+%## COMPATABILITY PARAMETER FOR CROSS-SCRIPT COPYING
+k_i = 2;
 %##
-for k_i = 1:length(CLUSTER_K_PICKS)
-% parfor (k_i = 1:length(CLUSTER_K_PICKS),length(CLUSTER_K_PICKS))
-    fprintf('Loading Cluster K=%i',CLUSTER_K_PICKS(k_i));
-    %## Loop Params
-    clust_i = CLUSTER_K_PICKS(k_i);
+fprintf('Loading Cluster K=%i',CLUSTER_K_PICKS(k_i));
+%## Loop Params
+clust_i = CLUSTER_K_PICKS(k_i);
+if ~ispc
+    cluster_dir = convertPath2UNIX(CLUSTER_DIRS{k_i});
+else
+    cluster_dir = convertPath2Drive(CLUSTER_DIRS{k_i});
+end
+plot_store_dir = [cluster_dir filesep 'plots_out'];
+if ~exist(plot_store_dir,'dir')
+    mkdir(plot_store_dir);
+end
+spec_data_dir = [cluster_dir filesep 'spec_data'];
+if ~exist(spec_data_dir,'dir')
+    error('error. path %s doesn''t exist',spec_data_dir);
+end
+if ~exist([spec_data_dir filesep CLUSTER_STUDY_FNAMES{k_i} '.study'],'file')
+    error('ERROR. study file does not exist');
+else
     if ~ispc
-        cluster_dir = convertPath2UNIX(CLUSTER_DIRS{k_i});
+        [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAMES{k_i} '_UNIX.study'],'filepath',spec_data_dir);
     else
-        cluster_dir = convertPath2Drive(CLUSTER_DIRS{k_i});
-    end
-    plot_store_dir = [cluster_dir filesep 'plots_out'];
-    if ~exist(plot_store_dir,'dir')
-        mkdir(plot_store_dir);
-    end
-    spec_data_dir = [cluster_dir filesep 'spec_data'];
-    if ~exist(spec_data_dir,'dir')
-        error('error. path %s doesn''t exist',spec_data_dir);
-    end
-    if ~exist([spec_data_dir filesep CLUSTER_STUDY_FNAMES{k_i} '.study'],'file')
-        error('ERROR. study file does not exist');
-    else
-        if ~ispc
-            [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAMES{k_i} '_UNIX.study'],'filepath',spec_data_dir);
-        else
-            [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAMES{k_i} '.study'],'filepath',spec_data_dir);
-        end
-    end
-    
-    %## CALCULATE GRANDAVERAGE WARPTOs
-    for subj_i = 1:length(ALLEEG)
-        %- assign percondition timewarping
-        ALLEEG(subj_i).timewarp.warpto = nanmedian(cat(1,ALLEEG(subj_i).etc.timewarp_by_cond.warpto));
-    %     ALLEEG(subj_i).timewarp.warpto = nanmean(cat(1,ALLEEG(subj_i).etc.timewarp_by_cond.warpto));
-    end
-    allWarpTo = nan(length(ALLEEG),size(ALLEEG(1).timewarp.warpto,2));
-    % allWarpTo = zeros(length(ALLEEG),size(ALLEEG(1).timewarp.warpto,2));
-    for subj_i = 1:length(ALLEEG)
-        allWarpTo(subj_i,:) = ALLEEG(subj_i).timewarp.warpto; %stack subject specific median event latencies
-    end
-    % grandAvgWarpTo = floor(nanmedian(allWarpTo)); % tends to be shorter? (e.g., [0,242,686,915,1357])
-    averaged_warpto_events = floor(nanmean(allWarpTo)); % tends to be longer? (e.g., [0,262,706,982,1415])
-    %## (ERSP PLOT PREP) PREPARE STUDYFILE FOR EXTRACTION (BLACK-HAWK DOWN!)
-    TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. making this too big can cause overlap between gait cyles
-    ERSP_TIMERANGE=[averaged_warpto_events(1), averaged_warpto_events(end)];
-    STUDY.etc.averaged_warpto_events = averaged_warpto_events;
-    fprintf('Using timewarp limits: [%0.4g,%0.4f]\n',averaged_warpto_events(1),averaged_warpto_events(end));
-    disp(averaged_warpto_events);
-    %## RE-POP PARAMS
-    STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
-        'groupstats',ERSP_STAT_PARAMS.groupstats,...
-        'method',ERSP_STAT_PARAMS.method,...
-        'singletrials',ERSP_STAT_PARAMS.singletrials,'mode',ERSP_STAT_PARAMS.mode,...
-        'fieldtripalpha',ERSP_STAT_PARAMS.fieldtripalpha,...
-        'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
-        'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
-    STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_PARAMS.subbaseline,...
-          'ersplim',ERSP_PARAMS.ersplim,'freqrange',ERSP_PARAMS.freqrange,'timerange',ERSP_TIMERANGE);
-    %## Cluster Update
-    cluster_update = par_load(cluster_dir,CLUSTER_FILES{k_i});
-    STUDY.cluster = cluster_update;
-    %- get inds
-    [~,main_cl_inds,~,valid_clusters,~,nonzero_clusters] = eeglab_get_cluster_comps(STUDY);
-    %- clusters to plot
-    CLUSTER_PICKS = main_cl_inds(2:end); %valid_clusters; %main_cl_inds(2:end); %valid_clusters
-    %## PLOT cluster based information
-%     mim_gen_cluster_figs(STUDY,TMP_ALLEEG,CLUSTER_DIRS{k_i},...
-%         'CLUSTERS_TO_PLOT',main_cl_inds);
-    %% Loop Through Designs
-    for des_i = 1:length(STUDY.design)
-        cond_test = STUDY.design(des_i).variable(1).value;
-        fprintf('Running Design: '); fprintf('%s,',cond_test{1:end-1}); fprintf('%s',cond_test{end}); fprintf('\n');
-        STUDY.currentdesign = des_i;
-        fprintf('Current design: %i\n',STUDY.currentdesign);
-        fprintf('Statistics Parameters:\n');
-        disp(STUDY.etc.statistics)
-        fprintf('Statistics Fieldtrip Parameters:\n');
-        disp(STUDY.etc.statistics.fieldtrip)
-        fprintf('Statistics EEGLAB Parameters:\n');
-        disp(STUDY.etc.statistics.eeglab)
-        fprintf('ERSP Parameters:\n');
-        disp(STUDY.etc.erspparams)
-        cl_inds = [STUDY.etc.mim_gen_ersp_data.clust_ind_cl];
-        des_inds = [STUDY.etc.mim_gen_ersp_data.des_ind];
-%         des_cls = TMP_STUDY.etc.mim_gen_ersp_data.clust_ind_cl([TMP_STUDY.etc.mim_gen_ersp_data.des_ind] == des_i);
-        parfor (j = 1:length(CLUSTER_PICKS),length(CLUSTER_PICKS))
-%         for j = 1:length(CLUSTER_PICKS)
-            cluster_i = CLUSTER_PICKS(j);
-            cluster_load_ind = find(logical(cl_inds == cluster_i) & logical(des_inds == des_i));
-%             cluster_load_ind = cluster_i;
-%             cluster_load_ind = TMP_STUDY.etc.mim_gen_ersp_data(des_i,cluster_i).cluster_n(1,cluster_i);
-            %- defaults
-            allersp = {};
-            alltimes = [];
-            allfreqs = [];
-            pcond = {};
-            pgroup = {};
-            pinter = {};
-            %- LOAD OPTION 1
-            
-        end
+        [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAMES{k_i} '.study'],'filepath',spec_data_dir);
     end
 end
+
+%## CALCULATE GRANDAVERAGE WARPTOs
+for subj_i = 1:length(ALLEEG)
+    %- assign percondition timewarping
+    ALLEEG(subj_i).timewarp.warpto = nanmedian(cat(1,ALLEEG(subj_i).etc.timewarp_by_cond.warpto));
+%     ALLEEG(subj_i).timewarp.warpto = nanmean(cat(1,ALLEEG(subj_i).etc.timewarp_by_cond.warpto));
+end
+allWarpTo = nan(length(ALLEEG),size(ALLEEG(1).timewarp.warpto,2));
+% allWarpTo = zeros(length(ALLEEG),size(ALLEEG(1).timewarp.warpto,2));
+for subj_i = 1:length(ALLEEG)
+    allWarpTo(subj_i,:) = ALLEEG(subj_i).timewarp.warpto; %stack subject specific median event latencies
+end
+% grandAvgWarpTo = floor(nanmedian(allWarpTo)); % tends to be shorter? (e.g., [0,242,686,915,1357])
+averaged_warpto_events = floor(nanmean(allWarpTo)); % tends to be longer? (e.g., [0,262,706,982,1415])
+%## (ERSP PLOT PREP) PREPARE STUDYFILE FOR EXTRACTION (BLACK-HAWK DOWN!)
+TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. making this too big can cause overlap between gait cyles
+ERSP_TIMERANGE=[averaged_warpto_events(1), averaged_warpto_events(end)];
+STUDY.etc.averaged_warpto_events = averaged_warpto_events;
+fprintf('Using timewarp limits: [%0.4g,%0.4f]\n',averaged_warpto_events(1),averaged_warpto_events(end));
+disp(averaged_warpto_events);
+%## RE-POP PARAMS
+STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
+    'groupstats',ERSP_STAT_PARAMS.groupstats,...
+    'method',ERSP_STAT_PARAMS.method,...
+    'singletrials',ERSP_STAT_PARAMS.singletrials,'mode',ERSP_STAT_PARAMS.mode,...
+    'fieldtripalpha',ERSP_STAT_PARAMS.fieldtripalpha,...
+    'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
+    'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
+STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_PARAMS.subbaseline,...
+      'ersplim',ERSP_PARAMS.ersplim,'freqrange',ERSP_PARAMS.freqrange,'timerange',ERSP_TIMERANGE);
+%## Cluster Update
+cluster_update = par_load(cluster_dir,CLUSTER_FILES{k_i});
+STUDY.cluster = cluster_update;
+%- get inds
+[~,main_cl_inds,~,valid_clusters,~,nonzero_clusters] = eeglab_get_cluster_comps(STUDY);
+%- clusters to plot
+CLUSTER_PICKS = main_cl_inds(2:end);
 
 % STUDY_walking = importdata(fullfile(MainDirectory,studyname ));
 %% FOOOF SETUP & PYTHON
@@ -328,18 +290,20 @@ COND_CHARS = {cond_terrains,cond_speeds};
 % spec_data_cl2_0p250p50p751p0_subbaselined_commonbase
 % spec_data_cl2_flatlowmedhigh_subtractmean
 keywords = {'Terrain','Speed'};
-save_path = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\icrej_6\14';
-data_fpath = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\icrej_6\14\spec_data';
+% save_path = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\icrej_6\14';
+% data_fpath = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\icrej_6\14\spec_data';
+save_path = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\icrej_5\14';
+data_fpath = [save_path filesep 'spec_data'];
 mkdir(fullfile(save_path, 'Fooof_Plots'))
 %%
-% if ~isfield(STUDY.cluster,'topo'), STUDY.cluster(1).topo = []; end
-% for clus = 3:length(STUDY.cluster) % For each cluster requested
-%     if isempty(STUDY.cluster(clus).topo)
-%         STUDY = std_readtopoclust_CL(STUDY,ALLEEG, clus);% Using this custom modified code to allow taking average within participant for each cluster
-%     end
-% end
+if ~isfield(STUDY.cluster,'topo'), STUDY.cluster(1).topo = []; end
+for clus = CLUSTER_PICKS % For each cluster requested
+    if isempty(STUDY.cluster(clus).topo)
+        STUDY = std_readtopoclust_CL(STUDY,ALLEEG, clus);% Using this custom modified code to allow taking average within participant for each cluster
+    end
+end
 for g = 1:2
-    for k = main_cl_inds(2:end)      
+    for k = CLUSTER_PICKS     
         file_mat = [data_fpath filesep sprintf('spec_data_cl%i_%s_subtractmean.mat',k,[COND_CHARS{g}{:}])]; %['readSPEC_',num2str(g),'_',keywords{g},'_subSubjectMean.mat'];
 %         file_mat = [data_fpath filesep sprintf('spec_data_cl%i_%s_subbaselined_commonbase.mat',k,[COND_CHARS{g}{:}])]; %['readSPEC_',num2str(g),'_',keywords{g},'_subSubjectMean.mat'];
         tmp = par_load(file_mat,[]);
@@ -393,7 +357,7 @@ for g = 1:2
 
     %         writematrix(specdata_nolog,'D:\GoogleDriveUFL\Postdoc_Code\FOOOF\specdata_nolog.csv')
         %% Sanity check - 
-        plot_all_comp = 1;
+        plot_all_comp = 0;
         if plot_all_comp
             log_freq = 0;
             single_fig = 1;
@@ -422,7 +386,7 @@ for g = 1:2
             end
         end
 
-        plot_flattened_curve = 1
+        plot_flattened_curve = 0
         if plot_flattened_curve
             log_freq = 0;
             single_fig = 1;
@@ -459,7 +423,7 @@ if SAVE_DATA
     save(fullfile(save_path,...
         ['fooof_results_summary,.mat']),'fooof_group_results_org','fooof_diff_store');
 end
-keyboard
+% keyboard
 %% Sanity check - time series plots from aperiodic subtraction
 k = 3;
 figure('color','white');
@@ -586,8 +550,7 @@ for k = 3%3:length(STUDY_imagined.cluster)
     ylabel('R squared');
 
 end
-%% --------------------
-%% STATS Section: 
+%% (STATISTICS CALCULATIONS) =========================================== %% 
 %% Preliminary stats on average power (substracted background)
 % 
 % Create stats table
@@ -783,9 +746,50 @@ for g = 1:2
     end
 end
 
-%% Paper Figures 
-%% Figure after flattened the curve ------------------------------------------------
-g = 1;
+%% (Paper Figures) ===================================================== %%
+% NOTE: run the above code cells before running this
+outputdir_psd = [save_path filesep 'PSD']; %'D:\Dropbox (UFL)\0.0 Writing_postdoc\MiM_YA_paper\Figure\PSD';
+if ~exist(outputdir_psd,'dir')
+    mkdir(outputdir_psd)
+end
+YLIM_ORIG_INTV = [[-40,0];[-35,-5];[-30,-10];[-20,-15];[-25,0]];
+YLIM_FOOOF_INTV = [[-1,6.5];[-2,4];[-4,8];[-6,14]];
+YLIM_THETA_INTV = [[-1,2.5];[-2,4];[-3,6];[0,3]];
+YLIM_ALPHA_INTV = [[-1,4];[-2,7];[-3,10];[0,12];[0,18]];
+YLIM_BETA_INTV = [[-1,4];[-2,6];[0,7];[-3,8];[-3,10]];
+YLIM_ERROR = 0.05;
+%     switch k
+%         case {3,12} % sensorimotor area
+%             ylim_value_theta = [-1 2.5];
+%             ylim_value_alpha = [-2 18];
+%             ylim_value_beta  = [-1 10];
+%         case {7,9} % posterior area
+%             ylim_value_theta = [-1 2.5];
+%             ylim_value_alpha = [-2 12];
+%             ylim_value_beta  = [-1 8];
+%         case 14 % cingulate
+%             ylim_value_theta = [-1 6];
+%             ylim_value_alpha = [-2 10];
+%             ylim_value_beta  = [-1 7];
+%         case {6,13} % supplementary motor
+%             ylim_value_theta = [-0.5 6];
+%             ylim_value_alpha = [-2 4];
+%             ylim_value_beta  = [-2 6];
+%         case {11,10} % occipital
+%             ylim_value_theta = [-1 4];
+%             ylim_value_alpha = [-2 18];
+%             ylim_value_beta  = [-1 6.5];
+%         case 4 % caudate
+%             ylim_value_theta = [-1 4];
+%             ylim_value_alpha = [-2 7];
+%             ylim_value_beta  = [-0.1 4];
+%     end
+%% (MULTI-CLUSTER FOOOF FIGUES) ======================================== %%
+%## PARAMS
+g = 2;
+SUBPLOT_HEIGHT = 4;
+SUBPLOT_WIDTH = 5;
+%- colors
 switch g
     case 1
         color_dark = color.terrain(2:end,:);
@@ -794,13 +798,8 @@ switch g
         color_dark = color.speed;
         color_light = color.speed_shade;
 end
-% %- colors
-% COLORS_MAPS = linspecer(size(speed_chars,2));
-% custom_yellow = [254,223,0]/255;
-% COLORS_MAPS = [COLORS_MAPS(3,:);custom_yellow;COLORS_MAPS(4,:);COLORS_MAPS(2,:)];
-SUBPLOT_HEIGHT = 4;
-SUBPLOT_WIDTH = 5;
-figure('color','white','position',[100 300 800 800]);
+%## PLOT
+figure('color','white','position',[100 300 800 800],'Renderer','painter');
 for k = 3:length(fooof_group_results_org{g})
     subplot(SUBPLOT_HEIGHT,SUBPLOT_WIDTH,k)
     for i = 1:length(fooof_diff_store{g}{k})
@@ -822,10 +821,10 @@ for k = 3:length(fooof_group_results_org{g})
     title(['Cluster ',num2str(k)]);
     xline([3],'--'); xline([8],'--'); xline([13],'--'); xline([30],'--');
 end
-
+exportgraphics(gcf,fullfile(outputdir_psd ,sprintf('cluster_fooofpsds_des%i.pdf',g)),'ContentType','vector','Resolution',300)
 %% Figure Plot original spec_data and the flattened data side by side ------------------------------------------------
 % Updated 2023-06-08 as the official figures
-g = 2;
+g = 1;
 switch g
     case 1
         color_dark = color.terrain(2:end,:);
@@ -839,25 +838,40 @@ end
 j = 1;
 for k = 3:length(fooof_group_results_org{g})
     % hardcode to preset the axis limit
-    switch k
-        case {3,12} % sensorimotor area
-            ylim_value_origPSD = [-30 -10];
-            ylim_value_flatPSD = [-2 6.5];
-        case {7,9} % posterior area
-            ylim_value_origPSD = [-30 -10];
-            ylim_value_flatPSD = [-2 8];
-        case 14 % cingulate
-            ylim_value_origPSD = [-30 -10];
-            ylim_value_flatPSD = [-1 4];
-        case {6,13} % supplementary motor
-            ylim_value_origPSD = [-30 -10];
-            ylim_value_flatPSD = [-1 4];
-        case {11,10} % occipital
-            ylim_value_origPSD = [-30 -10];
-            ylim_value_flatPSD = [-2 8];
-        case 4 % caudate
-            ylim_value_origPSD = [-30 -10];
-            ylim_value_flatPSD = [-1 4];
+    %## set color limits
+    data_1 = spec_data_original{g}{k}{i}';
+    data_2 = cat(2,fooof_diff_store{g}{k}{:});
+    yvalMat = [min(data_1,[],'all') max(data_1,[],'all')];
+    ylim_intv_orig = [-30,-10]; %zeros(1,2);
+    flag_1 = true;
+    flag_2 = true;
+    for i = 1:length(YLIM_ORIG_INTV)
+        chk_1 = any(yvalMat < (YLIM_ORIG_INTV(i,1)-YLIM_ERROR));
+        chk_2 = any(yvalMat > (YLIM_ORIG_INTV(i,2)+YLIM_ERROR));
+        if chk_1 && flag_1
+            ylim_intv_orig(1) = YLIM_ORIG_INTV(i,1);
+            flag_1 = false;
+        end
+        if chk_2 && flag_2
+            ylim_intv_orig(2) = YLIM_ORIG_INTV(i,2);
+            flag_2 = false;
+        end
+    end
+    yvalMat = [min(data_2,[],'all') max(data_2,[],'all')];
+    ylim_intv_fooof = [-2,6]; %zeros(1,2);
+    flag_1 = true;
+    flag_2 = true;
+    for i = 1:length(YLIM_FOOOF_INTV)
+        chk_1 = any(yvalMat < (YLIM_FOOOF_INTV(i,1)-YLIM_ERROR));
+        chk_2 = any(yvalMat > (YLIM_FOOOF_INTV(i,2)+YLIM_ERROR));
+        if chk_1 && flag_1
+            ylim_intv_fooof(1) = YLIM_FOOOF_INTV(i,1);
+            flag_1 = false;
+        end
+        if chk_2 && flag_2
+            ylim_intv_fooof(2) = YLIM_FOOOF_INTV(i,2);
+            flag_2 = false;
+        end
     end
 
     if mod(j,2) == 1 
@@ -882,7 +896,7 @@ for k = 3:length(fooof_group_results_org{g})
         aperiodic_fit = fooof_apfit_store{g}{k}{i}';
         plot(fooof_freq,mean(aperiodic_fit),'color',color_dark(i,:),'linestyle','--','linewidth',0.5);
     end
-    ylim(ylim_value_origPSD);
+    ylim(ylim_intv_orig);
     ax = gca;       
     axsignif = highlight_CL(ax, fooof_freq, pcond_org{g}{k}{1}(:,2), 'background', 'Frequency(Hz)');
     xlim([4 40]);
@@ -906,7 +920,7 @@ for k = 3:length(fooof_group_results_org{g})
         data = fooof_diff_store{g}{k}{i}';
         plot(fooof_freq,mean(data),'color',color_dark(i,:),'linewidth',1);
     end  
-    ylim(ylim_value_flatPSD);
+    ylim(ylim_intv_fooof);
     ax = gca;       
     axsignif = highlight_CL(ax, fooof_freq, pcond{g}{k}{1}(:,2), 'background', 'Frequency(Hz)');
     xlim([4 40]);
@@ -917,14 +931,11 @@ for k = 3:length(fooof_group_results_org{g})
     xline([4],'--'); xline([8],'--'); xline([13],'--'); xline([30],'--');
     
     j = j + 2;
-    outputdir_psd = [save_path filesep 'PSD']; %'D:\Dropbox (UFL)\0.0 Writing_postdoc\MiM_YA_paper\Figure\PSD';
-    if ~exist(outputdir_psd,'dir')
-        mkdir(outputdir_psd)
-    end
+    
     if g == 1
-        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_',num2str(k),'.pdf']),'ContentType','vector')
+        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_',num2str(k),'.pdf']),'ContentType','vector','Resolution',300)
     elseif g == 2
-        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_',num2str(k),'_speed.pdf']),'ContentType','vector')
+        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_',num2str(k),'_speed.pdf']),'ContentType','vector','Resolution',300)
     end
 end
 
@@ -948,42 +959,64 @@ end
 %----------------------- PLOT ## By subject plot 
 % figure('color','white','position',[100 300 600 180]);
 j = 1;
-for k = 4%3:length(fooof_diff_store{g}) % by each cluster
-    switch k
-        case {3,12} % sensorimotor area
-            ylim_value_theta = [-1 2.5];
-            ylim_value_alpha = [-2 18];
-            ylim_value_beta  = [-1 10];
-        case {7,9} % posterior area
-            ylim_value_theta = [-1 2.5];
-            ylim_value_alpha = [-2 12];
-            ylim_value_beta  = [-1 8];
-        case 14 % cingulate
-            ylim_value_theta = [-1 6];
-            ylim_value_alpha = [-2 10];
-            ylim_value_beta  = [-1 7];
-        case {6,13} % supplementary motor
-            ylim_value_theta = [-0.5 6];
-            ylim_value_alpha = [-2 4];
-            ylim_value_beta  = [-2 6];
-        case {11,10} % occipital
-            ylim_value_theta = [-1 4];
-            ylim_value_alpha = [-2 18];
-            ylim_value_beta  = [-1 6.5];
-        case 4 % caudate
-            ylim_value_theta = [-1 4];
-            ylim_value_alpha = [-2 7];
-            ylim_value_beta  = [-0.1 4];
+for k = 3:length(fooof_diff_store{g}) % by each cluster
+    %## set color limits
+    T_plot = C1_table(C1_table.study == num2str(g) & C1_table.cluster == num2str(k),:); % categorical variable can use ==
+    data_1 = T_plot.theta_avg_power; %spec_data_original{g}{k}{i}';
+    data_2 = T_plot.alpha_avg_power; %cat(2,fooof_diff_store{g}{k}{:});
+    data_3 = T_plot.beta_avg_power; 
+    %- theta
+    yvalMat = [min(data_1,[],'all') max(data_1,[],'all')];
+    ylim_value_theta = [-1,2]; %zeros(1,2);
+    chk_1 = (YLIM_THETA_INTV(:,1)-YLIM_ERROR)<yvalMat(1,1);
+    chk_2 = (YLIM_THETA_INTV(:,2)+YLIM_ERROR)>yvalMat(1,2);
+    if any(chk_1)
+        ylim_value_theta(1) = max(YLIM_THETA_INTV(chk_1,1));
+    else
+        warning('YLIM_THETA_INV doesn''t contain a low enough lower bound')
     end
+    if any(chk_2)
+        ylim_value_theta(2) = min(YLIM_THETA_INTV(chk_2,2));
+    else
+        warning('YLIM_THETA_INV doesn''t contain a high enough upper bound')
+    end
+    %- alpha
+    yvalMat = [min(data_2,[],'all') max(data_2,[],'all')];
+    ylim_value_alpha = [-1,2]; %zeros(1,2);
+    chk_1 = (YLIM_ALPHA_INTV(:,1)-YLIM_ERROR)<yvalMat(1,1);
+    chk_2 = (YLIM_ALPHA_INTV(:,2)+YLIM_ERROR)>yvalMat(1,2);
+    if any(chk_1)
+        ylim_value_alpha(1) = max(YLIM_ALPHA_INTV(chk_1,1));
+    else
+        warning('YLIM_ALPHA_INV doesn''t contain a low enough lower bound')
+    end
+    if any(chk_2)
+        ylim_value_alpha(2) = min(YLIM_ALPHA_INTV(chk_2,2));
+    else
+        warning('YLIM_ALPHA_INV doesn''t contain a high enough upper bound')
+    end
+    %- beta
+    yvalMat = [min(data_3,[],'all') max(data_3,[],'all')];
+    ylim_value_beta = [-1,2]; %zeros(1,2);
+    chk_1 = (YLIM_BETA_INTV(:,1)-YLIM_ERROR)<yvalMat(1,1);
+    chk_2 = (YLIM_BETA_INTV(:,2)+YLIM_ERROR)>yvalMat(1,2);
+    if any(chk_1)
+        ylim_value_beta(1) = max(YLIM_BETA_INTV(chk_1,1));
+    else
+        warning('YLIM_BETA_INV doesn''t contain a low enough lower bound')
+    end
+    if any(chk_2)
+        ylim_value_beta(2) = min(YLIM_BETA_INTV(chk_2,2));
+    else
+        warning('YLIM_BETA_INV doesn''t contain a high enough upper bound')
+    end
+    %-
     for i = 1:length(measure_name_plot)
         if mod(j,3) == 1 
             figure('color','white','position',[100 300 600 200]);
             j = 1;
         end
         measure_name = measure_name_plot{i};
-
-        T_plot = C1_table(C1_table.study == num2str(g) & C1_table.cluster == num2str(k),:); % categorical variable can use ==
-
         %----------------------- 
         subplot(1,3,j)
         hold on;
@@ -1062,17 +1095,11 @@ for k = 4%3:length(fooof_diff_store{g}) % by each cluster
              case 3
                  ylim(ylim_value_beta);
          end
-%          ylim([-1 max(ydata)*1.5]);
-    
-%         ylim([0 Inf]);
-    % saveas(fig_i,[save_dir filesep sprintf('Across_Subjects_Fig_%s.fig',measure_name)]);
-    % saveas(fig_i,[save_dir filesep sprintf('Across_Subjects_Fig_%s.jpg',measure_name)]);
-    % saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.jpg',measure_name)]);
     end
     if g == 1
-        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_Avg_Power',num2str(k),'.pdf']),'ContentType','vector')
+        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_Avg_Power',num2str(k),'.pdf']),'ContentType','vector','Resolution',300)
     elseif g == 2
-        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_Avg_Power',num2str(k),'_speed_reg.pdf']),'ContentType','vector')
+        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_Avg_Power',num2str(k),'_speed_reg.pdf']),'ContentType','vector','Resolution',300)
     end
 end
 
@@ -1176,13 +1203,15 @@ for k = 6%[3:length(fooof_diff_store{g})]%3:length(fooof_diff_store{g}) % by eac
     % saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.jpg',measure_name)]);
     end
     if g == 1
-        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_AP_fit',num2str(k),'.pdf']),'ContentType','vector')
+        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_AP_fit',num2str(k),'.pdf']),'ContentType','vector','Resolution',300)
     elseif g == 2
-        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_AP_ft',num2str(k),'_speed.pdf']),'ContentType','vector')
+        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_AP_ft',num2str(k),'_speed.pdf']),'ContentType','vector','Resolution',300)
     end
 end
-
-%% Make giant plot, with topography
+%% Make subplots of BIG plot, with topography
+%## PARAMS
+FIG_POS = [100 300 1420 240];
+%## COLORS
 g = 2;
 switch g
     case 1
@@ -1194,11 +1223,131 @@ switch g
         color_light = color.speed_shade;
         xtick_label_g = {'0p25','0p5','0p75','1p0'};
 end
-figure('color','white','position',[100 300 1200 1000]);
+for k = 3:length(fooof_group_results_org{g}) %[3 12 7 9 6 13 11 10 14] %3:length(fooof_group_results_org{g})
+    figure('color','white','position',FIG_POS,'Renderer','Painters');
+
+    subplot(1,6,1)
+    std_topoplot_CL(STUDY,k,'together');
+    colormap(colormap_ersp)
+    set(gcf,'color','w')
+
+    subplot(1,6,2)
+    for i = 1:length(spec_data_original{g}{k})
+        data = spec_data_original{g}{k}{i}';
+        JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
+            color_dark(i,:),color_light(i,:));% input need to be a row vector
+    end
+    for i = 1:length(spec_data_original{g}{k})
+        data = spec_data_original{g}{k}{i}';
+        plot(fooof_freq,mean(data),'color',color_dark(i,:),'linewidth',2);
+    end  
+   
+    ax = gca;       
+    axsignif = highlight_CL(ax, fooof_freq, pcond_org{g}{k}{1}(:,2), 'background', 'Frequency(Hz)');
+    xlim([4 40]);ylim([-30 -5]);
+    plot([0 40],[0 0],'--','color','black');
+    xlabel('Frequency(Hz)');ylabel('10*log10(Power)');
+    set(gca,'fontsize',10);
+%     title(['Cluster ',num2str(k)]);
+    xline([3],'--'); xline([8],'--'); xline([13],'--'); xline([30],'--');
+    
+    % ----------------------
+    subplot(1,6,3)
+    for i = 1:length(fooof_diff_store{g}{k})
+        data = fooof_diff_store{g}{k}{i}';
+        JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
+            color_dark(i,:),color_light(i,:));% input need to be a row vector
+    end
+    for i = 1:length(fooof_diff_store{g}{k})
+        data = fooof_diff_store{g}{k}{i}';
+        plot(fooof_freq,mean(data),'color',color_dark(i,:),'linewidth',2);
+    end  
+   
+    ax = gca;       
+    axsignif = highlight_CL(ax, fooof_freq, pcond{g}{k}{1}(:,2), 'background', 'Frequency(Hz)');
+    xlim([4 40]);
+    plot([0 40],[0 0],'--','color','black');
+    xlabel('Frequency(Hz)');ylabel('10*log10(Power)');
+    set(gca,'fontsize',10);
+%     title(['Cluster ',num2str(k)]);
+    xline([3],'--'); xline([8],'--'); xline([13],'--'); xline([30],'--');
+    
+    % -------------------
+    for i = 1:length(measure_name_plot)
+        measure_name = measure_name_plot{i};
+        T_plot = C1_table(C1_table.study == num2str(g) & C1_table.cluster == num2str(k),:); % categorical variable can use ==
+
+        subplot(1,6,3+i)
+        hold on;
+        violinplot(T_plot.(measure_name),T_plot.cond,...
+            'ViolinColor',{color_dark(:,:)},'ViolinAlpha',{0.2 0.3},...
+            'MarkerSize',15,'EdgeColor',[0.5 0.5 0.5],'DataStyle', 'scatter','HalfViolin',...
+            'full','width',0.3,'QuartileStyle','shadow');
+        ylabel('');
+        xlabel('');
+        hold off;
+        % axis padded
+        fig_i = get(groot,'CurrentFigure');
+        % fig_i.Position = [200,200,1820,920];
+        box off
+        title(title_plot{i});
+        set(gca,'xticklabel', xtick_label_g,'fontsize',10);
+        T_stats_plot = T_stats(T_stats.study == num2str(g) & T_stats.cluster == num2str(k),:);
+        switch i 
+            case 1
+                anova_stats = T_stats_plot.theta_anova;
+                cond2_stats = T_stats_plot.theta_cond2;
+                cond3_stats = T_stats_plot.theta_cond3;
+                cond4_stats = T_stats_plot.theta_cond4;
+            case 2
+                anova_stats = T_stats_plot.alpha_anova;
+                cond2_stats = T_stats_plot.alpha_cond2;
+                cond3_stats = T_stats_plot.alpha_cond3;
+                cond4_stats = T_stats_plot.alpha_cond4;
+            case 3
+                anova_stats = T_stats_plot.beta_anova;
+                cond2_stats = T_stats_plot.beta_cond2;
+                cond3_stats = T_stats_plot.beta_cond3;
+                cond4_stats = T_stats_plot.beta_cond4;
+        end
+         if anova_stats < 0.05
+            if cond2_stats < 0.05;sigline([1 2],'*',[],[],cond2_stats);end
+            if cond3_stats < 0.05;sigline([1 3],'*',[],[],cond3_stats);end
+            if cond4_stats < 0.05;sigline([1 4],'*',[],[],cond4_stats);end
+         end
+         clear ydata
+         ydata = [T_plot.alpha_avg_power;T_plot.beta_avg_power];
+         max(ydata)
+%          ylim([-1 max(ydata)*1.5]);
+    end
+    if g == 1
+        exportgraphics(gcf,fullfile(outputdir_psd ,['Big_SubPlot_TopoPSD',num2str(k),'.pdf']),'ContentType','vector','Resolution',300)
+        exportgraphics(gcf,fullfile(outputdir_psd ,['Big_SubPlot_TopoPSD',num2str(k),'.jpg']),'Resolution',300)
+    elseif g == 2
+        exportgraphics(gcf,fullfile(outputdir_psd ,['Big_SubPlot_TopoPSD',num2str(k),'_speed.pdf']),'ContentType','vector','Resolution',300)
+        exportgraphics(gcf,fullfile(outputdir_psd ,['Big_SubPlot_TopoPSD',num2str(k),'_speed.jpg']),'Resolution',300)
+    end
+end
+%% Make giant plot, with topography
+%## PARAMS
+FIG_POS = [100 300 1820 1080];
+%## COLORS
+g = 1;
+switch g
+    case 1
+        color_dark = color.terrain(2:end,:);
+        color_light = color.terrain_shade(2:end,:);
+        xtick_label_g = {'flat','low','med','high'};
+    case 2
+        color_dark = color.speed;
+        color_light = color.speed_shade;
+        xtick_label_g = {'0p25','0p5','0p75','1p0'};
+end
+figure('color','white','position',FIG_POS);
 j = 1;
-for k = [3 12 7 9 6 13 11 10 14] %3:length(fooof_group_results_org{g})
+for k = 3:length(fooof_group_results_org{g}) %[3 12 7 9 6 13 11 10 14] %3:length(fooof_group_results_org{g})
     if j == 31 
-        figure('color','white','position',[100 300 1200 1000]);
+        figure('color','white','position',FIG_POS);
         j = 1;
     end
 
@@ -1296,8 +1445,19 @@ for k = [3 12 7 9 6 13 11 10 14] %3:length(fooof_group_results_org{g})
          max(ydata)
 %          ylim([-1 max(ydata)*1.5]);
     end
-    
     j = j + 6;
+    if j == 31
+        if g == 1
+            exportgraphics(gcf,fullfile(outputdir_psd ,['BigPlot_TopoPSD',num2str(k),'.pdf']),'ContentType','vector','Resolution',300)
+        elseif g == 2
+            exportgraphics(gcf,fullfile(outputdir_psd ,['BigPlot_TopoPSD',num2str(k),'_speed.pdf']),'ContentType','vector','Resolution',300)
+        end
+    end
+end
+if g == 1
+    exportgraphics(gcf,fullfile(outputdir_psd ,['BigPlot_TopoPSD',num2str(k),'.pdf']),'ContentType','vector','Resolution',300)
+elseif g == 2
+    exportgraphics(gcf,fullfile(outputdir_psd ,['BigPlot_TopoPSD',num2str(k),'_speed.pdf']),'ContentType','vector','Resolution',300)
 end
 %% 
 

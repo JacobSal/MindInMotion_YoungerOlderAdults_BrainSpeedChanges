@@ -285,7 +285,9 @@ function [] = ersp_single_subj_plot(STUDY,allersp,alltimes,allfreqs,...
         %- plot time freq
         [fig] = plot_tftopo(erspdata,alltimes,allfreqs,alltitles,[],warping_times,clim_max,colormap_ersp,...
                         PANEL_OFFSET,EVENT_CHARS,sub_freq_lims,FIGURE_POSITION);
-        saveas(fig,[save_dir filesep sprintf('%s_within_des%i_cl%i_stats.pdf',sub,STUDY.currentdesign,cluster_i)]);
+        saveas(fig,[save_dir filesep sprintf('%s_within_des%i_cl%i_stats.jpg',sub,STUDY.currentdesign,cluster_i)]);
+%         exportgraphics(fig,[save_dir filesep sprintf('%s_within_des%i_cl%i_stats.svg',sub,STUDY.currentdesign,cluster_i)],'ContentType','vector');
+        
         close(fig)
         %- print averages
         subj_chars{subj_i} = sub;
@@ -630,7 +632,10 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
     [fig] = plot_tftopo(plot_allersp,alltimes,allfreqs,alltitles,pcond_ersp{1},...
         warping_times,clim_max,colormap_ersp,...
         PANEL_OFFSET,EVENT_CHARS,sub_freq_lims,FIGURE_POSITION);
-    exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_des%i_cl%i.pdf',plottype_i,STUDY.currentdesign,cluster_i)],'Resolution',300);
+    exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_des%i_cl%i.jpg',plottype_i,STUDY.currentdesign,cluster_i)],'Resolution',300);
+    exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_des%i_cl%i.pdf',plottype_i,STUDY.currentdesign,cluster_i)],...
+        'Resolution',300,'ContentType','vector');
+    
     close(fig)
     %% ================================================================= %%
     %- plot time freq
@@ -646,7 +651,10 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
     [fig] = plot_tftopo(plot_allersp,plot_times,plot_freqs,alltitles,plot_cond,...
         warping_times,clim_max,colormap_ersp,...
         PANEL_OFFSET,EVENT_CHARS,sub_freq_lims,FIGURE_POSITION);
-    exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_notfull_des%i_cl%i.pdf',plottype_i,STUDY.currentdesign,cluster_i)],'Resolution',300);
+    exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_notfull_des%i_cl%i.jpg',plottype_i,STUDY.currentdesign,cluster_i)],'Resolution',300);
+    exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_notfull_des%i_cl%i.pdf',plottype_i,STUDY.currentdesign,cluster_i)],...
+        'Resolution',300,'ContentType','vector');
+    
     close(fig)
     %% ================================================================= %%
     %## Pairwise comparison
@@ -712,7 +720,10 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
 %         plot_times = alltimes(baseidx);
         [fig] = plot_contourf(ersp_raw,ersp_pcond,ersp_masked,alltimes,allfreqs,plot_alltitles,...
         warping_times,clim_max,colormap_ersp,PANEL_OFFSET,EVENT_CHARS,sub_freq_lims,FIGURE_POSITION);
-        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_compare-%s_des%i_cl%i.pdf',plottype_i,refErspCond,STUDY.currentdesign,cluster_i)],'Resolution',300);
+        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_compare-%s_des%i_cl%i.jpg',plottype_i,refErspCond,STUDY.currentdesign,cluster_i)],'Resolution',300);
+        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_compare-%s_des%i_cl%i.pdf',plottype_i,refErspCond,STUDY.currentdesign,cluster_i)],...
+            'Resolution',300,'ContentType','vector');
+        
         close(fig)
         %% ============================================================= %%
         ersp_raw = {erspDiff_wind.raw};
@@ -730,7 +741,10 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
         plot_times = alltimes(baseidx);
         [fig] = plot_contourf(ersp_raw,ersp_pcond,ersp_masked,plot_times,plot_freqs,plot_alltitles,...
             warping_times,clim_max,colormap_ersp,PANEL_OFFSET,EVENT_CHARS,sub_freq_lims,FIGURE_POSITION);
-        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_notfull_stats_compare-%s_des%i_cl%i.pdf',plottype_i,refErspCond,STUDY.currentdesign,cluster_i)],'Resolution',300);
+        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_notfull_stats_compare-%s_des%i_cl%i.jpg',plottype_i,refErspCond,STUDY.currentdesign,cluster_i)],'Resolution',300);
+        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_notfull_stats_compare-%s_des%i_cl%i.pdf',plottype_i,refErspCond,STUDY.currentdesign,cluster_i)],...
+            'Resolution',300,'ContentType','vector');
+        
         close(fig)
     end
 end
@@ -896,7 +910,9 @@ function [] = ersp_baseline_plot_1(STUDY,allersp,alltimes,allfreqs,...
     plot_times = alltimes(baseidx);
     [fig] = plot_contourf(ersp_raw,ersp_pcond,ersp_masked,plot_times,plot_freqs,alltitles,...
         warping_times,clim_max,colormap_ersp,PANEL_OFFSET,EVENT_CHARS,sub_freq_lims,FIGURE_POSITION);
-    exportgraphics(fig,[save_dir filesep sprintf('erspplot_des%i_cl%i_bootstats.pdf',STUDY.currentdesign,cluster_i)],'Resolution',300);
+    exportgraphics(fig,[save_dir filesep sprintf('erspplot_des%i_cl%i_bootstats.jpg',STUDY.currentdesign,cluster_i)],'Resolution',300);
+    exportgraphics(fig,[save_dir filesep sprintf('erspplot_des%i_cl%i_bootstats.pdf',STUDY.currentdesign,cluster_i)],'Resolution',300,'ContentType','vector');
+    
     close(fig)
 end
 %% (SUBFUNCTION) ======================================================= %%

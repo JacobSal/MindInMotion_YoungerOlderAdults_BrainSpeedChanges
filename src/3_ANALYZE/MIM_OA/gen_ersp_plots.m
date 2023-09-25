@@ -165,31 +165,31 @@ ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI at
     [ATLAS_PATH filesep 'vtpm' filesep 'vtpm.mat'],...
     [ATLAS_PATH filesep 'yeo' filesep 'Yeo2011_17Networks_MNI152_FreeSurferConformed1mm_LiberalMask_colin27.nii'],...
     [ATLAS_PATH filesep 'brainweb' filesep 'brainweb_discrete.mat']}; % also a discrete version of this
-SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\dipole_1_scalp_0_ersp_0_spec_0';
 %- convert SUB_DIR
+SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster';
 if ~ispc
     SUB_DIR = convertPath2UNIX(SUB_DIR);
 else
     SUB_DIR = convertPath2Drive(SUB_DIR);
 end
 %## USER SET
-% LOAD_DIFFERENT_STUDY = {true,true};
-% CLUSTER_K_PICKS = [14,14];
-% CLUSTER_STUDY_FNAMES = {'temp_study_rejics6','temp_study_rejics5'};
-% CLUSTER_DIRS = {[SUB_DIR filesep 'subjrejs_minics6' filesep '14'],...
-%     [SUB_DIR filesep 'subjrejs_minics5' filesep '14']};
-% CLUSTER_FILES = {'cluster_update_14.mat','cluster_update_14.mat'};
-% CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'subjrejs_minics6'],...
-%     [SUB_DIR filesep 'subjrejs_minics5']};
-LOAD_DIFFERENT_STUDY = {true};
-CLUSTER_K_PICKS = [14];
-CLUSTER_STUDY_FNAMES = {'temp_study_rejics6'};
-CLUSTER_DIRS = {[SUB_DIR filesep 'subjrejs_minics6' filesep '14']};
-CLUSTER_FILES = {'cluster_update_14.mat','cluster_update_14.mat'};
-CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'subjrejs_minics6']};
+LOAD_DIFFERENT_STUDY = {true,true};
+CLUSTER_K_PICKS = [14,14];
+CLUSTER_STUDY_FNAMES = {'temp_study_rejics6','temp_study_rejics5'};
+CLUSTER_DIRS = {[SUB_DIR filesep 'icrej_6' filesep '14'],...
+    [SUB_DIR filesep 'icrej_5' filesep '14']};
+CLUSTER_FILES = {'cl_inf_14.mat','cl_inf_14.mat'};
+CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'icrej_6'],...
+    [SUB_DIR filesep 'icrej_5']};
 POSS_CLUSTER_CHARS = {};
 % this is a matrix of integers matching the cluster number for clustering K=i to the index in the POSS_CLUSTER_CHARS
 CLUSTER_CLIM_MATCH = [];
+STUDY_DESI_PARAMS = {{'subjselect',{},...
+            'variable1','cond','values1',{'flat','low','med','high'},...
+            'variable2','group','values2',{}},...
+            {'subjselect',{},...
+            'variable1','cond','values1',{'0p25','0p5','0p75','1p0'},...
+            'variable2','group','values2',{}}};
 %% (STEP 2) PLOT
 %##
 for k_i = 1:length(CLUSTER_K_PICKS)

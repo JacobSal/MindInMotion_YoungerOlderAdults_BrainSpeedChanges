@@ -102,7 +102,7 @@ dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+% study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 % TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
 load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
@@ -112,7 +112,9 @@ if ~exist(save_dir,'dir')
 end
 %% ===================================================================== %%
 %## ADMIN SET
-SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\dipole_1_scalp_0_ersp_0_spec_0';
+% SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\dipole_1_scalp_0_ersp_0_spec_0';
+SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster';
+
 %- convert SUB_DIR
 if ~ispc
     SUB_DIR = convertPath2UNIX(SUB_DIR);
@@ -129,15 +131,22 @@ end
 %     [SUB_DIR filesep 'subjrejs_minics7' filesep '14']};
 % CLUSTER_FILES = {'cluster_update_14.mat','cluster_update_14.mat','cluster_update_14.mat','cluster_update_14.mat'};
 % CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'subjrejs_minics6'],...
-%     [SUB_DIR filesep 'subjrejs_minics2'],...
+%     [SUB_DIR filesep 
+% 'subjrejs_minics2'],...
 %     [SUB_DIR filesep 'subjrejs_minics3'],...
 %     [SUB_DIR filesep 'subjrejs_minics7']};
+% LOAD_DIFFERENT_STUDY = {true};
+% CLUSTER_K_PICKS = [14];
+% CLUSTER_STUDY_FNAMES = {'temp_study_rejics6'};
+% CLUSTER_DIRS = {[SUB_DIR filesep 'subjrejs_minics6' filesep '14']};
+% CLUSTER_FILES = {'cluster_update_14.mat'};
+% CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'subjrejs_minics6' filesep '14' filesep 'spec_data']};
 LOAD_DIFFERENT_STUDY = {true};
 CLUSTER_K_PICKS = [14];
-CLUSTER_STUDY_FNAMES = {'temp_study_rejics6'};
-CLUSTER_DIRS = {[SUB_DIR filesep 'subjrejs_minics6' filesep '14']};
-CLUSTER_FILES = {'cluster_update_14.mat'};
-CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'subjrejs_minics6' filesep '14' filesep 'spec_data']};
+CLUSTER_STUDY_FNAMES = {'temp_study_rejics5'};
+CLUSTER_DIRS = {[SUB_DIR filesep 'icrej_5' filesep '14']};
+CLUSTER_FILES = {'cl_inf_14.mat'};
+CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'icrej_5' filesep '14' filesep 'spec_data']};
 %% ===================================================================== %%
 for k_i = 1:length(CLUSTER_DIRS)
     %## CREATE & GRAB DIRECTORIES
@@ -195,19 +204,19 @@ for k_i = 1:length(CLUSTER_DIRS)
     fprintf('Clusters with more than 50%% of subjects:'); fprintf('%i,',valid_cluster(1:end-1)); fprintf('%i',valid_cluster(end)); fprintf('\n');
     fprintf('Main cluster numbers:'); fprintf('%i,',main_cl_inds(1:end-1)); fprintf('%i',main_cl_inds(end)); fprintf('\n');
     %## CLUSTER SPECIFIC FIGURES
-    cl_dir = dir([cluster_dir filesep '*.jpg']);
-    inds = cellfun(@(x) contains(x,'topo_plot_averaged'),{cl_dir.name});
-    topo_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
-    inds = cellfun(@(x) contains(x,'alldips_per_clust_top'),{cl_dir.name});
-    diptop_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
-    inds = cellfun(@(x) contains(x,'alldips_per_clust_sagittal'),{cl_dir.name});
-    dipsag_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
-    inds = cellfun(@(x) contains(x,'alldips_per_clust_coronal'),{cl_dir.name});
-    dipcor_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
-    inds = cellfun(@(x) contains(x,'allSpecPlot_des1'),{cl_dir.name});
-    psd_des1_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
-    inds = cellfun(@(x) contains(x,'allSpecPlot_des2'),{cl_dir.name});
-    psd_des2_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
+%     cl_dir = dir([cluster_dir filesep '*.jpg']);
+%     inds = cellfun(@(x) contains(x,'Cluster_topo_avg'),{cl_dir.name});
+%     topo_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
+%     inds = cellfun(@(x) contains(x,'dipplot_alldipspc_top'),{cl_dir.name});
+%     diptop_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
+%     inds = cellfun(@(x) contains(x,'dipplot_alldipspc_sagittal'),{cl_dir.name});
+%     dipsag_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
+%     inds = cellfun(@(x) contains(x,'dipplot_alldipspc_coronal'),{cl_dir.name});
+%     dipcor_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
+%     inds = cellfun(@(x) contains(x,'allSpecPlot_des1'),{cl_dir.name});
+%     psd_des1_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
+%     inds = cellfun(@(x) contains(x,'allSpecPlot_des2'),{cl_dir.name});
+%     psd_des2_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
 %     inds = cellfun(@(x) contains(x,'avgdips_per_clust_top'),{cluster_dir.name});
 %     avg_diptop_files = cluster_dir(inds);
 %     inds = cellfun(@(x) contains(x,'avgdips_per_clust_sagittal'),{cluster_dir.name});
@@ -232,12 +241,23 @@ for k_i = 1:length(CLUSTER_DIRS)
     cl_names = {TMP_STUDY.cluster.name};
    
     for k = main_cl_inds %length(cl_names):-1:1 %1:length(cl_names)
-        ind1 = cellfun(@(x) strcmp(x,sprintf('Cluster_topo_plot_averaged_%i.jpg',k)),{topo_files.name});
-        ind2 = cellfun(@(x) strcmp(x,sprintf('dipplot_alldips_per_clust_top_%i.jpg',k)),{diptop_files.name});
-        ind3 = cellfun(@(x) strcmp(x,sprintf('dipplot_alldips_per_clust_sagittal_%i.jpg',k)),{dipsag_files.name});
-        ind4 = cellfun(@(x) strcmp(x,sprintf('dipplot_alldips_per_clust_coronal_%i.jpg',k)),{dipcor_files.name});
-        ind5 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des1_cl%i.jpg',k)),{psd_des1_files.name});
-        ind6 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des2_cl%i.jpg',k)),{psd_des2_files.name});
+%         ind1 = cellfun(@(x) strcmp(x,sprintf('Cluster_topo_avg%i.jpg',k)),{topo_files.name});
+%         ind2 = cellfun(@(x) strcmp(x,sprintf('dipplot_alldipspc_top%i.jpg',k)),{diptop_files.name});
+%         ind3 = cellfun(@(x) strcmp(x,sprintf('dipplot_alldipspc_sagittal%i.jpg',k)),{dipsag_files.name});
+%         ind4 = cellfun(@(x) strcmp(x,sprintf('dipplot_alldipspc_coronal%i.jpg',k)),{dipcor_files.name});
+% %         ind5 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des1_cl%i.jpg',k)),{psd_des1_files.name});
+% %         ind6 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des2_cl%i.jpg',k)),{psd_des2_files.name});
+%         ind5 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des1_cl%i.pdf',k)),{psd_des1_files.name});
+%         ind6 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des2_cl%i.pdf',k)),{psd_des2_files.name});
+        topo = [cluster_dir filesep sprintf('Cluster_topo_avg%i.jpg',k)];
+        D1 = [cluster_dir filesep sprintf('dipplot_alldipspc_top%i.jpg',k)];
+        D2 = [cluster_dir filesep sprintf('dipplot_alldipspc_sagittal%i.jpg',k)];
+        D3 = [cluster_dir filesep sprintf('dipplot_alldipspc_coronal%i.jpg',k)];
+%         ind5 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des1_cl%i.jpg',k)),{psd_des1_files.name});
+%         ind6 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des2_cl%i.jpg',k)),{psd_des2_files.name});
+        psd1 = [cluster_dir filesep sprintf('allSpecPlot_des1_cl%i.jpg',k)];
+        psd2 = [cluster_dir filesep sprintf('allSpecPlot_des2_cl%i.jpg',k)];
+
         %*
         % opts: (design 1, cluster 3) erspplot1_des1_cl3_stats_lim60,
         % erspplottype2_notfull_stats_compare-flat_des1_cl3,
@@ -248,16 +268,17 @@ for k_i = 1:length(CLUSTER_DIRS)
         ersp_fpath = [cluster_dir filesep 'plots_out' filesep sprintf('%i',k)];
         ersp_f = [];
         %- checks
-        chk1 = sum(ind1)>=1 && sum(ind2)>=1 && sum(ind3)>=1 && sum(ind4)>=1 && sum(ind5)>=1 && sum(ind6)>=1;
+%         chk1 = sum(ind1)>=1 && sum(ind2)>=1 && sum(ind3)>=1 && sum(ind4)>=1 && sum(ind5)>=1 && sum(ind6)>=1;
         chk2 = exist(ersp_fpath,'dir');
-        if chk1 && chk2
+%         disp(chk1 && chk2)
+        if chk2 %chk1 %&& chk2
             %-
-            D1 = [diptop_files(ind2).folder filesep diptop_files(ind2).name];
-            D2 = [dipsag_files(ind3).folder filesep dipsag_files(ind3).name];
-            D3 = [dipcor_files(ind4).folder filesep dipcor_files(ind4).name];
-            topo = [topo_files(ind1).folder filesep topo_files(ind1).name];
-            psd1 = [psd_des1_files(ind5).folder filesep psd_des1_files(ind5).name];
-            psd2 = [psd_des2_files(ind6).folder filesep psd_des2_files(ind6).name];
+%             D1 = [diptop_files(ind2).folder filesep diptop_files(ind2).name];
+%             D2 = [dipsag_files(ind3).folder filesep dipsag_files(ind3).name];
+%             D3 = [dipcor_files(ind4).folder filesep dipcor_files(ind4).name];
+%             topo = [topo_files(ind1).folder filesep topo_files(ind1).name];
+%             psd1 = [psd_des1_files(ind5).folder filesep psd_des1_files(ind5).name];
+%             psd2 = [psd_des2_files(ind6).folder filesep psd_des2_files(ind6).name];
             
             %## (SLIDE 3b) Cluster Level ERSPs
             vertical_move = 0;
@@ -282,6 +303,7 @@ for k_i = 1:length(CLUSTER_DIRS)
 %                 ersp5 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_notfull_des%i_cl%i.jpg',des_i,k)];
 %                 ersp6 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype3_orig_des%i_cl%i_lim60.jpg',des_i,k)];
                 ersp_f = dir([ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype3_stats_notfull_des%i_cl%i*.jpg',des_i,k)]);
+%                 ersp_f = dir([ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype3_stats_notfull_des%i_cl%i*.pdf',des_i,k)]);
                 ersp_f = [ersp_f(1).folder filesep ersp_f(1).name];
                 if exist(ersp_f,'file')
                     newSlide.Shapes.AddPicture(ersp_f, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,4075*im_scale,1312*im_scale); %Left, top, width, height
@@ -296,7 +318,7 @@ for k_i = 1:length(CLUSTER_DIRS)
             %-
             newSlide = slides.AddSlide(1,layout);
             Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
-            Title1.TextFrame.TextRange.Text = sprintf('(K=%i) Cluster %i, %s',clust_i,k,TMP_STUDY.cluster(k).analabel);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,TMP_STUDY.cluster(k).analabel);
             for des_i = 1:length(TMP_STUDY.design)
 %                 ersp1 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplot1_des%i_cl%i_stats_lim60.jpg',des_i,k)];
 %                 ersp2 = dir([ersp_fpath filesep sprintf('%i',des_i) filesep 'erspplottype2_notfull_stats_compare*.jpg']);
@@ -305,6 +327,7 @@ for k_i = 1:length(CLUSTER_DIRS)
 %                 ersp3 = [ersp3.folder filesep ersp3.name];
 %                 ersp4 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_des%i_cl%i.jpg',des_i,k)];
                 ersp_f = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_notfull_des%i_cl%i.jpg',des_i,k)];
+%                 ersp_f = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_notfull_des%i_cl%i.pdf',des_i,k)];
 %                 ersp6 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype3_orig_des%i_cl%i_lim60.jpg',des_i,k)];
                 if exist(ersp_f,'file')
                     newSlide.Shapes.AddPicture(ersp_f, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,4075*im_scale,1312*im_scale); %Left, top, width, height
@@ -322,7 +345,7 @@ for k_i = 1:length(CLUSTER_DIRS)
             %-
             newSlide = slides.AddSlide(1,layout);
             Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
-            Title1.TextFrame.TextRange.Text = sprintf('(K=%i) Cluster %i, %s',clust_i,k,TMP_STUDY.cluster(k).analabel);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,TMP_STUDY.cluster(k).analabel);
             for des_i = 1:length(TMP_STUDY.design)
 %                 if des_i == 1
 %                     LEFT_DIST = -220;
@@ -354,7 +377,7 @@ for k_i = 1:length(CLUSTER_DIRS)
             %-
             newSlide = slides.AddSlide(1,layout);
             Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
-            Title1.TextFrame.TextRange.Text = sprintf('(K=%i) Cluster %i, %s',clust_i,k,TMP_STUDY.cluster(k).analabel);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,TMP_STUDY.cluster(k).analabel);
             for des_i = 1:length(TMP_STUDY.design)
 %                 if des_i == 1
 %                     LEFT_DIST = -200;
@@ -384,7 +407,7 @@ for k_i = 1:length(CLUSTER_DIRS)
             %-
             newSlide = slides.AddSlide(1,layout);
             Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
-            Title1.TextFrame.TextRange.Text = sprintf('(K=%i) Cluster %i, %s',clust_i,k,TMP_STUDY.cluster(k).analabel);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,TMP_STUDY.cluster(k).analabel);
             for des_i = 1:length(TMP_STUDY.design)
                 ersp_f = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplot_des%i_cl%i_bootstats.jpg',des_i,k)];
 %                 ersp2 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_notfull_stats_compare-flat_des%i_cl%i.jpg',des_i,k)];
@@ -401,11 +424,11 @@ for k_i = 1:length(CLUSTER_DIRS)
             im_scale = 0.55;
             newSlide = slides.AddSlide(1,layout);
             Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',50,10,400,70);
-            Title1.TextFrame.TextRange.Text = sprintf('(K=%i) Cluster %i, %s',clust_i,k,TMP_STUDY.cluster(k).analabel);
-            if exist(topo,'file')
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,TMP_STUDY.cluster(k).analabel);
+            if exist(psd1,'file')
                 newSlide.Shapes.AddPicture(psd1, 'msoFalse', 'msoTrue',0,50,875*im_scale,750*im_scale); %Left, top, width, height
             end
-            if exist(topo,'file')
+            if exist(psd2,'file')
                 newSlide.Shapes.AddPicture(psd2, 'msoFalse', 'msoTrue',875*im_scale,50,875*im_scale,750*im_scale); %Left, top, width, height
             end
             %## (SLIDE 1) Add topo plots and dips to slide
@@ -429,7 +452,7 @@ for k_i = 1:length(CLUSTER_DIRS)
             %- title slide
             newSlide = slides.AddSlide(1,layout);
             Txt1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
-            Txt1.TextFrame.TextRange.Text = sprintf('(K=%i) Cluster %i, %s',clust_i,k,TMP_STUDY.cluster(k).analabel);
+            Txt1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,TMP_STUDY.cluster(k).analabel);
 %             set(newSlide.Shapes.Title.Textframe.Textrange, 'Text', sprintf('(K=%i) Cluster %i, %s',clust_i,k,TMP_STUDY.cluster(k).analabel));
             subj_inds = TMP_STUDY.cluster(k).sets;
             subj_char = {TMP_STUDY.datasetinfo(subj_inds).subject};
@@ -440,15 +463,14 @@ for k_i = 1:length(CLUSTER_DIRS)
             SUBJ_ATLAS_INT = 1;
             atlas_dir = dir([cluster_dir filesep sprintf('%i',k) filesep '*atlasinf*']);
             atlas_fPath = [atlas_dir(SUBJ_ATLAS_INT).folder filesep atlas_dir(SUBJ_ATLAS_INT).name];
-            atlas_inf = readtable(atlas_fPath);
-            while size(atlas_inf,2)~=3 && SUBJ_ATLAS_INT<length(atlas_dir)
-                SUBJ_ATLAS_INT = SUBJ_ATLAS_INT+1;
-                atlas_fPath = [atlas_dir(SUBJ_ATLAS_INT).folder filesep atlas_dir(SUBJ_ATLAS_INT).name];
-                tmp = readtable(atlas_fPath);
-                atlas_inf = tmp;
-                atlases = tmp(:,3);
-            end
-            
+%             atlas_inf = readtable(atlas_fPath);
+%             while size(atlas_inf,2)~=3 && SUBJ_ATLAS_INT<length(atlas_dir)
+%                 SUBJ_ATLAS_INT = SUBJ_ATLAS_INT+1;
+%                 atlas_fPath = [atlas_dir(SUBJ_ATLAS_INT).folder filesep atlas_dir(SUBJ_ATLAS_INT).name];
+%                 tmp = readtable(atlas_fPath);
+%                 atlas_inf = tmp;
+%                 atlases = tmp(:,3);
+%             end
             %- get atlas counts
             atlas_inf = cell(length(subj_inds),1);
             for i = 1:length(subj_inds)
@@ -456,26 +478,30 @@ for k_i = 1:length(CLUSTER_DIRS)
                 tmp = readtable(atlas_fPath);
                 if size(tmp,2)==3
                     atlas_inf{i} = {tmp.subject_dipole{:}};
+                 	atlases = tmp;
                 end
             end
+            atlas_inf = atlas_inf(~cellfun(@isempty,atlas_inf));
             word_vec = cat(2,atlas_inf{:});
             words = unique(word_vec);
-            %## HISTOGRAM
-            fig = figure('Position',[10,100,1200,900]);
-            histogram(categorical(word_vec),words)
-            ax = gca;
-            set(gca,'TickLabelInterpreter','none')
-            ylabel('Counts of Atlas Labels');
-            xlabel('Atlas Determination')
-            %## ADD HISTOGRAM
-            im_scale = 0.25;
             ahist_fpath = [cluster_dir filesep sprintf('cluster%i_histogram_atlas_counts.jpg',k)];
-            saveas(fig,ahist_fpath);
+            if ~exist(ahist_fpath,'file')
+                %## HISTOGRAM
+                fig = figure('Position',[10,100,1200,900]);
+                histogram(categorical(word_vec),words)
+                ax = gca;
+                set(gca,'TickLabelInterpreter','none')
+                ylabel('Counts of Atlas Labels');
+                xlabel('Atlas Determination')
+                %## ADD HISTOGRAM
+                im_scale = 0.25;
+                saveas(fig,ahist_fpath);
+            end
             if exist(ahist_fpath,'file')
                 newSlide.Shapes.AddPicture(ahist_fpath, 'msoFalse', 'msoTrue',400,100,1875*im_scale*1.2,1406*im_scale*1.2); %Left, top, width, height
             end
             %- add label
-            Txt2 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',250,00,650,100);
+            Txt2 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',300,00,650,100);
             Txt2.TextFrame.TextRange.Text = sprintf('Atlases Used: %s',strjoin({atlases.atlas{:}},', '));
             
             %- table

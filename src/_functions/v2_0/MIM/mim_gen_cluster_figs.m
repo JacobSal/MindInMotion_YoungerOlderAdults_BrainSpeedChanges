@@ -85,7 +85,8 @@ saveas(fig_i,fullfile(save_dir,'Cluster_topo_avg.fig'));
 std_dipplot(STUDY,ALLEEG,'clusters',CLUSTERS_TO_PLOT,'figure','off');
 fig_i = get(groot,'CurrentFigure');
 set(fig_i,'position',DIP_ALL_POS,'color','w')
-saveas(fig_i,[save_dir filesep 'dipplot_seperatepanes.pdf']);
+% saveas(fig_i,[save_dir filesep 'dipplot_seperatepanes.pdf']);
+saveas(fig_i,[save_dir filesep 'dipplot_seperatepanes.jpg']);
 %% (DIPOLE) Plot dipole fit locations after averaged within participants
 % std_dipplot_CL(STUDY,ALLEEG,'clusters',CLUSTERS_TO_PLOT,'figure','off','mode','together_averaged');
 % fig_i = get(groot,'CurrentFigure');
@@ -97,12 +98,15 @@ std_dipplot_CL(STUDY,ALLEEG,'clusters',CLUSTERS_TO_PLOT,'figure','off','mode','t
 fig_i = get(groot,'CurrentFigure');
 set(fig_i,'position',DIP_SING_POS,'color','w')
 camzoom(1.2^2);
+saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.jpg')]);
 saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.pdf')]);
 saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.fig')]);
 view([45,0,0])
-saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.pdf')]);
+saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.jpg')]);
+saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.pdf')]);
 view([0,-45,0])
-saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.pdf')]);
+saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.jpg')]);
+saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.pdf')]);
 %% (DIPOLE) Plot dipole fit locations after averaged within participants and
 % different clusters have different colors
 STUDY.etc.dipparams.centrline = 'off';

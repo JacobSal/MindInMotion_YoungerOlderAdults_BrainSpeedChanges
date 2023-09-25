@@ -477,7 +477,6 @@ for k_i = 1:length(CLUSTER_K_PICKS)
                                     STUDY.filename,spec_data_dir,...
                                     'RESAVE_DATASETS','off');
     %% CLUSTER DIAGNOSTIC PLOTS && SUBJECT SPECIFIC PER CLUSTER
-    %{
     %- get inds
     [~,main_cl_inds,~,valid_clusters,~,nonzero_clusters] = eeglab_get_cluster_comps(STUDY);
     %- clusters to plot
@@ -620,12 +619,12 @@ for k_i = 1:length(CLUSTER_K_PICKS)
             close all            
         end
     end
-    %}
+    
     
 end
 %% (STEP 2) PLOT
 %##
-%{
+
 clear('STUDY');
 clear('ALLEEG');
 clear('TMP_ALLEEG');
@@ -771,7 +770,7 @@ parfor (k_i = 1:length(CLUSTER_K_PICKS),length(CLUSTER_K_PICKS))
         end
     end
 end
-%}
+
 %% Version History
 %{
 v1.0.01132023.0 : Initializing versioning for future iterations. Previous

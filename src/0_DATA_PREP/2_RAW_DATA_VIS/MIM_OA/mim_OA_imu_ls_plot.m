@@ -501,7 +501,7 @@ for meas_i = 1:length(meas_names)
     hold off;
 %     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
 %     saveas(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.jpg',meas_names{meas_i})]);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.pdf',meas_names{meas_i})],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300);
     %% By trial plot
     figure;
 %     title(sprintf('%s Across Trials',meas_names{meas_i}));
@@ -557,7 +557,7 @@ for meas_i = 1:length(meas_names)
     hold off;
 %     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
 %     saveas(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.jpg',meas_names{meas_i})]);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.pdf',meas_names{meas_i})],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300);
     %% (PLOT) Trial & Subject Category Plot for High vs Low function OA
     vals = cat(1,cond_1{1,:});
     bandwidth = range(vals)*0.1;
@@ -675,10 +675,15 @@ for meas_i = 1:length(meas_names)
                 out = fitlm(x_vals,y_vals); %fitlm(tb,mdl_spec);
 %                 p = plot(ax,out.Residuals.Raw',x_vals);
                 p = plot(ax,out);
-                 p(end-1,1).Visible='off';
+                p(end-1,1).Visible='off';
                 p(end,1).Visible='off';
                 p(1).Visible = 'off'; %[0,0,0,0.2];
-                p(2).Color = [0,0,0.7,0.60];
+                if out.Coefficients.Estimate(2) > 0
+                    p(2).Color = [0,0,0.7,0.70];
+                else
+                    p(2).Color = [0.7,0,0,0.70];
+                end
+                
 %                 plot(ax,x_vals,y_vals);
             end
         end
@@ -714,7 +719,7 @@ for meas_i = 1:length(meas_names)
     hold off;
 %     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
 %     saveas(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.hdf',save_lab,meas_names{meas_i})]);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300);
     %% (PLOT) Trial & Subject Category Plot for High vs Low function OA
     vals = cat(1,cond_2{1,:});
     bandwidth = range(vals)*0.1;
@@ -827,7 +832,12 @@ for meas_i = 1:length(meas_names)
                 p(end-1,1).Visible='off';
                 p(end,1).Visible='off';
                 p(1).Visible = 'off'; %[0,0,0,0.2];
-                p(2).Color = [0,0,0.7,0.60];
+                if out.Coefficients.Estimate(2) > 0
+                    p(2).Color = [0,0,0.7,0.70];
+                else
+                    p(2).Color = [0.7,0,0,0.70];
+                end
+                
 %                 plot(ax,x_vals,y_vals);
             end
         end
@@ -869,7 +879,7 @@ for meas_i = 1:length(meas_names)
     hold off;
 %     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
 %     saveas(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})]);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300);
     %% (TERRAIN) STATISTICS GROUP & CONDITION EFFECT
     %## REFORM TABLE VARIABLES
     inds = [];
@@ -1185,7 +1195,7 @@ for meas_i = 1:length(meas_names)
     hold off;
 %     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
 %     saveas(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.jpg',meas_names{meas_i})]);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.pdf',meas_names{meas_i})],'Resolution',300); 
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300,'ContentType','vector'); 
     %% By trial plot
     figure;
 %     title(sprintf('%s Across Trials',meas_names{meas_i}));
@@ -1236,7 +1246,7 @@ for meas_i = 1:length(meas_names)
     hold off;
 %     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
 %     saveas(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.jpg',meas_names{meas_i})]);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.pdf',meas_names{meas_i})],'Resolution',300); 
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300); 
     
     %% (PLOT) Trial & Subject Category Plot for High vs Low function OA
     vals = cat(1,cond_1{1,:});
@@ -1347,7 +1357,12 @@ for meas_i = 1:length(meas_names)
                  p(end-1,1).Visible='off';
                 p(end,1).Visible='off';
                 p(1).Visible = 'off'; %[0,0,0,0.2];
-                p(2).Color = [0,0,0.7,0.60];
+                if out.Coefficients.Estimate(2) > 0
+                    p(2).Color = [0,0,0.7,0.70];
+                else
+                    p(2).Color = [0.7,0,0,0.70];
+                end
+                
 %                 plot(ax,x_vals,y_vals);
             end
         end
@@ -1389,7 +1404,7 @@ for meas_i = 1:length(meas_names)
     hold off;
 %     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
 %     saveas(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})]);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'Resolution',300); 
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300); 
     %% (PLOT) Trial & Subject Category Plot for High vs Low function OA
     vals = cat(1,cond_2{1,:});
     bandwidth = range(vals)*0.1;
@@ -1529,10 +1544,15 @@ for meas_i = 1:length(meas_names)
                 out = fitlm(x_vals,y_vals); %fitlm(tb,mdl_spec);
 %                 p = plot(ax,out.Residuals.Raw',x_vals);
                 p = plot(ax,out);
-                 p(end-1,1).Visible='off';
+                p(end-1,1).Visible='off';
                 p(end,1).Visible='off';
                 p(1).Visible = 'off'; %[0,0,0,0.2];
-                p(2).Color = [0,0,0.7,0.60];
+                if out.Coefficients.Estimate(2) > 0
+                    p(2).Color = [0,0,0.7,0.70];
+                else
+                    p(2).Color = [0.7,0,0,0.70];
+                end
+                
 %                 plot(ax,x_vals,y_vals);
             end
         end
@@ -1567,7 +1587,7 @@ for meas_i = 1:length(meas_names)
     hold off;
 %     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
 %     saveas(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})]);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'Resolution',300); 
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300); 
     %% (TERRAIN) STATISTICS GROUP & CONDITION EFFECT
     %## REFORM TABLE VARIABLES
     inds = [];

@@ -124,7 +124,7 @@ for i = 1:length(CLUSTERS_TO_PLOT)
             end
             hold off;
             drawnow;
-            exportgraphics(fig_i,[save_dir filesep sprintf('allSpecPlot_des%i_cl%i.pdf',des_i,clust_i)],'Resolution',300);
+            exportgraphics(fig_i,[save_dir filesep sprintf('allSpecPlot_des%i_cl%i.jpg',des_i,clust_i)],'Resolution',300);
         end
     else
         fprintf('\nNo Subjects in Cluster %s, number: %i\n',c_names{cllust_i},cllust_i);
