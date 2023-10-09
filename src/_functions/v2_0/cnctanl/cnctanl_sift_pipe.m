@@ -226,8 +226,7 @@ if length(conn_components) ~= size(ALLEEG(1).icaweights,1)
     end
 end
 
-%% (MAIN CONNECTIVITY PIPELINE) ========================================= %%
-
+%% (MAIN CONNECTIVITY PIPELINE) ======================================== %%
 %## STEP 3: Pre-process the data
 fprintf('===================================================\n');
 disp('PRE-PROCESSISNG DATA');

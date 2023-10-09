@@ -154,11 +154,12 @@ tmp = cell(1,length(MAIN_ALLEEG));
 rmv_subj = zeros(1,length(MAIN_ALLEEG));
 %% CONNECTIVITY MAIN FUNC
 fprintf('Computing Connectivity\n');
-pop_editoptions('option_computeica', 1);
+
 %## PARFOR LOOP
 EEG = [];
 parfor (subj_i = 1:length(LOOP_VAR),ceil(length(LOOP_VAR)/2))
 % for subj_i = LOOP_VAR
+    pop_editoptions('option_computeica', 1);
     %- Parse out components
     components = comps_out(:,subj_i);
     components = sort(components(components ~= 0));

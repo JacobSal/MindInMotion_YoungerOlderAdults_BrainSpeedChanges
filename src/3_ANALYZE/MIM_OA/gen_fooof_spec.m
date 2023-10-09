@@ -165,8 +165,14 @@ ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI at
     [ATLAS_PATH filesep 'vtpm' filesep 'vtpm.mat'],...
     [ATLAS_PATH filesep 'yeo' filesep 'Yeo2011_17Networks_MNI152_FreeSurferConformed1mm_LiberalMask_colin27.nii'],...
     [ATLAS_PATH filesep 'brainweb' filesep 'brainweb_discrete.mat']}; % also a discrete version of this
+COLORS_MAPS_TERRAIN = linspecer(4);
+custom_yellow = [254,223,0]/255;
+COLORS_MAPS_TERRAIN = [COLORS_MAPS_TERRAIN(3,:);custom_yellow;COLORS_MAPS_TERRAIN(4,:);COLORS_MAPS_TERRAIN(2,:)];
+COLOR_MAPS_SPEED = linspecer(4*3);
+COLOR_MAPS_SPEED = [COLOR_MAPS_SPEED(1,:);COLOR_MAPS_SPEED(2,:);COLOR_MAPS_SPEED(3,:);COLOR_MAPS_SPEED(4,:)];
 %- convert SUB_DIR
-SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster';
+% SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster';
+SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\_save\10022023_cluster_slowwalkers_included';
 if ~ispc
     SUB_DIR = convertPath2UNIX(SUB_DIR);
 else
@@ -292,9 +298,10 @@ COND_CHARS = {cond_terrains,cond_speeds};
 keywords = {'Terrain','Speed'};
 % save_path = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\icrej_6\14';
 % data_fpath = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\icrej_6\14\spec_data';
-save_path = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\icrej_5\14';
+% save_path = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\icrej_5\14';
+save_path = cluster_dir;
 data_fpath = [save_path filesep 'spec_data'];
-mkdir(fullfile(save_path, 'Fooof_Plots'))
+% mkdir(fullfile(save_path, 'Fooof_Plots'))
 %%
 if ~isfield(STUDY.cluster,'topo'), STUDY.cluster(1).topo = []; end
 for clus = CLUSTER_PICKS % For each cluster requested
@@ -530,7 +537,7 @@ grp_C1_table = grpstats(C1_table,["subID","study","cond","cluster"],'nanmedian',
 grp_C1_table.Properties.VariableNames = {'subID','study','cond','cluster','GroupCount','med_r_squared','med_alpha_cf','med_alpha_p',...
             'med_beta_cf','med_beta_p','med_alpha_center','med_alpha_centerP','med_beta_center','med_beta_centerP',...
             'med_theta_avg_power','med_alpha_avg_power','med_beta_avg_power'};
-
+writetable(C1_table,[save_path filesep 'fooof_spec_table.xlsx']);
 %% Sanity check: Plot distribution of aperiodic params (exp), central frequency, and goodness of fit
 g = 1;
 for k = 3%3:length(STUDY_imagined.cluster)
@@ -758,32 +765,32 @@ YLIM_THETA_INTV = [[-1,2.5];[-2,4];[-3,6];[0,3]];
 YLIM_ALPHA_INTV = [[-1,4];[-2,7];[-3,10];[0,12];[0,18]];
 YLIM_BETA_INTV = [[-1,4];[-2,6];[0,7];[-3,8];[-3,10]];
 YLIM_ERROR = 0.05;
-%     switch k
-%         case {3,12} % sensorimotor area
-%             ylim_value_theta = [-1 2.5];
-%             ylim_value_alpha = [-2 18];
-%             ylim_value_beta  = [-1 10];
-%         case {7,9} % posterior area
-%             ylim_value_theta = [-1 2.5];
-%             ylim_value_alpha = [-2 12];
-%             ylim_value_beta  = [-1 8];
-%         case 14 % cingulate
-%             ylim_value_theta = [-1 6];
-%             ylim_value_alpha = [-2 10];
-%             ylim_value_beta  = [-1 7];
-%         case {6,13} % supplementary motor
-%             ylim_value_theta = [-0.5 6];
-%             ylim_value_alpha = [-2 4];
-%             ylim_value_beta  = [-2 6];
-%         case {11,10} % occipital
-%             ylim_value_theta = [-1 4];
-%             ylim_value_alpha = [-2 18];
-%             ylim_value_beta  = [-1 6.5];
-%         case 4 % caudate
-%             ylim_value_theta = [-1 4];
-%             ylim_value_alpha = [-2 7];
-%             ylim_value_beta  = [-0.1 4];
-%     end
+switch k
+    case {3,12} % sensorimotor area
+        ylim_value_theta = [-1 2.5];
+        ylim_value_alpha = [-2 18];
+        ylim_value_beta  = [-1 10];
+    case {7,9} % posterior area
+        ylim_value_theta = [-1 2.5];
+        ylim_value_alpha = [-2 12];
+        ylim_value_beta  = [-1 8];
+    case 14 % cingulate
+        ylim_value_theta = [-1 6];
+        ylim_value_alpha = [-2 10];
+        ylim_value_beta  = [-1 7];
+    case {6,13} % supplementary motor
+        ylim_value_theta = [-0.5 6];
+        ylim_value_alpha = [-2 4];
+        ylim_value_beta  = [-2 6];
+    case {11,10} % occipital
+        ylim_value_theta = [-1 4];
+        ylim_value_alpha = [-2 18];
+        ylim_value_beta  = [-1 6.5];
+    case 4 % caudate
+        ylim_value_theta = [-1 4];
+        ylim_value_alpha = [-2 7];
+        ylim_value_beta  = [-0.1 4];
+end
 %% (MULTI-CLUSTER FOOOF FIGUES) ======================================== %%
 %## PARAMS
 g = 2;
@@ -792,11 +799,16 @@ SUBPLOT_WIDTH = 5;
 %- colors
 switch g
     case 1
-        color_dark = color.terrain(2:end,:);
-        color_light = color.terrain_shade(2:end,:);
+        color_dark = COLORS_MAPS_TERRAIN; 
+%         color_dark(color_dark<0) = 0;
+        color_light = COLORS_MAPS_TERRAIN;
+%         color_dark =color.terrain(2:end,:);
+%         color_light =color.terrain_shade(2:end,:);
+        xtick_label_g = {'flat','low','med','high'};
     case 2
-        color_dark = color.speed;
-        color_light = color.speed_shade;
+        color_dark = COLOR_MAPS_SPEED; %color.speed;
+        color_light = COLOR_MAPS_SPEED+0.15; %color.speed_shade;
+        xtick_label_g = {'0.25','0.5','0.75','1.0'};
 end
 %## PLOT
 figure('color','white','position',[100 300 800 800],'Renderer','painter');
@@ -806,6 +818,7 @@ for k = 3:length(fooof_group_results_org{g})
         data = fooof_diff_store{g}{k}{i}';
         JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
             color_dark(i,:),color_light(i,:));% input need to be a row vector
+%         gca
     end
     for i = 1:length(fooof_diff_store{g}{k})
         data = fooof_diff_store{g}{k}{i}';
@@ -825,15 +838,20 @@ exportgraphics(gcf,fullfile(outputdir_psd ,sprintf('cluster_fooofpsds_des%i.pdf'
 %% Figure Plot original spec_data and the flattened data side by side ------------------------------------------------
 % Updated 2023-06-08 as the official figures
 g = 1;
+%- colors
 switch g
     case 1
-        color_dark = color.terrain(2:end,:);
-        color_light = color.terrain_shade(2:end,:);
+        color_dark = COLORS_MAPS_TERRAIN; 
+%         color_dark(color_dark<0) = 0;
+        color_light = COLORS_MAPS_TERRAIN;
+%         color_dark =color.terrain(2:end,:);
+%         color_light =color.terrain_shade(2:end,:);
+        xtick_label_g = {'flat','low','med','high'};
     case 2
-        color_dark = color.speed;
-        color_light = color.speed_shade;
+        color_dark = COLOR_MAPS_SPEED; %color.speed;
+        color_light = COLOR_MAPS_SPEED+0.15; %color.speed_shade;
+        xtick_label_g = {'0.25','0.5','0.75','1.0'};
 end
-
 % figure('color','white','position',[100 300 600 1000],'Renderer','Painters');
 j = 1;
 for k = 3:length(fooof_group_results_org{g})
@@ -875,7 +893,7 @@ for k = 3:length(fooof_group_results_org{g})
     end
 
     if mod(j,2) == 1 
-        figure('color','white','position',[100 300 450 210],'Renderer','Painters');
+        figure('color','white','position',[100 300 520 320],'Renderer','Painters');
         j = 1;
     end
 
@@ -900,11 +918,12 @@ for k = 3:length(fooof_group_results_org{g})
     ax = gca;       
     axsignif = highlight_CL(ax, fooof_freq, pcond_org{g}{k}{1}(:,2), 'background', 'Frequency(Hz)');
     xlim([4 40]);
-    
     plot([0 40],[0 0],'--','color','black');
     xlabel('Frequency(Hz)');
     ylabel('10*log(PSD)');
-    set(gca,'fontsize',10);
+    set(gca,'fontsize',12);
+%     set(ax,'LineWidth',1)
+    set(ax,'FontName','Arial','FontSize',12,'FontWeight','bold')
 %     title(['Cluster ',num2str(k)]);
     xline([4],'--'); xline([8],'--'); xline([13],'--'); xline([30],'--');
     
@@ -926,8 +945,8 @@ for k = 3:length(fooof_group_results_org{g})
     xlim([4 40]);
     plot([0 40],[0 0],'-','color',[0.5 0.5 0.5]);
     ylabel('');
-    set(gca,'fontsize',10);
-    
+%     set(ax,'LineWidth',1)
+    set(ax,'FontName','Arial','FontSize',12,'FontWeight','bold')
     xline([4],'--'); xline([8],'--'); xline([13],'--'); xline([30],'--');
     
     j = j + 2;
@@ -944,71 +963,111 @@ measure_name_plot = {'theta_avg_power','alpha_avg_power','beta_avg_power'}; % wa
 title_plot = {'\theta','\alpha','\beta'};
 % figure('color','white','position',[200 200 800 400]);
 T_plot = table;
-g = 1;
+g = 2;
+%- colors
 switch g
     case 1
-        color_dark = color.terrain(2:end,:);
-        color_light = color.terrain_shade(2:end,:);
+        color_dark = COLORS_MAPS_TERRAIN; 
+%         color_dark(color_dark<0) = 0;
+        color_light = COLORS_MAPS_TERRAIN;
+%         color_dark =color.terrain(2:end,:);
+%         color_light =color.terrain_shade(2:end,:);
         xtick_label_g = {'flat','low','med','high'};
     case 2
-        color_dark = color.speed;
-        color_light = color.speed_shade;
+        color_dark = COLOR_MAPS_SPEED; %color.speed;
+        color_light = COLOR_MAPS_SPEED+0.15; %color.speed_shade;
         xtick_label_g = {'0.25','0.5','0.75','1.0'};
 end
-
 %----------------------- PLOT ## By subject plot 
 % figure('color','white','position',[100 300 600 180]);
 j = 1;
-for k = 3:length(fooof_diff_store{g}) % by each cluster
+for k = valid_clusters %3:length(fooof_diff_store{g}) % by each cluster
     %## set color limits
     T_plot = C1_table(C1_table.study == num2str(g) & C1_table.cluster == num2str(k),:); % categorical variable can use ==
     data_1 = T_plot.theta_avg_power; %spec_data_original{g}{k}{i}';
     data_2 = T_plot.alpha_avg_power; %cat(2,fooof_diff_store{g}{k}{:});
     data_3 = T_plot.beta_avg_power; 
-    %- theta
-    yvalMat = [min(data_1,[],'all') max(data_1,[],'all')];
-    ylim_value_theta = [-1,2]; %zeros(1,2);
-    chk_1 = (YLIM_THETA_INTV(:,1)-YLIM_ERROR)<yvalMat(1,1);
-    chk_2 = (YLIM_THETA_INTV(:,2)+YLIM_ERROR)>yvalMat(1,2);
-    if any(chk_1)
-        ylim_value_theta(1) = max(YLIM_THETA_INTV(chk_1,1));
-    else
-        warning('YLIM_THETA_INV doesn''t contain a low enough lower bound')
-    end
-    if any(chk_2)
-        ylim_value_theta(2) = min(YLIM_THETA_INTV(chk_2,2));
-    else
-        warning('YLIM_THETA_INV doesn''t contain a high enough upper bound')
-    end
-    %- alpha
-    yvalMat = [min(data_2,[],'all') max(data_2,[],'all')];
-    ylim_value_alpha = [-1,2]; %zeros(1,2);
-    chk_1 = (YLIM_ALPHA_INTV(:,1)-YLIM_ERROR)<yvalMat(1,1);
-    chk_2 = (YLIM_ALPHA_INTV(:,2)+YLIM_ERROR)>yvalMat(1,2);
-    if any(chk_1)
-        ylim_value_alpha(1) = max(YLIM_ALPHA_INTV(chk_1,1));
-    else
-        warning('YLIM_ALPHA_INV doesn''t contain a low enough lower bound')
-    end
-    if any(chk_2)
-        ylim_value_alpha(2) = min(YLIM_ALPHA_INTV(chk_2,2));
-    else
-        warning('YLIM_ALPHA_INV doesn''t contain a high enough upper bound')
-    end
-    %- beta
-    yvalMat = [min(data_3,[],'all') max(data_3,[],'all')];
-    ylim_value_beta = [-1,2]; %zeros(1,2);
-    chk_1 = (YLIM_BETA_INTV(:,1)-YLIM_ERROR)<yvalMat(1,1);
-    chk_2 = (YLIM_BETA_INTV(:,2)+YLIM_ERROR)>yvalMat(1,2);
-    if any(chk_1)
-        ylim_value_beta(1) = max(YLIM_BETA_INTV(chk_1,1));
-    else
-        warning('YLIM_BETA_INV doesn''t contain a low enough lower bound')
-    end
-    if any(chk_2)
-        ylim_value_beta(2) = min(YLIM_BETA_INTV(chk_2,2));
-    else
-        warning('YLIM_BETA_INV doesn''t contain a high enough upper bound')
+%     %- theta
+%     yvalMat = [min(data_1,[],'all') max(data_1,[],'all')];
+%     ylim_value_theta = [-1,2]; %zeros(1,2);
+%     chk_1 = (YLIM_THETA_INTV(:,1)-YLIM_ERROR)<yvalMat(1,1);
+%     chk_2 = (YLIM_THETA_INTV(:,2)+YLIM_ERROR)>yvalMat(1,2);
+%     if any(chk_1)
+%         ylim_value_theta(1) = max(YLIM_THETA_INTV(chk_1,1));
+%     else
+%         warning('YLIM_THETA_INV doesn''t contain a low enough lower bound')
+%     end
+%     if any(chk_2)
+%         ylim_value_theta(2) = min(YLIM_THETA_INTV(chk_2,2));
+%     else
+%         warning('YLIM_THETA_INV doesn''t contain a high enough upper bound')
+%     end
+%     ylim_value_theta(2) = ylim_value_theta(2)+0.5;
+%     %- alpha
+%     yvalMat = [min(data_2,[],'all') max(data_2,[],'all')];
+%     ylim_value_alpha = [-1,2]; %zeros(1,2);
+%     chk_1 = (YLIM_ALPHA_INTV(:,1)-YLIM_ERROR)<yvalMat(1,1);
+%     chk_2 = (YLIM_ALPHA_INTV(:,2)+YLIM_ERROR)>yvalMat(1,2);
+%     if any(chk_1)
+%         ylim_value_alpha(1) = max(YLIM_ALPHA_INTV(chk_1,1));
+%     else
+%         warning('YLIM_ALPHA_INV doesn''t contain a low enough lower bound')
+%     end
+%     if any(chk_2)
+%         ylim_value_alpha(2) = min(YLIM_ALPHA_INTV(chk_2,2));
+%     else
+%         warning('YLIM_ALPHA_INV doesn''t contain a high enough upper bound')
+%     end
+%     ylim_value_alpha(2) = ylim_value_alpha(2)+0.5;
+%     %- beta
+%     yvalMat = [min(data_3,[],'all') max(data_3,[],'all')];
+%     ylim_value_beta = [-1,2]; %zeros(1,2);
+%     chk_1 = (YLIM_BETA_INTV(:,1)-YLIM_ERROR)<yvalMat(1,1);
+%     chk_2 = (YLIM_BETA_INTV(:,2)+YLIM_ERROR)>yvalMat(1,2);
+%     if any(chk_1)
+%         ylim_value_beta(1) = max(YLIM_BETA_INTV(chk_1,1));
+%     else
+%         warning('YLIM_BETA_INV doesn''t contain a low enough lower bound')
+%     end
+%     if any(chk_2)
+%         ylim_value_beta(2) = min(YLIM_BETA_INTV(chk_2,2));
+%     else
+%         warning('YLIM_BETA_INV doesn''t contain a high enough upper bound')
+%     end
+%     ylim_value_beta(2) = ylim_value_beta(2)+0.5;
+    switch k
+        case {4,5} % sensorimotor area
+            ylim_value_theta = [-1 5];
+            ylim_value_alpha = [-1.5 15];
+            ylim_value_beta  = [-1 9];
+        case {6,12} % posterior area
+            ylim_value_theta = [-1 4];
+            ylim_value_alpha = [-1.5 19];
+            ylim_value_beta  = [-0.5 10];
+        case 9 % cingulate
+            ylim_value_theta = [-1 6];
+            ylim_value_alpha = [-1.5 6];
+            ylim_value_beta  = [-1 7];
+%         case {6,13} % supplementary motor
+%             ylim_value_theta = [-0.5 6];
+%             ylim_value_alpha = [-2 4];
+%             ylim_value_beta  = [-2 6];
+        case {16}
+            ylim_value_theta = [-1 4];
+            ylim_value_alpha = [-1.5 15];
+            ylim_value_beta  = [-1 8.5];
+        case {8}
+            ylim_value_theta = [-1 8];
+            ylim_value_alpha = [-1 10];
+            ylim_value_beta  = [-1 8];
+        case {7} % occipital
+            ylim_value_theta = [-1 6];
+            ylim_value_alpha = [-1 15];
+            ylim_value_beta  = [-1 7];
+        case 15 % caudate
+            ylim_value_theta = [-1 3];
+            ylim_value_alpha = [-2 7];
+            ylim_value_beta  = [-1 6];
     end
     %-
     for i = 1:length(measure_name_plot)
@@ -1022,7 +1081,8 @@ for k = 3:length(fooof_diff_store{g}) % by each cluster
         hold on;
         violinplot(T_plot.(measure_name),T_plot.cond,...
             'ViolinColor',{color_dark(:,:)},'ViolinAlpha',{0.2 0.3},...
-            'MarkerSize',15,'EdgeColor',[0.5 0.5 0.5],'DataStyle', 'scatter','HalfViolin','full','width',0.3,'QuartileStyle','shadow')
+            'MarkerSize',15,'EdgeColor',[0.5 0.5 0.5],'DataStyle', 'scatter',...
+            'HalfViolin','full','width',0.3,'QuartileStyle','shadow');
         if j == 1;ylabel('10*log(Flattened PSD)');else;ylabel('');end
         if g == 2;xlabel('m/s');end
         
@@ -1082,11 +1142,11 @@ for k = 3:length(fooof_diff_store{g}) % by each cluster
                     text(1,gety(gca)*1.2,{['*** ','slope = ',num2str(round(regressline_stats(2),2))],['R^2 = ',num2str(round(R2,2))]});
                 end
             end
-        end        
-        
+        end
          clear ydata
          ydata = [T_plot.alpha_avg_power;T_plot.beta_avg_power];
-         max(ydata)
+         
+%          max(ydata)
          switch i 
              case 1
                  ylim(ylim_value_theta);
@@ -1096,6 +1156,12 @@ for k = 3:length(fooof_diff_store{g}) % by each cluster
                  ylim(ylim_value_beta);
          end
     end
+    fprintf('ci%i) Max theta lim: %0.2f\n',k, max(data_1));
+    fprintf('ci%i) Min theta lim: %0.2f\n',k, min(data_1));
+    fprintf('ci%i) Max alpha lim: %0.2f\n',k, max(data_2));
+    fprintf('ci%i) Min alpha lim: %0.2f\n',k, min(data_2));
+    fprintf('ci%i) Max beta lim: %0.2f\n',k, max(data_3));
+    fprintf('ci%i) Min beta lim: %0.2f\n',k, min(data_3));
     if g == 1
         exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_Avg_Power',num2str(k),'.pdf']),'ContentType','vector','Resolution',300)
     elseif g == 2
@@ -1104,131 +1170,218 @@ for k = 3:length(fooof_diff_store{g}) % by each cluster
 end
 
 %% Paper Figure: Violin plot for the Aperiodic fit slope and offset
-measure_name_plot = {'aperiodic_exp','aperiodic_offset'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
-title_plot = {'aperiodic exponent','apriodic offset'};
-% figure('color','white','position',[200 200 800 400]);
-T_plot = table;
-g = 2;
-switch g
-    case 1
-        color_dark = color.terrain(2:end,:);
-        color_light = color.terrain_shade(2:end,:);
-        xtick_label_g = {'flat','low','med','high'};
-    case 2
-        color_dark = color.speed;
-        color_light = color.speed_shade;
-        xtick_label_g = {'0.25','0.5','0.75','1.0'};
-end
-
-%----------------------- PLOT ## By subject plot 
-% figure('color','white','position',[100 300 600 180]);
-j = 1;
-for k = 6%[3:length(fooof_diff_store{g})]%3:length(fooof_diff_store{g}) % by each cluster
-    switch k
-        case {3,12} % sensorimotor area
-            ylim_value_ap_exp = [0 2];
-            ylim_value_ap_offset = [-3 1]*10;
-        case {7,9} % posterior area
-            ylim_value_ap_exp = [0 2];
-            ylim_value_ap_offset = [-3 1]*10;
-        case 14 % cingulate
-            ylim_value_ap_exp = [0 2];
-            ylim_value_ap_offset = [-3 1]*10;
-        case {6,13} % supplementary motor
-            ylim_value_ap_exp = [0 2];
-            ylim_value_ap_offset = [-3 1]*10;
-        case {11,10} % occipital
-            ylim_value_ap_exp = [0 2];
-            ylim_value_ap_offset = [-3 1]*10;
-    end
-    for i = 1:length(measure_name_plot)
-        if mod(j,2) == 1 
-            figure('color','white','position',[100 300 400 200]);
-            j = 1;
-        end
-        measure_name = measure_name_plot{i};
-
-        T_plot = C1_table(C1_table.study == num2str(g) & C1_table.cluster == num2str(k),:); % categorical variable can use ==
-
-        %----------------------- 
-        subplot(1,2,j)
-        hold on;
-        
-        violinplot(T_plot.(measure_name)*10^(i-1),T_plot.cond,...
-            'ViolinColor',{color_dark(:,:)},'ViolinAlpha',{0.2 0.3},...
-            'MarkerSize',15,'EdgeColor',[0.5 0.5 0.5],'DataStyle', 'scatter','HalfViolin','full','width',0.3,'QuartileStyle','shadow')
-%         if j == 1;ylabel('10*log(Flattened PSD)');else;ylabel('');end
-        if g == 2;xlabel('m/s');end
-        hold off;
-        % axis padded
-        fig_i = get(groot,'CurrentFigure');
-        % fig_i.Position = [200,200,1820,920];
-        box off
-        title(title_plot{i});
-        set(gca,'xticklabel', xtick_label_g,'fontsize',10);
-        
-        switch i 
-             case 1
-                 ylim(ylim_value_ap_exp);
-             case 2
-                 ylim(ylim_value_ap_offset);
-        end
-        j = j + 1;
-        T_stats_plot = T_stats(T_stats.study == num2str(g) & T_stats.cluster == num2str(k),:);
-        switch i 
-            case 1
-                anova_stats = T_stats_plot.ap_exp_anova;
-                cond2_stats = T_stats_plot.ap_exp2;
-                cond3_stats = T_stats_plot.ap_exp3;
-                cond4_stats = T_stats_plot.ap_exp4;
-            case 2
-                anova_stats = T_stats_plot.ap_offset_anova;
-                cond2_stats = T_stats_plot.ap_offset2;
-                cond3_stats = T_stats_plot.ap_offset3;
-                cond4_stats = T_stats_plot.ap_offset4;           
-        end
-         if anova_stats < 0.05
-            if cond2_stats < 0.05;sigline([1 2],'*',[],[],cond2_stats);end
-            if cond3_stats < 0.05;sigline([1 3],'*',[],[],cond3_stats);end
-            if cond4_stats < 0.05;sigline([1 4],'*',[],[],cond4_stats);end
-         end
-         clear ydata
-         
-         
-%          ylim([-1 max(ydata)*1.5]);
-    
-%         ylim([0 Inf]);
-    % saveas(fig_i,[save_dir filesep sprintf('Across_Subjects_Fig_%s.fig',measure_name)]);
-    % saveas(fig_i,[save_dir filesep sprintf('Across_Subjects_Fig_%s.jpg',measure_name)]);
-    % saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.jpg',measure_name)]);
-    end
-    if g == 1
-        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_AP_fit',num2str(k),'.pdf']),'ContentType','vector','Resolution',300)
-    elseif g == 2
-        exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_AP_ft',num2str(k),'_speed.pdf']),'ContentType','vector','Resolution',300)
-    end
-end
+% measure_name_plot = {'aperiodic_exp','aperiodic_offset'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
+% title_plot = {'aperiodic exponent','apriodic offset'};
+% % figure('color','white','position',[200 200 800 400]);
+% T_plot = table;
+% g = 2;
+% %- colors
+% switch g
+%     case 1
+%         color_dark = COLORS_MAPS_TERRAIN; 
+% %         color_dark(color_dark<0) = 0;
+%         color_light = COLORS_MAPS_TERRAIN;
+% %         color_dark =color.terrain(2:end,:);
+% %         color_light =color.terrain_shade(2:end,:);
+%         xtick_label_g = {'flat','low','med','high'};
+%     case 2
+%         color_dark = COLOR_MAPS_SPEED; %color.speed;
+%         color_light = COLOR_MAPS_SPEED+0.15; %color.speed_shade;
+%         xtick_label_g = {'0.25','0.5','0.75','1.0'};
+% end
+% %----------------------- PLOT ## By subject plot 
+% % figure('color','white','position',[100 300 600 180]);
+% j = 1;
+% for k = 6%[3:length(fooof_diff_store{g})]%3:length(fooof_diff_store{g}) % by each cluster
+%     switch k
+%         case {4,5} % sensorimotor area
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+%         case {6,12} % posterior area
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+%         case 9 % cingulate
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+% %         case {6,13} % supplementary motor
+% %             ylim_value_ap_exp = [0 2];
+% %             ylim_value_ap_offset = [-3 1]*10;
+%         case {7} % occipital
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+%         case {16} 
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+%         case {8} 
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+%         case {15} % caudate
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+%     end
+%     for i = 1:length(measure_name_plot)
+%         if mod(j,2) == 1 
+%             figure('color','white','position',[100 300 400 200]);
+%             j = 1;
+%         end
+%         measure_name = measure_name_plot{i};
+% 
+%         T_plot = C1_table(C1_table.study == num2str(g) & C1_table.cluster == num2str(k),:); % categorical variable can use ==
+% 
+%         %----------------------- 
+%         subplot(1,2,j)
+%         hold on;
+%         
+%         violinplot(T_plot.(measure_name)*10^(i-1),T_plot.cond,...
+%             'ViolinColor',{color_dark(:,:)},'ViolinAlpha',{0.2 0.3},...
+%             'MarkerSize',15,'EdgeColor',[0.5 0.5 0.5],'DataStyle', 'scatter',...
+%             'HalfViolin','full','width',0.3,'QuartileStyle','shadow')
+% %         if j == 1;ylabel('10*log(Flattened PSD)');else;ylabel('');end
+% %         switch i 
+% %              case 1
+% %                  ylim(ylim_value_theta);
+% %              case 2
+% %                  ylim(ylim_value_alpha);
+% %              case 3
+% %                  ylim(ylim_value_beta);
+% %         end
+% %         if j == 1;ylabel('10*log(Flattened PSD)');else;ylabel('');end
+% %         if g == 2;xlabel('m/s');end
+%         hold off;
+%         % axis padded
+%         fig_i = get(groot,'CurrentFigure');
+%         % fig_i.Position = [200,200,1820,920];
+%         box off
+%         title(title_plot{i});
+%         set(gca,'xticklabel', xtick_label_g);
+%         switch i 
+%              case 1
+%                  ylim(ylim_value_ap_exp);
+%              case 2
+%                  ylim(ylim_value_ap_offset);
+%         end
+%         j = j + 1;
+%         T_stats_plot = T_stats(T_stats.study == num2str(g) & T_stats.cluster == num2str(k),:);
+%         switch i 
+%             case 1
+%                 anova_stats = T_stats_plot.ap_exp_anova;
+%                 cond2_stats = T_stats_plot.ap_exp2;
+%                 cond3_stats = T_stats_plot.ap_exp3;
+%                 cond4_stats = T_stats_plot.ap_exp4;
+%             case 2
+%                 anova_stats = T_stats_plot.ap_offset_anova;
+%                 cond2_stats = T_stats_plot.ap_offset2;
+%                 cond3_stats = T_stats_plot.ap_offset3;
+%                 cond4_stats = T_stats_plot.ap_offset4;           
+%         end
+%          if anova_stats < 0.05
+%             if cond2_stats < 0.05;sigline([1 2],'*',[],[],cond2_stats);end
+%             if cond3_stats < 0.05;sigline([1 3],'*',[],[],cond3_stats);end
+%             if cond4_stats < 0.05;sigline([1 4],'*',[],[],cond4_stats);end
+%          end
+%          clear ydata
+%          
+%          
+% %          ylim([-1 max(ydata)*1.5]);
+%     
+% %         ylim([0 Inf]);
+%     % saveas(fig_i,[save_dir filesep sprintf('Across_Subjects_Fig_%s.fig',measure_name)]);
+%     % saveas(fig_i,[save_dir filesep sprintf('Across_Subjects_Fig_%s.jpg',measure_name)]);
+%     % saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.jpg',measure_name)]);
+%     end
+%     if g == 1
+%         exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_AP_fit',num2str(k),'.pdf']),'ContentType','vector','Resolution',300)
+%     elseif g == 2
+%         exportgraphics(gcf,fullfile(outputdir_psd ,['Cluster_PSD_AP_ft',num2str(k),'_speed.pdf']),'ContentType','vector','Resolution',300)
+%     end
+% end
 %% Make subplots of BIG plot, with topography
 %## PARAMS
-FIG_POS = [100 300 1420 240];
+measure_name_plot = {'theta_avg_power','alpha_avg_power','beta_avg_power'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
+title_plot = {'\theta','\alpha','\beta'};
+FIG_POS = [100 300 1420 320];
 %## COLORS
-g = 2;
+g = 1;
+%- colors
 switch g
     case 1
-        color_dark = color.terrain(2:end,:);
-        color_light = color.terrain_shade(2:end,:);
+        color_dark = COLORS_MAPS_TERRAIN; 
+%         color_dark(color_dark<0) = 0;
+        color_light = COLORS_MAPS_TERRAIN;
+%         color_dark =color.terrain(2:end,:);
+%         color_light =color.terrain_shade(2:end,:);
         xtick_label_g = {'flat','low','med','high'};
     case 2
-        color_dark = color.speed;
-        color_light = color.speed_shade;
-        xtick_label_g = {'0p25','0p5','0p75','1p0'};
+        color_dark = COLOR_MAPS_SPEED; %color.speed;
+        color_light = COLOR_MAPS_SPEED+0.15; %color.speed_shade;
+        xtick_label_g = {'0.25','0.50','0.75','1.0'};
 end
-for k = 3:length(fooof_group_results_org{g}) %[3 12 7 9 6 13 11 10 14] %3:length(fooof_group_results_org{g})
+for k = valid_clusters %3:length(fooof_group_results_org{g}) %[3 12 7 9 6 13 11 10 14] %3:length(fooof_group_results_org{g})
+%     switch k
+%         case {4,5} % sensorimotor area
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+%         case {6,12} % posterior area
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+%         case 9 % cingulate
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+% %         case {6,13} % supplementary motor
+% %             ylim_value_ap_exp = [0 2];
+% %             ylim_value_ap_offset = [-3 1]*10;
+%         case {7} % occipital
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+%         case {16} 
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+%         case {8} 
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+%         case {15} % caudate
+%             ylim_value_ap_exp = [0 2];
+%             ylim_value_ap_offset = [-3 1]*10;
+%     end
+    switch k
+        case {4,5} % sensorimotor area
+            ylim_value_theta = [-1 5];
+            ylim_value_alpha = [-1.5 15];
+            ylim_value_beta  = [-1 9];
+        case {6,12} % posterior area
+            ylim_value_theta = [-1 4];
+            ylim_value_alpha = [-1.5 19];
+            ylim_value_beta  = [-0.5 10];
+        case 9 % cingulate
+            ylim_value_theta = [-1 6];
+            ylim_value_alpha = [-1.5 6];
+            ylim_value_beta  = [-1 7];
+%         case {6,13} % supplementary motor
+%             ylim_value_theta = [-0.5 6];
+%             ylim_value_alpha = [-2 4];
+%             ylim_value_beta  = [-2 6];
+        case {16}
+            ylim_value_theta = [-1 4];
+            ylim_value_alpha = [-1.5 15];
+            ylim_value_beta  = [-1 8.5];
+        case {8}
+            ylim_value_theta = [-1 8];
+            ylim_value_alpha = [-1 10];
+            ylim_value_beta  = [-1 8];
+        case {7} % occipital
+            ylim_value_theta = [-1 6];
+            ylim_value_alpha = [-1 15];
+            ylim_value_beta  = [-1 7];
+        case 15 % caudate
+            ylim_value_theta = [-1 3];
+            ylim_value_alpha = [-2 7];
+            ylim_value_beta  = [-1 6];
+    end
     figure('color','white','position',FIG_POS,'Renderer','Painters');
 
     subplot(1,6,1)
     std_topoplot_CL(STUDY,k,'together');
-    colormap(colormap_ersp)
+    colormap(linspecer); %colormap_ersp)
     set(gcf,'color','w')
 
     subplot(1,6,2)
@@ -1246,8 +1399,9 @@ for k = 3:length(fooof_group_results_org{g}) %[3 12 7 9 6 13 11 10 14] %3:length
     axsignif = highlight_CL(ax, fooof_freq, pcond_org{g}{k}{1}(:,2), 'background', 'Frequency(Hz)');
     xlim([4 40]);ylim([-30 -5]);
     plot([0 40],[0 0],'--','color','black');
-    xlabel('Frequency(Hz)');ylabel('10*log10(Power)');
-    set(gca,'fontsize',10);
+    xlabel('Frequency(Hz)');ylabel('10*log_{10}(Power)');
+%     set(gca,'fontsize',10);
+    set(gca,'FontName','Arial','FontSize',12,'FontWeight','bold')
 %     title(['Cluster ',num2str(k)]);
     xline([3],'--'); xline([8],'--'); xline([13],'--'); xline([30],'--');
     
@@ -1267,8 +1421,9 @@ for k = 3:length(fooof_group_results_org{g}) %[3 12 7 9 6 13 11 10 14] %3:length
     axsignif = highlight_CL(ax, fooof_freq, pcond{g}{k}{1}(:,2), 'background', 'Frequency(Hz)');
     xlim([4 40]);
     plot([0 40],[0 0],'--','color','black');
-    xlabel('Frequency(Hz)');ylabel('10*log10(Power)');
-    set(gca,'fontsize',10);
+    xlabel('Frequency(Hz)');ylabel('10*log_{10}(Power)');
+    set(gca,'FontName','Arial','FontSize',12,'FontWeight','bold')
+%     set(gca,'fontsize',10);
 %     title(['Cluster ',num2str(k)]);
     xline([3],'--'); xline([8],'--'); xline([13],'--'); xline([30],'--');
     
@@ -1285,13 +1440,25 @@ for k = 3:length(fooof_group_results_org{g}) %[3 12 7 9 6 13 11 10 14] %3:length
             'full','width',0.3,'QuartileStyle','shadow');
         ylabel('');
         xlabel('');
+        if i == 1;ylabel('10*log_{10}(Flattened PSD)');else;ylabel('');end
+        if g == 2&&i==1;xlabel('m/s');end
+        set(gca,'xticklabel', xtick_label_g,'XTickLabelRotation',45);
+        switch i 
+             case 1
+                 ylim(ylim_value_theta);
+             case 2
+                 ylim(ylim_value_alpha);
+             case 3
+                 ylim(ylim_value_beta);
+        end
+        set(gca,'FontName','Arial','FontSize',12,'FontWeight','bold')
         hold off;
         % axis padded
         fig_i = get(groot,'CurrentFigure');
         % fig_i.Position = [200,200,1820,920];
         box off
         title(title_plot{i});
-        set(gca,'xticklabel', xtick_label_g,'fontsize',10);
+%         set(gca,'xticklabel', xtick_label_g,'fontsize',10);
         T_stats_plot = T_stats(T_stats.study == num2str(g) & T_stats.cluster == num2str(k),:);
         switch i 
             case 1
@@ -1341,7 +1508,7 @@ switch g
     case 2
         color_dark = color.speed;
         color_light = color.speed_shade;
-        xtick_label_g = {'0p25','0p5','0p75','1p0'};
+        xtick_label_g = {'0.25','0p5','0p75','1p0'};
 end
 figure('color','white','position',FIG_POS);
 j = 1;

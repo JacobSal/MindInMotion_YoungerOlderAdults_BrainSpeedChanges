@@ -88,7 +88,7 @@ DATA_SET = 'MIM_dataset';
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %- compute measures for spectrum and ersp
 FORCE_RECALC_SPEC = false;
-FORCE_RECALC_ERSP = false;
+FORCE_RECALC_ERSP = true;
 DO_TIMEWARP = true;
 DO_BASELINE_CORRECTION = false; 
 DO_SUBJ_PLOTS = true;
@@ -154,7 +154,8 @@ ERSP_PARAMS = struct('subbaseline','off',...
 % (08/03/2023) JS, turning subbaseline to off to align with methods set
 % inside CL's PlotAndSaveERSP_CL_V3.m...
 %- datetime override
-dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
+% dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
+dt = '10052023_MIM_OAN70_noslowwalkers';
 %## Soft Define
 study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 DATA_DIR = [source_dir filesep '_data'];
@@ -204,7 +205,7 @@ STUDY_DESI_PARAMS = {{'subjselect',{},...
             'variable2','group','values2',{}}};
 %% (STEP 1) GENERATE ERSP & SPEC DATA FOR-EACH DESIGN & CLUSTER
 %## NOTE: This Loop ABSOLUTELY CAN NOT be ran in parallel at this point.
-for k_i = 1:length(CLUSTER_K_PICKS)
+for k_i = 2 %1:length(CLUSTER_K_PICKS)
     %## TEMPORARIES
     parameters = []; %#ok<NASGU>
     tmp_group_orig = cell(length(ALLEEG),1);

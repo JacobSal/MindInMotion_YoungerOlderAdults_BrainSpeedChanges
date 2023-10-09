@@ -1,9 +1,44 @@
 function [ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,varargin)
 %MIM_CREATE_ALLEEG Summary of this function goes here
 %   Detailed explanation goes here
-%   IN: 
-%   OUT: 
-%   IMPORTANT: 
+%     MATLAB CODE DOCUMENTATION
+% 
+%     Function Name: mim_create_alleeg
+% 
+%     Description:
+%     This MATLAB function, 'mim_create_alleeg', is used for creating and populating an EEGLAB STUDY structure from multiple EEG datasets. It loads EEG data files, performs Independent Component Analysis (ICA), and optionally fits dipole models for source localization. The resulting data is organized into an EEGLAB STUDY structure, which can be used for various EEG analysis tasks.
+% 
+%     Usage:
+%     [ALLEEG] = mim_create_alleeg(fNames, fPaths, subjectNames, save_dir, varargin)
+% 
+%     Input Parameters:
+%     - fNames: A cell array of EEG data file names (e.g., {'subject1.set', 'subject2.set'}).
+%     - fPaths: A cell array of file paths to the EEG data files corresponding to 'fNames'.
+%     - subjectNames: A cell array of subject names associated with the EEG data files.
+%     - save_dir: The directory where the processed data and STUDY structure will be saved.
+%     - varargin (Optional Parameters):
+%       - conditions: A cell array specifying condition labels for each EEG data file. Default is 'tmp_cnd'.
+%       - groups: A cell array specifying group labels for each EEG data file. Default is 'tmp_grp'.
+%       - sessions: A cell array specifying session labels for each EEG data file. Default is 'tmp_sess'.
+%       - chanlocs_fPaths: A cell array of full file paths to custom channel location files (optional).
+% 
+%     Output:
+%     - ALLEEG: A cell array of EEG structures, one for each subject, with data and information populated.
+% 
+%     Important Notes:
+%     - This code is designed to work with EEG data and requires the EEGLAB toolbox.
+%     - The 'dipfit' plugin within EEGLAB is used for dipole fitting and source localization.
+% 
+%     Code Designer: Jacob Salminen
+%     Date: 11/25/2022
+% 
+%     Functions:
+%     1. fem_eeglab_dipfit: Configures dipole fitting parameters for Finite Element Model (FEM) dipfit analysis.
+%     2. custom_update_chanlocs: Updates EEG channel locations using custom electrode locations.
+%     3. bem_eeglab_dipfit: Fits dipole models to EEG data using Boundary Element Model (BEM) dipfit analysis.
+% 
+%     See individual function descriptions for more details on their functionality.
+
 % Code Designer: Jacob Salminen (11/25/2022)
 %## TIME
 tic
@@ -11,15 +46,14 @@ tic
 %- developer params
 DO_BEM_DIPFIT = false;
 DO_FEM_DIPFIT = true;
-FORCE_RELOAD = true;
+FORCE_RELOAD = false;
 ICA_FNAME_REGEXP = '%s_allcond_ICA_TMPEEG.set';
 %- find eeglab on path
-% if ~ispc
-%     tmp = strsplit(path,':');
-% else
-%     tmp = strsplit(path,';');
-% end
-tmp = strsplit(path,';');
+if ~ispc
+    tmp = strsplit(path,':');
+else
+    tmp = strsplit(path,';');
+end
 % tmp = strsplit(path,';');
 b1 = regexp(tmp,'eeglab','end');
 b2 = tmp(~cellfun(@isempty,b1));

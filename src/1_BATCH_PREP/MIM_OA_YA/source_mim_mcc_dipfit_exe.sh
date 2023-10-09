@@ -8,11 +8,11 @@
 #SBATCH --mem-per-cpu=15000mb # Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
 #SBATCH --time=48:00:00 # Time limit hrs:min:sec
-#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/_hpg_logs/%j_mcc_dipole_fit_exe.log # Standard output
+#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA_YA/_hpg_logs/%j_mcc_dipole_fit_exe.log # Standard output
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=hpg-default # cluster to run on  use slurm command "sinfo -s"; bigmem
-# sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/source_mim_mcc_dipfit_exe.sh
+# sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA_YA/source_mim_mcc_dipfit_exe.sh
 
 echo "Date              = $(date)"
 echo "Hostname          = $(hostname -s)"

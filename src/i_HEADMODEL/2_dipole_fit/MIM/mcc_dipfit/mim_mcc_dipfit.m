@@ -23,11 +23,29 @@ startj = tic;
 RV_THRESHOLD = 0.5;
 error_code = 0;
 %- working directory containing the vol.mat & elec_aligned.mat
-errorMsg = 'Value ''working_dir'' must be PATH. ''working_dir'' should point to a folder. Working directory must contain a fieldtrip generated vol.mat & elec_aligned.mat'; 
-wd_validFcn = @(x) assert(exist(x,'dir') && exist([x filesep 'vol.mat'],'file') && exist([x filesep 'elec_aligned.mat'],'file'),errorMsg);
-fprintf('Checking working_dir (%s) for vol.mat & elec_aligned.mat\n',working_dir);
-fprintf('vol.mat check: %i\n',exist([working_dir filesep 'vol.mat'],'file'))
+% errorMsg = 'Value ''working_dir'' must be PATH. ''working_dir'' should point to a folder. Working directory must contain a fieldtrip generated vol.mat & elec_aligned.mat'; 
+% wd_validFcn = @(x) assert(exist(x,'dir') && exist([x filesep 'vol.mat'],'file') && exist([x filesep 'elec_aligned.mat'],'file'),errorMsg);
+% fprintf('Checking working_dir (%s) for vol.mat & elec_aligned.mat\n',working_dir);
+% fprintf('vol.mat check: %i\n',exist([working_dir filesep 'vol.mat'],'file'))
+% fprintf('elec_aligned.mat check: %i\n',exist([working_dir filesep 'elec_aligned.mat'],'file'))
+%- working directory containing the ctf_fiducials.mat & mri_acpc_rs.mat &
+%mri_acpc.mat & CustomElectrodeLocations.txtf
+errorMsg = 'Value must be CHAR. working directory containing the *_masks_contr.nii.gz, CustomElectrodeLocations.txt, mri_acpc.mat, elec_aligned.mat, & ctf_fiducials.mat'; 
+% wd_validFcn = @(x) assert(ischar(x) && exist([x filesep 'ctf_fiducials.mat'],'file') && exist([x filesep 'mri_acpc_rs.mat'],'file') && exist([x filesep 'mri_acpc.mat'],'file') && exist([x filesep 'CustomElectrodeLocations.txt'],'file'),errorMsg);
+wd_validFcn = @(x) assert(ischar(x)  && exist([x filesep 'ctf_fiducials.mat'],'file')...
+    && ~isempty(dir([x filesep '*_masks_contr.nii.gz']))...
+    && exist([x filesep 'CustomElectrodeLocations.txt'],'file')...
+    && exist([x filesep 'mri_acpc.mat'],'file'),errorMsg);
+fprintf('Checking working_dir (%s) for ''subject_str''_masks_contr.nii.gz & CustomElectrodeLocations.txt\n',working_dir);
+fprintf('ctf_fiducials.mat check: %i\n',exist([working_dir filesep 'ctf_fiducials.mat'],'file'))
+% fprintf('mri_acpc_rs.mat check: %i\n',exist([working_dir filesep 'mri_acpc_rs.mat'],'file'))
+fprintf('mri_acpc.mat check: %i\n',exist([working_dir filesep 'mri_acpc.mat'],'file'))
+dir_segmri = dir([working_dir filesep '*_masks_contr.nii.gz']);
+fprintf('''subject_str''_masks_contr.nii.gz check: %i\n',~isempty(dir_segmri));
+fprintf('CustomElectrodeLocations.txt check: %i\n',exist([working_dir filesep 'CustomElectrodeLocations.txt'],'file'))
+%- not required but nice to have
 fprintf('elec_aligned.mat check: %i\n',exist([working_dir filesep 'elec_aligned.mat'],'file'))
+fprintf('vol.mat check: %i\n',exist([working_dir filesep 'vol.mat'],'file'))
 %- EEG filepath
 errorMsg = 'Value ''eeg_fpath'' must be PATH. ''eeg_fpath'' should point to a EEGLAB .set file'; 
 ef_validFcn = @(x) assert(logical(exist(x,'file')),errorMsg);
@@ -74,71 +92,31 @@ catch e
 end
 %% ===================================================================== %%
 fprintf('Running dipole fitting on directory: %s\n',working_dir);
-%## Load Vars
-%- load vol.mat
-tmp = load([working_dir filesep 'vol.mat']);
-vol = tmp.vol;
-%
 %## Create headmodel
-%# fieldtrip segmentation
-% cfg           = [];
-% cfg.spmmethod = 'old';%new method output is weird
-% cfg.output    = {'gray','white','csf','skull','scalp'};
-% segmentedmri  = ft_volumesegment(cfg, mri_acpc_rs);
-% 
-% % saves to current folder, instead save to patient file? for now saved to SourceLocalization folder
-% disp(segmentedmri)
-% 
-% % --- plot
-% seg_i = ft_datatype_segmentation(segmentedmri,'segmentationstyle','indexed');
-% 
-% cfg              = [];
-% cfg.funparameter = 'tissue'; % They did an update on May.2021 in source code but not the tutorial -`д´-
-% cfg.anaparameter = 'anatomy';
-% cfg.funcolormap  = jet(6); % distinct color per tissue
-% cfg.location     = 'center';
-% cfg.atlas        = seg_i;    % the segmentation can also be used as atlas
-% 
-% % check segmentation quality - It's kind of bad?!!
-% ft_sourceplot(cfg, seg_i);%this plot cannot be generated...I don't know why
-% saveas(gcf,fullfile(save_headmodel_folder,'segmentation.fig'));
-% 
-% %# Create mesh
-% cfg        = [];
-% cfg.shift  = 0.3;
-% cfg.method = 'hexahedral';
-% 
-% mesh = ft_prepare_mesh(cfg,segmentedmri);
-% 
-% figure;
-% ft_plot_mesh(mesh, 'surfaceonly', 'yes','facecolor','b','edgecolor', 'none', 'facealpha', 0.4);
-% save(fullfile(save_headmodel_folder,'mesh.mat'),'mesh') 
-% cfg        = [];
-% cfg.method = 'simbio';
-% cfg.conductivity = zeros(1,5);
-% scale = 1;
-% % order follows mesh.tissyelabel , CAUTIOUS!!!! OMg this is not the same order as in the segmentation
-% cfg.conductivity(find(strcmp(mesh.tissuelabel,'csf'))) = 1.65*scale;
-% cfg.conductivity(find(strcmp(mesh.tissuelabel,'gray'))) = 0.33*scale;
-% cfg.conductivity(find(strcmp(mesh.tissuelabel,'scalp'))) = 0.33*scale;
-% cfg.conductivity(find(strcmp(mesh.tissuelabel,'skull'))) = 0.0042*scale;
-% cfg.conductivity(find(strcmp(mesh.tissuelabel,'white'))) = 0.126*scale;
-% cfg.conductivity(find(strcmp(mesh.tissuelabel,'air'))) = 2.5*10^(-14)*scale;
-% 
-% vol        = ft_prepare_headmodel(cfg, mesh);
-% 
-% save(fullfile(save_headmodel_folder,'vol.mat'),'vol','-v7.3') 
-%- load elec_aligned.mat
-tmp = load([working_dir filesep 'elec_aligned.mat']);
-try
+% out_segmri = [dir_segmri.folder filesep dir_segmri.name];
+if ~exist([working_dir filesep 'vol.mat'],'file') || ~exist([working_dir filesep 'elec_aligned.mat'],'file')
+    [vol,elec_aligned] = fem_create_vol(working_dir,...
+        [working_dir filesep 'ctf_fiducials.mat'],...
+        [dir_segmri.folder filesep dir_segmri.name],...
+        [working_dir filesep 'CustomElectrodeLocations.txt'],...
+        [working_dir filesep 'mri_acpc.mat'],...
+        VOL_CONDUCTIVITES);
+else
+    %- load vol.mat
+    tmp = load([working_dir filesep 'vol.mat']);
+    vol = tmp.vol;
+    tmp = load([working_dir filesep 'elec_aligned.mat']);
+    %- load elec_aligned.mat
+    try
     elec_aligned = tmp.elec_aligned;
-catch e
-    fprintf(['error. identifier: %s\n',...
-             'error. %s\n',...
-             'error. on working_dir %s\n'],e.identifier,e.message,working_dir);
-    elec_aligned = tmp.elec_aligned_init;
+    catch e
+        fprintf(['error. identifier: %s\n',...
+                 'error. %s\n',...
+                 'error. on working_dir %s\n'],e.identifier,e.message,working_dir);
+        elec_aligned = tmp.elec_aligned_init;
+    end
+    clear tmp
 end
-clear tmp
 %% PREPARE VOLUME AND SENSORS
 %- prepare volume and sensors (projects sensors to scalp)
 if ~exist([working_dir filesep 'headmodel_fem_tr.mat'],'file')
@@ -307,8 +285,8 @@ fprintf('Call to mim_mcc_dipfit.m took %0.2g',endj-startj);
 % fclose(fid);
 % exit(error_code);
 end
-
-function [] = par_save(SAVEVAR,fPath,fName)
+%% ===================================================================== %%
+function [] = par_save(SAVEVAR,fPath,fName,varargin)
 %PAR_SAVE Summary of this function goes here
 %   Detailed explanation goes here
 %
@@ -321,6 +299,8 @@ function [] = par_save(SAVEVAR,fPath,fName)
 %           fName, CHAR
 %               file name & extension (e.g., 'INEEG.mat')
 %       OPTIONAL:
+%           fname_ext, CHAR
+%               for automating the renaming of file names 
 %       PARAMETER:
 %   OUT:
 %       NONE
@@ -334,32 +314,278 @@ function [] = par_save(SAVEVAR,fPath,fName)
 % Code Date: 02/06/2023, MATLAB 2019a
 % Copyright (C) Jacob Salminen, jsalminen@ufl.edu
 %## TIME
-% tic
+tic
 %## DEFINE DEFAULTS
 %- fPath
 errorMsg = 'Value ''fPath'' must be CHAR. The path must exist.'; 
 fp_validFcn = @(x) assert(ischar(x) && exist(x,'dir'),errorMsg);
-%- fName
-errorMsg = 'Value ''fname_ext'' must be CHAR. This value is appended to ''fName'' before the file declaration.'; 
-fn_validFcn = @(x) assert(ischar(x),errorMsg);
+%- fname_ext
+% FNAME_EXT = '';
+% errorMsg = 'Value ''fname_ext'' must be CHAR. This value is appended to ''fName'' before the file declaration.'; 
+% fn_validFcn = @(x) assert(ischar(x),errorMsg);
 p = inputParser;
 %## REQUIRED
 addRequired(p,'SAVEVAR')
 addRequired(p,'fPath',fp_validFcn)
-addRequired(p,'fName',fn_validFcn)
+addRequired(p,'fName',@ischar)
 %## OPTIONAL
 %## PARAMETER
-parse(p, SAVEVAR, fPath, fName);
+parse(p, SAVEVAR, fPath, fName, varargin{:});
 %## SET DEFAULTS
+fname_ext = p.Results.fname_ext;
 %% ===================================================================== %%
-if ~exist(fPath, 'dir')
-    mkdir(fPath)
+if ~ispc
+    % convert path to os
+    pathIn = convertPath2UNIX(fPath);
+else
+    %- convert path to os
+    pathIn = convertPath2Drive(fPath);
 end
-save([fPath filesep fName],'SAVEVAR','-v6');
-fprintf('\nSaving %s to\n%s\n',fName,fPath);
+if ~isempty(fname_ext)
+    fnames = strsplit(fName,'.');
+    fnames{1} = [fnames{1} fname_ext];
+    fName = join(fnames,'.');
+    fName = fName{1};
+end
+% set save path
+%- if filename is included in path
+if ~isempty(fName)
+    savePath = [pathIn filesep fName];
+else
+    savePath = pathIn;
+end
+%- save
+%     val = GetSize(SAVEVAR);
+s = whos('SAVEVAR');
+fprintf(1,'%s is %0.2g bytes\n',fName,s.bytes);
+% fprintf('\nSaving %s to\n%s\n',fName,savePath);
+if s.bytes >= 2e9
+    fprintf('\nSaving %s using ''v7.3'' to\n%s\n',fName,savePath);
+    save(savePath,'SAVEVAR','-v7.3');
+else
+    fprintf('\nSaving %s using ''v6'' to\n%s\n',fName,savePath);
+    save(savePath,'SAVEVAR','-v6');
+end
+end
+
+
+function [vol,elec_aligned] = fem_create_vol(output_dir,ctf_fiducial_fpath,segmri_fpath,customelec_fpath,acpcmri_fpath,varargin)
+%MIM_FEHEADMODEL_DIPFIT Summary of this function goes here
+%   Detailed explanation goes here
+%   IN: 
+%   OUT: 
+%   IMPORTANT: 
+% CAT CODE
+%  _._     _,-'""`-._
+% (,-.`._,'(       |\`-/|
+%     `-.-' \ )-`( , o o)
+%           `-    \`_`"'-
+% Code Designer: Chang Liu, Jacob Salminen
+% Code Date: 04/28/2023, MATLAB 2019a
+% Copyright (C) Jacob Salminen, jsalminen@ufl.edu
+% Copyright (C) Chang Liu, liu.chang1@ufl.edu
+
 %## TIME
-% toc
+tic
+%## DEFINE DEFAULTS
+DO_PLOTTING = false;
+% error_code = 0; %#ok<NASGU>
+%- working directory containing the ctf_fiducials.mat & mri_acpc_rs.mat &
+%mri_acpc.mat & CustomElectrodeLocations.txt
+% errorMsg = 'Value must be CHAR. working directory containing the ctf_fiducials.mat & elec_aligned.mat'; 
+% wd_validFcn = @(x) assert(ischar(x) && exist([x filesep 'ctf_fiducials.mat'],'file') && exist([x filesep 'mri_acpc_rs.mat'],'file') && exist([x filesep 'mri_acpc.mat'],'file') && exist([x filesep 'CustomElectrodeLocations.txt'],'file'),errorMsg);
+
+validFcn_1 = @(x) assert(ischar(x) && exist(x,'file'),...
+    'Value must be CHAR. ctf_fiducials.mat does not exist');
+validFcn_2 = @(x) assert(ischar(x) && exist(x,'file'),...
+    'Value must be CHAR. *_masks_contr.nii.gz does not exist');
+validFcn_3 = @(x) assert(ischar(x) && exist(x,'file'),...
+    'Value must be CHAR. CustomElectrodeLocations.txt does not exist');
+validFcn_4 = @(x) assert(ischar(x) && exist(x,'file'),...
+    'Value must be CHAR. mri_acpc.mat does not exist');
+%## CHECK FPATHS
+% fprintf('Checking working_dir (%s) for ''subject_str''_masks_contr.nii.gz & CustomElectrodeLocations.txt\n',working_dir);
+fprintf('ctf_fiducials.mat check: %i\n',exist(ctf_fiducial_fpath,'file'))
+fprintf('mri_acpc.mat check: %i\n',exist(acpcmri_fpath,'file'))
+fprintf('''subject_str''_masks_contr.nii.gz check: %i\n',exist(segmri_fpath,'file'))
+fprintf('CustomElectrodeLocations.txt check: %i\n',exist(customelec_fpath,'file'))
+VOL_CONDUCTIVITES = [1.65,0.33,0.33,0.01,0.126,2.5*10^(-14)];
+%## Define Parser
+p = inputParser;
+%## REQUIRED
+addRequired(p,'output_dir',@(x) assert(ischar(x) && exist(x,'dir'),'output_dir does not exist'));
+addRequired(p,'ctf_fiducial_fpath',validFcn_1);
+addRequired(p,'segmri_fpath',validFcn_2);
+addRequired(p,'customelec_fpath',validFcn_3);
+addRequired(p,'acpcmri_fpath',validFcn_4);
+%## OPTIONAL
+addOptional(p,'VOL_CONDUCTIVITES',VOL_CONDUCTIVITES,@isnumeric)
+%## PARAMETER
+parse(p,output_dir,ctf_fiducial_fpath,segmri_fpath,customelec_fpath,acpcmri_fpath,varargin);
+%## SET DEFAULTS
+%- OPTIONALS
+VOL_CONDUCTIVITES = p.Results.VOL_CONDUCTIVITES;
+%- PARAMETER
+%% ===================================================================== %%
+fprintf('Output directory: %s\n',output_dir);
+%- load mri in acpa & ctf coordinate systems & fiducial marks
+% tmp = load([working_dir filesep 'mri_acpc_rs.mat']);
+% mri_acpc_rs = tmp.mri_acpc_rs;
+tmp = load(acpcmri_fpath);
+mri_acpc = tmp.mri_acpc;
+tmp = load(ctf_fiducial_fpath);
+ctf_fiducials = tmp.ctf_fiducials;
+%- Load the electrodes after digitized
+chanloc_scan_folder = customelec_fpath;
+chanlocs = readtable(chanloc_scan_folder);% Same output text file from getchalocs.
+chanlocs.Properties.VariableNames = {'labels','X','Y','Z'};
+elec.chanpos(:,1) = [chanlocs.X];
+elec.chanpos(:,2) = [chanlocs.Y];
+elec.chanpos(:,3) = [chanlocs.Z];
+elec.elecpos      = elec.chanpos;
+elec.label(:,1)   = [chanlocs.labels]';
+%%
+unzip_out = gunzip(segmri_fpath);
+simnibs_mask = ft_read_mri(unzip_out);
+simnibs_mask.coordsys = 'acpc';
+
+segmented = simnibs_mask;
+segmented.white = simnibs_mask.anatomy == 1;
+segmented.gray = simnibs_mask.anatomy == 2;
+segmented.csf = (simnibs_mask.anatomy == 3 | simnibs_mask.anatomy == 8);% csf + ventricles
+segmented.skull = simnibs_mask.anatomy == 4;
+segmented.scalp = (simnibs_mask.anatomy == 5 | simnibs_mask.anatomy == 7);%skin and eye
+segmented.air = simnibs_mask.anatomy == 6; 
+segmented = rmfield(segmented,'anatomy');
+seg_i_headreco = ft_datatype_segmentation(segmented,'segmentationstyle','indexed');
+%% FIELDTRIP SEGMENTATION
+% cfg             = [];
+% cfg.spmmethod   = 'old';%new method output is weird
+% cfg.units       = 'mm';
+% cfg.output      = {'gray','white','csf','skull','scalp'};
+% % cfg.inputfile   = [working_dir filesep 'mri_acpc_rs.mat'];
+% % cfg.outputfile  = [working_dir filesep 'segmentedmri.mat'];
+% segmentedmri    = ft_volumesegment(cfg, mri_acpc_rs);
+%% FIELDTRIP CREATE MESH
+cfg        = [];
+cfg.shift  = 0.3;
+cfg.method = 'hexahedral';
+mesh = ft_prepare_mesh(cfg,seg_i_headreco);
+fprintf('Saving mesh file\n');
+save([output_dir filesep 'mesh.mat'],'mesh')
+%% FIELDTRIP CREATE CONDUCTIVITY VOLUME (SIMBIO)
+cfg        = [];
+cfg.method = 'simbio';
+cfg.conductivity = zeros(1,5);
+scale = 1;
+
+% order follows mesh.tissyelabel , CAUTIOUS!!!! OMg this is not the same order as in the segmentation
+cfg.conductivity(strcmp(mesh.tissuelabel,'csf')) = HEADMODEL_CONDS; 1.65*scale;
+cfg.conductivity(strcmp(mesh.tissuelabel,'gray')) = HEADMODEL_CONDS; 0.33*scale;
+cfg.conductivity(strcmp(mesh.tissuelabel,'scalp')) = HEADMODEL_CONDS; 0.33*scale;
+cfg.conductivity(strcmp(mesh.tissuelabel,'skull')) = HEADMODEL_CONDS; 0.01*scale; %0.0042*scale;
+cfg.conductivity(strcmp(mesh.tissuelabel,'white')) = HEADMODEL_CONDS; 0.126*scale;
+cfg.conductivity(strcmp(mesh.tissuelabel,'air')) = HEADMODEL_CONDS; 2.5*10^(-14)*scale;
+vol = ft_prepare_headmodel(cfg, mesh);
+fprintf('Saving vol file\n');
+save([output_dir filesep 'vol.mat'],'vol','-v6') 
+
+%% FIELDTRIP CONFIRM ELECTRODE ALIGNMENT
+%- Convert the fiducial position from voxel into CTF 
+nas = ctf_fiducials.nas;
+lpa = ctf_fiducials.lpa;
+rpa = ctf_fiducials.rpa;
+%- grab transformation from acpc mri
+vox2head = mri_acpc.transform;
+%- apply warping to get ctf coordinates of fiducials
+nas = ft_warp_apply(vox2head, nas, 'homogenous');
+lpa = ft_warp_apply(vox2head, lpa, 'homogenous');
+rpa = ft_warp_apply(vox2head, rpa, 'homogenous');
+%- create a structure similar to a template set of electrodes
+fid.chanpos       = [nas; lpa; rpa];       % CTF head coordinates of fiducials
+fid.label         = {'nas','lhj','rhj'};    % use the same labels as those in elec
+fid.unit          = 'mm';                  % use the same units as those in mri
+fid.elecpos       = fid.chanpos;           % otherwise the electroderealign cannot find elecpos
+%- alignment
+cfg               = [];
+cfg.viewmode      = 'surface';
+cfg.method        = 'fiducial';
+% cfg.method        = 'interactive';%interactive doesn't work well.
+cfg.headshape     = vol;
+cfg.elec          = elec;                  % the electrodes we want to align
+cfg.elecstyle     = {'facecolor','red'};
+cfg.headmodelstyle= {'facecolor','b','edgecolor','none','facealpha',0.4};
+cfg.template      = fid;                   % the template we want to align to
+cfg.fiducial      = {'nas', 'lhj', 'rhj'};  % labels of fiducials in fid and in elec
+elec_aligned_init = ft_electroderealign(cfg);
+save([output_dir filesep 'elec_aligned_init.mat'],'elec_aligned_init') 
+
+%## Refined Electrode Alignment
+cfg               = [];
+cfg.method        = 'project';
+cfg.elec          = elec_aligned_init;
+cfg.headshape     = vol;
+elec_aligned      = ft_electroderealign(cfg);
+fprintf('Saving elec_aligned file\n');
+save([output_dir filesep 'elec_aligned.mat'],'elec_aligned') 
+%% PLOTS
+if DO_PLOTTING
+    %{
+    %## (PLOT 1)
+    seg_i = ft_datatype_segmentation(segmentedmri,'segmentationstyle','indexed');
+
+    cfg              = [];
+    cfg.funparameter = 'tissue'; % They did an update on May.2021 in source code but not the tutorial -`д´-
+    cfg.anaparameter = 'anatomy';
+    cfg.funcolormap  = jet(6); % distinct color per tissue
+    cfg.location     = 'center';
+    cfg.atlas        = seg_i;    % the segmentation can also be used as atlas
+
+    % check segmentation quality - It's kind of bad?!!
+    ft_sourceplot(cfg, seg_i);%this plot cannot be generated...I don't know why
+    saveas(gcf,[working_dir filesep 'segmentation.fig']);
+    %}
+    cfg              = [];
+    cfg.funparameter = 'tissue'; % They did an update on May.2021 in source code but not the tutorial
+    cfg.anaparameter = 'anatomy';
+    cfg.funcolormap  = linspecer(7); % distinct color per tissue
+    cfg.location     = 'center';
+    cfg.atlas        = seg_i_headreco;    % the segmentation can also be used as atlas
+    ft_sourceplot(cfg, seg_i_headreco);
+    fig_i = get(groot,'CurrentFigure');
+    saveas(fig_i,[output_dir filesep sprintf('ft_sourceplot.fig')]);
+    saveas(fig_i,[output_dir filesep sprintf('ft_sourceplot.jpg')]);
+    %## (PLOT 2)
+    figure;
+    ft_plot_mesh(mesh, 'surfaceonly', 'yes','facecolor','b','edgecolor', 'none', 'facealpha', 0.4);
+    fig_i = get(groot,'CurrentFigure');
+    saveas(fig_i,[output_dir filesep sprintf('ft_plot_mesh.fig')]);
+    saveas(fig_i,[output_dir filesep sprintf('ft_plot_mesh.jpg')]);
+    %## (PLOT 4) Initial alignment of electrodes using fiducial marks
+    figure;
+    hold on;
+    ft_plot_mesh(mesh,'surfaceonly','yes','vertexcolor','none','edgecolor','none','facecolor',[0.5 0.5 0.5],'facealpha',0.5)
+    camlight
+    ft_plot_sens(elec_aligned_init,'style','.r');
+    ft_plot_sens(fid,'style','xb');%plot fiducial points
+    fig_i = get(groot,'CurrentFigure');
+    saveas(fig_i,[output_dir filesep sprintf('ft_plot_sens_1.fig')]);
+    saveas(fig_i,[output_dir filesep sprintf('ft_plot_sens_1.jpg')]);
+    %## (PLOT 3) final alignment of electrodes after projecting to scalp
+    figure;
+    hold on;
+    ft_plot_mesh(mesh,'surfaceonly','yes','vertexcolor','none','edgecolor','none','facecolor',[0.5 0.5 0.5],'facealpha',0.5)
+    camlight
+    ft_plot_sens(elec_aligned ,'style','.r');
+    ft_plot_sens(fid,'style','xb');%plot fiducial points
+    fig_i = get(groot,'CurrentFigure');
+    saveas(fig_i,[output_dir filesep sprintf('ft_plot_sens_2.fig')]);
+    saveas(fig_i,[output_dir filesep sprintf('ft_plot_sens_2.jpg')]);
+    
 end
+% error_code = 1;
+end
+
 %% (NOTES)
 % (REQUIRED) ft_dipolefitting
 % cfg.model           = g_model; %'moving';

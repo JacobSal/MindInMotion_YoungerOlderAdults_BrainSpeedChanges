@@ -163,9 +163,9 @@ Xcoords = [x x(end:-1:1)];
 Ycoords = [U L(end:-1:1)];
 
 Pa = patch(Xcoords(:),Ycoords(:),PatchColor);
-set(Pa,'linestyle','none','linewidth',2,'FaceAlpha',0.5);
+set(Pa,'linestyle','none','linewidth',2,'FaceAlpha',0.3);
 hold on;
-Li = plot(x,y,'color',LineColor,'linewidth',2);
+Li = plot(x,y,'color',LineColor,'linewidth',3);
 hold on;
 t = toc;
 

@@ -333,3 +333,125 @@ exportgraphics(fig,[subject_fpath filesep sprintf('segmentation_colormaps.jpg')]
 % set(ax,'Position',[0.15 0.2 0.8 0.7]);  %[left bottom width height] This I what I added, You need to play with this
 % %     set(ax,'XTick',sort(xticks));
 % set(ax,'XTickLabel',trial_names_terrain);
+%% ===================================================================== %%
+%## MAKE EDITS TO DIPPLOTS FIGURE
+DIP_SING_POS=[16 582 420 360];
+tmp = load('-mat','M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\_save\10022023_cluster_slowwalkers_included\icrej_5\14\spec_data\temp_study_rejics5.study');
+STUDY = tmp.STUDY;
+[STUDY,ALLEEG] = pop_loadstudy('M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\_save\10022023_cluster_slowwalkers_included\icrej_5\14\spec_data\temp_study_rejics5.study');
+save_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\_save\10022023_cluster_slowwalkers_included\icrej_5\14';
+%- get inds
+[~,main_cl_inds,~,valid_clusters,~,nonzero_clusters] = eeglab_get_cluster_comps(STUDY);
+%- clusters to plot
+CLUSTERS_IN_FIG = main_cl_inds(2:end);
+CLUSTERS_TO_KEEP = valid_clusters;
+%%
+STUDY.etc.dipparams.centrline = 'off';
+std_dipplot_CL(STUDY,ALLEEG,'clusters',CLUSTERS_TO_KEEP,'figure','off','mode','together_averaged_only','spheres','off','projlines','off');
+fig_i = get(groot,'CurrentFigure');
+set(fig_i,'position',DIP_SING_POS,'color','w')
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('new_dipplot_avgdipspc_top.pdf')],'ContentType','vector','Resolution',300);
+saveas(fig_i,[save_dir filesep sprintf('new_dipplot_avgdipspc_top.fig')]);
+view([45,0,0])
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('new_dipplot_avgdipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
+view([0,-45,0])
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('new_dipplot_avgdipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
+%-
+STUDY.etc.dipparams.centrline = 'off';
+std_dipplot_CL(STUDY,ALLEEG,'clusters',CLUSTERS_TO_KEEP,'figure','off','mode','together_averaged_multicolor','spheres','off','projlines','off');
+fig_i = get(groot,'CurrentFigure');
+set(fig_i,'position',DIP_SING_POS,'color','w')
+camzoom(1);
+% camzoom(1.2^2);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('new_dipplot_alldipspc_top.pdf')],'ContentType','vector','Resolution',300);
+saveas(fig_i,[save_dir filesep sprintf('new_dipplot_alldipspc_top.fig')]);
+view([45,0,0])
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('new_dipplot_alldipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
+view([0,-45,0])
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('new_dipplot_alldipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
+%%
+COLOR_OPTS = linspecer(length(CLUSTERS_TO_KEEP)+1);
+colors = cell(1,size(COLOR_OPTS,1));
+for i = 1:size(COLOR_OPTS,1)
+    colors{i} = COLOR_OPTS(i,:);
+end
+for i = 1:length(CLUSTERS_TO_KEEP)
+    cluster_i = CLUSTERS_TO_KEEP(i);
+    STUDY.etc.dipparams.centrline = 'off';
+    std_dipplot_CL(STUDY,ALLEEG,'clusters',cluster_i,'figure','off','mode','together_averaged_multicolor','spheres','off','projlines','off');
+    fig_i = get(groot,'CurrentFigure');
+    set(fig_i,'position',DIP_SING_POS,'color','w')
+    for j = 1:length(fig_i.Children(2).Children)
+        try
+            fig_i.Children(2).Children(j).Color = colors{i};
+        catch
+            fprintf('Can''t change the color of this child\n')
+        end
+    end
+%     camzoom(1);
+    % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.jpg')],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('%inew_dipplot_alldipspc_top.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+%     saveas(fig_i,[save_dir filesep sprintf('new_dipplot_alldipspc_top.fig')]);
+    view([45,0,0])
+    % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.jpg')],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('%inew_dipplot_alldipspc_coronal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+    view([0,-45,0])
+    % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.jpg')],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('%inew_dipplot_alldipspc_sagittal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+end
+
+%% (TOPO)
+if ~isfield(STUDY.cluster,'topo') 
+    STUDY.cluster(1).topo = [];
+end
+for i = 1:length(CLUSTERS_TO_KEEP) % For each cluster requested
+    clust_i = CLUSTERS_TO_KEEP(i);
+    disp(clust_i)
+    if isempty(STUDY.cluster(clust_i).topo)
+        % Using this custom modified code to allow taking average within participant for each cluster
+        STUDY = std_readtopoclust_CL(STUDY,ALLEEG,clust_i);
+    end
+end
+TOPO_ALL_POS=[16 100 1240 920];
+figure;
+std_topoplot_CL(STUDY,CLUSTERS_TO_KEEP,'together');
+fig_i = get(groot,'CurrentFigure');
+set(fig_i,'position',TOPO_ALL_POS,'color','w')
+for c = 2:length(fig_i.Children)
+    fig_i.Children(c).Title.Interpreter = 'none';
+    fig_i.Children(c).FontSize = 13;
+    fig_i.Children(c).FontName = 'Arial';
+end
+% saveas(fig_i,fullfile(save_dir,'Cluster_topo_avg.jpg'));
+exportgraphics(fig_i,[save_dir filesep sprintf('new_cluster_topo_avg.pdf')],'ContentType','vector','Resolution',300);
+saveas(fig_i,fullfile(save_dir,'new_cluster_topo_avg.fig'));
+%{
+% OFFSET = 4;
+% del_rng_min = 1;
+% del_rng_max = 1;
+% inds_del = [];
+% uiopen('M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\_save\10022023_cluster_slowwalkers_included\icrej_5\14\dipplot_alldipspc_top.fig');
+% fig_i = gcf;
+% for cluster_i = CLUSTERS_IN_FIG
+%     del_rng_max = del_rng_max+length(STUDY.cluster(cluster_i).sets)+OFFSET;
+%     if any(cluster_i == CLUSTERS_TO_KEEP)
+%         fprintf('keeping %i\n',cluster_i)
+%     else
+%         fprintf('min: %i\n',del_rng_min);
+%         fprintf('max: %i\n',del_rng_max);
+%         fprintf('cluster: %i\n',cluster_i)
+%         inds_del = [inds_del, (del_rng_min:del_rng_max)];
+%     end
+%     del_rng_min = del_rng_max+1;
+% end
+% delete(fig_i.Children.Children(inds_del))
+% view([0,0,90]);
+% view([90,0,0]);
+% DELETE_INDS = 
+%}

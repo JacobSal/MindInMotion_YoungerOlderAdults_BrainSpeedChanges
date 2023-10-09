@@ -5,7 +5,7 @@
 #SBATCH --nodes=1 # Use one node
 #SBATCH --ntasks=1 # Run a single task
 #SBATCH --cpus-per-task=20 # Number of CPU cores per task
-#SBATCH --mem-per-cpu=40000mb# Total memory limit
+#SBATCH --mem-per-cpu=30000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
 #SBATCH --time=48:00:00 # Time limit hrs:min:sec
 #SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/_hpg_logs/%j_b_ic_clustering_refine.log # Standard output
@@ -13,7 +13,6 @@
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=hpg-default # cluster to run on, use slurm command 'sinfo -s'
 
-module purge
 module load matlab/2020b
 cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/
 

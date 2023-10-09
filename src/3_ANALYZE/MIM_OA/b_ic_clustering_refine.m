@@ -101,7 +101,7 @@ else
     FIELDTRIP_PATH = '/blue/dferris/jsalminen/GitHub/par_EEGProcessing/submodules/fieldtrip';
 end
 %- compute measures for spectrum and ersp
-FORCE_RECALC_SPEC = false;
+FORCE_RECALC_SPEC = true;
 %- statistics & conditions
 speed_trials = {'0p25','0p5','0p75','1p0'};
 terrain_trials = {'flat','low','med','high'};
@@ -196,7 +196,8 @@ STD_PRECLUST_COMMAND = {'dipoles','weight',clustering_weights.dipoles};
 % dt = '06282023_MIM_OAN79_subset_prep_verified_gait';
 % dt = '07112023_MIM_OAN79_subset_prep_verified_gait';
 % dt = '07152023_MIM_OAN79_subset_prep_verified_gait';
-dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
+% dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
+dt = '10052023_MIM_OAN70_noslowwalkers';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
@@ -332,7 +333,6 @@ STUDY_COND_DESI = {{'subjselect',{},...
             'variable1','cond','values1',{'0p25','0p5','0p75','1p0'},...
             'variable2','group','values2',{}}};
 %%
-%{
 if DO_K_ICPRUNE 
 %     for i = 1:length(MIN_ICS_SUBJ)
     parfor (i = 1:length(MIN_ICS_SUBJ),length(MIN_ICS_SUBJ))
@@ -434,7 +434,6 @@ if DO_K_ICPRUNE
                                             'RESAVE_DATASETS','off');
     end
 end
-%}
 %%
 if DO_K_ICPRUNE
     parfor (i = 1:length(MIN_ICS_SUBJ),length(MIN_ICS_SUBJ))

@@ -91,7 +91,7 @@ function y=gety(h)
     %h= figure,axes,line. Note that y=h if h is not a graphics
     if isgraphics(h) 
         switch(get(h,'type'))
-            case {'line','hggroup','patch'},
+            case {'line','hggroup','patch','scatter'},
                 y=max(get(h,'ydata'));
                 return;
             otherwise
