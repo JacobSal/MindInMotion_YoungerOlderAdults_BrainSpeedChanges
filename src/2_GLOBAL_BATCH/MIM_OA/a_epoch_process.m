@@ -140,13 +140,13 @@ SUBJ_DONT_INC = {'NH3004','NH3023'};
 % GROUP_NAMES = {'H1000''s'}; 
 % SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
 %- (OA&YA) Subject Picks 
-SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
-GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
-SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%- (OA) Subject Picks 
-% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
+% SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
+% GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
+% SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
+%- (OA) Subject Picks
+SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
+GROUP_NAMES = {'H2000''s','H3000''s'}; 
+SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %- (0A) DEBUG SUBSET (06/17/2023)
 % SUBJ_PICS = {SUBJ_DEBUG};
 % GROUP_NAMES = {'debug'}; 
@@ -174,7 +174,9 @@ PERCENT_OVERLAP = 0.0; % percent overlap between epochs
 %* gait
 EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 STD_TIMEWARP = 3;
-EPOCH_TIME_LIMITS = [-1,4.25]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
+EPOCH_TIME_LIMITS = [-0.5,4.5]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
+% (10/13/20223) changing from [-1,4.25] to [-0.5,4.5] to match chang's
+% paper
 TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 if DO_SLIDING_WINDOW
     SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
@@ -200,7 +202,7 @@ end
 % dt = '07162023_MIM_OAN79_subset_prep_verified_gait';
 % dt = '07172023_nopowpowrej_test';
 % dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
-dt = '10052023_MIM_OAN70_noslowwalkers';
+dt = '10052023_MIM_OAN70_noslowwalkers_gait';
 %- Subject Directory information
 % OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
@@ -208,8 +210,10 @@ OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(0
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
-study_fName_1 = sprintf('%s_all_comps_study',[TRIAL_TYPES{:}]);
-study_fName_2 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+% study_fName_1 = sprintf('%s_all_comps_study',[TRIAL_TYPES{:}]);
+% study_fName_2 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+study_fName_1 = 'all_comps_study';
+study_fName_2 = 'epoch_study';
 % TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory

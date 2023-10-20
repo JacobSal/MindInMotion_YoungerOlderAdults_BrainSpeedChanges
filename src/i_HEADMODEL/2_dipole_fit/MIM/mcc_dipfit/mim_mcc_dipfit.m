@@ -21,37 +21,38 @@ startj = tic;
 %## DEFINE DEFAULTS
 %- define output
 RV_THRESHOLD = 0.5;
+% FORCE_RECREATE = 0;
 error_code = 0;
-%- working directory containing the vol.mat & elec_aligned.mat
-% errorMsg = 'Value ''working_dir'' must be PATH. ''working_dir'' should point to a folder. Working directory must contain a fieldtrip generated vol.mat & elec_aligned.mat'; 
-% wd_validFcn = @(x) assert(exist(x,'dir') && exist([x filesep 'vol.mat'],'file') && exist([x filesep 'elec_aligned.mat'],'file'),errorMsg);
-% fprintf('Checking working_dir (%s) for vol.mat & elec_aligned.mat\n',working_dir);
-% fprintf('vol.mat check: %i\n',exist([working_dir filesep 'vol.mat'],'file'))
-% fprintf('elec_aligned.mat check: %i\n',exist([working_dir filesep 'elec_aligned.mat'],'file'))
-%- working directory containing the ctf_fiducials.mat & mri_acpc_rs.mat &
-%mri_acpc.mat & CustomElectrodeLocations.txtf
+%## working directory containing the ctf_fiducials.mat & mri_acpc_rs.mat &
+%mri_acpc.mat & CustomElectrodeLocations.txt
 errorMsg = 'Value must be CHAR. working directory containing the *_masks_contr.nii.gz, CustomElectrodeLocations.txt, mri_acpc.mat, elec_aligned.mat, & ctf_fiducials.mat'; 
-% wd_validFcn = @(x) assert(ischar(x) && exist([x filesep 'ctf_fiducials.mat'],'file') && exist([x filesep 'mri_acpc_rs.mat'],'file') && exist([x filesep 'mri_acpc.mat'],'file') && exist([x filesep 'CustomElectrodeLocations.txt'],'file'),errorMsg);
 wd_validFcn = @(x) assert(ischar(x)  && exist([x filesep 'ctf_fiducials.mat'],'file')...
     && ~isempty(dir([x filesep '*_masks_contr.nii.gz']))...
     && exist([x filesep 'CustomElectrodeLocations.txt'],'file')...
     && exist([x filesep 'mri_acpc.mat'],'file'),errorMsg);
+%## EEG filepath
+errorMsg = 'Value ''eeg_fpath'' must be PATH. ''eeg_fpath'' should point to a EEGLAB .set file'; 
+ef_validFcn = @(x) assert(logical(exist(x,'file')),errorMsg);
+%## Output for source.mat filepath
+errorMsg = 'Value ''source_out_fpath'' must be PATH. ''source_out_fpath'' should point to a folder that exists';
+sof_validFcn = @(x) assert(logical(exist(x,'file')),errorMsg);
+%## Conductivity Values for volume
+VOL_CONDUCTIVITIES = "[1.65,0.33,0.33,0.01,0.126,2.5*10^(-14)]";
+vc_validFcn = @(x) ischar(x) && isnumeric(str2num(x));
+%## (FLAG) Force recreation if needed
+FORCE_RECREATE = '0';
+fr_validFcn = @(x) ischar(x) && isnumeric(str2double(x));
+%%
+%- Checks
 fprintf('Checking working_dir (%s) for ''subject_str''_masks_contr.nii.gz & CustomElectrodeLocations.txt\n',working_dir);
-fprintf('ctf_fiducials.mat check: %i\n',exist([working_dir filesep 'ctf_fiducials.mat'],'file'))
-% fprintf('mri_acpc_rs.mat check: %i\n',exist([working_dir filesep 'mri_acpc_rs.mat'],'file'))
-fprintf('mri_acpc.mat check: %i\n',exist([working_dir filesep 'mri_acpc.mat'],'file'))
+fprintf('ctf_fiducials.mat check: %i\n',exist([working_dir filesep 'ctf_fiducials.mat'],'file'));
+fprintf('mri_acpc.mat check: %i\n',exist([working_dir filesep 'mri_acpc.mat'],'file'));
 dir_segmri = dir([working_dir filesep '*_masks_contr.nii.gz']);
 fprintf('''subject_str''_masks_contr.nii.gz check: %i\n',~isempty(dir_segmri));
 fprintf('CustomElectrodeLocations.txt check: %i\n',exist([working_dir filesep 'CustomElectrodeLocations.txt'],'file'))
 %- not required but nice to have
 fprintf('elec_aligned.mat check: %i\n',exist([working_dir filesep 'elec_aligned.mat'],'file'))
 fprintf('vol.mat check: %i\n',exist([working_dir filesep 'vol.mat'],'file'))
-%- EEG filepath
-errorMsg = 'Value ''eeg_fpath'' must be PATH. ''eeg_fpath'' should point to a EEGLAB .set file'; 
-ef_validFcn = @(x) assert(logical(exist(x,'file')),errorMsg);
-%- Output for source.mat filepath
-errorMsg = 'Value ''source_out_fpath'' must be PATH. ''source_out_fpath'' should point to a folder that exists';
-sof_validFcn = @(x) assert(logical(exist(x,'file')),errorMsg);
 %## Define Parser
 p = inputParser;
 %## REQUIRED
@@ -59,10 +60,16 @@ addRequired(p,'working_dir',wd_validFcn);
 addRequired(p,'eeg_fpath',ef_validFcn);
 addRequired(p,'source_out_fpath',sof_validFcn);
 %## OPTIONAL
+addOptional(p,'VOL_CONDUCTIVITIES',VOL_CONDUCTIVITIES,vc_validFcn);
 %## PARAMETER
+addParameter(p,'FORCE_RECREATE',FORCE_RECREATE,fr_validFcn);
 parse(p,working_dir,eeg_fpath,source_out_fpath,varargin{:});
 %## SET DEFAULTS
 %- OPTIONALS
+VOL_CONDUCTIVITIES = p.Results.VOL_CONDUCTIVITIES;
+VOL_CONDUCTIVITIES = str2num(VOL_CONDUCTIVITIES);
+FORCE_RECREATE = p.Results.FORCE_RECREATE;
+FORCE_RECREATE = logical(str2double(FORCE_RECREATE));
 %- PARAMETER
 %% ===================================================================== %%
 % fid = fopen([working_dir filesep 'output.txt'],'w');
@@ -94,13 +101,13 @@ end
 fprintf('Running dipole fitting on directory: %s\n',working_dir);
 %## Create headmodel
 % out_segmri = [dir_segmri.folder filesep dir_segmri.name];
-if ~exist([working_dir filesep 'vol.mat'],'file') || ~exist([working_dir filesep 'elec_aligned.mat'],'file')
+if ~exist([working_dir filesep 'vol.mat'],'file') || ~exist([working_dir filesep 'elec_aligned.mat'],'file') || FORCE_RECREATE 
     [vol,elec_aligned] = fem_create_vol(working_dir,...
         [working_dir filesep 'ctf_fiducials.mat'],...
         [dir_segmri.folder filesep dir_segmri.name],...
         [working_dir filesep 'CustomElectrodeLocations.txt'],...
         [working_dir filesep 'mri_acpc.mat'],...
-        VOL_CONDUCTIVITES);
+        VOL_CONDUCTIVITIES);
 else
     %- load vol.mat
     tmp = load([working_dir filesep 'vol.mat']);
@@ -119,7 +126,7 @@ else
 end
 %% PREPARE VOLUME AND SENSORS
 %- prepare volume and sensors (projects sensors to scalp)
-if ~exist([working_dir filesep 'headmodel_fem_tr.mat'],'file')
+if ~exist([working_dir filesep 'headmodel_fem_tr.mat'],'file') || FORCE_RECREATE
     starti = tic;
     fprintf('Preparing vol.mat and elec_aligned.mat...\n');
     %## Override Simbio path to utilize parallel processing
@@ -136,7 +143,7 @@ else
     headmodel_fem_tr = tmp.headmodel_fem_tr;
 end
 %% SOURCEMODEL CALCULATION
-if ~exist([working_dir filesep 'sourcemodel.mat'],'file')
+if ~exist([working_dir filesep 'sourcemodel.mat'],'file') || FORCE_RECREATE
     starti = tic;
     cfg             = [];
     cfg.resolution  = 5; % changeable
@@ -169,7 +176,7 @@ end
 % choose the available When the forward solution is computed, the lead 
 % field matrix (= channels X source points matrix) is calculated for each 
 % grid point taking into account the head model and the channel positions.
-if ~exist([working_dir filesep 'leadfield_fem.mat'],'file')
+if ~exist([working_dir filesep 'leadfield_fem.mat'],'file') || FORCE_RECREATE
     starti = tic;
     fprintf('Computing Leadfield...\n');
     cfg             = [];
@@ -332,39 +339,17 @@ addRequired(p,'fName',@ischar)
 %## PARAMETER
 parse(p, SAVEVAR, fPath, fName, varargin{:});
 %## SET DEFAULTS
-fname_ext = p.Results.fname_ext;
 %% ===================================================================== %%
-if ~ispc
-    % convert path to os
-    pathIn = convertPath2UNIX(fPath);
-else
-    %- convert path to os
-    pathIn = convertPath2Drive(fPath);
-end
-if ~isempty(fname_ext)
-    fnames = strsplit(fName,'.');
-    fnames{1} = [fnames{1} fname_ext];
-    fName = join(fnames,'.');
-    fName = fName{1};
-end
-% set save path
-%- if filename is included in path
-if ~isempty(fName)
-    savePath = [pathIn filesep fName];
-else
-    savePath = pathIn;
-end
 %- save
-%     val = GetSize(SAVEVAR);
 s = whos('SAVEVAR');
 fprintf(1,'%s is %0.2g bytes\n',fName,s.bytes);
 % fprintf('\nSaving %s to\n%s\n',fName,savePath);
-if s.bytes >= 2e9
-    fprintf('\nSaving %s using ''v7.3'' to\n%s\n',fName,savePath);
-    save(savePath,'SAVEVAR','-v7.3');
+if s.bytes >= 1.9e9
+    fprintf('\nSaving %s using ''v7.3'' to\n%s\n',fName,fPath);
+    save([fPath filesep fName],'SAVEVAR','-v7.3');
 else
-    fprintf('\nSaving %s using ''v6'' to\n%s\n',fName,savePath);
-    save(savePath,'SAVEVAR','-v6');
+    fprintf('\nSaving %s using ''v6'' to\n%s\n',fName,fPath);
+    save([fPath filesep fName],'SAVEVAR','-v6');
 end
 end
 
@@ -403,13 +388,16 @@ validFcn_3 = @(x) assert(ischar(x) && exist(x,'file'),...
     'Value must be CHAR. CustomElectrodeLocations.txt does not exist');
 validFcn_4 = @(x) assert(ischar(x) && exist(x,'file'),...
     'Value must be CHAR. mri_acpc.mat does not exist');
+%-
+VOL_CONDUCTIVITIES = [1.65,0.33,0.33,0.01,0.126,2.5*10^(-14)];
+vc_validFcn = @(x) isnumeric(x) && length(x) == 6;
 %## CHECK FPATHS
 % fprintf('Checking working_dir (%s) for ''subject_str''_masks_contr.nii.gz & CustomElectrodeLocations.txt\n',working_dir);
-fprintf('ctf_fiducials.mat check: %i\n',exist(ctf_fiducial_fpath,'file'))
-fprintf('mri_acpc.mat check: %i\n',exist(acpcmri_fpath,'file'))
-fprintf('''subject_str''_masks_contr.nii.gz check: %i\n',exist(segmri_fpath,'file'))
-fprintf('CustomElectrodeLocations.txt check: %i\n',exist(customelec_fpath,'file'))
-VOL_CONDUCTIVITES = [1.65,0.33,0.33,0.01,0.126,2.5*10^(-14)];
+fprintf('ctf_fiducials.mat check: %i\nPath: %s\n',exist(ctf_fiducial_fpath,'file'),ctf_fiducial_fpath);
+fprintf('mri_acpc.mat check: %i\nPath: %s\n',exist(acpcmri_fpath,'file'),acpcmri_fpath);
+fprintf('''subject_str''_masks_contr.nii.gz check: %i\nPath: %s\n',exist(segmri_fpath,'file'),segmri_fpath);
+fprintf('CustomElectrodeLocations.txt check: %i\nPath: %s\n',exist(customelec_fpath,'file'),customelec_fpath);
+fprintf('Using volume conductivities of: '); fprintf('%0.2g,',VOL_CONDUCTIVITIES(1:end-1)); fprintf('%0.2g\n',VOL_CONDUCTIVITIES(end));
 %## Define Parser
 p = inputParser;
 %## REQUIRED
@@ -419,12 +407,12 @@ addRequired(p,'segmri_fpath',validFcn_2);
 addRequired(p,'customelec_fpath',validFcn_3);
 addRequired(p,'acpcmri_fpath',validFcn_4);
 %## OPTIONAL
-addOptional(p,'VOL_CONDUCTIVITES',VOL_CONDUCTIVITES,@isnumeric)
+addOptional(p,'VOL_CONDUCTIVITES',VOL_CONDUCTIVITIES,vc_validFcn)
 %## PARAMETER
-parse(p,output_dir,ctf_fiducial_fpath,segmri_fpath,customelec_fpath,acpcmri_fpath,varargin);
+parse(p,output_dir,ctf_fiducial_fpath,segmri_fpath,customelec_fpath,acpcmri_fpath,varargin{:});
 %## SET DEFAULTS
 %- OPTIONALS
-VOL_CONDUCTIVITES = p.Results.VOL_CONDUCTIVITES;
+VOL_CONDUCTIVITIES = p.Results.VOL_CONDUCTIVITES;
 %- PARAMETER
 %% ===================================================================== %%
 fprintf('Output directory: %s\n',output_dir);
@@ -446,7 +434,7 @@ elec.elecpos      = elec.chanpos;
 elec.label(:,1)   = [chanlocs.labels]';
 %%
 unzip_out = gunzip(segmri_fpath);
-simnibs_mask = ft_read_mri(unzip_out);
+simnibs_mask = ft_read_mri(unzip_out{1});
 simnibs_mask.coordsys = 'acpc';
 
 segmented = simnibs_mask;
@@ -477,15 +465,14 @@ save([output_dir filesep 'mesh.mat'],'mesh')
 cfg        = [];
 cfg.method = 'simbio';
 cfg.conductivity = zeros(1,5);
-scale = 1;
-
+% scale = 1;
 % order follows mesh.tissyelabel , CAUTIOUS!!!! OMg this is not the same order as in the segmentation
-cfg.conductivity(strcmp(mesh.tissuelabel,'csf')) = HEADMODEL_CONDS; 1.65*scale;
-cfg.conductivity(strcmp(mesh.tissuelabel,'gray')) = HEADMODEL_CONDS; 0.33*scale;
-cfg.conductivity(strcmp(mesh.tissuelabel,'scalp')) = HEADMODEL_CONDS; 0.33*scale;
-cfg.conductivity(strcmp(mesh.tissuelabel,'skull')) = HEADMODEL_CONDS; 0.01*scale; %0.0042*scale;
-cfg.conductivity(strcmp(mesh.tissuelabel,'white')) = HEADMODEL_CONDS; 0.126*scale;
-cfg.conductivity(strcmp(mesh.tissuelabel,'air')) = HEADMODEL_CONDS; 2.5*10^(-14)*scale;
+cfg.conductivity(strcmp(mesh.tissuelabel,'csf')) = VOL_CONDUCTIVITIES(1); %1.65*scale;
+cfg.conductivity(strcmp(mesh.tissuelabel,'gray')) = VOL_CONDUCTIVITIES(2); %0.33*scale;
+cfg.conductivity(strcmp(mesh.tissuelabel,'scalp')) = VOL_CONDUCTIVITIES(3); %0.33*scale;
+cfg.conductivity(strcmp(mesh.tissuelabel,'skull')) = VOL_CONDUCTIVITIES(4); %0.01*scale; %0.0042*scale;
+cfg.conductivity(strcmp(mesh.tissuelabel,'white')) = VOL_CONDUCTIVITIES(5); %0.126*scale;
+cfg.conductivity(strcmp(mesh.tissuelabel,'air')) = VOL_CONDUCTIVITIES(6); %2.5*10^(-14)*scale;
 vol = ft_prepare_headmodel(cfg, mesh);
 fprintf('Saving vol file\n');
 save([output_dir filesep 'vol.mat'],'vol','-v6') 

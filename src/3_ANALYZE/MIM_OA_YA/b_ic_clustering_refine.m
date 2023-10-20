@@ -19,7 +19,7 @@
 %   Summary: The following script is to identify potential brain components
 %   for the Mind-In-Motion study
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/run_b_ic_clustering_refine.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA_YA/run_b_ic_clustering_refine.sh
 
 %{
 %## RESTORE MATLABs
@@ -190,15 +190,7 @@ STD_PRECLUST_COMMAND = {'dipoles','weight',clustering_weights.dipoles};
 % n_iterations = 50;
 % outlier_sigma = 3;
 %- datetime override
-% dt = '05182023_MIM_OA_subset_N85_oldpipe';
-% dt = '05192023_MIM_OAN79_subset_prep_verified_gait';
-% dt = '06122023_MIM_OAN79_subset_prep_verified_gait';
-% dt = '06282023_MIM_OAN79_subset_prep_verified_gait';
-% dt = '07112023_MIM_OAN79_subset_prep_verified_gait';
-% dt = '07152023_MIM_OAN79_subset_prep_verified_gait';
-% dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
-% dt = '10052023_MIM_OAN70_noslowwalkers';
-dt = '10052023_MIM_OAN70_noslowwalkers_gait';
+dt = '10022023_MIM_OAYA_N112_CRUNCH_gait';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
@@ -488,7 +480,7 @@ if DO_K_ICPRUNE
              %- get inds
             [~,main_cl_inds,~,valid_clusters,~,nonzero_clusters] = eeglab_get_cluster_comps(TMP_STUDY);
             %- clusters to plot
-            CLUSTER_PICKS = main_cl_inds(2:end); %valid_clusters; %main_cl_inds(2:end); %valid_clusters
+            CLUSTER_PICKS = valid_clusters; %main_cl_inds(2:end); %valid_clusters; %main_cl_inds(2:end); %valid_clusters
             %## PLOT spectrum based information
             %{
             %- ASSIGN DESIGNS

@@ -28,12 +28,12 @@ SPEC_PARAMS = struct('freqrange',[1,200],...
     'plot_ylim',[-35,-8],...
     'subtractsubjectmean','on',...
     'plotmode','normal');
-SPEC_ALL_POS=[500 300 1080 920];
-SPEC_SING_POS=[16 582 420 360];
+% SPEC_ALL_POS=[500 300 1080 920];
+% SPEC_SING_POS=[16 582 420 360];
 DIP_ALL_POS=[16 100 1080 920];
 DIP_SING_POS=[16 582 420 360];
 TOPO_ALL_POS=[16 100 1240 920];
-TOPO_SING_POS=[16 100 300 350];
+% TOPO_SING_POS=[16 100 300 350];
 DO_SINGLE_CLUSTER_PLOTS = true;
 %-
 CLUSTERS_TO_PLOT = 1:length(STUDY.cluster);
@@ -172,6 +172,61 @@ saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.jpg')]);
 % end
 %% (SINGLE CLUSTSER PLOTS)
 if DO_SINGLE_CLUSTER_PLOTS
+    
+    COLOR_OPTS = linspecer(length(CLUSTERS_TO_PLOT)+1);
+    colors = cell(1,size(COLOR_OPTS,1));
+    for i = 1:size(COLOR_OPTS,1)
+        colors{i} = COLOR_OPTS(i,:);
+    end
+    for i = 1:length(CLUSTERS_TO_PLOT)
+        cluster_i = CLUSTERS_TO_PLOT(i);
+        STUDY.etc.dipparams.centrline = 'off';
+        std_dipplot_CL(STUDY,ALLEEG,'clusters',cluster_i,'figure','off','mode','together_averaged_multicolor','spheres','off','projlines','off');
+        fig_i = get(groot,'CurrentFigure');
+        set(fig_i,'position',DIP_SING_POS,'color','w')
+        for j = 1:length(fig_i.Children(2).Children)
+            try
+                fig_i.Children(2).Children(j).Color = colors{i};
+            catch
+                fprintf('Can''t change the color of this child\n')
+            end
+        end
+    %     camzoom(1);
+        % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.jpg')],'Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%inew_dipplot_alldipspc_top.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+    %     saveas(fig_i,[save_dir filesep sprintf('new_dipplot_alldipspc_top.fig')]);
+        view([45,0,0])
+        % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.jpg')],'Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%inew_dipplot_alldipspc_coronal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+        view([0,-45,0])
+        % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.jpg')],'Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%inew_dipplot_alldipspc_sagittal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+    end
+    %## TOPO PLOTS
+    if ~isfield(STUDY.cluster,'topo') 
+        STUDY.cluster(1).topo = [];
+    end
+    for i = 1:length(CLUSTERS_TO_PLOT) % For each cluster requested
+        clust_i = CLUSTERS_TO_PLOT(i);
+        disp(clust_i)
+        if isempty(STUDY.cluster(clust_i).topo)
+            % Using this custom modified code to allow taking average within participant for each cluster
+            STUDY = std_readtopoclust_CL(STUDY,ALLEEG,clust_i);
+        end
+    end
+    figure;
+    std_topoplot_CL(STUDY,CLUSTERS_TO_PLOT,'together');
+    fig_i = get(groot,'CurrentFigure');
+    set(fig_i,'position',TOPO_ALL_POS,'color','w')
+    for c = 2:length(fig_i.Children)
+        fig_i.Children(c).Title.Interpreter = 'none';
+        fig_i.Children(c).FontSize = 13;
+        fig_i.Children(c).FontName = 'Arial';
+    end
+    % saveas(fig_i,fullfile(save_dir,'Cluster_topo_avg.jpg'));
+    exportgraphics(fig_i,[save_dir filesep sprintf('new_cluster_topo_avg.pdf')],'ContentType','vector','Resolution',300);
+    saveas(fig_i,fullfile(save_dir,'new_cluster_topo_avg.fig'));
+    %{
     for i = 1:length(CLUSTERS_TO_PLOT)
         clust_i = CLUSTERS_TO_PLOT(i);
         if ~isempty(STUDY.cluster(clust_i).sets)
@@ -226,35 +281,11 @@ if DO_SINGLE_CLUSTER_PLOTS
             saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal%i.jpg',clust_i)]);
             view([0,-45,0])
             saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal%i.jpg',clust_i)]);
-%             %- (SPEC) Spec plot conds for des_i and all groups
-%             fprintf('Plotting Spectograms for Conditions...\n');
-%             for des_i = 1:length(STUDY.design)
-%                 std_specplot(STUDY,ALLEEG,'clusters',clust_i,...
-%                     'freqrange',SPEC_PARAMS.plot_freqrange,...
-%                     'design',des_i);
-%                 fig_i = get(groot,'CurrentFigure');
-%                 fig_i.Position = SPEC_SING_POS;
-%                 %- set figure line colors
-%                 cc = linspecer(length(STUDY.design(des_i).variable.value));
-%                 iter = 1;
-%                 for d = 1:length(fig_i.Children(2).Children)
-%                     %- pane 1
-%                     set(fig_i.Children(2).Children(d),'LineWidth',1.5);
-%                     set(fig_i.Children(2).Children(d),'Color',horzcat(cc(iter,:),0.6));
-%                     if iter == size(cc,1)
-%                         iter = 1;
-%                     else
-%                         iter = iter + 1;
-%                     end                
-%                 end
-%                 %- zoom may not be need, but sort of cleans things up
-%                 camzoom(gca,1.1);
-%                 saveas(fig_i,[save_dir filesep sprintf('allSpecPlot_des%i_cl%i.jpg',des_i,clust_i)]);
-%             end
         else
             fprintf('\nNo Subjects in Cluster %s, number: %i\n',c_names{cllust_i},cllust_i);
         end
     end
+    %}
 end
 end
 

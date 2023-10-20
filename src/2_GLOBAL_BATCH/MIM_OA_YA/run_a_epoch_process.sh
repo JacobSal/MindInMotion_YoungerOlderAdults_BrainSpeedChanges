@@ -5,7 +5,7 @@
 #SBATCH --nodes=1 # Use one node
 #SBATCH --ntasks=1 # Run a single task
 #SBATCH --cpus-per-task=25 # Number of CPU cores per task
-#SBATCH --mem-per-cpu=30000mb# Total memory limit
+#SBATCH --mem-per-cpu=39000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
 #SBATCH --time=16:00:00 # Time limit hrs:min:sec
 #SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_OA_YA/_hpg_logs/%j_MIM_OA_a_epoch_process.log # Standard output

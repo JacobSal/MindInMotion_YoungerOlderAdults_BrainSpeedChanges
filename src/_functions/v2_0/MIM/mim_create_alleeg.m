@@ -113,6 +113,7 @@ addOptional(p,'sessions',SESSIONS,sess_validFcn);
 %## PARAMETER
 % addParameter(p,'SAVE_EEG',SAVE_EEG,@islogical);
 addParameter(p,'CHANLOCS_FPATHS',CHANLOCS_FPATHS,cfp_validFcn);
+addParameter(p,'FORCE_RELOAD',FORCE_RELOAD,@islogical);
 parse(p,fNames,fPaths,subjectNames,save_dir,varargin{:});
 %## SET DEFAULTS
 %- OPTIONALS
@@ -121,7 +122,8 @@ conditions          = p.Results.conditions;
 groups              = p.Results.groups;
 sessions            = p.Results.sessions;
 % bool_save_eeg       = p.Results.SAVE_EEG;
-chanlocs_fPaths     = p.Results.CHANLOCS_FPATHS;
+CHANLOCS_FPATHS     = p.Results.CHANLOCS_FPATHS;
+FORCE_RELOAD = p.Results.FORCE_RELOAD;
 %% ===================================================================== %%
 %## CREATE STUDY
 fprintf(1,'==== Creating Study ====\n')
@@ -153,9 +155,9 @@ parfor subj_i=1:length(fNames)
         %## ADD DIPFIT STRUCT TO EEG STRUCT
         fprintf('%s) dipfit available: %i\n',EEG.subject,isfield(EEG,'dipfit'));
         %## Update EEG channel location again
-        if ~isempty(chanlocs_fPaths)
+        if ~isempty(CHANLOCS_FPATHS)
             fprintf('Attaching customelectrode locations...\n');
-            EEG = custom_update_chanlocs(EEG,chanlocs_fPaths{subj_i});
+            EEG = custom_update_chanlocs(EEG,CHANLOCS_FPATHS{subj_i});
         end
         if DO_BEM_DIPFIT
             fprintf('Trying Boundary Element Model Dipfit...\n');
@@ -180,10 +182,17 @@ parfor subj_i=1:length(fNames)
                 fprintf('A valid dipfit model needs to be calculated for FEM dipfit analysis...\n');
                 fprintf(['error. identifier: %s\n',...
                      'error. %s\n',...
-                     'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
-                 exit();
+                     'error. on subject %s\n',...
+                     'report. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
+                try
+                    fprintf('Trying to load .mat file...\n');
+                    out = par_load(fPaths{subj_i},'dipfit_fem_norm.mat');
+                    EEG.dipfit = out;
+                catch e
+                    error('failed.\n CALLBACK:\n%s\n',getReport(e));
+                end
             end
-            [EEG] = fem_eeglab_dipfit(EEG,COORD_TRANSFORM_MNI,MNI_MRI,MNI_VOL,MNI_CHAN_1005)
+            [EEG] = fem_eeglab_dipfit(EEG,COORD_TRANSFORM_MNI,MNI_MRI,MNI_VOL,MNI_CHAN_1005);
         end
                  
         %## CHECK ICLABEL
@@ -213,23 +222,46 @@ parfor subj_i=1:length(fNames)
     end
     ALLEEG{subj_i} = EEG;
 end
-%## BOOKKEEPING (i.e., delete fields not similar across EEG structures)
+% %## BOOKKEEPING (i.e., delete fields not similar across EEG structures)
+% for subj_i = 1:length(ALLEEG)
+%     EEG = ALLEEG{subj_i};
+%     fs = fields(EEG);
+%     % delete fields not present in other structs.
+%     out = cellfun(@(x) any(strcmp(x,fsPrev)),fs,'UniformOutput',false); 
+%     out = [out{:}];
+%     delFs = fs(~out);
+%     if ~isempty(fsPrev) && any(~out)
+%         for j = 1:length(delFs)
+%             EEG = rmfield(EEG,delFs{j});
+%             fprintf("%s) Removing fields %s",EEG.subject,delFs{j})
+%         end
+%     else
+%         fsPrev = fs;
+%     end
+%     ALLEEG{subj_i} = EEG;
+% end
+%## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
+fss = cell(1,length(ALLEEG));
+for subj_i = 1:length(ALLEEG)
+    fss{subj_i} = fields(ALLEEG{subj_i})';
+    disp(size(fields(ALLEEG{subj_i})'));
+end
+fss = unique([fss{:}]);
+fsPrev = fss;
 for subj_i = 1:length(ALLEEG)
     EEG = ALLEEG{subj_i};
     fs = fields(EEG);
-    % delete fields not present in other structs.
-    out = cellfun(@(x) any(strcmp(x,fsPrev)),fs,'UniformOutput',false); 
+    %- add fields not present in other structs.
+    out = cellfun(@(x) any(strcmp(x,fs)),fsPrev,'UniformOutput',false); 
     out = [out{:}];
-    delFs = fs(~out);
-    if ~isempty(fsPrev) && any(~out)
-        for j = 1:length(delFs)
-            EEG = rmfield(EEG,delFs{j});
-            fprintf("%s) Removing fields %s",EEG.subject,delFs{j})
+    addFs = fsPrev(~out);
+    if any(~out)
+        for j = 1:length(addFs)
+            EEG.(addFs{j}) = [];
+            fprintf('%s) Adding fields %s\n',EEG.subject,addFs{j})
         end
-    else
-        fsPrev = fs;
-    end
-    ALLEEG{subj_i} = EEG;
+    end 
+    ALLEEG{subj_i} = orderfields(EEG);
 end
 %- CONCATENATE ALLEEG
 ALLEEG = cellfun(@(x) [[]; x], ALLEEG);

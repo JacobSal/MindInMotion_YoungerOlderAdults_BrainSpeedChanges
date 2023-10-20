@@ -152,9 +152,9 @@ SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 % GROUP_NAMES = {'debug'}; 
 % SUBJ_ITERS = {1:length(SUBJ_DEBUG)};
 %- test
-% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {[1,2],[5,6]};
+% SUBJ_PICS = {{'NH3007'}};
+% GROUP_NAMES = {'test'}; 
+% SUBJ_ITERS = {[1]};
 fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
 fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
 %% (PARAMETERS) ======================================================== %%
@@ -174,7 +174,7 @@ PERCENT_OVERLAP = 0.0; % percent overlap between epochs
 %* gait
 EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 STD_TIMEWARP = 3;
-EPOCH_TIME_LIMITS = [-1,4.25]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
+EPOCH_TIME_LIMITS = [-0.5,4.5]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
 TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 if DO_SLIDING_WINDOW
     SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
@@ -184,13 +184,13 @@ else
     TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 end
 %- eeglab_cluster.m spectral params
-FREQ_LIMITS = [1,100];
-CYCLE_LIMITS = [3,0.8];
-SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
-FREQ_FAC = 4;
-PAD_RATIO = 2;
+% FREQ_LIMITS = [1,200];
+% CYCLE_LIMITS = [3,0.8];
+% SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
+% FREQ_FAC = 4;
+% PAD_RATIO = 2;
 %- datetime override
-dt = '10022023_MIM_OAYA_N112';
+dt = '10022023_MIM_OAYA_N112_CRUNCH_gait';
 %- Subject Directory information
 % OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
@@ -198,8 +198,10 @@ OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(0
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
-study_fName_1 = sprintf('%s_all_comps_study',[TRIAL_TYPES{:}]);
-study_fName_2 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+% study_fName_1 = sprintf('%s_all_comps_study',[TRIAL_TYPES{:}]);
+% study_fName_2 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+study_fName_1 = 'all_comps_study';
+study_fName_2 = 'epoch_study';
 % TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
@@ -272,9 +274,10 @@ subjectNames = subjectNames(inds);
 %% CREATE STUDY
 %## Create STUDY & ALLEEG structs
 if ~exist([save_dir filesep study_fName_1 '.study'],'file') %|| true
-    fprintf(1,'\n==== CLUSTERING SUBJECT DATA ====\n');
+    fprintf(1,'\n==== LOADING SUBJECT DATA ====\n');
     [MAIN_ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
-                        conditions,groups,sessions); %,...
+                        conditions,groups,sessions,...
+                            'FORCE_RELOAD',true); %,...
 %                         'SAVE_EEG',SAVE_EEG); %,...
 %                         'CHANLOCS_FPATHS',chanlocs_fPaths);
     [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,study_fName_1,save_dir);
@@ -282,7 +285,7 @@ if ~exist([save_dir filesep study_fName_1 '.study'],'file') %|| true
     [MAIN_STUDY,MAIN_ALLEEG] = parfunc_save_study(MAIN_STUDY,MAIN_ALLEEG,...
                                             study_fName_1,save_dir,...
                                             'RESAVE_DATASETS','on');
-    fprintf(1,'\n==== DONE: CLUSTERING SUBJECT DATA ====\n');
+    fprintf(1,'\n==== DONE: LOADING SUBJECT DATA ====\n');
 else
     fprintf(1,'\n==== LOADING CLUSTER STUDY DATA ====\n');
     if ~ispc
@@ -293,11 +296,11 @@ else
     fprintf(1,'\n==== DONE: LOADING CLUSTER STUDY DATA ====\n');
 end
 %% INITIALIZE PARFOR LOOP VARS
-if exist('SLURM_POOL_SIZE','var')
-    POOL_SIZE = min([SLURM_POOL_SIZE,length(MAIN_ALLEEG)]);
-else
-    POOL_SIZE = 1;
-end
+% if exist('SLURM_POOL_SIZE','var')
+%     POOL_SIZE = min([SLURM_POOL_SIZE,length(MAIN_ALLEEG)]);
+% else
+%     POOL_SIZE = 1;
+% end
 fPaths = {MAIN_ALLEEG.filepath};
 fNames = {MAIN_ALLEEG.filename};
 LOOP_VAR = 1:length(MAIN_ALLEEG);
@@ -307,7 +310,7 @@ rmv_subj = zeros(1,length(MAIN_ALLEEG));
 % clear MAIN_ALLEEG
 %% GENERATE EPOCH MAIN FUNC
 %## PARFOR LOOP
-parfor (subj_i = LOOP_VAR,length(MAIN_ALLEEG)/3)
+parfor (subj_i = LOOP_VAR,floor(length(MAIN_ALLEEG)/3))
     %## LOAD EEG DATA
     EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
     fprintf('Running subject %s\n',EEG.subject)
@@ -409,8 +412,8 @@ parfor (subj_i = LOOP_VAR,length(MAIN_ALLEEG)/3)
         tmp{subj_i} = ALLEEG;
     catch e
         rmv_subj(subj_i) = 1;
-        EEG.timewarp = struct([]);
-        EEG.urevent = [];
+%         EEG.timewarp = struct([]);
+%         EEG.urevent = [];
         tmp{subj_i} = []; %EEG;
         fprintf(['error. identifier: %s\n',...
                  'error. %s\n',...

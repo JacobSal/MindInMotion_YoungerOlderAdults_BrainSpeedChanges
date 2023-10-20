@@ -825,47 +825,45 @@ outputdir_psd = [save_path filesep 'PSD']; %'D:\Dropbox (UFL)\0.0 Writing_postdo
 if ~exist(outputdir_psd,'dir')
     mkdir(outputdir_psd)
 end
-% YLIM_ORIG_INTV = [[-40,0];[-35,-5];[-30,-10];[-20,-15];[-25,0]];
-% YLIM_FOOOF_INTV = [[-1,6.5];[-2,4];[-4,8];[-6,14]];
-% YLIM_THETA_INTV = [[-1,2.5];[-2,4];[-3,6];[0,3]];
-% YLIM_ALPHA_INTV = [[-1,4];[-2,7];[-3,10];[0,12];[0,18]];
-% YLIM_BETA_INTV = [[-1,4];[-2,6];[0,7];[-3,8];[-3,10]];
-% YLIM_ERROR = 0.05;
-%-
+YLIM_ORIG_INTV = [[-40,0];[-35,-5];[-30,-10];[-20,-15];[-25,0]];
+YLIM_FOOOF_INTV = [[-1,6.5];[-2,4];[-4,8];[-6,14]];
+YLIM_THETA_INTV = [[-1,2.5];[-2,4];[-3,6];[0,3]];
+YLIM_ALPHA_INTV = [[-1,4];[-2,7];[-3,10];[0,12];[0,18]];
+YLIM_BETA_INTV = [[-1,4];[-2,6];[0,7];[-3,8];[-3,10]];
+YLIM_ERROR = 0.05;
 CINGULATE_I = 3;
-theta_3=[-1,6];
-alpha_3=[-1,6];
-beta_3=[-1,9];
-%-
 SENSORIMOTOR_I = {7,8};
-theta_1=[-1,6.5];
-alpha_1=[-1,16];
-beta_1=[-1,10];
-%-
 POSTERIORP_I = {12,5};
-theta_2=[-1,5];
-alpha_2=[-1,18];
-beta_2=[-1,9];
-%-
-% SUPPMOTOR_I = 0;
-% theta_4=[-1,7];
-% alpha_4=[-1,7];
-% beta_4=[-1,7];
-%-
+SUPPMOTOR_I = 0;
 OCCIPITAL_I = 4;
-theta_6=[-1,8];
-alpha_6=[-1,15];
-beta_6=[-1,7];
-%-
 CAUDATE_I = 9;
-theta_7=[-1,5];
-alpha_7=[-1.5,7];
-beta_7=[-1,7];
-%-
 CUNEUS_I = 13;
-theta_5=[-1,8];
-alpha_5=[-1.5,12];
-beta_5=[-1,8];
+% switch k
+%     case SENSORIMOTOR_I % sensorimotor area
+%         ylim_value_theta = [-1 2.5];
+%         ylim_value_alpha = [-2 18];
+%         ylim_value_beta  = [-1 10];
+%     case POSTERIORP_I % posterior area
+%         ylim_value_theta = [-1 2.5];
+%         ylim_value_alpha = [-2 12];
+%         ylim_value_beta  = [-1 8];
+%     case CINGULATE_I % cingulate
+%         ylim_value_theta = [-1 6];
+%         ylim_value_alpha = [-2 10];
+%         ylim_value_beta  = [-1 7];
+%     case SUPPMOTOR_I % supplementary motor
+%         ylim_value_theta = [-0.5 6];
+%         ylim_value_alpha = [-2 4];
+%         ylim_value_beta  = [-2 6];
+%     case OCCIPITAL_I % occipital
+%         ylim_value_theta = [-1 4];
+%         ylim_value_alpha = [-2 18];
+%         ylim_value_beta  = [-1 6.5];
+%     case CAUDATE_I % caudate
+%         ylim_value_theta = [-1 4];
+%         ylim_value_alpha = [-2 7];
+%         ylim_value_beta  = [-0.1 4];
+% end
 % switch k
 %     case SENSORIMOTOR_I % sensorimotor area
 %         ylim_value_theta = [-1 5];
@@ -1150,33 +1148,37 @@ for g = 1:2
     %     ylim_value_beta(2) = ylim_value_beta(2)+0.5;
         switch k
             case SENSORIMOTOR_I % sensorimotor area
-                ylim_value_theta = theta_1;
-                ylim_value_alpha = alpha_1;
-                ylim_value_beta  = beta_1;
+                ylim_value_theta = [-1 5];
+                ylim_value_alpha = [-1.5 15];
+                ylim_value_beta  = [-1 9];
             case POSTERIORP_I % posterior area
-                ylim_value_theta = theta_2;
-                ylim_value_alpha = alpha_2;
-                ylim_value_beta  = beta_2;
+                ylim_value_theta = [-1 4];
+                ylim_value_alpha = [-1.5 19];
+                ylim_value_beta  = [-0.5 10];
             case CINGULATE_I % cingulate
-                ylim_value_theta = theta_3;
-                ylim_value_alpha = alpha_3;
-                ylim_value_beta  = beta_3;
+                ylim_value_theta = [-1 6];
+                ylim_value_alpha = [-1.5 6];
+                ylim_value_beta  = [-1 7];
         %         case SUPPMOTOR_I % supplementary motor
-        %             ylim_value_theta = theta_4;
-        %             ylim_value_alpha = alpha_4;
-        %             ylim_value_beta  = beta_4;
+        %             ylim_value_theta = [-0.5 6];
+        %             ylim_value_alpha = [-2 4];
+        %             ylim_value_beta  = [-2 6];
             case CUNEUS_I
-                ylim_value_theta = theta_5;
-                ylim_value_alpha = alpha_5;
-                ylim_value_beta  = beta_5;
+                ylim_value_theta = [-1 4];
+                ylim_value_alpha = [-1.5 15];
+                ylim_value_beta  = [-1 8.5];
+    %         case 
+    %             ylim_value_theta = [-1 8];
+    %             ylim_value_alpha = [-1 10];
+    %             ylim_value_beta  = [-1 8];
             case OCCIPITAL_I % occipital
-                ylim_value_theta = theta_6;
-                ylim_value_alpha = alpha_6;
-                ylim_value_beta  = beta_6;
+                ylim_value_theta = [-1 6];
+                ylim_value_alpha = [-1 15];
+                ylim_value_beta  = [-1 7];
             case CAUDATE_I % caudate
-                ylim_value_theta = theta_7;
-                ylim_value_alpha = alpha_7;
-                ylim_value_beta  = beta_7;
+                ylim_value_theta = [-1 3];
+                ylim_value_alpha = [-2 7];
+                ylim_value_beta  = [-1 6];
         end
         %-
         for i = 1:length(measure_name_plot)
@@ -1408,7 +1410,7 @@ end
 %## PARAMS
 measure_name_plot = {'theta_avg_power','alpha_avg_power','beta_avg_power'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
 title_plot = {'\theta','\alpha','\beta'};
-FIG_POS = [100 300 1420 250];
+FIG_POS = [100 300 1420 320];
 %## COLORS
 % g = 1;
 %- colors
@@ -1427,35 +1429,65 @@ for g = 1:2
             xtick_label_g = {'0.25','0.50','0.75','1.0'};
     end
     for k = valid_clusters %3:length(fooof_group_results_org{g}) %[3 12 7 9 6 13 11 10 14] %3:length(fooof_group_results_org{g})
+    %     switch k
+    %         case {4,5} % sensorimotor area
+    %             ylim_value_ap_exp = [0 2];
+    %             ylim_value_ap_offset = [-3 1]*10;
+    %         case {6,12} % posterior area
+    %             ylim_value_ap_exp = [0 2];
+    %             ylim_value_ap_offset = [-3 1]*10;
+    %         case 9 % cingulate
+    %             ylim_value_ap_exp = [0 2];
+    %             ylim_value_ap_offset = [-3 1]*10;
+    % %         case {6,13} % supplementary motor
+    % %             ylim_value_ap_exp = [0 2];
+    % %             ylim_value_ap_offset = [-3 1]*10;
+    %         case {7} % occipital
+    %             ylim_value_ap_exp = [0 2];
+    %             ylim_value_ap_offset = [-3 1]*10;
+    %         case {16} 
+    %             ylim_value_ap_exp = [0 2];
+    %             ylim_value_ap_offset = [-3 1]*10;
+    %         case {8} 
+    %             ylim_value_ap_exp = [0 2];
+    %             ylim_value_ap_offset = [-3 1]*10;
+    %         case {15} % caudate
+    %             ylim_value_ap_exp = [0 2];
+    %             ylim_value_ap_offset = [-3 1]*10;
+    %     end
         switch k
             case SENSORIMOTOR_I % sensorimotor area
-                ylim_value_theta = theta_1;
-                ylim_value_alpha = alpha_1;
-                ylim_value_beta  = beta_1;
+                ylim_value_theta = [-1 5];
+                ylim_value_alpha = [-1.5 15];
+                ylim_value_beta  = [-1 9];
             case POSTERIORP_I % posterior area
-                ylim_value_theta = theta_2;
-                ylim_value_alpha = alpha_2;
-                ylim_value_beta  = beta_2;
+                ylim_value_theta = [-1 4];
+                ylim_value_alpha = [-1.5 19];
+                ylim_value_beta  = [-0.5 10];
             case CINGULATE_I % cingulate
-                ylim_value_theta = theta_3;
-                ylim_value_alpha = alpha_3;
-                ylim_value_beta  = beta_3;
+                ylim_value_theta = [-1 6];
+                ylim_value_alpha = [-1.5 6];
+                ylim_value_beta  = [-1 7];
         %         case SUPPMOTOR_I % supplementary motor
-        %             ylim_value_theta = theta_4;
-        %             ylim_value_alpha = alpha_4;
-        %             ylim_value_beta  = beta_4;
+        %             ylim_value_theta = [-0.5 6];
+        %             ylim_value_alpha = [-2 4];
+        %             ylim_value_beta  = [-2 6];
             case CUNEUS_I
-                ylim_value_theta = theta_5;
-                ylim_value_alpha = alpha_5;
-                ylim_value_beta  = beta_5;
+                ylim_value_theta = [-1 4];
+                ylim_value_alpha = [-1.5 15];
+                ylim_value_beta  = [-1 8.5];
+    %         case {8)}
+    %             ylim_value_theta = [-1 8];
+    %             ylim_value_alpha = [-1 10];
+    %             ylim_value_beta  = [-1 8];
             case OCCIPITAL_I % occipital
-                ylim_value_theta = theta_6;
-                ylim_value_alpha = alpha_6;
-                ylim_value_beta  = beta_6;
+                ylim_value_theta = [-1 6];
+                ylim_value_alpha = [-1 15];
+                ylim_value_beta  = [-1 7];
             case CAUDATE_I % caudate
-                ylim_value_theta = theta_7;
-                ylim_value_alpha = alpha_7;
-                ylim_value_beta  = beta_7;
+                ylim_value_theta = [-1 3];
+                ylim_value_alpha = [-2 7];
+                ylim_value_beta  = [-1 6];
         end
         figure('color','white','position',FIG_POS,'Renderer','Painters');
 

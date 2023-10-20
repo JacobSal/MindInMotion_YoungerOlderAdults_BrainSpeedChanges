@@ -8,7 +8,7 @@
 %   Summary: 
 
 %- run .sh
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/run_c_ersp_gen_expanded_v20.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/run_c_ersp_gen_expanded.sh
 
 %{
 %## RESTORE MATLAB
@@ -88,7 +88,7 @@ DATA_SET = 'MIM_dataset';
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %- compute measures for spectrum and ersp
 FORCE_RECALC_SPEC = false;
-FORCE_RECALC_ERSP = true;
+FORCE_RECALC_ERSP = false;
 DO_TIMEWARP = true;
 DO_BASELINE_CORRECTION = false; 
 DO_SUBJ_PLOTS = true;
@@ -116,7 +116,7 @@ ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
     'mode','fieldtrip',... % ['eeglab'|'fieldtrip']
     'fieldtripalpha',0.05,... % [NaN|alpha], Significance threshold (0<alpha<<1)
     'fieldtripmethod','montecarlo',... %[('montecarlo'/'permutation')|'parametric']
-    'fieldtripmcorrect','fdr',...  % ['cluster'|'fdr']
+    'fieldtripmcorrect','cluster',...  % ['cluster'|'fdr']
     'fieldtripnaccu',2000);
 % (07/16/2023) JS, updating mcorrect to fdr as per CL YA paper
 % (07/16/2023) JS, updating method to bootstrap as per CL YA paper
@@ -155,9 +155,10 @@ ERSP_PARAMS = struct('subbaseline','off',...
 % inside CL's PlotAndSaveERSP_CL_V3.m...
 %- datetime override
 % dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
-dt = '10052023_MIM_OAN70_noslowwalkers';
+dt = '10052023_MIM_OAN70_noslowwalkers_gait';
 %## Soft Define
-study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+% study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+study_fName_1 = 'epoch_study';
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep '_figs'];
@@ -178,25 +179,36 @@ ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI at
     [ATLAS_PATH filesep 'vtpm' filesep 'vtpm.mat'],...
     [ATLAS_PATH filesep 'yeo' filesep 'Yeo2011_17Networks_MNI152_FreeSurferConformed1mm_LiberalMask_colin27.nii'],...
     [ATLAS_PATH filesep 'brainweb' filesep 'brainweb_discrete.mat']}; % also a discrete version of this
-%- convert SUB_DIR
-SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster';
+%- (EDIT!) convert SUB_DIR
+SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\10052023_MIM_OAN70_noslowwalkers_gait\cluster';
 if ~ispc
     SUB_DIR = convertPath2UNIX(SUB_DIR);
 else
     SUB_DIR = convertPath2Drive(SUB_DIR);
 end
 %## USER SET
-LOAD_DIFFERENT_STUDY = {true,true};
-CLUSTER_K_PICKS = [14,14];
-CLUSTER_STUDY_FNAMES = {'temp_study_rejics6','temp_study_rejics5'};
-CLUSTER_DIRS = {[SUB_DIR filesep 'icrej_6' filesep '14'],...
-    [SUB_DIR filesep 'icrej_5' filesep '14']};
-CLUSTER_FILES = {'cl_inf_14.mat','cl_inf_14.mat'};
-CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'icrej_6'],...
-    [SUB_DIR filesep 'icrej_5']};
+% LOAD_DIFFERENT_STUDY = {true,true};
+% CLUSTER_K_PICKS = [12,14];
+% CLUSTER_STUDY_FNAMES = {'temp_study_rejics5',...
+%     'temp_study_rejics5'};
+% CLUSTER_DIRS = {[SUB_DIR filesep 'icrej_5' filesep '12'],...
+%     [SUB_DIR filesep 'icrej_5' filesep '14']};
+% CLUSTER_FILES = {'cl_inf_12.mat',...
+%     'cl_inf_14.mat'};
+% CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'icrej_5'],...
+%     [SUB_DIR filesep 'icrej_5']};
+% POSS_CLUSTER_CHARS = {};
+LOAD_DIFFERENT_STUDY = {true};
+CLUSTER_K_PICKS = [12];
+CLUSTER_STUDY_FNAMES = {'temp_study_rejics5'};
+CLUSTER_DIRS = {[SUB_DIR filesep 'icrej_5' filesep '12']};
+CLUSTER_FILES = {'cl_inf_12.mat'};
+CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'icrej_5']};
 POSS_CLUSTER_CHARS = {};
 % this is a matrix of integers matching the cluster number for clustering K=i to the index in the POSS_CLUSTER_CHARS
 CLUSTER_CLIM_MATCH = [];
+SUB_GROUP_FNAME = 'H3000'; %'H2000';
+SUB_GROUP_FNAME_REGEX = 'H3000''s'; %'H2000''s';
 STUDY_DESI_PARAMS = {{'subjselect',{},...
             'variable1','cond','values1',{'flat','low','med','high'},...
             'variable2','group','values2',{}},...
@@ -205,7 +217,7 @@ STUDY_DESI_PARAMS = {{'subjselect',{},...
             'variable2','group','values2',{}}};
 %% (STEP 1) GENERATE ERSP & SPEC DATA FOR-EACH DESIGN & CLUSTER
 %## NOTE: This Loop ABSOLUTELY CAN NOT be ran in parallel at this point.
-for k_i = 2 %1:length(CLUSTER_K_PICKS)
+for k_i = 1:length(CLUSTER_K_PICKS)
     %## TEMPORARIES
     parameters = []; %#ok<NASGU>
     tmp_group_orig = cell(length(ALLEEG),1);
@@ -362,12 +374,23 @@ for k_i = 2 %1:length(CLUSTER_K_PICKS)
         tmp_group_unif{subj_i} = 'Older Adults';
     end
     %## Make Study Designs
-    %- combine groups
-    for subj_i = 1:length(ALLEEG)
-        ALLEEG(subj_i).group = tmp_group_unif{subj_i};
-        STUDY.datasetinfo(subj_i).group = tmp_group_unif{subj_i};
-    end
     %- assign studies
+    if ~isempty(SUB_GROUP_FNAME_REGEX)
+        inds = find(cellfun(@(x) strcmp(x,SUB_GROUP_FNAME_REGEX),{STUDY.datasetinfo.group}));
+        fprintf('Running subjects:'); cellfun(@(x) fprintf('%s,',x),{STUDY.datasetinfo(inds).subject}); fprintf('\n');
+%         for des_i = 1:length(STUDY_DESI_PARAMS)
+%             STUDY_DESI_PARAMS{des_i}{2} = {inds}; %{STUDY.datasetinfo(inds).subject};
+%         end
+        for des_i = 1:length(STUDY_DESI_PARAMS)
+            STUDY_DESI_PARAMS{des_i}{10} = {SUB_GROUP_FNAME_REGEX};
+        end
+    else
+        %- combine groups
+        for subj_i = 1:length(ALLEEG)
+            ALLEEG(subj_i).group = tmp_group_unif{subj_i};
+            STUDY.datasetinfo(subj_i).group = tmp_group_unif{subj_i};
+        end
+    end
     STUDY.cache = [];
     for des_i = 1:length(STUDY_DESI_PARAMS)
         [STUDY] = std_makedesign(STUDY,ALLEEG,des_i,STUDY_DESI_PARAMS{des_i}{:});
@@ -376,15 +399,19 @@ for k_i = 2 %1:length(CLUSTER_K_PICKS)
     clust_i = CLUSTER_K_PICKS(k_i);
     fprintf('Making data for K=%i...\n',clust_i);
     cluster_update = par_load(cluster_dir,CLUSTER_FILES{k_i});
-    spec_data_dir = [cluster_dir filesep 'spec_data'];
+    if ~isempty(SUB_GROUP_FNAME_REGEX)
+        spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
+    else
+        spec_data_dir = [cluster_dir filesep 'spec_data'];
+    end
     if ~exist(spec_data_dir,'dir')
         mkdir(spec_data_dir)
     end
     %- assign cluster information
     STUDY.cluster = cluster_update;
     %- get inds
-    [~,~,~,~,~,nonzero_cl_inds] = eeglab_get_cluster_comps(STUDY);
-    CLUSTER_PICKS = nonzero_cl_inds; %1:length(TMP_STUDY.cluster);
+    [~,main_cl_inds,~,~,~,nonzero_cl_inds] = eeglab_get_cluster_comps(STUDY);
+    CLUSTER_PICKS = main_cl_inds(2:end); % nonzero_cl_inds; %1:length(TMP_STUDY.cluster);
     %- stores
     cnt = 1;
     cnt2 = 1;
@@ -478,13 +505,14 @@ for k_i = 2 %1:length(CLUSTER_K_PICKS)
                                     STUDY.filename,spec_data_dir,...
                                     'RESAVE_DATASETS','off');
     %% CLUSTER DIAGNOSTIC PLOTS && SUBJECT SPECIFIC PER CLUSTER
+    %{
     %- get inds
     [~,main_cl_inds,~,valid_clusters,~,nonzero_clusters] = eeglab_get_cluster_comps(STUDY);
     %- clusters to plot
     CLUSTER_PICKS = main_cl_inds(2:end); %valid_clusters; %main_cl_inds(2:end); %valid_clusters
     %## PLOT cluster based information
-%     mim_gen_cluster_figs(STUDY,ALLEEG,cluster_dir,...
-%         'CLUSTERS_TO_PLOT',main_cl_inds);
+    mim_gen_cluster_figs(STUDY,ALLEEG,CLUSTER_DIRS{k_i},...
+        'CLUSTERS_TO_PLOT',CLUSTER_PICKS);
     %##
     STUDY.etc.dipparams.centrline = 'off';
     parfor (k = 1:length(main_cl_inds),length(main_cl_inds))
@@ -591,6 +619,7 @@ for k_i = 2 %1:length(CLUSTER_K_PICKS)
             % Write the table to a CSV file
             writetable(T,[subj_save_dir filesep sprintf('%s_atlasinf_ic%i.csv',subj_char,comp_i)])
             %- (SPEC) Spec plot conds for des_i and all groups
+            %{
             fprintf('Plotting Spectograms for Conditions...\n');
             for des_i = 1:length(STUDY.design)
                 std_specplot(STUDY,ALLEEG,'clusters',clust_i,'comps',s_i,...
@@ -617,15 +646,15 @@ for k_i = 2 %1:length(CLUSTER_K_PICKS)
                 drawnow;
                 saveas(fig_i,[subj_save_dir filesep sprintf('%s_psd_des%i_ic%i.jpg',subj_char,des_i,comp_i)]);
             end
+            %}
+    
             close all            
         end
     end
-    
-    
+    %}
 end
 %% (STEP 2) PLOT
 %##
-
 clear('STUDY');
 clear('ALLEEG');
 clear('TMP_ALLEEG');
@@ -639,13 +668,18 @@ parfor (k_i = 1:length(CLUSTER_K_PICKS),length(CLUSTER_K_PICKS))
     else
         cluster_dir = convertPath2Drive(CLUSTER_DIRS{k_i});
     end
-    plot_store_dir = [cluster_dir filesep 'plots_out'];
+    if ~isempty(SUB_GROUP_FNAME_REGEX)
+        spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
+        plot_store_dir = [cluster_dir filesep 'plots_out' filesep SUB_GROUP_FNAME];
+    else
+        spec_data_dir = [cluster_dir filesep 'spec_data'];
+        plot_store_dir = [cluster_dir filesep 'plots_out'];
+    end
+    if ~exist(spec_data_dir,'dir')
+        error('spec_data dir does not exist');
+    end
     if ~exist(plot_store_dir,'dir')
         mkdir(plot_store_dir);
-    end
-    spec_data_dir = [cluster_dir filesep 'spec_data'];
-    if ~exist(spec_data_dir,'dir')
-        error('error. path %s doesn''t exist',spec_data_dir);
     end
     %## Load Study
     % (08/03/2023) JS, this can be optimized in the future by only loding
@@ -683,9 +717,7 @@ parfor (k_i = 1:length(CLUSTER_K_PICKS),length(CLUSTER_K_PICKS))
     [~,main_cl_inds,~,valid_clusters,~,nonzero_clusters] = eeglab_get_cluster_comps(STUDY);
     %- clusters to plot
     CLUSTER_PICKS = main_cl_inds(2:end); %valid_clusters; %main_cl_inds(2:end); %valid_clusters
-    %## PLOT cluster based information
-%     mim_gen_cluster_figs(STUDY,ALLEEG,CLUSTER_DIRS{k_i},...
-%         'CLUSTERS_TO_PLOT',main_cl_inds);
+    
     %## Loop Through Designs
     for des_i = 1:length(STUDY.design)
         cond_test = STUDY.design(des_i).variable(1).value;

@@ -22,10 +22,11 @@ echo "Number of Nodes Allocated      = $SLURM_JOB_NUM_NODES"
 echo "Number of Tasks Allocated      = $SLURM_NTASKS"
 echo "Number of Cores/Task Allocated = $SLURM_CPUS_PER_TASK"
 
-module load mcr/2020b
+module load mcr/2020a
 echo $MCRROOT
 echo $LD_LIBRARY_PATH
 # (EDIT)!
+export DONOT_RECREATE=false;
 export SUBJ_EEG="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/08202023_OAN82_iccRX0p65_iccREMG0p4_changparams"
 # SET SUBJECT DIRECTORIES
 export MCC_PATH="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/mcc_dipfit/"
@@ -54,9 +55,8 @@ export SUBJ_RUN=("H1002" "H1004" "H1007" "H1009"
  "NH3076" "NH3086" "NH3090" "NH3102"
  "NH3104" "NH3105" "NH3106" "NH3108" "NH3110"
  "NH3112" "NH3113" "NH3114" "NH3123" "NH3128") # JACOB SAL(08/23/2023)
-
 # cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/mcc_dipfit
-#%% SET ENVIORNMENT VARIABLES
+# %% SET ENVIORNMENT VARIABLES
 echo Setting up environment variables
 echo ---
 LD_LIBRARY_PATH=.:${MCRROOT}/runtime/glnxa64 ;
@@ -69,10 +69,18 @@ echo LD_LIBRARY_PATH is ${LD_LIBRARY_PATH};
 test -e /usr/bin/ldd &&  ldd --version |  grep -q "(GNU libc) 2\.17"  \
 		&& export LD_PRELOAD="${MCRROOT}/bin/glnxa64/glibc-2.17_shim.so"
 export LD_PRELOAD="${LD_PRELOAD:+${LD_PRELOAD}:}${MCRROOT}/bin/glnxa64/libmwlaunchermain.so"
-#%% LOOP through a particular cohort of subjects
+# export LD_PRELOAD="${LD_PRELOAD:+${LD_PRELOAD}:}/lib64/libgfortran.so.3"
+
+# %% LOOP through a particular cohort of subjects
+# CSF_VALS=(1.65);
+# GRAY_VALS=(0.33);
+# SCALP_VALS=(0.33);
+# SKULL_VALS=(0.01,0.0024);
+# WHITE_VALS=(0.126);
+# AIR_VALS=(2.5*10^-14);
 for s in ${SUBJ_RUN[@]};
 do
-	#%% printouts
+	# %% printouts
 	echo "Processing Subject $s"
 	echo "MRI folder: $SUBJ_HEADMOD/$s/MRI"
 	echo "ICA .set file path: $SUBJ_EEG/$s/clean/*.set"
@@ -80,7 +88,7 @@ do
 	export mri_f=$SUBJ_HEADMOD/$s/MRI
 	export set_f=$SUBJ_EEG/$s/clean/*.set
 	export out_f=$SUBJ_EEG/$s/head_model/
-	if test -f "$curr_f";
+	if test -f "$curr_f" && $DONOT_RECREATE;
 	then
 		echo "$s headmodel file already generated."
 	else
@@ -88,10 +96,17 @@ do
 		echo $mri_f
 		echo $set_f
 		echo $out_f
-		#%% create output folder for source.mat
+		# %% create output folder for source.mat
 		mkdir $SUBJ_EEG/"$s"/head_model/
-		#%% run program
-		eval $MCC_PATH/_out/mim_mcc_dipfit "$mri_f" "$set_f" "$out_f"
+		if $DONOT_RECREATE
+		then
+			force_recreate=0;
+		else
+			force_recreate=1;
+		fi
+		# %% run program
+		cond_vals=$(echo "[1.65,0.33,0.33,0.01,0.126,2.5*10^-14]"); # csf, gray, scalp, skull, white, air
+		eval $MCC_PATH/_out/mim_mcc_dipfit "$mri_f" "$set_f" "$out_f" "$cond_vals" "FORCE_RECREATE" "$force_recreate"
 		wait
 		echo "done: $s"
 	fi

@@ -13,7 +13,7 @@ function [EEG,dipfit_fem_model] = mim_norm_dipfit(eeg_fpath,eeg_fname,mri_fpath,
 tic
 %## DEFINE DEFAULTS
 NORMALIZE_MRI = true;
-DO_PLOT = true;
+DO_PLOT = false;
 %## Define Parser
 p = inputParser;
 %## REQUIRED

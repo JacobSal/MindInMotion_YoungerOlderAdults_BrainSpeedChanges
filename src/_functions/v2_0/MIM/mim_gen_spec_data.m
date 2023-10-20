@@ -54,6 +54,8 @@ end
 SPEC_PARAMS = p.Results.SPEC_PARAMS;
 %% ===================================================================== %%
 %## SPECTRUM CALCULATIONS
+spec_savef = '';
+spec_subjcorr_savef = '';
 %##
 fprintf('Computing specdata for cluster %i...\n',cluster_i)
 tic

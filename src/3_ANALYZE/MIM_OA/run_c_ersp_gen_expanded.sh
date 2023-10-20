@@ -10,12 +10,11 @@
 #SBATCH --mem-per-cpu=30000mb # Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
 #SBATCH --time=48:00:00 # Time limit hrs:min:sec
-#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/_hpg_logs/%j_c_ersp_gen_expanded_v20.log # Standard output
+#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/_hpg_logs/%j_c_ersp_gen_expanded.log # Standard output
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=hpg-default # cluster to run on, use slurm command 'sinfo -s'
 
-module purge
 module load matlab/2020b
 cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/
 
@@ -32,7 +31,7 @@ echo "Number of Cores/Task Allocated = $SLURM_CPUS_PER_TASK"
 mkdir -p ./$SLURM_JOB_ID
 
 # Kick off matlab
-matlab -nodisplay < /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/c_ersp_gen_expanded_v20.m
+matlab -nodisplay < /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/c_ersp_gen_expanded.m
 
 # Cleanup local work directory
 rm -rf ./$SLURM_JOB_ID

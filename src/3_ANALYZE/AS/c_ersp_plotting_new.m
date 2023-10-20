@@ -86,15 +86,12 @@ DATA_SET = 'AS_dataset';
 %- compute measures for spectrum and ersp
 RECOMPUTE_SPEC = false;
 RECOMPUTE_ERSP = false;
-DO_TIMEWARP = true;
+DO_TIMEWARP = false;
 DO_BASELINE_CORRECTION = false; %false;
-% DO_CUSTOM_SUBBASELINE = true;
-CYCLE_LIMITS = [3,0.8];
-SPEC_MODE = 'psd'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
-FREQ_FAC = 4;
 %- statistics & conditions
 EVENTS_TIMEWARP = {'Subject_hit','Subject_receive','Subject_hit'};
-COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
+% COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
+COND_CHARS =  {'2Bounce_Human','2Bounce_BM'};
 EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 test_1 = {'1Bounce_Human','2Bounce_Human'};
 test_2 = {'2Bounce_Human','2Bounce_BM'};
@@ -102,37 +99,40 @@ test_3 = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'};
 COND_EVENT_CHAR = 'bounces';
 baseline_rng = [0,150];
 COND_DESIGNS = {test_1,test_2,test_3};
-STAT_ALPHA = 0.05;
-%- SPEC params
-SPEC_XLIM = [1,100];
-SPEC_YLIM = [-30,-5];
-SPEC_FREQLIMITS = [1,70];
-% SPEC_MCORRECT = 'cluster'; %'fdr';
-% SPEC_STAT_METHOD = 'perm'; %'parametric';
-% SPEC_ALPHA = 0.05; %nan();
-% SPEC_CONDSTATS = 'on';
-% SPEC_GROUPSTATS = 'off';
-% SPEC_NACCU = 2000;
-%- ERSP PARAMS
-% STAT_SINGLETRIALS = 'on'; %['on'|'off'] load single trials spectral data (if available). Default is 'off'.
-STAT_MODE = 'fieldtrip'; %[
-FIELDTRIP_METHOD = 'montecarlo';
-% TIMEWARP_NTIMES = [];
-ERSP_CAXIS = [-2,2]; %[-1.5,1.5];
-ERSP_FREQLIMITS = [3,60];
-ERSP_MCORRECT = 'cluster'; %'fdr';
-ERSP_STAT_METHOD = 'perm'; % ['param'|'perm'|'bootstrap']
-ERSP_ALPHA = 0.05; % [NaN|alpha], Significance threshold (0<alpha<<1)
-ERSP_CONDSTATS = 'on'; % ['on'|'off]
-ERSP_GROUPSTATS = 'off';
-ERSP_SUBBASELINE = 'off'; %['on'|'off'];
-ERSP_SINGLETRIALS = 'off'; %['on'|'off'], % this should be off for GAIT cycle analysis. 
-ERSP_NACCU = 2000;
+%##
+%* ERSP PARAMS
+ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
+    'groupstats','off',... %['on'|'off']
+    'method','perm',... % ['param'|'perm'|'bootstrap']
+    'singletrials','off',... % ['on'|'off'] load single trials spectral data (if available). Default is 'off'.
+    'mode','fieldtrip',... % ['eeglab'|'fieldtrip']
+    'fieldtripalpha',0.05,... % [NaN|alpha], Significance threshold (0<alpha<<1)
+    'fieldtripmethod','montecarlo',... %[('montecarlo'/'permutation')|'parametric']
+    'fieldtripmcorrect','cluster',...  % ['cluster'|'fdr']
+    'fieldtripnaccu',2000);
+% (10/20/2023) borrowing parameters from MIM study
+SPEC_PARAMS = struct('freqrange',[1,200],...
+    'subject','',...
+    'specmode','psd',...
+    'freqfac',4,...
+    'logtrials','on',...
+    'comps','all',...
+    'plot_freqrange',[4,60],...
+    'plot_ylim',[-35,-8],...
+    'subtractsubjectmean','on',...
+    'plotmode','normal');
+ERSP_PARAMS = struct('subbaseline','off',...
+    'timerange',[],...
+    'ersplim',[-2,2],...
+    'freqfac',4,...
+    'cycles',[3,0.8],...
+    'freqrange',[1,200]);
 %- datetime override
 % dt = '05252023_bounces_1h2h2bm_JS';
 % dt = '06122023_bounces_1h2h2bm_JS';
 % dt = '06152023_bounces_1h2h2bm_JS';
-dt = '07272023_bounces_1h_2h_2bm_JS';
+% dt = '07272023_bounces_1h_2h_2bm_JS';
+dt = '08182023_bounces_1h_2h_2bm_JS';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -171,6 +171,7 @@ else
     [comps_out,main_cl_inds,outlier_cl_inds,valid_cluster] = eeglab_get_cluster_comps(STUDY);
 end
 %% CALCULATE GRANDAVERAGE WARPTO
+%{
 %## (OPT 1)
 tmp_warpto = cell(length(ALLEEG),1);
 for subj_i = 1:length(ALLEEG)
@@ -201,74 +202,68 @@ for subj_i = 1:length(ALLEEG)
 end
 % grandAvgWarpTo = floor(nanmedian(allWarpTo)); % tends to be shorter? (e.g., [0,242,686,915,1357])
 grandAvgWarpTo = floor(nanmean(allWarpTo)); % tends to be longer? (e.g., [0,262,706,982,1415])
-%% (ERSP PLOT PREP) PREPARE STUDYFILE FOR EXTRACTION (BLACK-HAWK DOWN!)
+%##
 TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. making this too big can cause overlap between gait cyles
 % b_lims =[grandAvgWarpTo(1) grandAvgWarpTo(5)-1000*(1/ALLEEG(1).srate)];
 b_lims =[grandAvgWarpTo(1) grandAvgWarpTo(end)];
 % ERSP_CROP_TIMES=[grandAvgWarpTo(1)+abs(ALLEEG(1).etc.epoch.epoch_limits(1))*1000, grandAvgWarpTo(5)];
 ERSP_CROP_TIMES=[grandAvgWarpTo(1), grandAvgWarpTo(end)];
 fprintf('Using timewarp limits: [%0.1g,%0.1f]\n',b_lims(1),b_lims(2));
+
+%}
 %## ersp plot per cluster per condition
-%- params (06/09/2023) JS
-% STUDY = pop_statparams(STUDY,'condstats',ERSP_CONDSTATS,...
-%         'groupstats',ERSP_GROUPSTATS,...
-%         'method',ERSP_STAT_METHOD,...
-%         'singletrials',STAT_SINGLETRIALS,'mode',STAT_MODE,'fieldtripalpha',ERSP_ALPHA,...
-%         'fieldtripmethod',FIELDTRIP_METHOD,'fieldtripmcorrect',ERSP_MCORRECT,'fieldtripnaccu',ERSP_NACCU);
-% STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_SUBBASELINE,...
-%       'timerange',b_lims,'ersplim',ERSP_CAXIS,'freqrange',ERSP_FREQLIMITS);
-%- params (06/10/2023) JS, removing timerange loading, consolidating single
-%trials stats variable
-STUDY = pop_statparams(STUDY,'condstats',ERSP_CONDSTATS,...
-        'groupstats',ERSP_GROUPSTATS,...
-        'method',ERSP_STAT_METHOD,...
-        'singletrials',ERSP_SINGLETRIALS,'mode',STAT_MODE,'fieldtripalpha',ERSP_ALPHA,...
-        'fieldtripmethod',FIELDTRIP_METHOD,'fieldtripmcorrect',ERSP_MCORRECT,'fieldtripnaccu',ERSP_NACCU);
-STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_SUBBASELINE,...
-      'ersplim',ERSP_CAXIS,'freqrange',ERSP_FREQLIMITS);
+%%
+STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
+        'groupstats',ERSP_STAT_PARAMS.groupstats,...
+        'method',ERSP_STAT_PARAMS.method,...
+        'singletrials',ERSP_STAT_PARAMS.singletrials,'mode',ERSP_STAT_PARAMS.mode,...
+        'fieldtripalpha',ERSP_STAT_PARAMS.fieldtripalpha,...
+        'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
+        'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
+STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_PARAMS.subbaseline,...
+      'ersplim',ERSP_PARAMS.ersplim,'freqrange',ERSP_PARAMS.freqrange); %,'timerange',ERSP_CROP_TIMES);
+SPEC_PARAMS.subtractsubjectmean = 'on';
+STUDY = pop_specparams(STUDY,'subtractsubjectmean',SPEC_PARAMS.subtractsubjectmean,...
+    'freqrange',SPEC_PARAMS.plot_freqrange,'plotmode','condensed',...
+    'plotconditions','together','ylim',SPEC_PARAMS.plot_ylim,'plotgroups','together');
+
 %% (PRECOMPUTE MEASURES) COMPUTE SPECTRUMS
-if RECOMPUTE_SPEC
-%     parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
-    for subj_i = 1:length(ALLEEG)
+tmp = strsplit(ALLEEG(1).filename,'.');
+spec_f = [ALLEEG(1).filepath filesep sprintf('%s.icaspec',ALLEEG(1).subject)];
+topo_f = [ALLEEG(1).filepath filesep sprintf('%s.icatopo',tmp{1})];
+if ~exist(spec_f,'file') || ~exist(topo_f,'file') || FORCE_RECALC_SPEC
+    parfor (subj_i = 1:length(ALLEEG),ceil(length(ALLEEG)/2))
         EEG = ALLEEG(subj_i);
-        tmp = STUDY;
+        TMP_STUDY = STUDY;
         EEG = eeg_checkset(EEG,'loaddata');
         if isempty(EEG.icaact)
             fprintf('%s) Recalculating ICA activations\n',EEG.subject);
             EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
             EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
         end
-        
         %- overrride datasetinfo to trick std_precomp to run.
-        tmp.datasetinfo = STUDY.datasetinfo(subj_i);
-        tmp.datasetinfo(1).index = 1;
-        [~, ~] = std_precomp(tmp, EEG,...
+        TMP_STUDY.datasetinfo = TMP_STUDY.datasetinfo(subj_i);
+        TMP_STUDY.datasetinfo(1).index = 1;
+        [~, ~] = std_precomp(TMP_STUDY, EEG,...
                     'components',...
                     'recompute','on',...
                     'spec','on',...
                     'scalp','on',...
                     'savetrials','on',...
                     'specparams',...
-                    {'specmode',SPEC_MODE,'freqfac',FREQ_FAC,...
-                    'freqrange',SPEC_FREQLIMITS,'logtrials','on'});
+                    {'specmode',SPEC_PARAMS.specmode,'freqfac',SPEC_PARAMS.freqfac,...
+                    'freqrange',SPEC_PARAMS.freqrange,'logtrials',SPEC_PARAMS.logtrials});
     end
 end
 %% (PRECOMPUTE MEASURES) COMPUTE ERSPs
-%{
-%-
-for subj_i = 1:length(ALLEEG)
-    timewarp_param = ALLEEG(subj_i).timewarp.latencies;
-    for dim_i = 1:size(timewarp_param,2)
-        fprintf('subj_%s; dim_%i,[min,max]: [%0.4g,%0.4g]\n',EEG.subject,dim_i,min(timewarp_param(:,dim_i)),max(timewarp_param(:,dim_i)));
-    end
-end
-%}
-if RECOMPUTE_ERSP
-    disp(['Grand average (across all subj) warp to: ',num2str(grandAvgWarpTo)]);
-    parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
-%     for subj_i = 1:length(ALLEEG)
+icatimf_f = [ALLEEG(1).filepath filesep sprintf('%s.icatimef',ALLEEG(1).subject)];
+if ~exist(icatimf_f,'file') || FORCE_RECALC_ERSP
+    TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. making this too big can cause overlap between gait cyles
+%     disp(['Grand average (across all subj) warp to: ',num2str(averaged_warpto_events)]);
+%     parfor (subj_i = 1:length(ALLEEG),ceil(length(ALLEEG)/3))
+    for subj_i = 1:length(ALLEEG)
         EEG = ALLEEG(subj_i);
-        tmp = STUDY;
+        TMP_STUDY = STUDY;
         EEG = eeg_checkset(EEG,'loaddata');
         if isempty(EEG.icaact)
             fprintf('%s) Recalculating ICA activations\n',EEG.subject);
@@ -276,42 +271,37 @@ if RECOMPUTE_ERSP
         end
         EEG.icaact = reshape(EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
         %- overrride datasetinfo to trick std_precomp to run.
-        tmp.datasetinfo = STUDY.datasetinfo(subj_i);
-        tmp.datasetinfo(1).index = 1;
+        TMP_STUDY.datasetinfo = STUDY.datasetinfo(subj_i);
+        TMP_STUDY.datasetinfo(1).index = 1;
         %- determine timewarping parameters
          if DO_TIMEWARP
             timewarp_param = EEG.timewarp.latencies;
-            timewarpms_param = grandAvgWarpTo;
+            timewarpms_param = averaged_warpto_events;
          else
              timewarp_param = [];
              timewarpms_param = [];
-         end
-        
-         %-
-        for dim_i = 1:size(timewarp_param,2)
-            fprintf('subj_%s; dim_%i,[min,max]: [%0.4g,%0.4g]\n',EEG.subject,dim_i,min(timewarp_param(:,dim_i)),max(timewarp_param(:,dim_i)));
         end
         %-
         if DO_BASELINE_CORRECTION
             % Baseline correction
-            [~, ~] = std_precomp(tmp,EEG,'components','savetrials','on',...
+            [~, ~] = std_precomp(TMP_STUDY,EEG,'components','savetrials','on',...
                     'recompute','on','ersp','on','itc','off',...
-                    'erspparams',{'parallel','off','cycles',CYCLE_LIMITS,...
-                    'nfreqs',length((ERSP_FREQLIMITS(1):ERSP_FREQLIMITS(2))),'ntimesout',TIMEWARP_NTIMES,'timewarp',timewarp_param,...
-                    'timewarpms',timewarpms_param,'baseline',b_lims,...
-                    'commonbase','on','trialbase','off','basenorm','on'}); %ERSP
+                    'erspparams',{'parallel','off','cycles',ERSP_PARAMS.cycles,...
+                    'nfreqs',length((ERSP_PARAMS.freqrange(1):ERSP_PARAMS.freqrange(2))),...
+                    'ntimesout',TIMEWARP_NTIMES,'timewarp',timewarp_param,...
+                    'timewarpms',timewarpms_param,'baseline',[averaged_warpto_events(1),averaged_warpto_events(end)],...
+                    'trialbase','off','basenorm','on'}); %ERSP
         else
             % No baseline correction
-            [~, ~] = std_precomp(tmp,EEG,'components','savetrials','on',...
+            [~, ~] = std_precomp(TMP_STUDY,EEG,'components','savetrials','on',...
                     'recompute','on','ersp','on','itc','off',...
-                    'erspparams',{'parallel','off','cycles',CYCLE_LIMITS,...
-                    'nfreqs',length((ERSP_FREQLIMITS(1):ERSP_FREQLIMITS(2))),'ntimesout',TIMEWARP_NTIMES,...
+                    'erspparams',{'parallel','off','cycles',ERSP_PARAMS.cycles,...
+                    'nfreqs',length((ERSP_PARAMS.freqrange(1):ERSP_PARAMS.freqrange(2))),'ntimesout',TIMEWARP_NTIMES,...
                     'baseline',nan(),'timewarp',timewarp_param,...
                     'timewarpms',timewarpms_param}); %ERSP
         end
     end
 end
-EEG = [];
 %% (ERSP PLOT 1) EEGLAB IMPLEMENT: ACROSS CONDITIONS
 % group_names = unique({ALLEEG.group});
 % ersp_event_names = ALLEEG(1).timewarp.eventSequence;

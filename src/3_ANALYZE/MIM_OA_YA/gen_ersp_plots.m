@@ -8,7 +8,7 @@
 %   Summary: 
 
 %- run .sh
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/run_gen_ersp_plots.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA_YA/run_gen_ersp_plots.sh
 
 %{
 %## RESTORE MATLAB
@@ -142,7 +142,7 @@ ERSP_PARAMS = struct('subbaseline','off',...
 % (08/03/2023) JS, turning subbaseline to off to align with methods set
 % inside CL's PlotAndSaveERSP_CL_V3.m...
 %- datetime override
-dt = '10052023_MIM_OAN70_noslowwalkers_gait';
+dt = '10022023_MIM_OAYA_N112_CRUNCH_gait';
 %## Soft Define
 study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 DATA_DIR = [source_dir filesep '_data'];
@@ -166,24 +166,27 @@ ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI at
     [ATLAS_PATH filesep 'yeo' filesep 'Yeo2011_17Networks_MNI152_FreeSurferConformed1mm_LiberalMask_colin27.nii'],...
     [ATLAS_PATH filesep 'brainweb' filesep 'brainweb_discrete.mat']}; % also a discrete version of this
 %- (EDIT!) convert SUB_DIR
-SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\10052023_MIM_OAN70_noslowwalkers_gait\cluster';
+SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\10022023_MIM_OAYA_N112_CRUNCH_gait\cluster';
 if ~ispc
     SUB_DIR = convertPath2UNIX(SUB_DIR);
 else
     SUB_DIR = convertPath2Drive(SUB_DIR);
 end
 %## USER SET
-LOAD_DIFFERENT_STUDY = {true};
-CLUSTER_K_PICKS = [12];
-CLUSTER_STUDY_FNAMES = {'temp_study_rejics5'};
-CLUSTER_DIRS = {[SUB_DIR filesep 'icrej_5' filesep '12']};
-CLUSTER_FILES = {'cl_inf_12.mat'};
-CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'icrej_5']};
+LOAD_DIFFERENT_STUDY = {true,true};
+CLUSTER_K_PICKS = [12,14];
+CLUSTER_STUDY_FNAMES = {'temp_study_rejics5',...
+    'temp_study_rejics5'};
+CLUSTER_DIRS = {[SUB_DIR filesep 'icrej_5' filesep '12'],...
+    [SUB_DIR filesep 'icrej_5' filesep '14']};
+CLUSTER_FILES = {'cl_inf_12.mat',...
+    'cl_inf_14.mat'};
+CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'icrej_5'],...
+    [SUB_DIR filesep 'icrej_5']};
 POSS_CLUSTER_CHARS = {};
-% this is a matrix of integers matching the cluster number for clustering K=i to the index in the POSS_CLUSTER_CHARS
-SUB_GROUP_FNAME = []; %'H3000'; %[]; %'H2000';
-SUB_GROUP_FNAME_REGEX = []; %'H3000''s'; %[]; %'H2000''s';
 CLUSTER_CLIM_MATCH = [];
+% this is a matrix of integers matching the cluster number for clustering K=i to the index in the POSS_CLUSTER_CHARS
+
 %% (STEP 2) PLOT
 %##
 for k_i = 1:length(CLUSTER_K_PICKS)
@@ -196,18 +199,13 @@ for k_i = 1:length(CLUSTER_K_PICKS)
     else
         cluster_dir = convertPath2Drive(CLUSTER_DIRS{k_i});
     end
-    if ~isempty(SUB_GROUP_FNAME_REGEX)
-        spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
-        plot_store_dir = [cluster_dir filesep 'plots_out' filesep SUB_GROUP_FNAME];
-    else
-        spec_data_dir = [cluster_dir filesep 'spec_data'];
-        plot_store_dir = [cluster_dir filesep 'plots_out'];
-    end
-    if ~exist(spec_data_dir,'dir')
-        error('spec_data dir does not exist');
-    end
+    plot_store_dir = [cluster_dir filesep 'plots_out'];
     if ~exist(plot_store_dir,'dir')
         mkdir(plot_store_dir);
+    end
+    spec_data_dir = [cluster_dir filesep 'spec_data'];
+    if ~exist(spec_data_dir,'dir')
+        error('error. path %s doesn''t exist',spec_data_dir);
     end
     
     %## Load Study

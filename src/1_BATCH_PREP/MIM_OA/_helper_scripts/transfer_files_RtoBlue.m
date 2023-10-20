@@ -49,7 +49,7 @@ addpath(source_dir)
 addpath(run_dir)
 %- set workspace
 global ADD_CLEANING_SUBMODS
-ADD_CLEANING_SUBMODS = true;
+ADD_CLEANING_SUBMODS = false;
 setWorkspace
 %% PARPOOL SETUP
 if ~ispc
@@ -227,9 +227,9 @@ for group_i = 1:size(SUBJ_PICS,2)
     for subj_i = 1:length(SUBJ_PICS{group_i})
         fprintf('%s) Transfering files for headmodel for subject...\n',SUBJ_PICS{group_i}{subj_i})
         folder_to = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI'];
-%         if exist(folder_to,'dir')
-%             rmdir(folder_to,'s')
-%         end
+        if exist(folder_to,'file')
+            delete(folder_to)
+        end
         if ~exist(folder_to,'dir')
             mkdir(folder_to)
         end
@@ -267,6 +267,18 @@ for group_i = 1:size(SUBJ_PICS,2)
         %- mri_acpc.mat
         %R:\Ferris-Lab\share\MindInMotion\Data\NH3040\MRI\Processed_fiducials
         file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Processed_fiducials' filesep 'mri_acpc.mat'];
+        if exist(file_from,'file')
+            try
+                copyfile(file_from,folder_to)
+            catch
+                fprintf('file exists.\n')
+            end
+        else
+            fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+        end
+        %- mri_acpc.mat
+        %R:\Ferris-Lab\share\MindInMotion\Data\NH3040\MRI\Processed_fiducials
+        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Processed_fiducials' filesep 'mri_acpc_rs.mat'];
         if exist(file_from,'file')
             try
                 copyfile(file_from,folder_to)

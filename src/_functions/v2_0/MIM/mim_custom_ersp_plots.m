@@ -321,6 +321,11 @@ function [fig] = plot_tftopo(allersp,alltimes,allfreqs,alltitles,allpcond,warpin
     SUBPLOT_HEIGHT = 0.7;
     SHIFT_AMNT = 0.175;
     STATS_TITLE = 'CUSTOM STATS';
+    if length(clim_max) == 2
+        clim_ersp = clim_max;
+    else
+        clim_ersp = [-clim_max,clim_max];
+    end
     %%
     fig = figure('color','white','position',FIGURE_POSITION,'renderer','Painters');
     set(fig,'Units','inches','Position',[3 3 14 5])
@@ -331,7 +336,7 @@ function [fig] = plot_tftopo(allersp,alltimes,allfreqs,alltitles,allpcond,warpin
         subplot(1,length(allersp)+1,j); %,'position',[0.01+horiz_shift,0.1,0.5,0.5])
         ax = gca;
         tftopo(allersp{j},alltimes,allfreqs,'limits',... 
-            [warping_times(1) warping_times(end) nan nan -clim_max clim_max],...
+            [warping_times(1) warping_times(end) nan nan clim_ersp],...
             'logfreq','native');
         hold on;
         colormap(colormap_ersp);
@@ -356,7 +361,7 @@ function [fig] = plot_tftopo(allersp,alltimes,allfreqs,alltitles,allpcond,warpin
             set(ax,'YTickLabel',{'4','8','13','30','50','100'},'Fontsize',FONT_SIZE);
         end  
         %- set color lims
-        set(ax,'clim',[-clim_max, clim_max]);
+        set(ax,'clim',clim_ersp);
         %- set x-axis & y-axis labels
         if j == 1
             ylabel(YTICK_LABEL,'FontSize',FONT_SIZE,'fontweight','bold');
@@ -387,7 +392,7 @@ function [fig] = plot_tftopo(allersp,alltimes,allfreqs,alltitles,allpcond,warpin
     if ~isempty(allpcond)
         subplot(1,length(allersp)+1,length(allersp)+1) % add one subplot for stats
         tftopo(double(allpcond),alltimes,allfreqs,'limits',... 
-            [warping_times(1) warping_times(end) nan nan  [-clim_max, clim_max]],...
+            [warping_times(1) warping_times(end) nan nan  clim_ersp],...
             'logfreq','native')
         colormap(colormap_ersp);
         ax = gca;
@@ -401,7 +406,7 @@ function [fig] = plot_tftopo(allersp,alltimes,allfreqs,alltitles,allpcond,warpin
         %- set color bar
         c = colorbar();
         c.Position(1) = c.Position(1)+0.04;
-        c.Limits = [-clim_max, clim_max];
+        c.Limits = clim_ersp;
         %- color bar label
         hL = ylabel(c,[{'\Delta Power'};{'(dB)'}],'fontweight',...
             'bold','FontName','Arial','FontSize',FONT_SIZE);
@@ -424,7 +429,7 @@ function [fig] = plot_tftopo(allersp,alltimes,allfreqs,alltitles,allpcond,warpin
             set(ax,'YTickLabel',{'4','8','13','30','50','100'},'Fontsize',FONT_SIZE);
         end  
         %- set color lims
-        set(ax,'clim',[-clim_max, clim_max]);
+        set(ax,'clim',clim_ersp);
         %- set y-axis labels
         xlabel('','FontSize',FONT_SIZE);
         ylabel(sprintf(''),'fontsize',FONT_SIZE,'fontweight','bold');
@@ -445,7 +450,7 @@ function [fig] = plot_tftopo(allersp,alltimes,allfreqs,alltitles,allpcond,warpin
         %- set color bar
         c = colorbar();
         c.Position(1) = c.Position(1)+0.05;
-        c.Limits = [-clim_max, clim_max];
+        c.Limits = clim_ersp;
     end
     hold off;
     fig = get(groot,'CurrentFigure');
@@ -567,6 +572,8 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
     baseidx = find(alltimes>=warping_times(1) & alltimes<=warping_times(end)); 
     freqidx = find(allfreqs>=sub_freq_lims(1) & allfreqs<=sub_freq_lims(2));
     allersp_cond_mean = cell(size(allersp));
+    allersp_cond_std = cell(size(allersp));
+    allersp_std_crop = cell(size(allersp));
     allersp_cond_mean_crop = cell(size(allersp));
     allerspdata_crop = cell(size(allersp));
     allersp_subjmean = cell(size(allersp));
@@ -585,14 +592,18 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
     for group_i = 1:size(allersp,2)
         for cond_i = 1:size(allersp,1)
             allersp_cond_mean{cond_i,group_i} = mean(allersp_subjmean{cond_i,group_i},3);
+            allersp_cond_std{cond_i,group_i} = std(allersp_subjmean{cond_i,group_i},[],3);
+            allersp_std_crop{cond_i,group_i} = allersp_cond_std{cond_i,group_i}(freqidx,baseidx,:);
+        
             allersp_cond_mean_crop{cond_i,group_i} = allersp_cond_mean{cond_i,group_i}(freqidx,baseidx);
             allerspdata_crop{cond_i,group_i} = allersp_subjmean{cond_i,group_i}(freqidx,baseidx,:);
         end
     end
 %     [pcond_ersp_nocrop, ~, ~] = erspStats(STUDY,allersp_subjmean,allfreqs,alltimes);
 %     [pcond_ersp_nocrop, ~, ~] = erspStats(STUDY,allersp,allfreqs,alltimes);
-    
-    [pcond_ersp_crop, ~, ~] = erspStats(STUDY,allerspdata_crop,allfreqs,alltimes);
+    [pcond_ersp_nocrop, ~, ~] = erspStats(STUDY,allersp,allfreqs,alltimes);
+    [pcond_ersp_crop, ~, ~] = erspStats(STUDY,allerspdata_crop,allfreqs(freqidx),alltimes(baseidx));
+%     [pcond_ersp_crop, ~, ~] = erspStats(STUDY,allersp_cond_mean_crop,allfreqs,alltimes);
     %## set titles
     if any(strcmp(STUDY.design(STUDY.currentdesign).variable(1).value,SPEED_REF_CHAR))
         condnames = SPEED_OVERRIDE_CHARS;
@@ -613,7 +624,15 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
     end
     if isempty(clim_max)
         clim_max = 1.5;
-    end   
+    end
+    %% ================================================================= %%
+%    std_plottf(alltimes(baseidx),allfreqs(freqidx),allersp_std_crop, 'datatype','ersp', 'plotmode','normal',...
+%         'titles',alltitles,'caxis',[0,4]);
+    [fig] = plot_tftopo(allersp_std_crop,alltimes(baseidx),allfreqs(freqidx),alltitles,pcond_ersp_crop{1},... %pcond_ersp{1},...
+        warping_times,[0,4],colormap_ersp,...
+        PANEL_OFFSET,EVENT_CHARS,sub_freq_lims,FIGURE_POSITION);
+    exportgraphics(gcf,[save_dir filesep sprintf('erspplottype%i_stdplot_des%i_cl%i.pdf',plottype_i,STUDY.currentdesign,cluster_i)],'Resolution',300);
+    exportgraphics(gcf,[save_dir filesep sprintf('erspplottype%i_stdplot_des%i_cl%i.jpg',plottype_i,STUDY.currentdesign,cluster_i)]);
     %% ================================================================= %%
 %     %- plot
 %     std_plottf(alltimes(baseidx),allfreqs(freqidx),allersp_cond_mean_crop, 'datatype','ersp', 'plotmode','normal',...
@@ -629,7 +648,7 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
             plot_allersp{i,j} = mean(allersp_cond_mean{i,j},3);
         end
     end
-    [fig] = plot_tftopo(plot_allersp,alltimes,allfreqs,alltitles,pcond_ersp{1},...
+    [fig] = plot_tftopo(plot_allersp,alltimes,allfreqs,alltitles,pcond_ersp_nocrop{1},... %pcond_ersp{1},...
         warping_times,clim_max,colormap_ersp,...
         PANEL_OFFSET,EVENT_CHARS,sub_freq_lims,FIGURE_POSITION);
     exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_des%i_cl%i.jpg',plottype_i,STUDY.currentdesign,cluster_i)],'Resolution',300);
@@ -667,8 +686,9 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
             refErspCond = TERRAIN_REF_CHAR;
             refErspCond_ind = find(chk_1);
         elseif any(chk_2)
-            refErspCond = SPEED_REF_CHAR; %'1p0';
+             %SPEED_REF_CHAR; %'1p0';
             refErspCond_ind = find(chk_2);
+            refErspCond = SPEED_OVERRIDE_CHARS{refErspCond_ind};
         else
             error('Condition for reference ersp not found in STUDY design: %s',[STUDY.design(STUDY.currentdesign).variable(1).value])
         end
@@ -692,7 +712,7 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
                 %-
                 curr_ersp_wind = allersp{c,1}(freqidx,baseidx,:);
                 ref_ersp_wind = allersp{refErspCond_ind,1}(freqidx,baseidx,:);
-                [tmp, ~, ~] = erspStats(STUDY,{curr_ersp_wind;ref_ersp_wind},allfreqs,alltimes);
+                [tmp, ~, ~] = erspStats(STUDY,{curr_ersp_wind;ref_ersp_wind},allfreqs(freqidx),alltimes(baseidx));
 %                 [pcond_ersp, ~, ~] = feval(fcn,STUDY,{curr_ersp_wind;ref_ersp_wind},allfreqs,alltimes);
                 erspDiff_wind(c).raw = mean(curr_ersp_wind-ref_ersp_wind,3);
                 erspDiff_wind(c).masked = erspDiff_wind(c).raw.*tmp{1,1};

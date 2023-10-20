@@ -141,9 +141,9 @@ SUBJ_DONT_INC = {'NH3004','NH3023'};
 % GROUP_NAMES = {'H1000''s'}; 
 % SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
 %- (OA&YA) Subject Picks 
-SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
-GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
-SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
+% SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
+% GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
+% SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %- (OA) Subject Picks 
 % SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
 % GROUP_NAMES = {'H2000''s','H3000''s'}; 
@@ -153,9 +153,9 @@ SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 % GROUP_NAMES = {'debug'}; 
 % SUBJ_ITERS = {1:length(SUBJ_DEBUG)};
 %- test
-% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {[1,2],[5,6]};
+SUBJ_PICS = {{'H2062','NH3040'}};
+GROUP_NAMES = {'test'}; 
+SUBJ_ITERS = {1:length(SUBJ_PICS{:})};
 fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
 fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
 %% (PROCESSING PARAMS) ================================================= %%
@@ -175,7 +175,8 @@ OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP
 
 %% Store fNames and fPaths
 working_dirs    = cell(1,length([SUBJ_ITERS{:}]));
-fiducial_fPaths = cell(3,length([SUBJ_ITERS{:}]));
+% fiducial_fPaths = cell(3,length([SUBJ_ITERS{:}]));
+fiducial_fPaths = cell(1,length([SUBJ_ITERS{:}]));
 chanlocs_fPaths = cell(1,length([SUBJ_ITERS{:}]));
 simnibs_fPaths  = cell(1,length([SUBJ_ITERS{:}]));
 subjectNames    = cell(1,length([SUBJ_ITERS{:}])); 
@@ -196,8 +197,8 @@ for group_i = 1:length(SUBJ_ITERS)
         simnibs_fPaths{cnt} = [working_dirs{cnt} filesep sprintf('%s_masks_contr.nii.gz',SUBJ_PICS{group_i}{subj_i})];
         %- Fiducials (acpc_rs)
         fiducial_fPaths{1,cnt} = [working_dirs{cnt} filesep 'mri_acpc_rs.mat'];
-        fiducial_fPaths{2,cnt} = [working_dirs{cnt} filesep 'mri_acpc.mat'];
-        fiducial_fPaths{3,cnt} = [working_dirs{cnt} filesep 'ctf_fiducials.mat'];
+%         fiducial_fPaths{2,cnt} = [working_dirs{cnt} filesep 'mri_acpc.mat'];
+%         fiducial_fPaths{3,cnt} = [working_dirs{cnt} filesep 'ctf_fiducials.mat'];
         %- ICA fPaths
         fPaths{cnt} = [OUTSIDE_DATA_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'clean'];
         tmp = dir([fPaths{cnt} filesep '*.set']);
@@ -209,12 +210,15 @@ for group_i = 1:length(SUBJ_ITERS)
         fprintf('ICA Exists: %i\n',(exist([fPaths{cnt} filesep fNames{cnt}],'file') && exist([fPaths{cnt} filesep 'W'],'file')));
         fprintf('SimNIBS Segmentation Exists: %i\n',exist(simnibs_fPaths{cnt},'file'));
         fprintf('DIPFIT Exists: %i\n',exist(dipfit_fPaths{cnt},'file'));
-        fprintf('MRI Fiducials Exist: %i\n',exist(fiducial_fPaths{1,cnt},'file') && exist(fiducial_fPaths{2,cnt},'file') && exist(fiducial_fPaths{3,cnt},'file'));
+%         fprintf('MRI Fiducials Exist: %i\n',exist(fiducial_fPaths{1,cnt},'file') && exist(fiducial_fPaths{2,cnt},'file') && exist(fiducial_fPaths{3,cnt},'file'));
+        fprintf('MRI Fiducials Exist: %i\n',exist(fiducial_fPaths{1,cnt},'file'));
         cnt = cnt + 1;
     end
     stack_iter = stack_iter + length(SUBJ_ITERS{group_i});
 end
-inds = logical(cellfun(@(x) exist(x,'file'),dipfit_fPaths));
+inds1 = logical(cellfun(@(x) exist(x,'file'),dipfit_fPaths));
+inds2 = logical(cellfun(@(x) exist(x,'file'),fiducial_fPaths));
+inds = inds1 & inds2;
 working_dirs = working_dirs(inds);
 dipfit_fPaths = dipfit_fPaths(inds);
 fPaths = fPaths(inds);
@@ -229,9 +233,9 @@ else
 end
 %% LOOP THROUGH PARTICIPANTS
 LOOP_VAR = 1:length(working_dirs);
-% parfor (subj_i = LOOP_VAR, POOL_SIZE) % (05/24/2023) JS, parfor might not
+parfor (subj_i = LOOP_VAR, POOL_SIZE) % (05/24/2023) JS, parfor might not
 % be possible for this loop. a problem with ft_sourceplot.
-for subj_i = LOOP_VAR
+% for subj_i = LOOP_VAR
     [EEG,dipfit_fem_norm] = mim_norm_dipfit(fPaths{subj_i},fNames{subj_i},fiducial_fPaths{1,subj_i},dipfit_fPaths{subj_i});
     par_save(dipfit_fem_norm,fPaths{subj_i},'dipfit_fem_norm.mat')
     EEG = pop_saveset(EEG,'filepath',EEG.filepath,'filename',EEG.filename); 
