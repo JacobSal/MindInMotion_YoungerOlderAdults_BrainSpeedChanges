@@ -102,31 +102,64 @@ SUFFIX_PATH_EPOCHED = 'EPOCHED';
 SAVE_ALLEEG = true;
 % SAVE_EEG = false; % saves EEG structures throughout processing
 %- epoching parameters
-% COND_FIELD_PARSER = 'bounces'; %'condlabel';
-% EVENT_FIELD_PARSER = 'type';
-% COND_CHARS = {'cooperative','competitive'};
-% COND_CHARS = {'human','BM'};
-EVENTS_TIMEWARP = {'Subject_hit','Subject_receive','Subject_hit'};
-COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
-EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
-EPOCH_TIME_LIMITS = [0,0]; % (07/27/2023) this doesn't do anything
-% PARSE_TYPE = 'Custom';
-%- eeglab_cluster.m spectral params
-% FREQ_LIMITS = [1,100];
-% CYCLE_LIMITS = [3,0.8];
-% SPEC_MODE = 'fft'; %'fft'; %'psd'; %options: 'psd','fft','pburg','pmtm'
-% FREQ_FAC = 4;
-% PAD_RATIO = 2;
+% CONDLABEL_CHARS = {'competitive','cooperative','moving_serve','stationary_serve'};
+% (08/18/2023) JS, not using this
+% EVENTS_TIMEWARP = {'Subject_hit','Subject_receive','Subject_hit'};
+% (08/18/2023) JS, not using this anymore
+% COND_CHARS = {'2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
+% (08/18/2023) JS, no longer epoching out '1Bounce_BM"
+% EVENT_CHARS = {'Subject_hit','Subject_receive'};
+% (08/18/2023) JS, no comment but marking that this is still in use.
+% EPOCH_METHOD = 'event_locked';
+% (08/18/2023) JS, switch from 'timewarp' to 'event_locked'
+% EPOCH_TIME_LIMITS = [-0.150,0.5]; 
+% (08/18/2023) JS, wasn't using this for timewarp epoching but now am.
+% CONDLABEL_CHARS = {};
+% (07/27/2023) this doesn't do anything
+% (08/18/2023) it now does something;
+%- epoching params
+epoch_method = 'event_locked';
+switch epoch_method
+    case 'sliding_window'
+        EPOCH_PARAMS = [];
+        EPOCH_PARAMS.epoch_method = 'sliding_window';
+        EPOCH_PARAMS.percent_overlap = 0;
+        EPOCH_PARAMS.window_length = 6;
+        EPOCH_PARAMS.regexp_slidingwindow = {'Human','BM'};
+    case 'timewarp'
+        EPOCH_PARAMS = [];
+        EPOCH_PARAMS.epoch_method = 'timewarp';
+        EPOCH_PARAMS.event_chars = {'Subject_hit','Subject_receive'};
+        EPOCH_PARAMS.events_timewarp = {'Subject_hit','Subject_receive','Subject_hit'};
+        EPOCH_PARAMS.cond_chars = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'};
+        EPOCH_PARAMS.std_timewarp = 3;
+        EPOCH_PARAMS.struct_field_cond = 'bounces';
+        EPOCH_PARAMS.struct_field_event = 'cond';
+    case 'event_locked'
+        EPOCH_PARAMS = [];
+        EPOCH_PARAMS.epoch_method = 'event_locked';
+        EPOCH_PARAMS.event_chars = {'Subject_hit'};
+        EPOCH_PARAMS.events_timewarp = {};
+        EPOCH_PARAMS.cond_chars = {'2Bounce_Human','2Bounce_BM'};
+        EPOCH_PARAMS.std_timewarp = 0;
+        EPOCH_PARAMS.struct_field_cond = 'bounces';
+        EPOCH_PARAMS.struct_field_event = 'cond';
+        EPOCH_PARAMS.regexp_slidingwindow = {'Human','BM'};
+        EPOCH_PARAMS.epoch_length_timelim = [-0.25,0.5];
+    otherwise
+        error('error. choose a valid EPOCH_METHOD');   
+end
 %- datetime override
 % dt = '06152023_bounces_1h2h2bm_JS';
-dt = '07272023_bounces_1h_2h_2bm_JS';
+% dt = '07272023_bounces_1h_2h_2bm_JS';
+dt = '08182023_bounces_1h_2h_2bm_JS';
 %## Soft Define
 %- combinations of events and conditions
-EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
+EVENT_COND_COMBOS = cell(length(EPOCH_PARAMS.cond_chars)*length(EPOCH_PARAMS.event_chars),1);
 cnt = 1;
-for cond_i = 1:length(COND_CHARS)
-    for event_i = 1:length(EVENT_CHARS)
-        EVENT_COND_COMBOS{cnt} = sprintf('%s_%s',COND_CHARS{cond_i},EVENT_CHARS{event_i});
+for cond_i = 1:length(EPOCH_PARAMS.cond_chars)
+    for event_i = 1:length(EPOCH_PARAMS.event_chars)
+        EVENT_COND_COMBOS{cnt} = sprintf('%s_%s',EPOCH_PARAMS.cond_chars{cond_i},EPOCH_PARAMS.event_chars{event_i});
         cnt = cnt + 1;
     end
 end
@@ -175,7 +208,7 @@ for group_i = 1:length(SUBJ_ITERS)
     %## Assigning paths for eeglab study
     for subj_i = sub_idx
         subjectNames{cnt} = ['Pilot' SUBJ_PICS{group_i}{subj_i}];
-        tmp = strjoin(COND_CHARS,'_'); 
+        tmp = strjoin(EPOCH_PARAMS.cond_chars,'_'); 
         conditions{cnt} = tmp; %tmp{:};
         groups{cnt} = num2str(group_i);
         sessions{cnt} = '1';
@@ -209,23 +242,19 @@ else
 end
 %% INITIALIZE PARFOR LOOP VARS
 fprintf('\nInitialize PARFOR Loop Vars\n');
-if exist('SLURM_POOL_SIZE','var')
-    POOL_SIZE = min([SLURM_POOL_SIZE,length(MAIN_ALLEEG)]);
-else
-    POOL_SIZE = 1;
-end
 fPaths = {MAIN_ALLEEG.filepath};
 fNames = {MAIN_ALLEEG.filename};
 LOOP_VAR = 1:length(MAIN_ALLEEG);
 tmp = cell(1,length(MAIN_ALLEEG));
 rmv_subj = zeros(1,length(MAIN_ALLEEG));
+alleeg_fpaths = cell(length(MAIN_ALLEEG),1);
 %- clear vars for memory
 % clear MAIN_ALLEEG
 %% GENERATE EPOCH MAIN FUNC
 fprintf('Running Epoching Process...\n');
 %## PARFOR LOOP
-for subj_i = LOOP_VAR
-% parfor (subj_i = LOOP_VAR,POOL_SIZE)
+% for subj_i = LOOP_VAR
+parfor (subj_i = LOOP_VAR,length(LOOP_VAR))
     %## LOAD EEG DATA
     EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
     fprintf('Running subject %s\n',EEG.subject)
@@ -244,11 +273,8 @@ for subj_i = LOOP_VAR
         mkdir(fPath)
     end
     try
-        %## EPOCH
-        [ALLEEG,timewarp_struct] = as_parse_trials(EEG,EPOCH_TIME_LIMITS,...
-            'EVENTS_TIMEWARP',EVENTS_TIMEWARP); %,...
-                %'EVENT_FIELD_TRIAL',COND_FIELD_PARSER,...
-                %'EVENT_FIELD_CONDITION',EVENT_FIELD_PARSER);
+        %## (FUNCTION) EPOCH
+        [ALLEEG,timewarp_struct] = as_parse_trials(EEG,'epoch_params',EPOCH_PARAMS);
         %## REMOVE USELESS EVENT FIELDS
         for i = 1:length(ALLEEG)
             if isfield(ALLEEG(i).event,'trialName')
@@ -286,30 +312,33 @@ for subj_i = LOOP_VAR
                 cond_files(i).fPath = tmp_fPath;
                 cond_files(i).fName = sprintf([REGEX_FNAME '.set'],ALLEEG(i).condition);
             end
+            alleeg_fpaths{subj_i} = cond_files;
         end
         ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
         ALLEEG.etc.cond_files = cond_files;
         %## AGGREGATE TIMEWARP
-        %- timewarp for across condition
-        timewarp = make_timewarp(ALLEEG,EVENTS_TIMEWARP,'baselineLatency',0, ...
-                'maxSTDForAbsolute',inf,...
-                'maxSTDForRelative',inf);
-        %- subject specific warpto (later use to help calc grand avg warpto across subjects)
-        timewarp.warpto = nanmedian(timewarp.latencies);        
-        goodepochs  = sort([timewarp.epochs]);
-        %- probably not needed? 
-        sedi = setdiff(1:length(ALLEEG.epoch),goodepochs);
-        %- reject outlier strides
-        ALLEEG = pop_select(ALLEEG,'notrial',sedi);
-        %- store timewarp structure in EEG
-        ALLEEG.timewarp = timewarp;
-%         disp(EEG.subject); disp(allWarpTo); disp(grandAvgWarpTo);
-        %- store condition-by-conditino timewarpings
-        ALLEEG.etc.timewarp_by_cond = timewarp_struct;
-        %## STRUCT EDITS
-        ALLEEG.urevent = []; % might be needed
-%         ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
-        %- 
+        if strcmp(EPOCH_PARAMS.epoch_method,'timewarp')
+            %- timewarp for across condition
+            timewarp = make_timewarp(ALLEEG,EPOCH_PARAMS.events_timewarp,'baselineLatency',0, ...
+                    'maxSTDForAbsolute',inf,...
+                    'maxSTDForRelative',inf);
+            %- subject specific warpto (later use to help calc grand avg warpto across subjects)
+            timewarp.warpto = nanmedian(timewarp.latencies);        
+            goodepochs  = sort([timewarp.epochs]);
+            %- probably not needed? 
+            sedi = setdiff(1:length(ALLEEG.epoch),goodepochs);
+            %- reject outlier strides
+            ALLEEG = pop_select(ALLEEG,'notrial',sedi);
+            %- store timewarp structure in EEG
+            ALLEEG.timewarp = timewarp;
+    %         disp(EEG.subject); disp(allWarpTo); disp(grandAvgWarpTo);
+            %- store condition-by-conditino timewarpings
+            ALLEEG.etc.timewarp_by_cond = timewarp_struct;
+            %## STRUCT EDITS
+            ALLEEG.urevent = []; % might be needed
+    %         ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
+            %- 
+        end
         ALLEEG = eeg_checkset(ALLEEG,'eventconsistency');
         ALLEEG = eeg_checkset(ALLEEG);
         ALLEEG = eeg_checkamica(ALLEEG);
@@ -326,7 +355,8 @@ for subj_i = LOOP_VAR
         tmp{subj_i} = []; %EEG;
         fprintf(['error. identifier: %s\n',...
                  'error. %s\n',...
-                 'error. on subject %s\n'],e.identifier,e.message,EEG.subject);
+                 'error. on subject %s\n',...
+                 'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
     end
 end
 %% SAVE BIG STUDY
@@ -367,6 +397,10 @@ tmp = eeg_checkset(tmp,'eventconsistency');
 %## (AS) ATTACH CLUSTER STRUCT
 STUDY.cluster = MAIN_STUDY.cluster;
 STUDY.urcluster = MAIN_STUDY.urcluster;
+%## ASSIGN PARAMETERS
+STUDY.etc.a_epoch_process.epoch_params = EPOCH_PARAMS;
+STUDY.etc.a_epoch_process.epoch_chars = EVENT_COND_COMBOS;
+STUDY.etc.a_epoch_process.epoch_alleeg_fpaths = alleeg_fpaths;
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                             study_fName_2,save_dir,...
                                             'STUDY_COND',[]);

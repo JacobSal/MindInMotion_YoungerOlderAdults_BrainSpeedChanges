@@ -1,4 +1,4 @@
-function [STUDY,atlas_name] = add_anatomical_labels(STUDY,ALLEEG,varargin)
+function [STUDY,atlas_name,centroids] = add_anatomical_labels(STUDY,ALLEEG,varargin)
 %ADD_ANATOMICAL_LABELS Summary of this function goes here
 %   Detailed explanation goes here
 %   IN: 

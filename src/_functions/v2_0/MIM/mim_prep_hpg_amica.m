@@ -2,31 +2,17 @@ function [EEG,cmd_out] = mim_prep_hpg_amica(EEG,float_fPath,amica_out_fPath,emai
 %       EEG is the EEG struct you want to save on M drive and run AMICA on via the
 %       hipergator
 %
-%       fileNameNoExt is a string for what you want to save the file as (without
-%       .set extension)
-%
-%       amicaOutputFolder is a string for where you want to store the eeg data set
-%       and accompanying parameter files. You just need to supply the general 
-%       location like 'M:\share\MindInMotion\SUBJ####\EEG\AMICA' or
-%       fullfile(MIMDataFolder,'SUBJ####','EEG','AMICA'). This script will 
-%       automatically find pre existing subfolders (expected increasing numbers) 
-%       and create a new %subfolder so one subject can have many AMICA 
-%       decompositions available. You just need to keep track of the unique number
-%       for each amica run
-%
-%       avgRefPCAReduction is a number. It can be 1 or 2 or maybe even more.
-%       Example: set to 3 if using EEG, EMG, and Noise recordings all separately
-%       avg ref to each other. 
-%
-%
 %   IN: 
 %       EEG, STRUCT (EEGLAB)
 %           is the EEG struct you want to save on M drive and run AMICA on via the
 %           hipergator           
 %       float_fPath, CHAR
-%     
+%           is the path where your EEG float (.fdt) file is located. (hint:
+%           its usually where your .set file is.
 %       amica_out_fPath, CHAR
-%           
+%           place where you would like your AMICA .params & .sh files to be
+%           saved. (recommended: save them to the same folder as your
+%           cleaned .set and .fdt file.
 %       email_char, CHAR
 %           is a string with your email if you want to be notified when the
 %           hipergator ran your data
@@ -34,7 +20,12 @@ function [EEG,cmd_out] = mim_prep_hpg_amica(EEG,float_fPath,amica_out_fPath,emai
 %           is a number. It can be 1 or 2 or maybe even more.
 %           Example: set to 3 if using EEG, EMG, and Noise recordings all separately
 %           avg ref to each other.
+%
 %   OUT: 
+%       EEG, struct
+%           
+%       cmd_out, CHAR
+%           a command line entry that runs the .sh file use srun & pmix_v3  
 %   IMPORTANT: 
 %fileNameNoExt,amicaOutputFolder_local,...
 %     amicaOutputFolder_unix,avgRefPCAReduction,emailStr
@@ -97,7 +88,8 @@ EEG.etc.amica_run.numFrames = length(EEG.times);
 EEG.etc.amica_run.amica_out_fPath = amica_out_fPath;
 
 %## CREATE PARAM FILE
-[~,param_out_fPath] = make_param_amica( float_fPath, amica_out_fPath, PCA_KEEP, EEG.nbchan, length(EEG.times), NUM_MODELS, MAX_ITERS);
+[~,param_out_fPath] = make_param_amica( float_fPath, amica_out_fPath, PCA_KEEP,...
+    EEG.nbchan, length(EEG.times), NUM_MODELS, MAX_ITERS);
 
 %## CREATE HIPERGATOR BASH FILE
 % bash_out_fPath = [amica_out_fPath filesep 'run_amica_hipergator.sh'];
@@ -240,7 +232,7 @@ function [fid,sh_out_fPath] = make_amica_bash(EEG, out_fPath, param_fPath, amica
 %     fprintf(fid,'module purge\n'); % (03/07/2023) JS, not sue if this is needed, but its use is encouraged on the HiperGator Wiki.
     
     fprintf(fid,'module load ufrc\n');
-    fprintf(fid,'module load intel/2020 openmpi/4.0.3\n');
+    fprintf(fid,'module load intel/2020 openmpi/4.1.5\n');
     fprintf(fid,'srun --mpi=pmix_v3 %s %s\n',convertPath2UNIX(amica_dll_fPath), convertPath2UNIX(param_fPath));
     fclose(fid);
 end

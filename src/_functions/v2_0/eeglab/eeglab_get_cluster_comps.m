@@ -1,4 +1,4 @@
-function [comps_out,main_cl_inds,outlier_cl_inds,valid_clusters,main_cl_anat] = eeglab_get_cluster_comps(STUDY,varargin)
+function [comps_out,main_cl_inds,outlier_cl_inds,valid_clusters,main_cl_anat,nonzero_cl_inds] = eeglab_get_cluster_comps(STUDY,varargin)
 %EEGLAB_GET_CLUSTER_COMPS Summary of this function goes here
 %   Function generates a matrix (NxM, N = number of clusters, M = number of
 %   subjects) of DOUBLES. Each element in the matrix is the component
@@ -25,7 +25,8 @@ parse(p,STUDY,varargin{:});
 %% ===================================================================== %%
 %## Extract components for each cluster & subject
 %- PARAMS
-comps_out = zeros(length(STUDY.cluster),length(STUDY.datasetinfo));
+subj_inds = unique(STUDY.cluster(1).sets);
+comps_out = zeros(length(STUDY.cluster),length(subj_inds));
 main_cl_inds = zeros(1,length(STUDY.cluster));
 outlier_cl_inds = zeros(1,length(STUDY.cluster));
 %- loop through all clusters but the parent cluster
@@ -46,7 +47,14 @@ for clus_i = 2:length(STUDY.cluster)
 end
 tmp = cellfun(@length,cellfun(@unique,{STUDY.cluster.sets},'UniformOutput',false),'UniformOutput',false);
 tmp = cell2mat(tmp);
-valid_clusters = find(tmp(3:end)>=0.5*(length(STUDY.subject)))+2;
+%- clusters that have comps
+nonzero_cl_inds = zeros(1,length(STUDY.cluster));
+for clus_i = 2:length(STUDY.cluster)
+    nonzero_cl_inds(clus_i) = ~isempty(STUDY.cluster(clus_i).comps);
+end
+nonzero_cl_inds = find(nonzero_cl_inds);
+%- clusters with >50% of the subjects
+valid_clusters = find(tmp(3:end)>=0.5*(length(subj_inds)))+2;
 %- remove all outlier cluster components
 % comps_out = comps_out(logical(main_cl_inds),:);
 main_cl_inds = find(main_cl_inds);

@@ -1,4 +1,4 @@
-function [STUDY,ALLEEG] = nj_create_study(ALLEEG,study_fName,study_fPath,varargin)
+function [STUDY,ALLEEG] = nj_create_study(ALLEEG,cluster_info_fpath,study_fName,study_fPath,varargin)
 %MIM_CREATE_STUDY Summary of this function goes here
 % CAT CODE
 %  _._     _,-'""`-._
@@ -12,16 +12,18 @@ function [STUDY,ALLEEG] = nj_create_study(ALLEEG,study_fName,study_fPath,varargi
 %## TIME
 tic
 %## DEFINE DEFAULTS
-THRESH_BRAIN_SCORE = 8;
+% cluster_info_fpath = 'splitbelt_group_cluster.mat';
+% THRESH_BRAIN_SCORE = 8;
 %## Define Parser
 p = inputParser;
 %## REQUIRED
 addRequired(p,'ALLEEG',@isstruct);
+addRequired(p,'cluster_info_fpath',@ischar);
 addRequired(p,'study_fName',@ischar);
 addRequired(p,'study_fPath',@ischar);
 %## OPTIONAL
 %## PARAMETER
-parse(p,ALLEEG,study_fName,study_fPath,varargin{:});
+parse(p,ALLEEG,cluster_info_fpath,study_fName,study_fPath,varargin{:});
 %## SET DEFAULTS
 %- OPTIONALS
 %- PARAMETER
@@ -33,6 +35,8 @@ if ~exist(study_fPath,'dir')
     mkdir(study_fPath);
 end
 %% ===================================================================== %%
+%- (09/08/2023) JS, switching to using the cluster strucutre created by NJ.
+%{
 %## DIPOLE REJECTION
 tmp_rmv_subjs = zeros(1,length(ALLEEG));
 %## DIPOLE REJECTION
@@ -63,20 +67,6 @@ parfor subj_i = 1:length(ALLEEG)
         % (07/06/2023) JS, make sure to checkset before editing
         % EEG.icachansind otherwise dialogue box will appear and make
         % things not work on hpg.
-%         ALLEEG(subj_i) = eeg_checkset(ALLEEG(subj_i),'loaddata');
-%         ALLEEG(subj_i).icachansind = ALLEEG(subj_i).etc.urreject.ic_keep;
-%         if isempty(ALLEEG(subj_i).icaact)
-%             fprintf('%s) Recalculating ICA activations\n',ALLEEG(subj_i).subject);
-%             ALLEEG(subj_i).icaact = (ALLEEG(subj_i).icaweights*ALLEEG(subj_i).icasphere)*ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:);
-% %             ALLEEG(subj_i).icaact = reshape(ALLEEG(subj_i).icaact,size(ALLEEG(subj_i).icaact,1),ALLEEG(subj_i).pnts,ALLEEG(subj_i).trials);
-%         end
-%         ica_weights = (ALLEEG(subj_i).icaact/ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:))/ALLEEG(subj_i).icasphere;
-%         ica_winv = (ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:)/ALLEEG(subj_i).icaact);
-%         tmp = sum(sqrt((ALLEEG(subj_i).icaweights-ica_weights).^2),[1,2]);
-%         fprintf('%7ssum(sqrt((icaweights_new-icaweights_old).^2)) = %0.3f\n','',tmp);
-%         %## Update ALLEEG & comps_out
-%         ALLEEG(subj_i).icaweights = ica_weights;
-%         ALLEEG(subj_i).icawinv = ica_winv;
         %- (07/06/2023) JS, code taken from EEGLAB
         components = ALLEEG(subj_i).etc.urreject.ic_rej;
         fprintf('Computing projection and removing %d components ....\n', length(components));
@@ -92,7 +82,6 @@ parfor subj_i = 1:length(ALLEEG)
         ALLEEG(subj_i).specicaact  = [];
         ALLEEG(subj_i).specdata    = [];
         ALLEEG(subj_i).reject      = [];
-
         %- iclabel mdos
         if isfield(ALLEEG(subj_i).etc, 'ic_classification')
             if isfield(ALLEEG(subj_i).etc.ic_classification, 'ICLabel') 
@@ -115,6 +104,28 @@ parfor subj_i = 1:length(ALLEEG)
     end
 end
 ALLEEG = ALLEEG(~logical(tmp_rmv_subjs));
+%}
+%## LOAD AMANDAS CLUSTER INFO
+fprintf('\nLoading Noelle''s Cluster Information...\n');
+tmp = load(cluster_info_fpath);
+tmp = tmp.cluster;
+tmp_cluster = tmp; %tmp(AMANDA_CLUSTER_ITERS);
+%- extract component array
+comps_out = zeros(length(tmp_cluster),length(ALLEEG));
+compList = [];
+setList  = [];
+for clus_i = 2:length(tmp_cluster)
+    sets_i = tmp_cluster(clus_i).sets;
+    for j = 1:length(sets_i)
+        comps_out(clus_i,sets_i(j)) = tmp_cluster(clus_i).comps(j);
+        compList = [compList tmp_cluster(clus_i).comps(j)];
+        setList = [setList repmat(sets_i(j),1,length(tmp_cluster(clus_i).comps(j)))];
+    end
+end
+tmp_cluster(1).ursets = tmp_cluster(1).sets;
+tmp_cluster(1).urcomps = tmp_cluster(1).comps;
+tmp_cluster(1).sets = setList;
+tmp_cluster(1).comps = compList;
 %% CREATE STUDY
 % initiailize study
 fprintf('\n==== Making Study Modifications ====\n')
@@ -125,8 +136,8 @@ fprintf('\n==== Making Study Modifications ====\n')
                                 'filename',study_fName,...
                                 'filepath',study_fPath);
 %## (NJ) DIPOLE STRUCT
-% STUDY.urcluster = tmp_cluster;
-% STUDY.cluster = tmp_cluster;
+STUDY.urcluster = tmp_cluster;
+STUDY.cluster = tmp_cluster;
 % STUDY.etc.rmvd_subj.inds = tmp_rmv_subjs;
 %## SAVE
 % parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)

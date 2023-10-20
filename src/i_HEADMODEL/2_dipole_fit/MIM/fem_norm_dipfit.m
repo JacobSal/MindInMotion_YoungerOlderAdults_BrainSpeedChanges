@@ -84,48 +84,87 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (DATASET INFORMATION) =============================================== %%
-%## (MIND IN MOTION) DATASET SPECIFIC (05/24/2023)
-SUBJ_NORUN = {'H2012_FU', 'H2013_FU', 'H2018_FU', 'H2020_FU', 'H2021_FU',...
-            'H3024_Case','H3029_FU','H3039_FU','H3063_FU','NH3021_Case', 'NH3023_Case','NH3025_Case', 'NH3030_FU',...
-            'NH3068_FU', 'NH3036_FU', 'NH3058_FU'};
-SUBJ_MISSING_TRIAL_DATA = {'H1008','H2012','H2018','H3024','NH3002', 'NH3004','NH3009',...
-    'NH3023','NH3027', 'NH3028', 'NH3129', 'NH3040'};
-SUBJ_NO_MRI = {'H2010', 'H2036', 'H2041', 'H2072', 'H3018','H3120'};
-SUBJ_1YA = {'H1002','H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1018','H1019','H1020',...
-    'H1022','H1024','H1026','H1027','H1029','H1030','H1031','H1032','H1033','H1034','H1035',...
-    'H1036','H1037','H1038','H1039','H1041','H1042','H1044','H1045','H1047','H1047'}; % JACOB,SAL (04/18/2023)
-SUBJ_2MA = {'H2002', 'H2007', 'H2008', 'H2013', 'H2015', 'H2017',...
-    'H2020', 'H2021', 'H2022', 'H2023',...
-    'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2037', 'H2038',...
-    'H2039', 'H2042', 'H2052', 'H2059', 'H2062', 'H2082',...
-    'H2090', 'H2095', 'H2111', 'H2117'};
-SUBJ_3MA = {'H3029','H3034','H3039','H3042','H3046',...
-    'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107',...
-    'NH3006', 'NH3007', 'NH3008', 'NH3010',...
-    'NH3021', 'NH3025', 'NH3026',...
-    'NH3030', 'NH3036',...
-    'NH3041', 'NH3043', 'NH3051', 'NH3054', 'NH3055', 'NH3056', 'NH3058',...
-    'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
-    'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
-    'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
-%- (YA) Subject Picks 
+%## (MIND IN MOTION) DATASET SPECIFIC PARAMS (05/24/2023)
+SUBJ_1YA = {'H1002','H1004','H1007','H1009',...
+    'H1010','H1011','H1012','H1013','H1017',...
+    'H1018','H1019','H1020','H1022','H1024',...
+    'H1025','H1026','H1027','H1029','H1030','H1031',...
+    'H1032','H1033','H1034','H1035','H1036',...
+    'H1037','H1038','H1039','H1041','H1042',...
+    'H1044','H1045','H1046','H1047','H1048'}; % JACOB,SAL (04/18/2023)
+SUBJ_2MA = {'H2002','H2007','H2008',...
+    'H2013','H2015','H2017','H2020','H2021',...
+    'H2022','H2023','H2025','H2026','H2027',...
+    'H2033','H2034','H2037','H2038','H2039',...
+    'H2042','H2052','H2059','H2062','H2082',...
+    'H2090','H2095','H2111','H2117'};
+SUBJ_3MA = {'H3029','H3034','H3039','H3053',...
+    'H3063','H3072','H3077','H3103',...
+    'H3107',...
+    'NH3006','NH3007','NH3008','NH3010','NH3021',...
+    'NH3026','NH3030','NH3036','NH3040',...
+    'NH3041','NH3043','NH3054',...
+    'NH3055','NH3058','NH3059','NH3066',...
+    'NH3068','NH3069','NH3070','NH3074',...
+    'NH3076','NH3086','NH3090','NH3102',...
+    'NH3104','NH3105','NH3106','NH3108','NH3110',...
+    'NH3112','NH3113','NH3114','NH3123','NH3128',...
+    };
+SUBJ_SLOW_WALKERS = {'H3042','H3046','H3047','H3073',...
+    'H3092','NH3025','NH3051','NH3056','NH3071','NH3082'};
+SUBJ_NO_MRI = {'H2010','H2012','H2018','H2036','H2041',...
+    'H2072','H3018','H3120','NH3002','NH3009','NH3027','NH3129'};
+SUBJ_MISSING_COND = {'H3024','NH3028'};
+% SUBJ_UNKNOWN_ERR = {'NH3108','NH3030','NH3040','NH3025'};
+% (08/21/2023) JS, 
+% NH3108 seems to bug out do to an indexing error during
+% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
+% NH3030 seems to bug out do to an indexing error during
+% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
+% NH3040 seems to bug out do to an indexing error during
+% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
+% NH3025 seems to bug out do to an indexing error during
+% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
+% (08/22/2023) JS, NH3108 bug seems to be related to entry errors in the
+% Trial_Cropping_V2_test.xlsx sheet used to remove bad time ranges
+% identified during collection. (fixed)
+% NH3030 bug was due to how the CropTrialCheckFunc_checkLoadsol.m
+% interpreted subject characters. It would consider 'NH3030_FU' as
+% 'NH3030'. Changed from 'contains' to 'strcmp' func. (fixed)
+% NH3040 bug was due to an entry error in Trial_Cropping_V2_test.xlsx (fixed)
+SUBJ_DONT_INC = {'NH3004','NH3023'};
+% (08/20/2023) JS, NH3004 has no headscan; NH3023 has no headscan clicks;
+% fprintf('Total subjects processing: %i\n',sum([length(SUBJ_2MA),length(SUBJ_3MA)]));
+% fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
+%- (OY) Subject Picks 
 % SUBJ_PICS = {SUBJ_1YA}; 
 % GROUP_NAMES = {'H1000''s'}; 
 % SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
+%- (OA&YA) Subject Picks 
+% SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
+% GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
+% SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %- (OA) Subject Picks 
 % SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
 % GROUP_NAMES = {'H2000''s','H3000''s'}; 
 % SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%- (VARIOUS) Subjct Picks
-SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
-GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
-SUBJ_ITERS = {[],[27],[]};
+%- (0A) DEBUG SUBSET (06/17/2023)
+% SUBJ_PICS = {SUBJ_DEBUG};
+% GROUP_NAMES = {'debug'}; 
+% SUBJ_ITERS = {1:length(SUBJ_DEBUG)};
+%- test
+SUBJ_PICS = {{'H2062','NH3040'}};
+GROUP_NAMES = {'test'}; 
+SUBJ_ITERS = {1:length(SUBJ_PICS{:})};
+fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
+fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
 %% (PROCESSING PARAMS) ================================================= %%
 %## Hard Define
 %- subject choices (Combined OA & YA)
 % YA_PREP_FPATH = '04182023_YA_N37_prep_verified'; % JACOB,SAL(04/10/2023)
 % OA_PREP_FPATH = '07042023_OA_prep_verified'; % JACOB,SAL(04/10/2023)
-OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
+% OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
+OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
 %- hardcode data_dir
 DATA_SET = 'MIM_dataset';
 %- MRI normalization
@@ -136,7 +175,8 @@ OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP
 
 %% Store fNames and fPaths
 working_dirs    = cell(1,length([SUBJ_ITERS{:}]));
-fiducial_fPaths = cell(3,length([SUBJ_ITERS{:}]));
+% fiducial_fPaths = cell(3,length([SUBJ_ITERS{:}]));
+fiducial_fPaths = cell(1,length([SUBJ_ITERS{:}]));
 chanlocs_fPaths = cell(1,length([SUBJ_ITERS{:}]));
 simnibs_fPaths  = cell(1,length([SUBJ_ITERS{:}]));
 subjectNames    = cell(1,length([SUBJ_ITERS{:}])); 
@@ -157,8 +197,8 @@ for group_i = 1:length(SUBJ_ITERS)
         simnibs_fPaths{cnt} = [working_dirs{cnt} filesep sprintf('%s_masks_contr.nii.gz',SUBJ_PICS{group_i}{subj_i})];
         %- Fiducials (acpc_rs)
         fiducial_fPaths{1,cnt} = [working_dirs{cnt} filesep 'mri_acpc_rs.mat'];
-        fiducial_fPaths{2,cnt} = [working_dirs{cnt} filesep 'mri_acpc.mat'];
-        fiducial_fPaths{3,cnt} = [working_dirs{cnt} filesep 'ctf_fiducials.mat'];
+%         fiducial_fPaths{2,cnt} = [working_dirs{cnt} filesep 'mri_acpc.mat'];
+%         fiducial_fPaths{3,cnt} = [working_dirs{cnt} filesep 'ctf_fiducials.mat'];
         %- ICA fPaths
         fPaths{cnt} = [OUTSIDE_DATA_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'clean'];
         tmp = dir([fPaths{cnt} filesep '*.set']);
@@ -170,12 +210,15 @@ for group_i = 1:length(SUBJ_ITERS)
         fprintf('ICA Exists: %i\n',(exist([fPaths{cnt} filesep fNames{cnt}],'file') && exist([fPaths{cnt} filesep 'W'],'file')));
         fprintf('SimNIBS Segmentation Exists: %i\n',exist(simnibs_fPaths{cnt},'file'));
         fprintf('DIPFIT Exists: %i\n',exist(dipfit_fPaths{cnt},'file'));
-        fprintf('MRI Fiducials Exist: %i\n',exist(fiducial_fPaths{1,cnt},'file') && exist(fiducial_fPaths{2,cnt},'file') && exist(fiducial_fPaths{3,cnt},'file'));
+%         fprintf('MRI Fiducials Exist: %i\n',exist(fiducial_fPaths{1,cnt},'file') && exist(fiducial_fPaths{2,cnt},'file') && exist(fiducial_fPaths{3,cnt},'file'));
+        fprintf('MRI Fiducials Exist: %i\n',exist(fiducial_fPaths{1,cnt},'file'));
         cnt = cnt + 1;
     end
     stack_iter = stack_iter + length(SUBJ_ITERS{group_i});
 end
-inds = logical(cellfun(@(x) exist(x,'file'),dipfit_fPaths));
+inds1 = logical(cellfun(@(x) exist(x,'file'),dipfit_fPaths));
+inds2 = logical(cellfun(@(x) exist(x,'file'),fiducial_fPaths));
+inds = inds1 & inds2;
 working_dirs = working_dirs(inds);
 dipfit_fPaths = dipfit_fPaths(inds);
 fPaths = fPaths(inds);
@@ -190,9 +233,9 @@ else
 end
 %% LOOP THROUGH PARTICIPANTS
 LOOP_VAR = 1:length(working_dirs);
-% parfor (subj_i = LOOP_VAR, POOL_SIZE) % (05/24/2023) JS, parfor might not
+parfor (subj_i = LOOP_VAR, POOL_SIZE) % (05/24/2023) JS, parfor might not
 % be possible for this loop. a problem with ft_sourceplot.
-for subj_i = LOOP_VAR
+% for subj_i = LOOP_VAR
     [EEG,dipfit_fem_norm] = mim_norm_dipfit(fPaths{subj_i},fNames{subj_i},fiducial_fPaths{1,subj_i},dipfit_fPaths{subj_i});
     par_save(dipfit_fem_norm,fPaths{subj_i},'dipfit_fem_norm.mat')
     EEG = pop_saveset(EEG,'filepath',EEG.filepath,'filename',EEG.filename); 

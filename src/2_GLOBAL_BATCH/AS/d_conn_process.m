@@ -92,7 +92,7 @@ fprintf('\nData Processing Parameters\n');
 %- dataset specific
 DATA_SET = 'AS_dataset';
 %- study group and saving
-COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
+COND_CHARS = {'2Bounce_Human','2Bounce_BM'}; %{'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
 EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 %- connectivity process
 CONN_FREQS = (1:100);
@@ -107,7 +107,8 @@ DO_PHASE_RND = true;
 % dt = '05252023_bounces_1h2h2bm_JS';
 % dt = '06122023_bounces_1h2h2bm_JS';
 % dt = '06152023_bounces_1h2h2bm_JS';
-dt = '07272023_bounces_1h_2h_2bm_JS';
+% dt = '07272023_bounces_1h_2h_2bm_JS';
+dt = '08182023_bounces_1h_2h_2bm_JS';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -146,7 +147,7 @@ else
         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
     end
     %## (AS) ATTACH CLUSTER
-%     MAIN_STUDY.cluster = MAIN_STUDY.urcluster;
+    MAIN_STUDY.cluster = MAIN_STUDY.urcluster;
     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(MAIN_STUDY);
 end
 %% INITIALIZE PARFOR LOOP VARS

@@ -121,21 +121,22 @@ else
     end
     %## load chang's algorithmic clustering
     %* cluster parameters
-    pick_cluster = 8;
-    clustering_weights.dipoles = 1;
-    clustering_weights.scalp = 0;
-    clustering_weights.ersp = 0;
-    clustering_weights.spec = 0;
-    cluster_alg = 'kmeans';
-    do_multivariate_data = 1;
-    evaluate_method = 'min_rv';
-    clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
-        '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
-        '_spec_',num2str(clustering_weights.spec)];
-    %* load cluster information
-    cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
-    cluster_dir = [cluster_load_dir filesep clustering_method filesep num2str(pick_cluster)];
-    cluster_update = par_load(cluster_dir,sprintf('cluster_update_%i.mat',pick_cluster));
+%     pick_cluster = 14;
+%     clustering_weights.dipoles = 1;
+%     clustering_weights.scalp = 0;
+%     clustering_weights.ersp = 0;
+%     clustering_weights.spec = 0;
+%     cluster_alg = 'kmeans';
+%     do_multivariate_data = 1;
+%     evaluate_method = 'min_rv';
+%     clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
+%         '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
+%         '_spec_',num2str(clustering_weights.spec)];
+%     %* load cluster information
+%     cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
+%     cluster_dir = [cluster_load_dir filesep clustering_method filesep num2str(pick_cluster)];
+%     cluster_update = par_load(cluster_dir,sprintf('cluster_update_%i.mat',pick_cluster));
+    load_cluster_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\jacobsenN_dataset\_studies\subject_mgmt';
     STUDY.cluster = cluster_update;
     %- get inds
     [comps_out,main_cl_inds,outlier_cl_inds,valid_clusters,main_cl_anat] = eeglab_get_cluster_comps(STUDY);
@@ -150,8 +151,11 @@ end
 % CLUSTER_ITERS = [3,4,5,6,7,8,9,10,11,12];
 % CLUSTER_ITERS = [2,3,4,5,6,7,8,9,10,11];
 % CLUSTER_ASSIGNMENTS = {'cl2','cl3','cl4','cl5','cl6','cl7','cl8','cl9','cl10','cl1'}; % (06/27/2023) JS, unsure on these as of yet.
-CLUSTER_ITERS = [3,4,5,6,7,8,9,10]; %[2,3,4,5,6,7,8,9]; %[3,4,5,6,7,8,9,10];
-CLUSTER_ASSIGNMENTS = {'LPP','Cing','RPP','Cuneus','LSM','Precun','Cerr','RSM'}; % (06/27/2023) JS, unsure on these as of yet.
+% CLUSTER_ITERS = [3,4,5,6,7,8,9,10]; %[2,3,4,5,6,7,8,9]; %[3,4,5,6,7,8,9,10];
+% CLUSTER_ASSIGNMENTS = {'LPP','Cing','RPP','Cuneus','LSM','Precun','Cerr','RSM'}; % (06/27/2023) JS, unsure on these as of yet.
+CLUSTER_ITERS = [3,4,5,6,7,8,9,10,11,12,13,14,15]; %[2,3,4,5,6,7,8,9]; %[3,4,5,6,7,8,9,10];
+% CLUSTER_ASSIGNMENTS = {'LPP','Cing','RPP','Cuneus','LSM','Precun','Cerr','RSM'}; % (06/27/2023) JS, unsure on these as of yet.
+CLUSTER_ASSIGNMENTS = {'Cing','RPP','RSM','cl6','cl7','cl8','cl9','cl10','cl11','cl12','cl13','cl14','cl15'};
 %## VARIABLE INITIALIZATION
 tmp = ALLEEG(1).etc.conn_table;
 % CONN_METHODS = unique(tmp.t_conn_meas);
@@ -494,6 +498,10 @@ for freq_i = 1:length(FREQ_BANDS)
         baseline = squeeze(conn_store(:,:,freq_i,:,BASELINE_INT));
         FREQS_SUBPATH = sprintf('%i-%i',...
                     FREQ_BANDS{freq_i}(1),FREQ_BANDS{freq_i}(end));
+        save_sub_figs = [save_dir filesep 'nz_cluster_mats' filesep FREQS_SUBPATH];
+        if ~exist(save_sub_figs,'dir')
+            mkdir(save_sub_figs);
+        end
         tmp_in = squeeze(conn_store(:,:,freq_i,:,cond_i));
         tmp_in = tmp_in - baseline;
         tmp_in = reshape(tmp_in,[size(tmp_in,3),size(tmp_in,1),size(tmp_in,2)]);
@@ -508,12 +516,14 @@ for freq_i = 1:length(FREQ_BANDS)
         tmp = strsplit(conn_conds{cond_i},'_');
         tmp = strsplit(tmp{2},'.');
         title(sprintf('(%s) condition %s',FREQS_SUBPATH,tmp{1}));
-        fig_i.Children(2).YTick = [1:length(CLUSTER_ASSIGNMENTS)];
+        fig_i.Children(2).YTick = 1:length(CLUSTER_ASSIGNMENTS);
         fig_i.Children(2).YTickLabel = CLUSTER_ASSIGNMENTS;
         fig_i.Children(2).YTickLabelRotation = 45;
-        fig_i.Children(2).XTick = [1:length(CLUSTER_ASSIGNMENTS)];
+        fig_i.Children(2).XTick = 1:length(CLUSTER_ASSIGNMENTS);
         fig_i.Children(2).XTickLabel = CLUSTER_ASSIGNMENTS;
         fig_i.Children(2).XTickLabelRotation = 45;
+        saveas(fig_i,[save_sub_figs filesep sprintf('3d_boxplot_cond%i.fig',cond_i)]);
+        saveas(fig_i,[save_sub_figs filesep sprintf('3d_boxplot_cond%i.jpg',cond_i)]);
     end
 end
 %%

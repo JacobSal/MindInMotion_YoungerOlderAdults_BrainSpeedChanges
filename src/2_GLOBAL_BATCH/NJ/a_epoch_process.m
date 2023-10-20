@@ -117,27 +117,33 @@ GROUP_NAMES = {'young adults'};
 %- save epoch'd eegs as seperate files (for connectivity)
 SAVE_ALLEEG = true;
 %- epoching params
-DO_SLIDING_WINDOW = false;
+EPOCH_METHOD = 'sliding_window_gait';
 %* sliding window
 WINDOW_LENGTH = 6; % sliding window length in seconds
 PERCENT_OVERLAP = 0.0; % percent overlap between epochs
 %* gait
 EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 STD_TIMEWARP = 3;
-EPOCH_TIME_LIMITS = [-1,3]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
+EPOCH_TIME_LIMITS = [-0.25,3]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
 TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
-if DO_SLIDING_WINDOW
-    SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
-    TRIAL_TYPES = {'pre','post'};
-else
-    SUFFIX_PATH_EPOCHED = 'GAIT_EPOCHED';
-    TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+switch EPOCH_METHOD
+    case 'sliding_window_standing'
+        SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
+        TRIAL_TYPES = {'pre','post'};
+    case 'sliding_window_gait'
+        SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED_GAIT';
+        TRIAL_TYPES = {'B1','B2','B3','P1','P2','SB1','SB2','none'};
+    case 'gait'
+        SUFFIX_PATH_EPOCHED = 'GAIT_EPOCHED';
+        TRIAL_TYPES = {'B1','B2','B3','P1','P2','SB1','SB2','none'};
+    otherwise
+        error('error. choose a valid EPOCH_METHOD');        
 end
 %- Dataset Params
 %* datetime override
 % dt = '06292023_NJ_Standing';
 % dt = '07162023_NJ_standing_customheadmods';
-dt = '08062023_NJ_gait_customheadmods';
+dt = '09082023_NJ_gait_customheadmods';
 % dt = 'test';
 % SUBFOLDER_CHAR = 'standing';
 SUBFOLDER_CHAR = 'gait';
@@ -152,6 +158,8 @@ STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 study_fName_1 = sprintf('%s_all_comps_study',[TRIAL_TYPES{:}]);
 study_fName_2 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
+%* cluster data fpath
+cluster_info_fpath = [STUDIES_DIR filesep 'subject_mgmt' filesep 'splitbelt_group_cluster.mat'];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
@@ -222,7 +230,7 @@ if ~exist([save_dir filesep study_fName_1 '.study'],'file') %|| true
                         conditions,groups,sessions); %,...
 %                         'SAVE_EEG',SAVE_EEG); %,...
 %                         'CHANLOCS_FPATHS',chanlocs_fPaths);
-    [MAIN_STUDY,MAIN_ALLEEG] = nj_create_study(MAIN_ALLEEG,study_fName_1,save_dir);
+    [MAIN_STUDY,MAIN_ALLEEG] = nj_create_study(MAIN_ALLEEG,cluster_info_fpath,study_fName_1,save_dir);
     [MAIN_STUDY,MAIN_ALLEEG] = std_checkset(MAIN_STUDY,MAIN_ALLEEG);
     [MAIN_STUDY,MAIN_ALLEEG] = parfunc_save_study(MAIN_STUDY,MAIN_ALLEEG,...
                                             study_fName_1,save_dir,...
@@ -238,11 +246,11 @@ else
     fprintf(1,'\n==== DONE: LOADING CLUSTER STUDY DATA ====\n');
 end
 %% INITIALIZE PARFOR LOOP VARS
-if exist('SLURM_POOL_SIZE','var')
-    POOL_SIZE = min([SLURM_POOL_SIZE,length(MAIN_ALLEEG)]);
-else
-    POOL_SIZE = 1;
-end
+% if exist('SLURM_POOL_SIZE','var')
+%     POOL_SIZE = min([SLURM_POOL_SIZE,length(MAIN_ALLEEG)]);
+% else
+%     POOL_SIZE = 1;
+% end
 fPaths = {MAIN_ALLEEG.filepath};
 fNames = {MAIN_ALLEEG.filename};
 LOOP_VAR = 1:length(MAIN_ALLEEG);
@@ -252,8 +260,8 @@ rmv_subj = zeros(1,length(MAIN_ALLEEG));
 % clear MAIN_ALLEEG
 %% GENERATE EPOCH MAIN FUNC
 %## PARFOR LOOP
-% parfor (subj_i = LOOP_VAR,POOL_SIZE)
-for subj_i = LOOP_VAR
+parfor (subj_i = LOOP_VAR,length(LOOP_VAR))
+% for subj_i = LOOP_VAR
     %## LOAD EEG DATA
     EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
     fprintf('Running subject %s\n',EEG.subject)
@@ -275,7 +283,7 @@ for subj_i = LOOP_VAR
     %- parse
     try
         %## EPOCH
-        [ALLEEG,timewarp_struct] = nj_parse_trials(EEG,DO_SLIDING_WINDOW,...
+        [ALLEEG,timewarp_struct] = nj_parse_trials(EEG,EPOCH_METHOD,...
             'EPOCH_TIME_LIMITS',EPOCH_TIME_LIMITS,...
             'STD_TIMEWARP',STD_TIMEWARP,...
             'COND_CHARS',TRIAL_TYPES);
@@ -301,7 +309,7 @@ for subj_i = LOOP_VAR
         ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
         ALLEEG.etc.cond_files = cond_files;
         %## TIMEWARPING?
-        if ~DO_SLIDING_WINDOW
+        if strcmp(EPOCH_METHOD,'gait_timewarp')
             ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
             ALLEEG.etc.cond_files = cond_files;
             %- timewarp for across condition

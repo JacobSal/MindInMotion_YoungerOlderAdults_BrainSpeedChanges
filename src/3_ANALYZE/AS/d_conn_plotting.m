@@ -83,12 +83,16 @@ end
 %## PATHS
 %- hardcode data_dir
 DATA_SET = 'AS_dataset';
-COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
+% COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
+% EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
+COND_CHARS =  {'2Bounce_Human','2Bounce_BM'};
 EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 %- datetime override
 % dt = '05252023_bounces_1h2h2bm_JS';
 % dt = '06122023_bounces_1h2h2bm_JS';
-dt = '06152023_bounces_1h2h2bm_JS';
+% dt = '06152023_bounces_1h2h2bm_JS';
+% dt = '07272023_bounces_1h_2h_2bm_JS';
+dt = '08182023_bounces_1h_2h_2bm_JS';
 %- connectiviy specific
 CONN_METHODS = {'dDTF','GGC','dDTF08'}; % AS (06/22/2023)
 CONN_MEAS_ANLYZ = 'dDTF08';
@@ -352,7 +356,7 @@ parfor subj_i = 1:length(ALLEEG)
     par_save(conn_subj_out,[save_dir filesep 'conn_mats'],sprintf('%s_connmat.mat',ALLEEG(subj_i).subject));            
 end
 %}
-%% NONZERO STATISTICS MASK GENERATION
+%% (NONZERO) STATISTICS MASK GENERATION
 if ~exist([save_dir filesep 'nz_bs_test'],'dir')
     mkdir([save_dir filesep 'nz_bs_test'])
 end
@@ -381,7 +385,7 @@ parfor (subj_i = 1:length(ALLEEG),ceil(length(ALLEEG)/2))
     fprintf('Saving %s...',ALLEEG(subj_i).subject);
     par_save(phasernd_conn,[save_dir filesep 'pr_conn_mats'],sprintf('%s_connmat.mat',ALLEEG(subj_i).subject));
 end
-%% LOAD THEN AVERAGE NONZEROED CONNECTIVITY MATRICIES
+%% (NONZERO)LOAD & AVERAGE NONZEROED CONNECTIVITY MATRICIES
 %## LOAD
 meth_i = 1; % method iter
 freq_dim = length(ALLEEG(1).etc.COND_CAT(1).Conn.freqs);
@@ -419,80 +423,7 @@ for subj_i = 1:length(ALLEEG)
         end
     end
 end
-%% 3D Box Plot
-%{
-%## ANOVAS AGGREGATE ALL
-freq_i = 1;
-unravel_out = squeeze(conn_store(:,:,:,:,freq_i));
-unravel_out = unravel_out(:);
-% unravel_out(isnan(unravel_out)) = 0;
-% group_labs_org = cell(length(unravel_out),1);
-% group_labs_subj = cell(length(unravel_out),1);
-% group_labs_clust_ij = cell(length(unravel_out),1);
-group_labs_org = zeros(length(unravel_out),1);
-group_cli = zeros(length(unravel_out),1);
-group_clj = zeros(length(unravel_out),1);
-cnt = 1;
-for cond_i = 1:size(conn_store,4)
-    for subj_i = 1:size(conn_store,3)
-        for clust_i = 1:size(conn_store,2)
-            for clust_j = 1:size(conn_store,1)
-                group_cli(cnt) = clust_i;
-                group_clj(cnt) = clust_j;
-                if clust_i == clust_j
-                    unravel_out(cnt) = nan();
-                end
-                %- group by condition and subject
-        %         group_labs{i} = sprintf('s%i_c%i',subj_i,cond_i);
-                %- group by condition
-%                 group_labs_org{cnt} = cond_i; %sprintf('c%i',cond_i);
-%                 group_labs_subj{cnt} = sprintf('s%i',subj_i);
-                %- group by component connections and condition
-%                 group_labs_clust_ij{cnt} = str2double(sprintf('%i%i',clust_j,clust_i)); %sprintf('ci%i_cj%i',clust_j,clust_i);
-                cnt = cnt+1;
-            end
-        end
-    end
-end
-cond_i = 1;
-boxPlot3D(unravel_out,group_cli,group_clj,[ 0.25 0.5 0.75])
-%}
-%% 3D BOXPLOTS
-BASELINE_INT = 2;
-for freq_i = 1:length(FREQ_BANDS)
-    for cond_i = 1:size(conn_store,5)
-        baseline = squeeze(conn_store(:,:,freq_i,:,BASELINE_INT));
-        FREQS_SUBPATH = sprintf('%i-%i',...
-                    FREQ_BANDS{freq_i}(1),FREQ_BANDS{freq_i}(end));
-        tmp_in = squeeze(conn_store(:,:,freq_i,:,cond_i));
-        %- (1) baseline to average
-        tmp_in = tmp_in - nanmean(baseline,3);
-        %- (2) baseline per subject
-%         tmp_in = tmp_in - baseline;
-%         for subj_i = 1:size(tmp_in,3)
-%             tmp_in(:,:,subj_i) = tmp_in(:,:,subj_i) - baseline(:,:,subj_i);
-%         end
-        tmp_in = reshape(tmp_in,[size(tmp_in,3),size(tmp_in,1),size(tmp_in,2)]);
-        
-        %- delete unused clusters
-        tmp_in = tmp_in(:,CLUSTER_ITERS,:);
-        tmp_in = tmp_in(:,:,CLUSTER_ITERS);
-        %- (PLOT)
-        custom_boxPlot3D(tmp_in)
-        %- plot edits
-        fig_i = get(groot,'CurrentFigure');
-        tmp = strsplit(conn_conds{cond_i},'_');
-        tmp = strsplit(tmp{2},'.');
-        title(sprintf('(%s) condition %s',FREQS_SUBPATH,tmp{1}));
-        fig_i.Children(2).YTick = [1:length(CLUSTER_ASSIGNMENTS)];
-        fig_i.Children(2).YTickLabel = CLUSTER_ASSIGNMENTS;
-        fig_i.Children(2).YTickLabelRotation = 45;
-        fig_i.Children(2).XTick = [1:length(CLUSTER_ASSIGNMENTS)];
-        fig_i.Children(2).XTickLabel = CLUSTER_ASSIGNMENTS;
-        fig_i.Children(2).XTickLabelRotation = 45;
-    end
-end
-%% CONNECTIVITY MATRICIES
+%% (NONZERO) CONNECTIVITY MATRICIES
 %## TIME
 tic
 %## CALC BOOTSTRAPPED MEAN
@@ -548,6 +479,41 @@ for freq_i = 1:length(FREQ_BANDS)
     end
 end
 close all
+%% 3D BOXPLOTS
+BASELINE_INT = 1;
+for freq_i = 1:length(FREQ_BANDS)
+    for cond_i = 1:size(conn_store,5)
+        baseline = squeeze(conn_store(:,:,freq_i,:,BASELINE_INT));
+        FREQS_SUBPATH = sprintf('%i-%i',...
+                    FREQ_BANDS{freq_i}(1),FREQ_BANDS{freq_i}(end));
+        save_sub_figs = [save_dir filesep 'nz_cluster_mats' filesep FREQS_SUBPATH];
+        if ~exist(save_sub_figs,'dir')
+            mkdir(save_sub_figs);
+        end
+        tmp_in = squeeze(conn_store(:,:,freq_i,:,cond_i));
+        tmp_in = tmp_in - baseline;
+        tmp_in = reshape(tmp_in,[size(tmp_in,3),size(tmp_in,1),size(tmp_in,2)]);
+        
+        %- delete unused clusters
+        tmp_in = tmp_in(:,CLUSTER_ITERS,:);
+        tmp_in = tmp_in(:,:,CLUSTER_ITERS);
+        %- (PLOT)
+        custom_boxPlot3D(tmp_in)
+        %- plot edits
+        fig_i = get(groot,'CurrentFigure');
+        tmp = strsplit(conn_conds{cond_i},'_');
+        tmp = strsplit(tmp{2},'.');
+        title(sprintf('(%s) condition %s',FREQS_SUBPATH,tmp{1}));
+        fig_i.Children(2).YTick = 1:length(CLUSTER_ASSIGNMENTS);
+        fig_i.Children(2).YTickLabel = CLUSTER_ASSIGNMENTS;
+        fig_i.Children(2).YTickLabelRotation = 45;
+        fig_i.Children(2).XTick = 1:length(CLUSTER_ASSIGNMENTS);
+        fig_i.Children(2).XTickLabel = CLUSTER_ASSIGNMENTS;
+        fig_i.Children(2).XTickLabelRotation = 45;
+        saveas(fig_i,[save_sub_figs filesep sprintf('3d_boxplot_cond%i.fig',cond_i)]);
+        saveas(fig_i,[save_sub_figs filesep sprintf('3d_boxplot_cond%i.jpg',cond_i)]);
+    end
+end
 %%
 if ~exist([save_dir filesep 'bs_conn_mats'],'dir')
     mkdir([save_dir filesep 'bs_conn_mats'])
@@ -694,93 +660,3 @@ end
 
 %## TIME
 toc
-%% ANOVAS AGGREGATE ALL
-freq_i = 1;
-unravel_out = squeeze(mat_out_nan(:,:,:,:,freq_i));
-unravel_out = unravel_out(:);
-% unravel_out(isnan(unravel_out)) = 0;
-group_labs_org = cell(length(unravel_out),1);
-group_labs_subj = cell(length(unravel_out),1);
-group_labs_clust_ij = cell(length(unravel_out),1);
-cnt = 1;
-for cond_i = 1:size(mat_out_nan,4)
-    for subj_i = 1:size(mat_out_nan,3)
-        for clust_i = 1:size(mat_out_nan,2)
-            for clust_j = 1:size(mat_out_nan,1)
-                %- group by condition and subject
-        %         group_labs{i} = sprintf('s%i_c%i',subj_i,cond_i);
-                %- group by condition
-                group_labs_org{cnt} = sprintf('c%i',cond_i);
-                group_labs_subj{cnt} = sprintf('s%i',subj_i);
-                %- group by component connections and condition
-                group_labs_clust_ij{cnt} = sprintf('ci%i_cj%i',clust_j,clust_i);
-                cnt = cnt+1;
-            end
-        end
-    end
-end
-
-%%
-%- subselect component
-% CLUST_I = 2;
-% CLUST_J = 3;
-for i = 1:length(CLUSTER_ASSIGNMENTS)
-    clust_i = CLUSTER_ITERS(i);
-    for j = 1:length(CLUSTER_ASSIGNMENTS)
-        clust_j = CLUSTER_ITERS(j);
-        %## LOOP PATHS
-        figs_save_dir = [save_dir filesep 'anovas' filesep [conn_conds{:}] filesep sprintf('%s_%s',CLUSTER_ASSIGNMENTS{i},CLUSTER_ASSIGNMENTS{j})];
-        if ~exist(figs_save_dir,'dir')
-            mkdir(figs_save_dir)
-        end
-        %## LOOP MEAT
-        comp_pick = sprintf('ci%i_cj%i',clust_i,clust_j);
-        idx = strcmp(comp_pick,group_labs_clust_ij);
-        unravel_in = unravel_out(idx);
-        %- ANOVA-N analysis
-        % group_labs = {group_labs_org,group_labs_subj,group_labs_clust_ij};
-        group_labs = {group_labs_org(idx),group_labs_subj(idx)};
-        % group_labs = {group_labs_org};
-        [P,T,stats,terms] = anovan(unravel_in,group_labs,'display','on','alpha',0.05,'sstype',3);
-        % [P,T,stats,terms] = anovan(unravel_out,group_labs,'display','on','alpha',0.05,'sstype',3);
-%         writecell(T,[figs_save_dir filesep 'anovaresults.txt'])
-        % Write string to file
-        tblStr = cell(size(T,1),1);
-        for col_i = 1:size(T,1)
-            if col_i == 1
-                tblStr{col_i} = sprintf('%-6s   %-9s   %-9s   %-9s   %-9s   %-9s   %-9s\n',T{col_i,:});
-            else
-                tblStr{col_i} = sprintf('%-6s   %-9.3g   %-9.0f   %-9.0f   %-9.3g   %-9.3g   %-9.3g\n',T{col_i,:});
-            end
-        end
-        fid = fopen([figs_save_dir filesep 'anovaTable.txt'], 'wt');
-        fileCleanup = onCleanup(@()fclose(fid));
-        formatSpec = '%s\n';
-        cellfun(@(x) fprintf(fid, formatSpec, x), tblStr)
-%         fprintf(fid, formatSpec, tblStr);
-        clear('fileCleanup')
-        %- multiple comparissons test
-%         figure();
-%         hold on;
-%         [c,m,h,gnames] = multcompare(stats);
-%         hold off;
-        %- Violin Plot;
-        % violin_data = cell(1,length(load_trials));
-        violin_data = nan(size(mat_out_nan,3),length(conn_conds));
-        violin_group = cell(1,length(conn_conds));
-        for cond_i = 1:length(conn_conds)
-        %     violin_data{cond_i} = squeeze(mat_out_nan(CLUST_I,CLUST_J,:,cond_i,freq_i));
-            violin_data(:,cond_i) = squeeze(mat_out_nan(clust_i,clust_j,:,cond_i,freq_i))';
-            violin_group{cond_i} = conn_conds{cond_i};
-        end
-        figure;
-        hold on
-        violinplot(violin_data,violin_group)
-        % violinplot(unravel_in,group_labs);
-        % violinplot(unravel_out,group_labs);
-        hold off;
-        fig_i = get(groot,'CurrentFigure');
-        saveas(fig_i,[figs_save_dir filesep sprintf('Violin_avg.fig')]);
-        saveas(fig_i,[figs_save_dir filesep sprintf('Violin_avg.jpg')]);
-    end
-end

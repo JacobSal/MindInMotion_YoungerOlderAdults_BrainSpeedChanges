@@ -33,9 +33,11 @@ function boxPlot3D(xx,g1,g2,quantDistribution)
 %--------------------------------------------------------------------------
 %
 %
-tmp = linspecer(2);
+tmp = linspecer(4);
 colourFace = tmp(1,:);
-colourFace2 = tmp(2,:);
+colourFace3 = tmp(2,:);
+colourFace2 = tmp(3,:);
+colourFace4 = [1,1,1]*0.5; %tmp(4,:);
 if nargin <1
     
 else
@@ -59,7 +61,11 @@ else
                 % positions of the distribution, these are obtained with
                 % quantile
                 currentPositions = quantile(currentColumn,quantDistribution);
-                display3Dbox(counterCols,counterLevs,currentPositions,1,1,colourFace,colourFace2);
+                if sum(currentPositions < 0) > length(currentPositions)/2
+                    fprintf('majority of data less than 0: %d\n',currentPositions(3));
+                    colourFace = colourFace3;
+                end
+                display3Dbox(counterCols,counterLevs,currentPositions,1,1,colourFace,colourFace2,colourFace4);
             end
         end
     else
@@ -90,7 +96,10 @@ else
                 % quantile
                 currentPositions = quantile(currentColumn,quantDistribution);
                 % Call the display with the extra parameters for width
-                display3Dbox(current_g1,current_g2,currentPositions,width_g1,width_g2,colourFace,colourFace2);
+                if all(currentPositions < 0)
+                    colourFace = colourFace3;
+                end
+                display3Dbox(current_g1,current_g2,currentPositions,width_g1,width_g2,colourFace,colourFace2,colourFace3);
             end
         end
         
@@ -105,7 +114,7 @@ end
 
 end
 
-function display3Dbox(counterCols,counterLevs,currentPositions,width_g1,width_g2,colourFace,colourFace2)
+function display3Dbox(counterCols,counterLevs,currentPositions,width_g1,width_g2,colourFace,colourFace2,colourFace3)
 
 if ~exist('width_g1','var')
     width_g1 = 1;
@@ -149,7 +158,7 @@ switch lenZStats
     case 5
         %----- central box with extemes (0 0.25 0.5 0.75 1)
         delta=0.05*(currentPositions(3)-currentPositions(1));
-        colourFace3=0.5*[1 1 1];
+%         colourFace3=0.5*[1 1 1];
         vert_Mat=[counterCols+x counterLevs+y [currentPositions(2)*z;currentPositions(3)*z-delta/2]];
         patch('Vertices',vert_Mat,'Faces',face_Mat,'facecolor',colourFace,'edgecolor','black','linewidth',1);
         

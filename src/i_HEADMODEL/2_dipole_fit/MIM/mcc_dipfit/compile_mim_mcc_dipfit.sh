@@ -24,7 +24,7 @@ mkdir $FILE_OUT
 
 # purge modules currently loaded and load matlab compiler resources
 module purge
-module load matlab/2020b
+module load matlab/2020a
 
 echo "Date              = $(date)"
 echo "Hostname          = $(hostname -s)"

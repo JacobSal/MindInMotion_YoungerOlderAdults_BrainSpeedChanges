@@ -87,11 +87,33 @@ end
 %- datset name
 DATA_SET = 'jacobsenN_dataset';
 %- datetime override
-dt = '07162023_NJ_standing_customheadmods';
+% dt = '07162023_NJ_standing_customheadmods';
+dt = '09082023_NJ_gait_customheadmods';
 %- epoching params
-TRIAL_TYPES = {'pre','post'};
+EPOCH_METHOD = 'sliding_window_gait';
+%* sliding window
+WINDOW_LENGTH = 6; % sliding window length in seconds
+PERCENT_OVERLAP = 0.0; % percent overlap between epochs
+%* gait
+EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
+STD_TIMEWARP = 3;
+EPOCH_TIME_LIMITS = [-0.25,3]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
+TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
+switch EPOCH_METHOD
+    case 'sliding_window_standing'
+        SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
+        TRIAL_TYPES = {'pre','post'};
+    case 'sliding_window_gait'
+        SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED_GAIT';
+        TRIAL_TYPES = {'B1','B2','B3','P1','P2','SB1','SB2','none'};
+    case 'gait'
+        SUFFIX_PATH_EPOCHED = 'GAIT_EPOCHED';
+        TRIAL_TYPES = {'B1','B2','B3','P1','P2','SB1','SB2','none'};
+    otherwise
+        error('error. choose a valid EPOCH_METHOD');        
+end
 %- connecitivty modeling
-CONN_FREQS = (1:100);
+CONN_FREQS = (1:200);
 CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 CNCTANL_TOOLBOX = 'sift'; %'bsmart'
 WINDOW_LENGTH = 0.5;
@@ -126,24 +148,24 @@ else
     end
     %## load chang's algorithmic clustering
     %* cluster parameters
-    pick_cluster = 8;
-    clustering_weights.dipoles = 1;
-    clustering_weights.scalp = 0;
-    clustering_weights.ersp = 0;
-    clustering_weights.spec = 0;
-    cluster_alg = 'kmeans';
-    do_multivariate_data = 1;
-    evaluate_method = 'min_rv';
-    clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
-        '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
-        '_spec_',num2str(clustering_weights.spec)];
-    %* load cluster information
-    cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
-    outputdir = [cluster_load_dir filesep clustering_method,...
-        filesep num2str(pick_cluster)];
-    tmp = load([outputdir filesep sprintf('cluster_update_%i.mat',pick_cluster)]);
-    cluster_update = tmp.cluster_update;
-    MAIN_STUDY.cluster = cluster_update;
+%     pick_cluster = 8;
+%     clustering_weights.dipoles = 1;
+%     clustering_weights.scalp = 0;
+%     clustering_weights.ersp = 0;
+%     clustering_weights.spec = 0;
+%     cluster_alg = 'kmeans';
+%     do_multivariate_data = 1;
+%     evaluate_method = 'min_rv';
+%     clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
+%         '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
+%         '_spec_',num2str(clustering_weights.spec)];
+%     %* load cluster information
+%     cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
+%     outputdir = [cluster_load_dir filesep clustering_method,...
+%         filesep num2str(pick_cluster)];
+%     tmp = load([outputdir filesep sprintf('cluster_update_%i.mat',pick_cluster)]);
+%     cluster_update = tmp.cluster_update;
+%     MAIN_STUDY.cluster = cluster_update;
     %- get inds
     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(MAIN_STUDY);
 end

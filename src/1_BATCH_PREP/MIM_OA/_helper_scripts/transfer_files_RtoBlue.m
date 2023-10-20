@@ -49,7 +49,7 @@ addpath(source_dir)
 addpath(run_dir)
 %- set workspace
 global ADD_CLEANING_SUBMODS
-ADD_CLEANING_SUBMODS = true;
+ADD_CLEANING_SUBMODS = false;
 setWorkspace
 %% PARPOOL SETUP
 if ~ispc
@@ -78,39 +78,81 @@ else
     'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
     SLURM_POOL_SIZE = 1;
 end
-%% ================================================================= %%
-%## (MIND IN MOTION) DATASET SPECIFIC (05/24/2023)
-SUBJ_NORUN = {'H2012_FU', 'H2013_FU', 'H2018_FU', 'H2020_FU', 'H2021_FU',...
-            'H3024_Case','H3029_FU','H3039_FU','H3063_FU','NH3021_Case', 'NH3023_Case','NH3025_Case', 'NH3030_FU',...
-            'NH3068_FU', 'NH3036_FU', 'NH3058_FU'};
-SUBJ_MISSING_TRIAL_DATA = {'H1008','H2012','H2018','H3024','NH3002', 'NH3004','NH3009',...
-    'NH3023','NH3027', 'NH3028', 'NH3129', 'NH3040'};
-SUBJ_NO_MRI = {'H2010', 'H2036', 'H2041', 'H2072', 'H3018','H3120'};
-SUBJ_1YA = {'H1002','H1004','H1007','H1009','H1010','H1011','H1012','H1013','H1017','H1018','H1019','H1020',...
-    'H1022','H1024','H1026','H1027','H1029','H1030','H1031','H1032','H1033','H1034','H1035',...
-    'H1036','H1037','H1038','H1039','H1041','H1042','H1044','H1045','H1047','H1047'}; % JACOB,SAL (04/18/2023)
-SUBJ_2MA = {'H2017', 'H2002', 'H2007', 'H2008', 'H2013', 'H2015',...
-    'H2020', 'H2021', 'H2022', 'H2023',...
-    'H2025', 'H2026', 'H2027', 'H2033', 'H2034', 'H2037', 'H2038',...
-    'H2039', 'H2042', 'H2052', 'H2059', 'H2062', 'H2082',...
-    'H2090', 'H2095', 'H2111', 'H2117'};
-SUBJ_3MA = {'H3029','H3034','H3039','H3042','H3046',...
-    'H3047','H3053','H3063','H3072','H3073','H3077','H3092','H3103','H3107',...
-    'NH3006', 'NH3007', 'NH3008', 'NH3010',...
-    'NH3021', 'NH3025', 'NH3026',...
-    'NH3030', 'NH3036',...
-    'NH3041', 'NH3043', 'NH3051', 'NH3054', 'NH3055', 'NH3056', 'NH3058',...
-    'NH3059', 'NH3066', 'NH3068', 'NH3069', 'NH3070', 'NH3071', 'NH3074',...
-    'NH3076', 'NH3082', 'NH3086', 'NH3090', 'NH3102', 'NH3104', 'NH3105', 'NH3106',...
-    'NH3108', 'NH3110', 'NH3112', 'NH3113', 'NH3114', 'NH3123', 'NH3128'}; % JACOB,SAL(02/23/2023)
+%% (DATASET INFORMATION) =============================================== %%
+%## (MIND IN MOTION) DATASET SPECIFIC PARAMS (05/24/2023)
+SUBJ_1YA = {'H1002','H1004','H1007','H1009',...
+    'H1010','H1011','H1012','H1013','H1017',...
+    'H1018','H1019','H1020','H1022','H1024',...
+    'H1025','H1026','H1027','H1029','H1030','H1031',...
+    'H1032','H1033','H1034','H1034','H1036',...
+    'H1037','H1038','H1039','H1041','H1042',...
+    'H1044','H1045','H1046','H1047','H1048'}; % JACOB,SAL (04/18/2023)
+SUBJ_2MA = {'H2002','H2007','H2008',...
+    'H2013','H2015','H2017','H2020','H2021',...
+    'H2022','H2023','H2025','H2026','H2027',...
+    'H2033','H2034','H2037','H2038','H2039',...
+    'H2042','H2052','H2059','H2062','H2082',...
+    'H2090','H2095','H2111','H2117'};
+SUBJ_3MA = {'H3029','H3034','H3039','H3053',...
+    'H3063','H3072','H3077','H3103',...
+    'H3107',...
+    'NH3006','NH3007','NH3008','NH3010','NH3021',...
+    'NH3026','NH3030','NH3036','NH3040',...
+    'NH3041','NH3043','NH3054',...
+    'NH3055','NH3058','NH3059','NH3066',...
+    'NH3068','NH3069','NH3070','NH3074',...
+    'NH3076','NH3086','NH3090','NH3102',...
+    'NH3104','NH3105','NH3106','NH3108','NH3110',...
+    'NH3112','NH3113','NH3114','NH3123','NH3128',...
+    };
+SUBJ_SLOW_WALKERS = {'H3042','H3046','H3047','H3073',...
+    'H3092','NH3025','NH3051','NH3056','NH3071','NH3082'};
+SUBJ_NO_MRI = {'H2010','H2012','H2018','H2036','H2041',...
+    'H2072','H3018','H3120','NH3002','NH3009','NH3027','NH3129'};
+SUBJ_MISSING_COND = {'H3024','NH3028'};
+% SUBJ_UNKNOWN_ERR = {'NH3108','NH3030','NH3040','NH3025'};
+% (08/21/2023) JS, 
+% NH3108 seems to bug out do to an indexing error during
+% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
+% NH3030 seems to bug out do to an indexing error during
+% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
+% NH3040 seems to bug out do to an indexing error during
+% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
+% NH3025 seems to bug out do to an indexing error during
+% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
+% (08/22/2023) JS, NH3108 bug seems to be related to entry errors in the
+% Trial_Cropping_V2_test.xlsx sheet used to remove bad time ranges
+% identified during collection. (fixed)
+% NH3030 bug was due to how the CropTrialCheckFunc_checkLoadsol.m
+% interpreted subject characters. It would consider 'NH3030_FU' as
+% 'NH3030'. Changed from 'contains' to 'strcmp' func. (fixed)
+% NH3040 bug was due to an entry error in Trial_Cropping_V2_test.xlsx (fixed)
+SUBJ_DONT_INC = {'NH3004','NH3023'};
+% (08/20/2023) JS, NH3004 has no headscan; NH3023 has no headscan clicks;
+% fprintf('Total subjects processing: %i\n',sum([length(SUBJ_2MA),length(SUBJ_3MA)]));
+% fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
 %- (OY) Subject Picks 
 % SUBJ_PICS = {SUBJ_1YA}; 
 % GROUP_NAMES = {'H1000''s'}; 
 % SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
+%- (OA&YA) Subject Picks 
+SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
+GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
+SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %- (OA) Subject Picks 
-SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-GROUP_NAMES = {'H2000''s','H3000''s'}; 
-SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)}; 
+% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
+% GROUP_NAMES = {'H2000''s','H3000''s'}; 
+% SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
+%- (0A) DEBUG SUBSET (06/17/2023)
+% SUBJ_PICS = {SUBJ_DEBUG};
+% GROUP_NAMES = {'debug'}; 
+% SUBJ_ITERS = {1:length(SUBJ_DEBUG)};
+%- test
+% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
+% GROUP_NAMES = {'H2000''s','H3000''s'}; 
+% SUBJ_ITERS = {[1,2],[5,6]};
+fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
+fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC),length(SUBJ_SLOW_WALKERS)]));
 %% (PROCESSING PARAMS) ================================================= %%
 %## hard define
 %- dataset name
@@ -183,62 +225,125 @@ M_MIND_IN_MOTION_DIR = [DATA_DIR filesep DATA_SET]; %'M:\jsalminen\GitHub\par_EE
 %- Loop through directory
 for group_i = 1:size(SUBJ_PICS,2)
     for subj_i = 1:length(SUBJ_PICS{group_i})
-        folder_to = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'HeadModel'];
-        if exist(folder_to,'dir')
-            rmdir(folder_to,'s')
+        fprintf('%s) Transfering files for headmodel for subject...\n',SUBJ_PICS{group_i}{subj_i})
+        folder_to = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI'];
+        if exist(folder_to,'file')
+            delete(folder_to)
         end
-        %- custom electrode locations & headmodel for SKULL_0.01
-        folder_to = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'HeadModel' filesep 'skull_0p01'];
         if ~exist(folder_to,'dir')
-            mkdir(folder_to);
+            mkdir(folder_to)
         end
-        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.01' filesep 'elec_aligned_init.mat'];
+        %## BARE NECESSARY REQUIRED
+        %- CustomElectrodeLocations.txt
+        %R:\Ferris-Lab\share\MindInMotion\Data\NH3040\HeadScan
+        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'HeadScan' filesep 'CustomElectrodeLocations.txt'];
         if exist(file_from,'file')
-%             fprintf('%s) copying file %s',SUBJ_PICS{group_i}{subj_i},file_from);
-            copyfile(file_from,folder_to)
+            try
+                copyfile(file_from,folder_to)
+            catch
+                fprintf('file exists.\n')
+            end
         else
             fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
         end
-        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.01' filesep 'elec_aligned.mat'];
+        %- *_masks_contr.nii.gz
+        %R:\Ferris-Lab\share\MindInMotion\Data\NH3040\MRI\Segmentation\headreco
+        file_from = dir([R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Segmentation' filesep 'headreco' filesep  'm2m_*' filesep '*_masks_contr.nii.gz']);
+        if ~isempty(file_from)
+            try
+                copyfile([file_from.folder filesep file_from.name],folder_to)
+            catch
+                fprintf('file exists.\n')
+            end
+        else
+            fprintf('%s) File does not exist: *_masks_contr.nii.gz\n',SUBJ_PICS{group_i}{subj_i});
+        end
+%         file_from = dir([R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Segmentation' filesep 'headreco' filesep 'm2m_*' filesep '*_MRI_acpc_rs.nii']);
+%         if ~isempty(file_from)
+%             copyfile([file_from.folder filesep file_from.name],folder_to)
+%         else
+%             fprintf('%s) File does not exist: *_MRI_acpc_rs.nii\n',SUBJ_PICS{group_i}{subj_i});
+%         end
+        %- mri_acpc.mat
+        %R:\Ferris-Lab\share\MindInMotion\Data\NH3040\MRI\Processed_fiducials
+        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Processed_fiducials' filesep 'mri_acpc.mat'];
         if exist(file_from,'file')
-%             fprintf('%s) copying file %s',SUBJ_PICS{group_i}{subj_i},file_from);
-            copyfile(file_from,folder_to)
+            try
+                copyfile(file_from,folder_to)
+            catch
+                fprintf('file exists.\n')
+            end
         else
             fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
         end
-        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.01' filesep 'vol.mat'];
+        %- mri_acpc.mat
+        %R:\Ferris-Lab\share\MindInMotion\Data\NH3040\MRI\Processed_fiducials
+        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Processed_fiducials' filesep 'mri_acpc_rs.mat'];
         if exist(file_from,'file')
-%             fprintf('%s) copying file %s',SUBJ_PICS{group_i}{subj_i},file_from);
-            copyfile(file_from,folder_to)
+            try
+                copyfile(file_from,folder_to)
+            catch
+                fprintf('file exists.\n')
+            end
         else
             fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
         end
-        %- custom electrode locations and headmodels for SKULL_0.0042
-        folder_to = [M_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'HeadModel' filesep 'skull_0p0042'];
-        if ~exist(folder_to,'dir')
-            mkdir(folder_to);
-        end
-        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.0042' filesep 'elec_aligned_init.mat'];
+        %- ctf_fiducials.mat
+        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Processed_fiducials' filesep 'ctf_fiducials.mat'];
         if exist(file_from,'file')
-%             fprintf('%s) copying file %s',SUBJ_PICS{group_i}{subj_i},file_from);
-            copyfile(file_from,folder_to)
+            try
+                copyfile(file_from,folder_to)
+            catch
+                fprintf('file exists.\n')
+            end
         else
             fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
         end
-        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.0042' filesep 'elec_aligned.mat'];
-        if exist(file_from,'file')
-%             fprintf('%s) copying file %s',SUBJ_PICS{group_i}{subj_i},file_from);
-            copyfile(file_from,folder_to)
-        else
-            fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
-        end
-        file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.0042' filesep 'vol.mat'];
-        if exist(file_from,'file')
-%             fprintf('%s) copying file %s',SUBJ_PICS{group_i}{subj_i},file_from);
-            copyfile(file_from,folder_to)
-        else
-            fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
-        end
+        %## PREGENERATED VOL & ELEC ALIGNED
+%         file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.01' filesep 'elec_aligned_init.mat'];
+%         if exist(file_from,'file')
+% %             fprintf('%s) copying file %s',SUBJ_PICS{group_i}{subj_i},file_from);
+%             copyfile(file_from,folder_to)
+%         else
+%             fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+%         end
+%         file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.01' filesep 'elec_aligned.mat'];
+%         if exist(file_from,'file')
+% %             fprintf('%s) copying file %s',SUBJ_PICS{group_i}{subj_i},file_from);
+%             copyfile(file_from,folder_to)
+%         else
+%             fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+%         end
+%         file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.01' filesep 'vol.mat'];
+%         if exist(file_from,'file')
+% %             fprintf('%s) copying file %s',SUBJ_PICS{group_i}{subj_i},file_from);
+%             copyfile(file_from,folder_to)
+%         else
+%             fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+%         end
+%         %## custom electrode locations and headmodels for SKULL_0.0042
+%         file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.0042' filesep 'elec_aligned_init.mat'];
+%         if exist(file_from,'file')
+% %             fprintf('%s) copying file %s',SUBJ_PICS{group_i}{subj_i},file_from);
+%             copyfile(file_from,folder_to)
+%         else
+%             fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+%         end
+%         file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.0042' filesep 'elec_aligned.mat'];
+%         if exist(file_from,'file')
+% %             fprintf('%s) copying file %s',SUBJ_PICS{group_i}{subj_i},file_from);
+%             copyfile(file_from,folder_to)
+%         else
+%             fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+%         end
+%         file_from = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'Headmodel' filesep 'skull_0.0042' filesep 'vol.mat'];
+%         if exist(file_from,'file')
+% %             fprintf('%s) copying file %s',SUBJ_PICS{group_i}{subj_i},file_from);
+%             copyfile(file_from,folder_to)
+%         else
+%             fprintf('%s) File does not exist: %s\n',SUBJ_PICS{group_i}{subj_i},file_from);
+%         end
+        fprintf('Done.\n')
     end
 end
 %% (HELPER SCRIPT) TRANSFER MRI & Fiducial DATA FROM R:\ TO M:\

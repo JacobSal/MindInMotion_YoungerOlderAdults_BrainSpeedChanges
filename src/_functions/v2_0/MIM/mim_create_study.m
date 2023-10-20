@@ -43,8 +43,13 @@ powpow_rej_nums = cell(length(ALLEEG),1);
 brain_ic_nums = cell(length(ALLEEG),1);
 all_rej_nums = cell(length(ALLEEG),1);
 subj_str = cell(length(ALLEEG),1);
+good_diplocs_orig = cell(length(ALLEEG),1);
+bad_diplocs_orig = cell(length(ALLEEG),1);
+bad_diplocs_mni = cell(length(ALLEEG),1);
+good_diplocs_mni = cell(length(ALLEEG),1);
 parfor subj_i = 1:length(ALLEEG)
 % for subj_i = 1:length(ALLEEG)
+    fprintf('Rejecting IC''s for subject %s...\n',ALLEEG(subj_i).subject);
     %- use rejection criteria to determine bad ic's
     reject_struct = mim_reject_ics(ALLEEG(subj_i),ALLEEG(subj_i).filepath);
     %- log good & bad components
@@ -132,7 +137,8 @@ parfor subj_i = 1:length(ALLEEG)
         ALLEEG(subj_i).specicaact  = [];
         ALLEEG(subj_i).specdata    = [];
         ALLEEG(subj_i).reject      = [];
-        %- iclabel mdos
+        %- iclabel mods
+        fprintf('making iclabel modifications\n');
         if isfield(ALLEEG(subj_i).etc, 'ic_classification')
             if isfield(ALLEEG(subj_i).etc.ic_classification, 'ICLabel') 
                 if isfield(ALLEEG(subj_i).etc.ic_classification.ICLabel, 'classifications')
@@ -143,6 +149,54 @@ parfor subj_i = 1:length(ALLEEG)
             end
         end
         %- dipfit mods
+        fprintf('making dipfit modifications\n');
+        tmp = {ALLEEG(subj_i).dipfit.model(tmp_good).pos_old};
+%             tmp = tmp(chk);
+        if ~isempty(tmp)
+            print_tmp = [];
+            for i = 1:length(tmp)
+                print_tmp = [print_tmp,sprintf('[%0.2f,%0.2f,%0.2f],',tmp{i})];
+            end
+            good_diplocs_orig{subj_i} = print_tmp; %sprintf('%i,',tmp(chk)); %tmp(chk);
+        else
+            good_diplocs_orig{subj_i} = '';
+        end
+        %-
+        tmp = {ALLEEG(subj_i).dipfit.model(tmp_bad).pos_old};
+%             tmp = tmp(chk);
+        if ~isempty(tmp)
+            print_tmp = [];
+            for i = 1:length(tmp)
+                print_tmp = [print_tmp,sprintf('[%0.2f,%0.2f,%0.2f],',tmp{i})];
+            end
+            bad_diplocs_orig{subj_i} = print_tmp; %sprintf('%i,',tmp(chk)); %tmp(chk);
+%                 bad_diplocs{subj_i} = ['[' sprintf('%i,',tmp(1:end-1)) sprintf('%i',tmp(end)) ']']; %sprintf('%i,',tmp(chk)); %tmp(chk);
+        else
+            bad_diplocs_orig{subj_i} = '';
+        end
+        %-
+        tmp = {ALLEEG(subj_i).dipfit.model(tmp_bad).mnipos};
+        if ~isempty(tmp)
+            print_tmp = [];
+            for i = 1:length(tmp)
+                print_tmp = [print_tmp,sprintf('[%0.2f,%0.2f,%0.2f],',tmp{i})];
+            end
+            bad_diplocs_mni{subj_i} = print_tmp; %sprintf('%i,',tmp(chk)); %tmp(chk);
+%                 bad_diplocs{subj_i} = ['[' sprintf('%i,',tmp(1:end-1)) sprintf('%i',tmp(end)) ']']; %sprintf('%i,',tmp(chk)); %tmp(chk);
+        else
+            bad_diplocs_mni{subj_i} = '';
+        end
+        tmp = {ALLEEG(subj_i).dipfit.model(tmp_good).mnipos};
+        if ~isempty(tmp)
+            print_tmp = [];
+            for i = 1:length(tmp)
+                print_tmp = [print_tmp,sprintf('[%0.2f,%0.2f,%0.2f],',tmp{i})];
+            end
+            good_diplocs_mni{subj_i} = print_tmp; %sprintf('%i,',tmp(chk)); %tmp(chk);
+%                 bad_diplocs{subj_i} = ['[' sprintf('%i,',tmp(1:end-1)) sprintf('%i',tmp(end)) ']']; %sprintf('%i,',tmp(chk)); %tmp(chk);
+        else
+            good_diplocs_mni{subj_i} = '';
+        end
         try
             ALLEEG(subj_i).dipfit.model = ALLEEG(subj_i).dipfit.model(goodinds);
         catch e
@@ -152,12 +206,15 @@ parfor subj_i = 1:length(ALLEEG)
                  'stack. %s\n'],e.identifier,e.message,ALLEEG(subj_i).subject,getReport(e));
         end
     end
+    fprintf('DONE. rejecting IC''s for subject %s.\n',ALLEEG(subj_i).subject);
 end
 ALLEEG = ALLEEG(~logical(tmp_rmv_subjs));
 %% WRITE TO XLSX
+fprintf('Writing subject rejection criteria table...\n');
 tmp_table = table(brain_ics_count,powpow_rej_count,all_rej_count,powpow_rej_nums,brain_ic_nums,...
-    all_rej_nums,brain_ics_scores,'RowNames',subj_str);
+    all_rej_nums,brain_ics_scores,good_diplocs_orig,bad_diplocs_orig,good_diplocs_mni,bad_diplocs_mni,'RowNames',subj_str);
 writetable(tmp_table,[study_fPath filesep 'rejection_crit.xlsx'],'WriteRowNames',true,'WriteVariableNames',true) 
+fprintf('DONE. Writing subject rejection criteria table.\n');
 %% REMOVE COMPS (version 1)
 % (06/17/2023) JS, changing line 70 from < 3 to <= 3 (losing subjects w/ 3
 % brain comps)
@@ -225,7 +282,7 @@ fprintf('\n==== Making Study Modifications ====\n');
 parfor subj_i = 1:length(ALLEEG)
     ALLEEG(subj_i).etc.full_setfile.filename = ALLEEG(subj_i).filename;
     ALLEEG(subj_i).etc.full_setfile.filepath = ALLEEG(subj_i).filepath;
-    ALLEEG(subj_i).filename = sprintf('%s_%s_ICA_TMPEEG',ALLEEG(subj_i).subject,'reducedcomps');
+%     ALLEEG(subj_i).filename = sprintf('%s_%s_ICA_TMPEEG',ALLEEG(subj_i).subject,'reducedcomps');
     ALLEEG(subj_i) = pop_saveset(ALLEEG(subj_i),'filename',ALLEEG(subj_i).filename,'filepath',ALLEEG(subj_i).filepath);
 end
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG); 
