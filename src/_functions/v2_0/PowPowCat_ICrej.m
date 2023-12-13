@@ -36,9 +36,14 @@ tic
 %## DEFINE DEFAULTS
 %- Cutoff for Correlations ot determine bad components
 % NOTE: correlation coefficient threshold, 0.5-0.7= moderate correlation
-BAD_IC_CUTOFF = 0.3; 
-% NOTE (07/15/2023), Originally at 0.3; setting to 0.25 to be more
+BAD_IC_CUTOFF = 0.1; 
+% NOTE (10/25/2023), Originally at 0.3; setting to 0.25 to be more
 % aggressive on cleaning.
+% NOTE (10/26/2023), Originally at 0.25; setting to 0.20 to be more
+% aggressive on cleaning.
+% NOTE (11/2/2023), Turning back to 0.3 for testing on new ICC
+% parameterization.
+% (11/7/2023), Turning to 0.1 & only performing on high frequency.
 %-
 %## Define Parser
 p = inputParser;
@@ -83,7 +88,8 @@ for IC = 1:size(cov_matrix,3)
     %## TABLE
     fprintf('\n\t%i\t\t%.2f\t\t\t\t%.2f',IC,lowfreq_coupling_avg,highfreq_coupling_avg)
     %identify ICs with corr. coeff. above thresh in low and high freq windows
-    if lowfreq_coupling_avg>BAD_IC_CUTOFF || highfreq_coupling_avg>BAD_IC_CUTOFF
+%     if lowfreq_coupling_avg>BAD_IC_CUTOFF || highfreq_coupling_avg>BAD_IC_CUTOFF
+    if highfreq_coupling_avg>BAD_IC_CUTOFF
         bad_ics_out(IC) = IC;
         fprintf('\t**BAD**');
     end

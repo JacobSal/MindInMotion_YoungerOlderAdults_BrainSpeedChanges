@@ -94,7 +94,7 @@ SESSIONS = tmp;
 errorMsg = 'Value must be of format {CHAR1,CHAR2,...}. Session label for each fPath & fName provided';
 sess_validFcn = @(x) assert((ischar(x{1}) && iscell(x) && length(x) == length(fNames) || isempty(x)), errorMsg);
 %- save eeg 
-SAVE_EEG = false;
+DO_SAVE_ICA = false;
 %- CHANLOCS_FPATHS
 CHANLOCS_FPATHS = {};
 errorMsg = 'Value must be of format {CHAR1,CHAR2,...}. Full file paths for chanlocs (e.g., ''/path/to/subject/dir/chanlocs.mat'')';
@@ -111,7 +111,7 @@ addOptional(p,'conditions',CONDITIONS,cnd_validFcn);
 addOptional(p,'groups',GROUPS,grp_validFcn);
 addOptional(p,'sessions',SESSIONS,sess_validFcn);
 %## PARAMETER
-% addParameter(p,'SAVE_EEG',SAVE_EEG,@islogical);
+addParameter(p,'DO_SAVE_ICA',DO_SAVE_ICA,@islogical);
 addParameter(p,'CHANLOCS_FPATHS',CHANLOCS_FPATHS,cfp_validFcn);
 addParameter(p,'FORCE_RELOAD',FORCE_RELOAD,@islogical);
 parse(p,fNames,fPaths,subjectNames,save_dir,varargin{:});
@@ -121,25 +121,14 @@ parse(p,fNames,fPaths,subjectNames,save_dir,varargin{:});
 conditions          = p.Results.conditions;
 groups              = p.Results.groups;
 sessions            = p.Results.sessions;
-% bool_save_eeg       = p.Results.SAVE_EEG;
+DO_SAVE_ICA         = p.Results.DO_SAVE_ICA;
 CHANLOCS_FPATHS     = p.Results.CHANLOCS_FPATHS;
-FORCE_RELOAD = p.Results.FORCE_RELOAD;
+FORCE_RELOAD        = p.Results.FORCE_RELOAD;
 %% ===================================================================== %%
 %## CREATE STUDY
 fprintf(1,'==== Creating Study ====\n')
 %* empty ALLEEG structure for repopulating
 ALLEEG = cell(1,length(fNames)); 
-%* empty STUDY structure for repopulating
-fsPrev = {};
-%## Populate ALLEEG Struct
-% pp = gcp('nocreate');
-% disp(pp);
-% if ~isfield(pp,'NumWorkers')
-%     POOL_SIZE = 1;
-% else
-%     POOL_SIZE = pp.NumWorkers;
-% end
-% parfor (subj_i=1:length(fNames),POOL_SIZE)
 % for subj_i=1:length(fNames)
 parfor subj_i=1:length(fNames)
     fName = sprintf(ICA_FNAME_REGEXP,subjectNames{subj_i});
@@ -206,40 +195,17 @@ parfor subj_i=1:length(fNames)
         EEG.condition = char(conditions{subj_i});
         EEG.session = char(sessions{subj_i});
         EEG = eeg_checkset(EEG,'eventconsistency');
-        fprintf(1,'Saving Subject %s\n',EEG.subject);
-        [EEG] = pop_saveset(EEG,'savemode','twofiles',...
-            'filename',fName,...
-            'filepath',fPath);
-
-%         if bool_save_eeg
-%             fprintf(1,'Saving Subject %s\n',EEG.subject);
-%             [EEG] = pop_saveset(EEG,'savemode','twofiles',...
-%                 'filename',fName,...
-%                 'filepath',fPath);
-%         end
+        if DO_SAVE_ICA
+            fprintf(1,'Saving Subject %s\n',EEG.subject);
+            [EEG] = pop_saveset(EEG,'savemode','twofiles',...
+                'filename',fName,...
+                'filepath',fPath);
+        end
     else
         EEG = pop_loadset('filepath',fPath,'filename',fName);
     end
     ALLEEG{subj_i} = EEG;
 end
-% %## BOOKKEEPING (i.e., delete fields not similar across EEG structures)
-% for subj_i = 1:length(ALLEEG)
-%     EEG = ALLEEG{subj_i};
-%     fs = fields(EEG);
-%     % delete fields not present in other structs.
-%     out = cellfun(@(x) any(strcmp(x,fsPrev)),fs,'UniformOutput',false); 
-%     out = [out{:}];
-%     delFs = fs(~out);
-%     if ~isempty(fsPrev) && any(~out)
-%         for j = 1:length(delFs)
-%             EEG = rmfield(EEG,delFs{j});
-%             fprintf("%s) Removing fields %s",EEG.subject,delFs{j})
-%         end
-%     else
-%         fsPrev = fs;
-%     end
-%     ALLEEG{subj_i} = EEG;
-% end
 %## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
 fss = cell(1,length(ALLEEG));
 for subj_i = 1:length(ALLEEG)
@@ -252,15 +218,15 @@ for subj_i = 1:length(ALLEEG)
     EEG = ALLEEG{subj_i};
     fs = fields(EEG);
     %- add fields not present in other structs.
-    out = cellfun(@(x) any(strcmp(x,fs)),fsPrev,'UniformOutput',false); 
+    out = cellfun(@(x) any(strcmp(x,fs)),fsPrev,'UniformOutput',false);
     out = [out{:}];
     addFs = fsPrev(~out);
     if any(~out)
         for j = 1:length(addFs)
             EEG.(addFs{j}) = [];
-            fprintf('%s) Adding fields %s\n',EEG.subject,addFs{j})
+            fprintf('%s) Adding fields %s\n',EEG.subject,addFs{j});
         end
-    end 
+    end
     ALLEEG{subj_i} = orderfields(EEG);
 end
 %- CONCATENATE ALLEEG

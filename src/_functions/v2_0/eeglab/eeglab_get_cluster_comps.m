@@ -23,6 +23,7 @@ parse(p,STUDY,varargin{:});
 %- PARAMETER
 %## (PARSER) MAKE DIRS
 %% ===================================================================== %%
+main_cl_anat = cell(length(length(STUDY.cluster)),1);
 %## Extract components for each cluster & subject
 %- PARAMS
 subj_inds = unique(STUDY.cluster(1).sets);

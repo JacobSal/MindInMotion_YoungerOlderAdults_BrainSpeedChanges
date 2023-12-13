@@ -8,7 +8,7 @@
 %   Summary: 
 
 %- run .sh
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/run_gen_ersp_plots.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/run_gen_clusterinf_plots.sh
 
 %{
 %## RESTORE MATLAB
@@ -165,7 +165,8 @@ ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI at
     [ATLAS_PATH filesep 'vtpm' filesep 'vtpm.mat'],...
     [ATLAS_PATH filesep 'yeo' filesep 'Yeo2011_17Networks_MNI152_FreeSurferConformed1mm_LiberalMask_colin27.nii'],...
     [ATLAS_PATH filesep 'brainweb' filesep 'brainweb_discrete.mat']}; % also a discrete version of this
-SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\dipole_1_scalp_0_ersp_0_spec_0';
+% SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\dipole_1_scalp_0_ersp_0_spec_0';
+SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\10252023_MIM_OAN70_noslowwalkers_gait_powpow0p25\cluster';
 %- convert SUB_DIR
 if ~ispc
     SUB_DIR = convertPath2UNIX(SUB_DIR);
@@ -182,14 +183,17 @@ end
 % CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'subjrejs_minics6'],...
 %     [SUB_DIR filesep 'subjrejs_minics5']};
 LOAD_DIFFERENT_STUDY = {true};
-CLUSTER_K_PICKS = [14];
-CLUSTER_STUDY_FNAMES = {'temp_study_rejics6'};
-CLUSTER_DIRS = {[SUB_DIR filesep 'subjrejs_minics6' filesep '14']};
-CLUSTER_FILES = {'cluster_update_14.mat','cluster_update_14.mat'};
-CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'subjrejs_minics6']};
+CLUSTER_K_PICKS = [12];
+CLUSTER_STUDY_FNAMES = {'temp_study_rejics5'};
+CLUSTER_DIRS = {[SUB_DIR filesep 'icrej_5' filesep '12']};
+CLUSTER_FILES = {'cl_inf_12.mat'};
+CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'icrej_5']};
 POSS_CLUSTER_CHARS = {};
 % this is a matrix of integers matching the cluster number for clustering K=i to the index in the POSS_CLUSTER_CHARS
 CLUSTER_CLIM_MATCH = [];
+SUB_GROUP_FNAME = []; %'H3000'; %'H2000';
+SUB_GROUP_FNAME_REGEX = []; %'H3000''s'; %'H2000''s';
+% this is a matrix of integers matching the cluster number for clustering K=i to the index in the POSS_CLUSTER_CHARS
 %% (STEP 2) PLOT
 %##
 for k_i = 1:length(CLUSTER_K_PICKS)

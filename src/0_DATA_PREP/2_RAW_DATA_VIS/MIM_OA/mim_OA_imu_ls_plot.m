@@ -91,24 +91,37 @@ SUBJ_1YA = {'H1002','H1004','H1007','H1009',...
     'H1032','H1033','H1034','H1035','H1036',...
     'H1037','H1038','H1039','H1041','H1042',...
     'H1044','H1045','H1046','H1047','H1048'}; % JACOB,SAL (04/18/2023)
-SUBJ_2MA = {'H2002','H2007','H2008',...
-    'H2013','H2015','H2017','H2020','H2021',...
-    'H2022','H2023','H2025','H2026','H2027',...
-    'H2033','H2034','H2037','H2038','H2039',...
-    'H2042','H2052','H2059','H2062','H2082',...
-    'H2090','H2095','H2111','H2117'};
-SUBJ_3MA = {'H3029','H3034','H3039','H3053',...
-    'H3063','H3072','H3077','H3103',...
-    'H3107',...
-    'NH3006','NH3007','NH3008','NH3010','NH3021',...
-    'NH3026','NH3030','NH3036','NH3040',...
-    'NH3041','NH3043','NH3054',...
-    'NH3055','NH3058','NH3059','NH3066',...
-    'NH3068','NH3069','NH3070','NH3074',...
-    'NH3076','NH3086','NH3090','NH3102',...
-    'NH3104','NH3105','NH3106','NH3108','NH3110',...
-    'NH3112','NH3113','NH3114','NH3123','NH3128',...
-    };
+%## SUBJCT INPUTTED THROUGH PREPROCESSING & DIPOLE SELECTION
+% SUBJ_2MA = {'H2002','H2007','H2008',...
+%     'H2013','H2015','H2017','H2020','H2021',...
+%     'H2022','H2023','H2025','H2026','H2027',...
+%     'H2033','H2034','H2037','H2038','H2039',...
+%     'H2042','H2052','H2059','H2062','H2082',...
+%     'H2090','H2095','H2111','H2117'};
+% SUBJ_3MA = {'H3029','H3034','H3039','H3053',...
+%     'H3063','H3072','H3077','H3103',...
+%     'H3107',...
+%     'NH3006','NH3007','NH3008','NH3010','NH3021',...
+%     'NH3026','NH3030','NH3036','NH3040',...
+%     'NH3041','NH3043','NH3054',...
+%     'NH3055','NH3058','NH3059','NH3066',...
+%     'NH3068','NH3069','NH3070','NH3074',...
+%     'NH3076','NH3086','NH3090','NH3102',...
+%     'NH3104','NH3105','NH3106','NH3108','NH3110',...
+%     'NH3112','NH3113','NH3114','NH3123','NH3128',...
+%     };
+%## SUBJECTS THAT MAKE IT THROUGH DIPOLE REJECTION
+SUBJ_2MA = {'H2002','H2008','H2013','H2015','H2017',...
+    'H2020','H2021','H2022','H2023','H2025','H2026',...
+    'H2027','H2033','H2034','H2037','H2038','H2039',...
+    'H2042','H2052','H2059','H2062','H2082','H2090',...
+    'H2095','H2111','H2117'};
+SUBJ_3MA = {'H3029','H3039','H3072','H3103','H3107',...
+    'NH3008','NH3010','NH3021','NH3026','NH3030',...
+    'NH3041','NH3043','NH3058','NH3059','NH3066',...
+    'NH3068','NH3069','NH3070','NH3076','NH3086',...
+    'NH3090','NH3102','NH3105','NH3106','NH3108',...
+    'NH3110','NH3112','NH3113','NH3128'};
 SUBJ_SLOW_WALKERS = {'H3042','H3046','H3047','H3073',...
     'H3092','NH3025','NH3051','NH3056','NH3071','NH3082'};
 SUBJ_NO_MRI = {'H2010','H2012','H2018','H2036','H2041',...
@@ -166,7 +179,8 @@ fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),l
 DATA_SET = 'MIM_dataset';
 %- datetime override
 colormap(linspecer);
-dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
+% dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
+dt = '10252023_MIM_OAN70_noslowwalkers_gait_powpow0p20';
 %- Subject Directory information
 % OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 %## soft define
@@ -390,34 +404,21 @@ FIG_POSITION = [100,100,420,420];
 FIG_POSITION_GRP = [100,100,720,420];
 VIOLIN_WIDTH = 0.3;
 VIOLIN_WIDTH_GROUP = 0.1;
-% meas_names = {'APexc_mean','APexc_COV','MLexc_mean','MLexc_COV','UDexc_mean',...
-%     'UDexc_COV','PeakAntVel_mean','PeakAntVel_COV','PeakLatVel_mean',...
-%     'PeakLatVel_COV','PeakUpDownVel_mean','PeakUpDownVel_COV'};
-% meas_units = {'m','m','m','m','m',...
-%     'm','m/s','m/s','m/s',...
-%     'm/s','m/s','m/s'};
-meas_names = {'nanmean_APexc_mean','nanmean_MLexc_mean','nanmean_APexc_COV','nanmean_MLexc_COV'}; %{'APexc_COV','MLexc_COV'};
-meas_units = {'m','m','%','%'};
-meas_titles = {'Anteriorposterior Excursion Mean','Mediolateral Excursion Mean','Anteriorposterior Excursion Coefficient of Variation','Mediolateral Excursion Coefficient of Variation'};
-meas_ylabel = {'Distance','Distance','Coefficient of Variation','Coefficient of Variation'};
-group_labels = {};
-YLIMS = {[0,0.15],[0,0.3],[0,70],[0,47.5]};
-% trial_names = {'SP_0p25_1','SP_0p25_2','SP_0p5_1','SP_0p5_2','SP_0p75_1',...
-%                 'SP_0p75_2','SP_1p0_1','SP_1p0_2','TM_flat_1','TM_flat_2',...
-%                 'TM_high_1','TM_high_2','TM_low_1','TM_low_2','TM_med_1',...
-%                 'TM_med_2'};
-% trial_names_speed = {'0.25 m/s','0.25 m/s','0.50 m/s','0.50 m/s','0.75 m/s',...
-%                 '0.75 m/s','1.00 m/s','1.00 m/s'};
-% trial_names_terrain = {'flat terr.','flat terr.',...
-%     'low terr.','low terr.','med terr.',...
-%     'med terr.','high terr.','high terr.'};
+%-
+% meas_names = {'nanmean_APexc_mean','nanmean_MLexc_mean','nanmean_APexc_COV','nanmean_MLexc_COV'}; %{'APexc_COV','MLexc_COV'};
+% meas_units = {'m','m','%','%'};
+% meas_titles = {'Anteriorposterior Excursion Mean','Mediolateral Excursion Mean','Anteroposterior Excursion Coefficient of Variation','Mediolateral Excursion Coefficient of Variation'};
+% meas_ylabel = {'Distance','Distance','Coefficient of Variation','Coefficient of Variation'};
+% YLIMS = {[0,0.15],[0,0.3],[0,70],[0,47.5]};
+meas_names = {'nanmean_APexc_COV','nanmean_MLexc_COV'}; %{'APexc_COV','MLexc_COV'};
+meas_units = {'%','%'};
+meas_titles = {{'Anteroposterior Excursion';'Coefficient of Variation'},{'Mediolateral Excursion';'Coefficient of Variation'}};
+meas_ylabel = {'Coefficient of Variation','Coefficient of Variation'};
+% YLIMS = {[0,90],[0,95]};
+YLIMS = {[0,70],[0,47.5]};
+%-
 speed_chars = {'0p25','0p5','0p75','1p0'};
 terrain_chars = {'flat','low','med','high'};
-% trial_names_speed = {'0.25 m/s','0.50 m/s','0.75 m/s',...
-%                '1.00 m/s'};
-% trial_names_terrain = {'flat terr.',...
-%     'low terr.','med terr.',...
-%     'high terr.'};
 trial_names_speed = {'0.25','0.50','0.75',...
                '1.00'};
 trial_names_terrain = {'flat',...
@@ -470,21 +471,24 @@ for meas_i = 1:length(meas_names)
     tmp = b(:,13:end);
     b_speed = tmp(:,3:6);
     b_terrain = [tmp(:,7),tmp(:,9),tmp(:,10),tmp(:,8)];
-    %## By subject plot
+    %% By subject plot
 %     figure;
 %     title(sprintf('%s Across Subjects',meas_names{meas_i}));
 %     hold on;
-%     violinplot(a(:,13:end),a(:,13),...
+%     violinplot(a(:,15:end),a(:,15),...
 %         'ViolinColor',linspecer(size(a(:,13:end),2)),...
-%         'ShowWhiskers',false,'ShowNotches',true);
+%         'width',VIOLIN_WIDTH,...
+%         'ShowWhiskers',false,'ShowNotches',false,'ShowBox',true,...
+%         'ShowMedian',true,'Bandwidth',range(range(a{:,15:end}))*0.2,'QuartileStyle','shadow',...
+%         'HalfViolin','full','DataStyle','scatter');
 %     ylabel(sprintf('IMU %s (%s)',meas_names{meas_i},meas_units{meas_i}));
 %     xlabel('Subject Code');
 %     xtickangle(45)
 %     hold off;
 %     fig_i = get(groot,'CurrentFigure');
-%     fig_i.Position = FIG_POSITION;
+%     fig_i.Position = [10,100,1280,320];
 % %     saveas(fig_i,[save_dir filesep sprintf('Across_Subjects_Fig_%s.fig',meas_names{meas_i})]);
-%     saveas(fig_i,[save_dir filesep sprintf('Across_Subjects_Fig_%s.jpg',meas_names{meas_i})]);
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_Subjects_Fig_%s.jpg',meas_names{meas_i})]);
     %% (SPEED) STATISTICS GROUP & CONDITION EFFECT
     %## REFORM TABLE VARIABLES
     inds = [];
@@ -512,37 +516,12 @@ for meas_i = 1:length(meas_names)
         fprintf(fid,'%i: %s\n',i,vals_tn(i));
     end
     fclose(fid);
-    %## NONMIXED GROUP & COND
-    modelspec = 'meas_in~1+cat_1+cat_2';
-    mdl_speed_nonmix_gc = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1','cat_2'});
-    disp(mdl_speed_nonmix_gc)
-    %- Convert summary to char array
-    txt = evalc('mdl_speed_nonmix_gc');
-    fid = fopen([save_dir filesep sprintf('%s_across_nonmixedsubjectcatsNspeed_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
-    fclose(fid);
-    %## CONDITION ONLY
-    modelspec = 'meas_in~1+cat_1';
-    mdl_speed_c = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1'});
-    disp(mdl_speed_c)
-    %- Convert summary to char array
-    txt = evalc('mdl_speed_c');
-    fid = fopen([save_dir filesep sprintf('%s_across_speed_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
-    fclose(fid);
-    %## CONDITION MIXED EFFECTS
+    %## (MAIN TEST-SPEED) CONDITION NO MIXED EFFECTS
     modelspec = 'meas_in~1+cat_1';
     mdl_speed_mixc = fitglme(tmp_t,modelspec);
 %     [p,T,stats,terms] = anovan(tmp_t.meas_in,{tmp_t.cat_1},'alpha',0.05,'sstype',2,'model','linear');
-%     [stats] = anova(mdl_terrain_mixc);
+    [stats] = anova(mdl_speed_mixc);
+    speed_mixc_f = stats{2,5};
 %     comp = multcompare(stats);
     disp(mdl_speed_mixc)
     disp(anova(mdl_speed_mixc));
@@ -572,60 +551,18 @@ for meas_i = 1:length(meas_names)
     [pVal F df1 df2] = coefTest(mdl_speed_mixc, [0,1,0,2]); fprintf(fid,'multicomp cat_1_2:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
     [pVal F df1 df2] = coefTest(mdl_speed_mixc, [0,0,1,2]); fprintf(fid,'multicomp cat_1_3:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
     
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [1,0,0,0;0,1,0,0]); fprintf(fid,'multicomp intercept:cat_1_2, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [1,0,0,0;0,0,1,0]); fprintf(fid,'multicomp intercept:cat_1_3, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [1,0,0,0;0,0,0,1]); fprintf(fid,'multicomp intercept:cat_1_4, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,1,0,0;0,0,1,0]); fprintf(fid,'multicomp cat_1_2:cat_1_3,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,1,0,0;0,0,0,1]); fprintf(fid,'multicomp cat_1_2:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,0,1,0;0,0,0,1]); fprintf(fid,'multicomp cat_1_3:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [p_fdr,p_masked] = fdr(p_mcomp',0.05,'nonparametric');
-%     V = sum(p_mcomp > ALPHA);
-%     S = sum(p_mcomp < ALPHA);
-%     Q = V/(V+S);
-%     fdr_out = 
     [h,crit_p,adj_ci_cvrg,adj_p_speed] = fdr_bh(p_mcomp,0.05,'pdep','no');
     fprintf(fid,'False Discovery Corrected:\n');
     fprintf(fid,'%0.4f\n',adj_p_speed); fprintf(fid,'%i\n',h); fprintf(fid,'critical fdr_p: %0.4f\n',crit_p);
     %- cohens f2 test
 %     out = mes1way(tmp_t.meas_in,'eta2','group',double(tmp_t.cat_1));
 %     R2 = mdl_terrain_mixc.Rsquared.Ordinary;
-    R2 = mdl_terrain_mixc.Rsquared.Adjusted;
-    cohens_f2 = R2/(1-R2);
+    R21 = mdl_comp.SSR/mdl_comp.SST;
+    R22 = mdl_terrain_mixc.SSR/mdl_terrain_mixc.SST; %mdl_terrain_mixc.Rsquared.Ordinary; %mdl_terrain_mixc.Rsquared.Adjusted;
+% 	R2 = mdl_terrain_mixc.Rsquared.Adjusted;
+    cohens_f2 = (R22-R21)/(1-R22);
     fprintf(fid,'cohens f2: %0.4f\n',cohens_f2);
-    %-
-%     [p_fdr,p_masked] = fdr(comp(:,6),0.05,'parameteric');
-%     fprintf(fid,'multicompare:\n');
-%     fprintf(fid,'cond_1\tcond_2\tlower\testimate\tupper\tpvalue\tpvalue_fdr\n');
-%     for i = 1:size(comp,1)
-%         fprintf(fid,'%i\t%i\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t%0.4f\n',comp(i,1),comp(i,2),comp(i,3),comp(i,4),comp(i,5),comp(i,6),p_fdr(i))
-%     end
-%     fprintf(fid,'\n');
-    %-
-%     fprintf(fid,'ANOVAN:\n');
-%     tblStr = cell(size(T,1),1);
-%     for col_i = 1:size(T,1)
-%         if col_i == 1
-%             tblStr{col_i} = sprintf('%-6s   %-9s   %-9s   %-9s   %-9s   %-9s   %-9s\n',T{col_i,:});
-%         else
-%             tblStr{col_i} = sprintf('%-6s   %-9.3g   %-9.0f   %-9.0f   %-9.3g   %-9.3g   %-9.3g\n',T{col_i,:});
-%         end
-%     end
-%     formatSpec = '%s\n';
-%     cellfun(@(x) fprintf(fid, formatSpec, x), tblStr);
-    fclose(fid);
-    %%
-    %## GROUP ONLY
-    modelspec = 'meas_in~1+cat_1';
-    mdl_speed_g = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1'});
-    disp(mdl_speed_g)
-    %- Convert summary to char array
-    txt = evalc('mdl_speed_g');
-    fid = fopen([save_dir filesep sprintf('%s_across_subjcats_speed_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
+    fprintf('Cohens f2: %0.4f\n',cohens_f2);
     fclose(fid);
     %% (TERRAIN) STATISTICS GROUP & CONDITION EFFECT
     %## REFORM TABLE VARIABLES
@@ -643,19 +580,6 @@ for meas_i = 1:length(meas_names)
     tmp = table_new_imu.terrain_speed;
     coev_1 = double(tmp(inds,:));
     tmp_t = table(meas_in,cat_1,cat_2,coev_1);
-    %## MIXED GROUP & COND
-    modelspec = 'meas_in~1+cat_1+cat_2+cat_1:cat_2';
-    mdl_terrain_mix_gc = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1','cat_2'},'Distribution','normal');
-    disp(mdl_terrain_mix_gc)
-    %- Convert summary to char array
-    txt = evalc('mdl_terrain_mix_gc');
-    fid = fopen([save_dir filesep sprintf('%s_across_mixedsubjectcatsNterrain_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
-    fclose(fid);
     %## MIXED & MIXED-EFFECTS GROUP & COND (COVARIATE TERRAIN SPEED)
     modelspec = 'meas_in~1+cat_1+cat_2+cat_1:cat_2+(1|coev_1)';
     mdl_terrain_mix_gc_cov = fitglme(tmp_t,modelspec,'Distribution','normal');
@@ -668,38 +592,16 @@ for meas_i = 1:length(meas_names)
         fprintf(fid,'%i: %s\n',i,vals_tn(i));
     end
     fclose(fid);
-    %## NONMIXED GROUP & COND
-    modelspec = 'meas_in~1+cat_1+cat_2';
-    mdl_terrain_nomix_gc = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1','cat_2'});
-    disp(mdl_terrain_nomix_gc)
-    %- Convert summary to char array
-    txt = evalc('mdl_terrain_nomix_gc');
-    fid = fopen([save_dir filesep sprintf('%s_across_nonmixedsubjectcatsNterrain_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
-    fclose(fid);
-    %## CONDITION ONLY
-    modelspec = 'meas_in~1+cat_1';
-    mdl_terrain_c = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1'});
-    disp(mdl_terrain_c)
-    %- Convert summary to char array
-    txt = evalc('mdl_terrain_c');
-    fid = fopen([save_dir filesep sprintf('%s_across_terrain_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
-    fclose(fid);
-    %%
-    %## CONDITION MIXED EFFECTS
+    %## (MAIN TEST-TERRAIN) CONDITION MIXED EFFECTS
     modelspec = 'meas_in~1+cat_1+(1|coev_1)';
-    mdl_terrain_mixc = fitglme(tmp_t,modelspec);
+%     mdl_terrain_mixc = fitglme(tmp_t,modelspec);
+    mdl_terrain_mixc = fitlme(tmp_t,modelspec);
+    %-
+    modelspec = 'meas_in~1+(1|coev)';
+    mdl_comp = fitlme(tmp_t,modelspec);
 %     [p,T,stats,terms] = anovan(tmp_t.meas_in,{tmp_t.cat_1},'alpha',0.05,'sstype',2,'model','linear');
-%     [stats] = anova(mdl_terrain_mixc);
+    [stats] = anova(mdl_terrain_mixc);
+    terrain_mixc_f = stats{2,5};
 %     comp = multcompare(stats);
     disp(mdl_terrain_mixc)
     disp(anova(mdl_terrain_mixc));
@@ -729,60 +631,18 @@ for meas_i = 1:length(meas_names)
     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,1,0,2]); fprintf(fid,'multicomp cat_1_2:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,0,1,2]); fprintf(fid,'multicomp cat_1_3:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
     
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [1,0,0,0;0,1,0,0]); fprintf(fid,'multicomp intercept:cat_1_2, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [1,0,0,0;0,0,1,0]); fprintf(fid,'multicomp intercept:cat_1_3, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [1,0,0,0;0,0,0,1]); fprintf(fid,'multicomp intercept:cat_1_4, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,1,0,0;0,0,1,0]); fprintf(fid,'multicomp cat_1_2:cat_1_3,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,1,0,0;0,0,0,1]); fprintf(fid,'multicomp cat_1_2:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,0,1,0;0,0,0,1]); fprintf(fid,'multicomp cat_1_3:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [p_fdr,p_masked] = fdr(p_mcomp',0.05,'nonparametric');
-%     V = sum(p_mcomp > ALPHA);
-%     S = sum(p_mcomp < ALPHA);
-%     Q = V/(V+S);
-%     fdr_out = 
     [h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(p_mcomp,0.05,'pdep','no');
     fprintf(fid,'False Discovery Corrected:\n');
     fprintf(fid,'%0.4f\n',adj_p); fprintf(fid,'%i\n',h); fprintf(fid,'critical fdr_p: %0.4f\n',crit_p);
     %- cohens f2 test
 %     out = mes1way(tmp_t.meas_in,'eta2','group',double(tmp_t.cat_1));
 %     R2 = mdl_terrain_mixc.Rsquared.Ordinary;
-    R2 = mdl_terrain_mixc.Rsquared.Adjusted;
-    cohens_f2 = R2/(1-R2);
+    R21 = mdl_comp.SSR/mdl_comp.SST;
+    R22 = mdl_terrain_mixc.SSR/mdl_terrain_mixc.SST; %mdl_terrain_mixc.Rsquared.Ordinary; %mdl_terrain_mixc.Rsquared.Adjusted;
+% 	R2 = mdl_terrain_mixc.Rsquared.Adjusted;
+    cohens_f2 = (R22-R21)/(1-R22);
     fprintf(fid,'cohens f2: %0.4f\n',cohens_f2);
-    %-
-%     [p_fdr,p_masked] = fdr(comp(:,6),0.05,'parameteric');
-%     fprintf(fid,'multicompare:\n');
-%     fprintf(fid,'cond_1\tcond_2\tlower\testimate\tupper\tpvalue\tpvalue_fdr\n');
-%     for i = 1:size(comp,1)
-%         fprintf(fid,'%i\t%i\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t%0.4f\n',comp(i,1),comp(i,2),comp(i,3),comp(i,4),comp(i,5),comp(i,6),p_fdr(i))
-%     end
-%     fprintf(fid,'\n');
-    %-
-%     fprintf(fid,'ANOVAN:\n');
-%     tblStr = cell(size(T,1),1);
-%     for col_i = 1:size(T,1)
-%         if col_i == 1
-%             tblStr{col_i} = sprintf('%-6s   %-9s   %-9s   %-9s   %-9s   %-9s   %-9s\n',T{col_i,:});
-%         else
-%             tblStr{col_i} = sprintf('%-6s   %-9.3g   %-9.0f   %-9.0f   %-9.3g   %-9.3g   %-9.3g\n',T{col_i,:});
-%         end
-%     end
-%     formatSpec = '%s\n';
-%     cellfun(@(x) fprintf(fid, formatSpec, x), tblStr);
-    fclose(fid);
-    %%
-    %## GROUP ONLY
-    modelspec = 'meas_in~1+cat_1';
-    mdl_terrain_g = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1'});
-    disp(mdl_terrain_g)
-    %- Convert summary to char array
-    txt = evalc('mdl_terrain_g');
-    fid = fopen([save_dir filesep sprintf('%s_across_subjectcats_terrain_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
+    fprintf('Cohens f2: %0.4f\n',cohens_f2);
     fclose(fid);
     %% By trial plot
     figure;
@@ -800,66 +660,58 @@ for meas_i = 1:length(meas_names)
 %         vals_y = outliers.(meas_names{meas_i})(idx);
 %         if ~isempty(vals_y)
 %             in_x = repmat(vals_x(c_i),size(vals_y));
-%             scatter(in_x,vals_y,'k*','jitter','on', 'jitterAmount', 0.05)
+%             scatter(in_x,vals_y,'rx','jitter','on', 'jitterAmount', 0.05)
 %         end
 %     end
     %- plot siglines
     fig_i = get(groot,'CurrentFigure');
     ind = 1;
-    if adj_p(2) < 0.05
-        sigline([1 2],'*',[],[],adj_p(2)); %mdl_terrain_c.Coefficients.pValue(2))
-        fig_i.Children.Children(ind).FontSize = 16;
-        fig_i.Children.Children(ind).FontName = 'Arial';
-        fig_i.Children.Children(ind+1).LineWidth = 1.25;
-%         ind = ind+2;
+    if terrain_mixc_f < 0.05
+        if adj_p(2) < 0.05
+            sigline([1 2],'*',[],[],adj_p(2)); %mdl_terrain_c.Coefficients.pValue(2))
+            fig_i.Children.Children(ind).FontSize = 16;
+            fig_i.Children.Children(ind).FontName = 'Arial';
+            fig_i.Children.Children(ind+1).LineWidth = 1.25;
+    %         ind = ind+2;
+        end
+        if adj_p(3) < 0.05
+            sigline([1 3],'*',[],[],adj_p(3)); %mdl_terrain_c.Coefficients.pValue(3))
+            fig_i.Children.Children(ind).FontSize = 16;
+            fig_i.Children.Children(ind).FontName = 'Arial';
+            fig_i.Children.Children(ind+1).LineWidth = 1.25;
+    %         ind = ind+2;
+        end
+        if adj_p(1) < 0.05
+            sigline([1 4],'*',[],[],adj_p(1)); %mdl_terrain_c.Coefficients.pValue(4))
+            fig_i.Children.Children(ind).FontSize = 16;
+            fig_i.Children.Children(ind).FontName = 'Arial';
+            fig_i.Children.Children(ind+1).LineWidth = 1.25;
+        end
     end
-    if adj_p(3) < 0.05
-        sigline([1 3],'*',[],[],adj_p(3)); %mdl_terrain_c.Coefficients.pValue(3))
-        fig_i.Children.Children(ind).FontSize = 16;
-        fig_i.Children.Children(ind).FontName = 'Arial';
-        fig_i.Children.Children(ind+1).LineWidth = 1.25;
-%         ind = ind+2;
-    end
-    if adj_p(1) < 0.05
-        sigline([1 4],'*',[],[],adj_p(1)); %mdl_terrain_c.Coefficients.pValue(4))
-        fig_i.Children.Children(ind).FontSize = 16;
-        fig_i.Children.Children(ind).FontName = 'Arial';
-        fig_i.Children.Children(ind+1).LineWidth = 1.25;
-    end
-%     ylabel(sprintf('%s (%s)',meas_ylabel{meas_i},meas_units{meas_i}));
-%     xlabel('Trial Code');
-%     title(meas_titles{meas_i});
-%     xtickangle(45)
-%     ylim(YLIMS{meas_i});
-%     hold off;
-%     fig_i = get(groot,'CurrentFigure');
-%     fig_i.Position = FIG_POSITION;
-%     fig_i.Children.FontSize = 13;
-%     fig_i.Children.XTickLabel = trial_names_terrain;
     %-
     fig_i = get(groot,'CurrentFigure');
     set(fig_i,'Color','w')
     set(fig_i,'Units','inches','Position',[3 3 6 5])
     set(fig_i,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
-    fig_i.Children.FontSize = 13;
     ax = gca; %fig_i.CurrentAxes;
+    set(ax, 'box', 'off')
     set(ax,'LineWidth',1)
-    set(ax,'FontName','Arial','FontSize',12,'FontWeight','bold')
     set(ax,'OuterPosition',[0 0 1 1]);
     set(ax,'Position',[0.15 0.2 0.8 0.7]);  %[left bottom width height] This I what I added, You need to play with this
 %     set(ax,'XTick',sort(xticks));
     set(ax,'XTickLabel',trial_names_terrain);
     xtickangle(30);
-    xlh = xlabel('Terrain Difficulty','Units','normalized','FontSize',12);
-    pos1=get(xlh,'Position');
-    pos1(1,2)=pos1(1,2)-0.02;
-    set(xlh,'Position',pos1);
-    ylabel(sprintf('%s (%s)',meas_ylabel{meas_i},meas_units{meas_i}),'FontSize',12);
+    %-
+%     xlh = xlabel('Terrain Difficulty','Units','normalized','FontSize',12);
+%     pos1=get(xlh,'Position');
+%     pos1(1,2)=pos1(1,2)-0.02;
+%     set(xlh,'Position',pos1);
+    %-
+    ylabel(sprintf('%s (%s)',meas_ylabel{meas_i},meas_units{meas_i}));
+    set(ax,'FontName','Arial','FontSize',14,'FontWeight','bold')
     title(meas_titles{meas_i});
     ylim(YLIMS{meas_i});
     hold off;
-%     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
-%     saveas(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.jpg',meas_names{meas_i})]);
     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300);
     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.pdf',meas_names{meas_i})],'ContentType','vector','Resolution',300);
     %% By trial plot
@@ -878,44 +730,34 @@ for meas_i = 1:length(meas_names)
 %         vals_y = outliers.(meas_names{meas_i})(idx);
 %         if ~isempty(vals_y)
 %             in_x = repmat(vals_x(c_i),size(vals_y));
-%             scatter(in_x,vals_y,'k*','jitter','on', 'jitterAmount', 0.05)
+%             scatter(in_x,vals_y,'rx','jitter','on', 'jitterAmount', 0.05)
 %         end
 %     end
     %- plot siglines
     fig_i = get(groot,'CurrentFigure');
     ind = 1;
-    if adj_p_speed(2) < 0.05
-        sigline([1 2],'*',[],[],adj_p_speed(2)); %mdl_terrain_c.Coefficients.pValue(2))
-        fig_i.Children.Children(ind).FontSize = 16;
-        fig_i.Children.Children(ind).FontName = 'Arial';
-        fig_i.Children.Children(ind+1).LineWidth = 1.25;
-%         ind = ind+2;
+    if speed_mixc_f < 0.05
+        if adj_p_speed(2) < 0.05
+            sigline([1 2],'*',[],[],adj_p_speed(2)); %mdl_terrain_c.Coefficients.pValue(2))
+            fig_i.Children.Children(ind).FontSize = 16;
+            fig_i.Children.Children(ind).FontName = 'Arial';
+            fig_i.Children.Children(ind+1).LineWidth = 1.25;
+    %         ind = ind+2;
+        end
+        if adj_p_speed(3) < 0.05
+            sigline([1 3],'*',[],[],adj_p_speed(3)); %mdl_terrain_c.Coefficients.pValue(3))
+            fig_i.Children.Children(ind).FontSize = 16;
+            fig_i.Children.Children(ind).FontName = 'Arial';
+            fig_i.Children.Children(ind+1).LineWidth = 1.25;
+    %         ind = ind+2;
+        end
+        if adj_p_speed(1) < 0.05
+            sigline([1 4],'*',[],[],adj_p_speed(1)); %mdl_terrain_c.Coefficients.pValue(4))
+            fig_i.Children.Children(ind).FontSize = 16;
+            fig_i.Children.Children(ind).FontName = 'Arial';
+            fig_i.Children.Children(ind+1).LineWidth = 1.25;
+        end
     end
-    if adj_p_speed(3) < 0.05
-        sigline([1 3],'*',[],[],adj_p_speed(3)); %mdl_terrain_c.Coefficients.pValue(3))
-        fig_i.Children.Children(ind).FontSize = 16;
-        fig_i.Children.Children(ind).FontName = 'Arial';
-        fig_i.Children.Children(ind+1).LineWidth = 1.25;
-%         ind = ind+2;
-    end
-    if adj_p_speed(1) < 0.05
-        sigline([1 4],'*',[],[],adj_p_speed(1)); %mdl_terrain_c.Coefficients.pValue(4))
-        fig_i.Children.Children(ind).FontSize = 16;
-        fig_i.Children.Children(ind).FontName = 'Arial';
-        fig_i.Children.Children(ind+1).LineWidth = 1.25;
-    end
-    %- consider a colormap that matches for each condition across
-    %trials....
-%     ylabel(sprintf('%s (%s)',meas_ylabel{meas_i},meas_units{meas_i}));
-%     xlabel('Trial Code');
-%     xtickangle(45);
-%     title(meas_titles{meas_i});
-%     ylim(YLIMS{meas_i});
-%     hold off;
-%     fig_i = get(groot,'CurrentFigure');
-%     fig_i.Position = FIG_POSITION;
-%     fig_i.Children.FontSize = 13;
-%     fig_i.Children.XTickLabel =  trial_names_speed;
     %-
     fig_i = get(groot,'CurrentFigure');
     set(fig_i,'Color','w')
@@ -923,23 +765,24 @@ for meas_i = 1:length(meas_names)
     set(fig_i,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
     fig_i.Children.FontSize = 13;
     ax = gca; %fig_i.CurrentAxes;
+    set(ax, 'box', 'off')
     set(ax,'LineWidth',1)
-    set(ax,'FontName','Arial','FontSize',12,'FontWeight','bold')
     set(ax,'OuterPosition',[0 0 1 1]);
     set(ax,'Position',[0.15 0.2 0.8 0.7]);  %[left bottom width height] This I what I added, You need to play with this
 %     set(ax,'XTick',sort(xticks));
     set(ax,'XTickLabel',trial_names_speed);
     xtickangle(30);
-    xlh = xlabel('Speed (m/s)','Units','normalized','FontSize',12);
+    %-
+    xlh = xlabel('Speed (m/s)','Units','normalized');
     pos1=get(xlh,'Position');
     pos1(1,2)=pos1(1,2)-0.02;
     set(xlh,'Position',pos1);
-    ylabel(sprintf('%s (%s)',meas_ylabel{meas_i},meas_units{meas_i}),'FontSize',12);
+    %-
+    ylabel(sprintf('%s (%s)',meas_ylabel{meas_i},meas_units{meas_i}));
     title(meas_titles{meas_i});
     ylim(YLIMS{meas_i});
+    set(ax,'FontName','Arial','FontSize',14,'FontWeight','bold')
     hold off;
-%     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
-%     saveas(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.jpg',meas_names{meas_i})]);
     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300);
     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.pdf',meas_names{meas_i})],'ContentType','vector','Resolution',300);
     %% (PLOT) Trial & Subject Category Plot for High vs Low function OA
@@ -965,34 +808,6 @@ for meas_i = 1:length(meas_names)
     cnt_g = 1;
     xticks = [];
     xtick_labs = {};
-%     plot_pos = [0.75,1.25,1.75,2.25,2.75,3.25,3.75,4.25];
-%     g1 = strsplit(char(g_cats(1)),'_');
-%     g2 = strsplit(char(g_cats(2)),'_');
-%     g_labs = [{g1{1}},{g2{1}}];
-    %- 
-%     save_lab = 'cond_main';
-%     for c_i=1:size(cond_1,1)
-%         for g_i = 1:size(cond_1,2)
-%             if g_i == 1
-%                 offset = -0.15;
-%             else
-%                 offset = 0.15;
-%             end
-%             violins(cnt) = Violin(cond_1(c_i,g_i),c_i,varargin{:});
-%             violins(cnt).ScatterPlot.XData = violins(cnt).ScatterPlot.XData+offset;
-%             violins(cnt).ViolinPlot.XData = violins(cnt).ViolinPlot.XData+offset;
-%             violins(cnt).WhiskerPlot.XData = violins(cnt).WhiskerPlot.XData+offset;
-%             violins(cnt).MedianPlot.XData = violins(cnt).MedianPlot.XData+offset;
-%             violins(cnt).NotchPlots(1).XData = violins(cnt).NotchPlots(1).XData+offset;
-%             violins(cnt).NotchPlots(2).XData = violins(cnt).NotchPlots(2).XData+offset;
-%             violins(cnt).MeanPlot.XData = violins(cnt).MeanPlot.XData+offset;
-%             violins(cnt).ViolinPlotQ.XData = violins(cnt).ViolinPlotQ.XData+offset;
-%             violins(cnt).ViolinColor = {c_maps(c_i,:)};
-%             xticks = [xticks,c_i+offset];
-%             xtick_labs = [xtick_labs,{sprintf('%s %s',g_labs{g_i},trial_names_speed{c_i})}];
-%             cnt = cnt+1;
-%         end
-%     end
     %- group primary, cond secondary
     save_lab = 'group_main';
     cond_offsets = [-0.3,-0.1,0.1,0.3];
@@ -1035,6 +850,7 @@ for meas_i = 1:length(meas_names)
     fig_i.Children.FontSize = 12;
     %- set axes units, and size
     ax = gca; %fig_i.CurrentAxes;
+    set(ax, 'box', 'off')
     set(ax,'LineWidth',1)
     set(ax,'FontName','Arial','FontSize',11,'FontWeight','bold')
     set(ax,'OuterPosition',[0 0 1 1]);
@@ -1047,33 +863,6 @@ for meas_i = 1:length(meas_names)
     pos1(1,2)=pos1(1,2)-0.12;
     set(xlh,'Position',pos1);
     %-
-%     shift = 0;
-%     mdl_spec='Var1~1+Var2';
-%     for g_i=1:size(cond_1,2)
-%         tmp = cat(2,cond_1{:,g_i});
-%         for subj_i = 1:size(cond_1{1,1},1)
-%             if all(~isnan(tmp(subj_i,:)))
-%                 y_vals = tmp(subj_i,:);
-%                 x_vals = xticks((1:length(tmp(subj_i,:)))+shift);
-%                 tb = table(y_vals',x_vals');
-%                 out = fitlm(x_vals,y_vals); %fitlm(tb,mdl_spec);
-% %                 p = plot(ax,out.Residuals.Raw',x_vals);
-%                 p = plot(ax,out);
-%                 p(end-1,1).Visible='off';
-%                 p(end,1).Visible='off';
-%                 p(1).Visible = 'off'; %[0,0,0,0.2];
-%                 if out.Coefficients.Estimate(2) > 0
-%                     p(2).Color = [0,0,0.7,0.70];
-%                 else
-%                     p(2).Color = [0.7,0,0,0.70];
-%                 end
-%                 
-% %                 plot(ax,x_vals,y_vals);
-%             end
-%         end
-%         shift = shift + length(tmp(1,:));
-%     end
-%     xticks = get(ax,'XTick');
     %- set group labels
     if size(cond_1,2) == 2
         shift = 0;
@@ -1120,42 +909,11 @@ for meas_i = 1:length(meas_names)
             'ShowMedian',true,'Bandwidth',bandwidth,'QuartileStyle','shadow',...
             'HalfViolin','full','DataStyle','scatter'};
     figure;
-%     title(sprintf('%s Across Trials',meas_names{meas_i}));
     hold on;
-%     c_maps = linspecer(size(cond_2,1));
-%     offset = 0;
     cnt = 1;
     cnt_g = 1;
     xticks = [];
     xtick_labs = {};
-%     plot_pos = [0.75,1.25,1.75,2.25,2.75,3.25,3.75,4.25];
-%     g1 = strsplit(char(g_cats(1)),'_');
-%     g2 = strsplit(char(g_cats(2)),'_');
-%     g_labs = [{g1{1}},{g2{1}}];
-    %-
-%     save_lab = 'cond_main';
-%     for c_i=1:size(cond_2,1)
-%         for g_i = 1:size(cond_2,2)
-%             if g_i == 1
-%                 offset = -0.15;
-%             else
-%                 offset = 0.15;
-%             end
-%             violins(cnt) = Violin(cond_2(c_i,g_i),c_i,varargin{:});
-%             violins(cnt).ScatterPlot.XData = violins(cnt).ScatterPlot.XData+offset;
-%             violins(cnt).ViolinPlot.XData = violins(cnt).ViolinPlot.XData+offset;
-%             violins(cnt).WhiskerPlot.XData = violins(cnt).WhiskerPlot.XData+offset;
-%             violins(cnt).MedianPlot.XData = violins(cnt).MedianPlot.XData+offset;
-%             violins(cnt).NotchPlots(1).XData = violins(cnt).NotchPlots(1).XData+offset;
-%             violins(cnt).NotchPlots(2).XData = violins(cnt).NotchPlots(2).XData+offset;
-%             violins(cnt).MeanPlot.XData = violins(cnt).MeanPlot.XData+offset;
-%             violins(cnt).ViolinPlotQ.XData = violins(cnt).ViolinPlotQ.XData+offset;
-%             violins(cnt).ViolinColor = {c_maps(c_i,:)};
-%             xticks = [xticks,c_i+offset];
-%             xtick_labs = [xtick_labs,{sprintf('%s %s',g_labs{g_i},trial_names_terrain{c_i})}];
-%             cnt = cnt+1;
-%         end
-%     end
     %- group primary, cond secondary
     save_lab = 'group_main';
     cond_offsets = [-0.3,-0.1,0.1,0.3];
@@ -1184,8 +942,6 @@ for meas_i = 1:length(meas_names)
             end
             cnt = cnt+1;
         end
-%         text(nanmean(xticks(cnt_g)),-8,char(group_names(g_i)),'FontSize',11);
-%         text(nanmean(xticks(cnt_g))-0.20,-17,char(group_names(g_i)),'FontSize',11);
         cnt_g = cnt_g+cnt-1;
     end
     %- set figure color, units, and size
@@ -1196,38 +952,12 @@ for meas_i = 1:length(meas_names)
     fig_i.Children.FontSize = 12;
     %- set axes units, and size
     ax = gca; %fig_i.CurrentAxes;
+    set(ax, 'box', 'off')
     set(ax,'LineWidth',1)
     set(ax,'FontName','Arial','FontSize',11,'FontWeight','bold')
     set(ax,'OuterPosition',[0 0 1 1]);
     set(ax,'Position',[0.15 0.20 0.8 0.7]);  %[left bottom width height] This I what I added, You need to play with this
     set(ax,'XTick',sort(xticks));
-    %-
-%     shift = 0;
-%     mdl_spec='Var1~1+Var2';
-%     for g_i=1:size(cond_2,2)
-%         tmp = cat(2,cond_2{:,g_i});
-%         for subj_i = 1:size(cond_1{1,1},1)
-%             if all(~isnan(tmp(subj_i,:)))
-%                 y_vals = tmp(subj_i,:);
-%                 x_vals = xticks((1:length(tmp(subj_i,:)))+shift);
-%                 tb = table(y_vals',x_vals');
-%                 out = fitlm(x_vals,y_vals); %fitlm(tb,mdl_spec);
-% %                 p = plot(ax,out.Residuals.Raw',x_vals);
-%                 p = plot(ax,out);
-%                 p(end-1,1).Visible='off';
-%                 p(end,1).Visible='off';
-%                 p(1).Visible = 'off'; %[0,0,0,0.2];
-%                 if out.Coefficients.Estimate(2) > 0
-%                     p(2).Color = [0,0,0.7,0.70];
-%                 else
-%                     p(2).Color = [0.7,0,0,0.70];
-%                 end
-%                 
-% %                 plot(ax,x_vals,y_vals);
-%             end
-%         end
-%         shift = shift + length(tmp(1,:));
-%     end
     set(ax,'XTickLabel',xtick_labs);
     xtickangle(30);
     xlh = xlabel('Terrain Difficulty','Units','normalized','FontSize',12);
@@ -1241,8 +971,6 @@ for meas_i = 1:length(meas_names)
         for g_i = 1:size(cond_2,2)
             text(0.25+shift,-0.15,0,char(group_names(g_i)),'FontSize',11,'FontWeight','bold','HorizontalAlignment','center',...
                 'Units','normalized');
-    %         text(nanmean(xticks(cnt_g))-0.20,-17,char(group_names(g_i)),'FontSize',11);
-    %         disp(xticks(cnt_g))
             shift = shift+0.50;
         end
     elseif size(cond_2,2) == 3
@@ -1250,8 +978,6 @@ for meas_i = 1:length(meas_names)
         for g_i = 1:size(cond_2,2)
             text(0.15+shift,-0.15,0,char(group_names(g_i)),'FontSize',11,'FontWeight','bold','HorizontalAlignment','center',...
                 'Units','normalized');
-    %         text(nanmean(xticks(cnt_g))-0.20,-17,char(group_names(g_i)),'FontSize',11);
-    %         disp(xticks(cnt_g))
             shift = shift+0.34;
         end
     else
@@ -1262,8 +988,6 @@ for meas_i = 1:length(meas_names)
     title(meas_titles{meas_i});
     ylim(YLIMS{meas_i});
     hold off;
-%     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
-%     saveas(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})]);
     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300);
     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'ContentType','vector','Resolution',300);
     
@@ -1274,54 +998,20 @@ FIG_POSITION = [100,100,360,420];
 FIG_POSITION_GRP = [100,100,720,420];
 VIOLIN_WIDTH = 0.3;
 VIOLIN_WIDTH_GROUP = 0.1;
-% meas_names = {'GaitCycleDur_L';'GaitCycleDur_R';'GaitCycleDur';'GaitCycleDur_Lcov';...
-%               'GaitCycleDur_Rcov';'GaitCycleDur_cov';'GaitCycleDur_asym';'GaitCycleDur_covAsym';...
-%               'StanceDur_L';'StanceDur_R';'StanceDur';'StanceDur_Lcov';'StanceDur_Rcov';...
-%               'StanceDur_cov';'StanceDur_asym';'StanceDur_covAsym';'SwingDur_L';...
-%               'SwingDur_R';'SwingDur';'SwingDur_Lcov';'SwingDur_Rcov';'SwingDur_cov';...
-%               'SwingDur_asym';'SwingDur_covAsym';'SingleSupport_L';'SingleSupport_R';...
-%               'SingleSupport';'SingleSupport_Lcov';'SingleSupport_Rcov';'SingleSupport_cov';...
-%               'SingleSupport_asym';'SingleSupport_covAsym';'StepDur_L';'StepDur_R';...
-%               'StepDur';'StepDur_Lcov';'StepDur_Rcov';'StepDur_cov';'StepDur_asym';...
-%               'StepDur_covAsym'}; 
-% %           ;'InitialDS_L';'InitialDS_R';'InitialDS';'InitialDS_Lcov';...
-% %               'InitialDS_Rcov';'InitialDS_cov';'InitialDS_asym';'InitialDS_covAsym';...
-% %               'TerminalDS_L';'TerminalDS_R';'TerminalDS';'TerminalDS_Lcov';'TerminalDS_Rcov';...
-% %               'TerminalDS_cov';'TerminalDS_asym';'TerminalDS_covAsym';'TotalDS_L';...
-% %               'TotalDS_R';'TotalDS';'TotalDS_Lcov';'TotalDS_Rcov';'TotalDS_cov';...
-% %               'TotalDS_asym';'TotalDS_covAsym'};
-% meas_units = {'s','s','s','s',...
-%                's','s','s','s',...
-%                's','s','s','s','s',...
-%                's','s','s','s',...
-%                's','s','s','s','s',...
-%                's','s','s','s',...
-%                's','s','s','s',...
-%                's','s','s','s',...
-%                's','s','s','s','s',...
-%                's'};
-meas_names = {'nanmean_StepDur','nanmean_StepDur_cov','nanmean_GaitCycleDur_cov','nanmean_GaitCycleDur',};
-meas_units = {'s','%','%','s'};
-meas_titles = {'Step Duration','Step Duration Coefficient of Variation','Gait Cycle Duration Coefficient of Variation','Gait Cycle Duration'};
-meas_ylabel = {'Duration','Coefficient of Variation','Coefficient of Variation','Duration'};
-% YLIMS = {[0.3,1.3],[0,25],[0,65],[0,4]};
-YLIMS = {[0,2],[0,27.5],[0,30],[0,4]};
-% trial_names = {'0.25 m/s','0.25 m/s','0.50 m/s','0.50 m/s','0.75 m/s',...
-%                 '0.75 m/s','1.00 m/s','1.00 m/s','flat terr.','flat terr.',...
-%                 'high terr.','high terr.','low terr.','low terr.','med terr.',...
-%                 'med terr.'};
-% trial_names_speed = {'0.25 m/s','0.25 m/s','0.50 m/s','0.50 m/s','0.75 m/s',...
-%                 '0.75 m/s','1.00 m/s','1.00 m/s'};
-% trial_names_terrain = {'flat terr.','flat terr.',...
-%     'low terr.','low terr.','med terr.',...
-%     'med terr.','high terr.','high terr.'};
+%-
+% meas_names = {'nanmean_StepDur','nanmean_StepDur_cov','nanmean_GaitCycleDur_cov','nanmean_GaitCycleDur',};
+% meas_units = {'s','%','%','s'};
+% meas_titles = {'Step Duration','Step Duration Coefficient of Variation','Gait Cycle Duration Coefficient of Variation','Gait Cycle Duration'};
+% meas_ylabel = {'Duration','Coefficient of Variation','Coefficient of Variation','Duration'};
+% YLIMS = {[0,2],[0,27.5],[0,30],[0,4]};
+meas_names = {'nanmean_StepDur','nanmean_StepDur_cov'};
+meas_units = {'s','%'};
+meas_titles = {'Step Duration',{'Step Duration';'Coefficient of Variation'}};
+meas_ylabel = {'Duration','Coefficient of Variation'};
+YLIMS = {[0,2],[0,27.5]};
+%-
 speed_chars = {'0p25','0p5','0p75','1p0'};
 terrain_chars = {'flat','low','med','high'};
-% trial_names_speed = {'0.25 m/s','0.50 m/s','0.75 m/s',...
-%                '1.00 m/s'};
-% trial_names_terrain = {'flat terr.',...
-%     'low terr.','med terr.',...
-%     'high terr.'};
 trial_names_speed = {'0.25','0.50','0.75',...
                '1.00'};
 trial_names_terrain = {'flat',...
@@ -1369,25 +1059,9 @@ for meas_i = 1:length(meas_names)
         end
     end
     tmp = b(:,66:end);
-%     b_speed = tmp(:,2:9);
     b_speed = tmp(:,2:5);
-%     b_terrain = [tmp(:,10:11),tmp(:,14:15),tmp(:,16:17),tmp(:,12:13)];
     b_terrain = [tmp(:,6),tmp(:,8),tmp(:,9),tmp(:,7)];
-    %## By subject plot
-%     figure;
-%     title(sprintf('%s Across Subjects',meas_names{meas_i}));
-%     hold on;
-%     violinplot(a(:,64:end),...
-%         'ViolinColor',linspecer(size(a(:,64:end),2)));
-%     ylabel(sprintf('IMU %s (%s)',meas_names{meas_i},meas_units{meas_i}));
-%     xlabel('Subject Code');
-%     xtickangle(45)
-%     hold off;
-%     fig_i = get(groot,'CurrentFigure');
-%     fig_i.Position = FIG_POSITION;
-% %     saveas(fig_i,[save_dir filesep sprintf('Across_Subjects_Fig_%s.fig',meas_names{meas_i})]);
-%     saveas(fig_i,[save_dir filesep sprintf('Across_Subjects_Fig_%s.jpg',meas_names{meas_i})]);
-%% (SPEED) STATISTICS GROUP & CONDITION EFFECT
+    %% (SPEED) STATISTICS GROUP & CONDITION EFFECT
     %## REFORM TABLE VARIABLES
     inds = [];
     for i = 1:length(speed_chars)
@@ -1414,38 +1088,15 @@ for meas_i = 1:length(meas_names)
         fprintf(fid,'%i: %s\n',i,vals_tn(i));
     end
     fclose(fid);
-    %## NONMIXED GROUP & COND
-    modelspec = 'meas_in~1+cat_1+cat_2';
-    mdl_speed_nonmix_gc = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1','cat_2'});
-    disp(mdl_speed_nonmix_gc)
-    %- Convert summary to char array
-    txt = evalc('mdl_speed_nonmix_gc');
-    fid = fopen([save_dir filesep sprintf('%s_across_nonmixedsubjectcatsNspeed_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
-    fclose(fid);
-    %## CONDITION ONLY
-    modelspec = 'meas_in~1+cat_1';
-    mdl_speed_c = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1'});
-    disp(mdl_speed_c)
-    %- Convert summary to char array
-    txt = evalc('mdl_speed_c');
-    fid = fopen([save_dir filesep sprintf('%s_across_speed_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
-    fclose(fid);
-    %## CONDITION MIXED EFFECTS
+    %## (MAIN TEST) CONDITION MIXED EFFECTS
     modelspec = 'meas_in~1+cat_1';
     mdl_speed_mixc = fitglme(tmp_t,modelspec);
-%     [p,T,stats,terms] = anovan(tmp_t.meas_in,{tmp_t.cat_1},'alpha',0.05,'sstype',2,'model','linear');
-%     [stats] = anova(mdl_terrain_mixc);
-%     comp = multcompare(stats);
+    %-
+    modelspec = 'meas_in~1';
+%     mdl_terrain_mixc = fitglme(tmp_t,modelspec);
+    mdl_comp = fitlme(tmp_t,modelspec);
+    stats = anova(mdl_speed_mixc);
+    speed_mixc_f = stats{2,5};
     disp(mdl_speed_mixc)
     disp(anova(mdl_speed_mixc));
     fid = fopen([save_dir filesep sprintf('%s_across_mixspeed_all_mdl.txt',meas_names{meas_i})],'wt');
@@ -1474,59 +1125,20 @@ for meas_i = 1:length(meas_names)
     [pVal F df1 df2] = coefTest(mdl_speed_mixc, [0,1,0,2]); fprintf(fid,'multicomp cat_1_2:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
     [pVal F df1 df2] = coefTest(mdl_speed_mixc, [0,0,1,2]); fprintf(fid,'multicomp cat_1_3:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
     
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [1,0,0,0;0,1,0,0]); fprintf(fid,'multicomp intercept:cat_1_2, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [1,0,0,0;0,0,1,0]); fprintf(fid,'multicomp intercept:cat_1_3, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [1,0,0,0;0,0,0,1]); fprintf(fid,'multicomp intercept:cat_1_4, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,1,0,0;0,0,1,0]); fprintf(fid,'multicomp cat_1_2:cat_1_3,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,1,0,0;0,0,0,1]); fprintf(fid,'multicomp cat_1_2:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,0,1,0;0,0,0,1]); fprintf(fid,'multicomp cat_1_3:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [p_fdr,p_masked] = fdr(p_mcomp',0.05,'nonparametric');
-%     V = sum(p_mcomp > ALPHA);
-%     S = sum(p_mcomp < ALPHA);
-%     Q = V/(V+S);
-%     fdr_out = 
+    
     [h,crit_p,adj_ci_cvrg,adj_p_speed] = fdr_bh(p_mcomp,0.05,'pdep','no');
     fprintf(fid,'False Discovery Corrected:\n');
     fprintf(fid,'%0.4f\n',adj_p_speed); fprintf(fid,'%i\n',h); fprintf(fid,'critical fdr_p: %0.4f\n',crit_p);
     %- cohens f2 test
 %     out = mes1way(tmp_t.meas_in,'eta2','group',double(tmp_t.cat_1));
 %     R2 = mdl_terrain_mixc.Rsquared.Ordinary;
-    R2 = mdl_terrain_mixc.Rsquared.Adjusted;
-    cohens_f2 = R2/(1-R2);
+    R21 = mdl_comp.SSR/mdl_comp.SST;
+    R22 = mdl_terrain_mixc.SSR/mdl_terrain_mixc.SST; %mdl_terrain_mixc.Rsquared.Ordinary; %mdl_terrain_mixc.Rsquared.Adjusted;
+% 	R2 = mdl_terrain_mixc.Rsquared.Adjusted;
+    cohens_f2 = (R22-R21)/(1-R22);
     fprintf(fid,'cohens f2: %0.4f\n',cohens_f2);
+    fprintf('Cohens f2: %0.4f\n',cohens_f2);
     %-
-%     [p_fdr,p_masked] = fdr(comp(:,6),0.05,'parameteric');
-%     fprintf(fid,'multicompare:\n');
-%     fprintf(fid,'cond_1\tcond_2\tlower\testimate\tupper\tpvalue\tpvalue_fdr\n');
-%     for i = 1:size(comp,1)
-%         fprintf(fid,'%i\t%i\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t%0.4f\n',comp(i,1),comp(i,2),comp(i,3),comp(i,4),comp(i,5),comp(i,6),p_fdr(i))
-%     end
-%     fprintf(fid,'\n');
-    %-
-%     fprintf(fid,'ANOVAN:\n');
-%     tblStr = cell(size(T,1),1);
-%     for col_i = 1:size(T,1)
-%         if col_i == 1
-%             tblStr{col_i} = sprintf('%-6s   %-9s   %-9s   %-9s   %-9s   %-9s   %-9s\n',T{col_i,:});
-%         else
-%             tblStr{col_i} = sprintf('%-6s   %-9.3g   %-9.0f   %-9.0f   %-9.3g   %-9.3g   %-9.3g\n',T{col_i,:});
-%         end
-%     end
-%     formatSpec = '%s\n';
-%     cellfun(@(x) fprintf(fid, formatSpec, x), tblStr);
-    fclose(fid);
-    %## GROUP ONLY
-    modelspec = 'meas_in~1+cat_1';
-    mdl_speed_g = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1'});
-    disp(mdl_speed_g)
-    %- Convert summary to char array
-    txt = evalc('mdl_speed_g');
-    fid = fopen([save_dir filesep sprintf('%s_across_subjcats_speed_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
     fclose(fid);
     %% (TERRAIN) STATISTICS GROUP & CONDITION EFFECT
     %## REFORM TABLE VARIABLES
@@ -1569,39 +1181,16 @@ for meas_i = 1:length(meas_names)
         fprintf(fid,'%i: %s\n',i,vals_tn(i));
     end
     fclose(fid);
-    %## NONMIXED GROUP & COND
-    modelspec = 'meas_in~1+cat_1+cat_2';
-    mdl_terrain_nomix_gc = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1','cat_2'});
-    disp(mdl_terrain_nomix_gc)
-    %- Convert summary to char array
-    txt = evalc('mdl_terrain_nomix_gc');
-    fid = fopen([save_dir filesep sprintf('%s_across_nonmixedsubjectcatsNterrain_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
-    fclose(fid);
-    %## CONDITION ONLY
-    modelspec = 'meas_in~1+cat_1';
-    mdl_terrain_c = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1'});
-    disp(mdl_terrain_c)
-    %- Convert summary to char array
-    txt = evalc('mdl_terrain_c');
-    fid = fopen([save_dir filesep sprintf('%s_across_terrain_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
-    fclose(fid);
-    %%
-    %## CONDITION MIXED EFFECTS
+    %## (MAIN TEST) CONDITION MIXED EFFECTS
     modelspec = 'meas_in~1+cat_1+(1|coev_1)';
-    mdl_terrain_mixc = fitglme(tmp_t,modelspec);
-%     [p,T,stats,terms] = anovan(tmp_t.meas_in,{tmp_t.cat_1},'alpha',0.05,'sstype',2,'model','linear');
-%     [stats] = anova(mdl_terrain_mixc);
-%     comp = multcompare(stats);
+%     mdl_terrain_mixc = fitglme(tmp_t,modelspec);
+    mdl_terrain_mixc = fitlme(tmp_t,modelspec);
+    %-
+    modelspec = 'meas_in~1+(1|coev_1)';
+%     mdl_terrain_mixc = fitglme(tmp_t,modelspec);
+    mdl_comp = fitlme(tmp_t,modelspec);
+    stats = anova(mdl_terrain_mixc);
+    terrain_mixc_f = stats{2,5};
     disp(mdl_terrain_mixc)
     disp(anova(mdl_terrain_mixc));
     fid = fopen([save_dir filesep sprintf('%s_across_mixterrain_all_mdl.txt',meas_names{meas_i})],'wt');
@@ -1630,87 +1219,40 @@ for meas_i = 1:length(meas_names)
     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,1,0,2]); fprintf(fid,'multicomp cat_1_2:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,0,1,2]); fprintf(fid,'multicomp cat_1_3:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
     
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [1,0,0,0;0,1,0,0]); fprintf(fid,'multicomp intercept:cat_1_2, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [1,0,0,0;0,0,1,0]); fprintf(fid,'multicomp intercept:cat_1_3, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [1,0,0,0;0,0,0,1]); fprintf(fid,'multicomp intercept:cat_1_4, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,1,0,0;0,0,1,0]); fprintf(fid,'multicomp cat_1_2:cat_1_3,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,1,0,0;0,0,0,1]); fprintf(fid,'multicomp cat_1_2:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [pVal F df1 df2] = coefTest(mdl_terrain_mixc, [0,0,1,0;0,0,0,1]); fprintf(fid,'multicomp cat_1_3:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
-%     [p_fdr,p_masked] = fdr(p_mcomp',0.05,'nonparametric');
-%     V = sum(p_mcomp > ALPHA);
-%     S = sum(p_mcomp < ALPHA);
-%     Q = V/(V+S);
-%     fdr_out = 
     [h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(p_mcomp,0.05,'pdep','no');
     fprintf(fid,'False Discovery Corrected:\n');
     fprintf(fid,'%0.4f\n',adj_p); fprintf(fid,'%i\n',h); fprintf(fid,'critical fdr_p: %0.4f\n',crit_p);
     %- cohens f2 test
 %     out = mes1way(tmp_t.meas_in,'eta2','group',double(tmp_t.cat_1));
 %     R2 = mdl_terrain_mixc.Rsquared.Ordinary;
-    R2 = mdl_terrain_mixc.Rsquared.Adjusted;
-    cohens_f2 = R2/(1-R2);
+    R21 = mdl_comp.SSR/mdl_comp.SST;
+    R22 = mdl_terrain_mixc.SSR/mdl_terrain_mixc.SST; %mdl_terrain_mixc.Rsquared.Ordinary; %mdl_terrain_mixc.Rsquared.Adjusted;
+% 	R2 = mdl_terrain_mixc.Rsquared.Adjusted;
+    cohens_f2 = (R22-R21)/(1-R22);
     fprintf(fid,'cohens f2: %0.4f\n',cohens_f2);
-    %-
-%     [p_fdr,p_masked] = fdr(comp(:,6),0.05,'parameteric');
-%     fprintf(fid,'multicompare:\n');
-%     fprintf(fid,'cond_1\tcond_2\tlower\testimate\tupper\tpvalue\tpvalue_fdr\n');
-%     for i = 1:size(comp,1)
-%         fprintf(fid,'%i\t%i\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t%0.4f\n',comp(i,1),comp(i,2),comp(i,3),comp(i,4),comp(i,5),comp(i,6),p_fdr(i))
-%     end
-%     fprintf(fid,'\n');
-    %-
-%     fprintf(fid,'ANOVAN:\n');
-%     tblStr = cell(size(T,1),1);
-%     for col_i = 1:size(T,1)
-%         if col_i == 1
-%             tblStr{col_i} = sprintf('%-6s   %-9s   %-9s   %-9s   %-9s   %-9s   %-9s\n',T{col_i,:});
-%         else
-%             tblStr{col_i} = sprintf('%-6s   %-9.3g   %-9.0f   %-9.0f   %-9.3g   %-9.3g   %-9.3g\n',T{col_i,:});
-%         end
-%     end
-%     formatSpec = '%s\n';
-%     cellfun(@(x) fprintf(fid, formatSpec, x), tblStr);
-    fclose(fid);
-    %%
-    %## GROUP ONLY
-    modelspec = 'meas_in~1+cat_1';
-    mdl_terrain_g = fitglm(tmp_t,modelspec,'Intercept',true,'ResponseVar','meas_in',...
-        'PredictorVar',{'cat_1'});
-    disp(mdl_terrain_g)
-    %- Convert summary to char array
-    txt = evalc('mdl_terrain_g');
-    fid = fopen([save_dir filesep sprintf('%s_across_subjectcats_terrain_all_mdl.txt',meas_names{meas_i})],'wt');
-    fprintf(fid,'%s',txt);
-    for i = 1:length(vals_tn)
-        fprintf(fid,'%i: %s\n',i,vals_tn(i));
-    end
+    fprintf('Cohens f2: %0.4f\n',cohens_f2);
     fclose(fid);
     %% By trial plot
     figure;
-%     title(sprintf('%s Across Trials',meas_names{meas_i}));
     hold on;
-%     violinplot(b_terrain,trial_names_terrain','width',0.4,...
-%         'GroupOrder',b_terrain.Properties.VariableNames,'ViolinColor',linspecer(size(b_terrain,2)),...
-%         'ShowWhiskers',false,'ShowNotches',false,'ShowBox',false,...
-%         'ShowMedian',true,'Bandwidth',range(b_terrain{:,2})*0.1,'QuartileStyle','shadow',...
-%         'HalfViolin','left','DataStyle','histogram');
     violinplot(b_terrain,trial_names_terrain','width',VIOLIN_WIDTH,...
         'GroupOrder',b_terrain.Properties.VariableNames,'ViolinColor',COLORS_MAPS_TERRAIN,...
         'ShowWhiskers',false,'ShowNotches',false,'ShowBox',false,...
         'ShowMedian',true,'Bandwidth',range(b_terrain{:,2})*0.1,'QuartileStyle','shadow',...
         'HalfViolin','full','DataStyle','scatter');
-%     vals_x = get(gca,'XTick');
-%     for c_i = 1:length(terrain_chars)
-%         idx = outliers.TrialName == terrain_chars{c_i};
-%         vals_y = outliers.(meas_names{meas_i})(idx);
-%         if ~isempty(vals_y)
-%             in_x = repmat(vals_x(c_i),size(vals_y));
-%             scatter(in_x,vals_y,'k*','jitter','on', 'jitterAmount', 0.05)
-%         end
-%     end
+    vals_x = get(gca,'XTick');
+    for c_i = 1:length(terrain_chars)
+        idx = outliers.TrialName == terrain_chars{c_i};
+        vals_y = outliers.(meas_names{meas_i})(idx);
+        if ~isempty(vals_y)
+            in_x = repmat(vals_x(c_i),size(vals_y));
+            scatter(in_x,vals_y,'ko','jitter','on', 'jitterAmount', 0.05)
+        end
+    end
     hold off;
     fig_i = get(groot,'CurrentFigure');
     ind = 1;
+    if terrain_mixc_f < 0.05
     if adj_p(2) < 0.05
         sigline([1 2],'*',[],[],adj_p(2)); %mdl_terrain_c.Coefficients.pValue(2))
         fig_i.Children.Children(ind).FontSize = 16;
@@ -1731,68 +1273,51 @@ for meas_i = 1:length(meas_names)
         fig_i.Children.Children(ind).FontName = 'Arial';
         fig_i.Children.Children(ind+1).LineWidth = 1.25;
     end
-    %- consider a colormap that matches for each condition across
-    %trials....
-%     ylabel(sprintf('%s (%s)',meas_ylabel{meas_i},meas_units{meas_i}));
-%     xlabel('Trial Code');
-%     xtickangle(45);
-%     title(meas_titles{meas_i});
-%     ylim(YLIMS{meas_i});
-%     hold off;
-%     fig_i = get(groot,'CurrentFigure');
-%     fig_i.Position = FIG_POSITION;
-%     fig_i.Children.FontSize = 13;
-%     fig_i.Children.XTickLabel =  trial_names_speed;
-    %-
+    end
     
     set(fig_i,'Color','w')
     set(fig_i,'Units','inches','Position',[3 3 6 5])
     set(fig_i,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
-    fig_i.Children.FontSize = 13;
     ax = gca; %fig_i.CurrentAxes;
+    set(ax, 'box', 'off')
     set(ax,'LineWidth',1)
-    set(ax,'FontName','Arial','FontSize',12,'FontWeight','bold')
     set(ax,'OuterPosition',[0 0 1 1]);
     set(ax,'Position',[0.15 0.2 0.8 0.7]);  %[left bottom width height] This I what I added, You need to play with this
 %     set(ax,'XTick',sort(xticks));
     set(ax,'XTickLabel',trial_names_terrain);
     xtickangle(30);
-    xlh = xlabel('Terrain Difficulty','Units','normalized','FontSize',12);
-    pos1=get(xlh,'Position');
-    pos1(1,2)=pos1(1,2)-0.02;
-    set(xlh,'Position',pos1);
-    %- set category labels
-%     text(0.45,-0.2,0,'Speeds (m/s)','FontSize',11,'FontWeight','bold','HorizontalAlignment','center',...
-%         'Units','normalized');
+%     xlh = xlabel('Terrain Difficulty','Units','normalized','FontSize',12);
+%     pos1=get(xlh,'Position');
+%     pos1(1,2)=pos1(1,2)-0.02;
+%     set(xlh,'Position',pos1);
     %- set ylabel
-    ylabel(sprintf('%s (%s)',meas_ylabel{meas_i},meas_units{meas_i}),'FontSize',12);
+    ylabel(sprintf('%s (%s)',meas_ylabel{meas_i},meas_units{meas_i}));
     title(meas_titles{meas_i});
     ylim(YLIMS{meas_i});
+    set(ax,'FontName','Arial','FontSize',14,'FontWeight','bold')
     hold off;
-%     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
-%     saveas(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.jpg',meas_names{meas_i})]);
     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300,'ContentType','vector'); 
     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.pdf',meas_names{meas_i})],'ContentType','vector','Resolution',300,'ContentType','vector'); 
     %% By trial plot
     figure;
-%     title(sprintf('%s Across Trials',meas_names{meas_i}));
     hold on;
     violinplot(b_speed,trial_names_speed,'width',VIOLIN_WIDTH,...
         'GroupOrder',b_speed.Properties.VariableNames,'ViolinColor',COLOR_MAPS_SPEED,...
         'ShowWhiskers',true,'ShowNotches',false,'ShowBox',true,...
         'ShowMedian',true,'Bandwidth',range(b_speed{:,2})*0.1,'QuartileStyle','shadow',...
         'HalfViolin','full','DataStyle','scatter');
-%     vals_x = get(gca,'XTick');
-%     for c_i = 1:length(terrain_chars)
-%         idx = outliers.TrialName == terrain_chars{c_i};
-%         vals_y = outliers.(meas_names{meas_i})(idx);
-%         if ~isempty(vals_y)
-%             in_x = repmat(vals_x(c_i),size(vals_y));
-%             scatter(in_x,vals_y,'k*','jitter','on', 'jitterAmount', 0.05)
-%         end
-%     end
+    vals_x = get(gca,'XTick');
+    for c_i = 1:length(speed_chars)
+        idx = outliers.TrialName == speed_chars{c_i};
+        vals_y = outliers.(meas_names{meas_i})(idx);
+        if ~isempty(vals_y)
+            in_x = repmat(vals_x(c_i),size(vals_y));
+            scatter(in_x,vals_y,'ko','jitter','on', 'jitterAmount', 0.05)
+        end
+    end
     fig_i = get(groot,'CurrentFigure');
     ind = 1;
+    if speed_mixc_f < 0.05
     if adj_p_speed(2) < 0.05
         sigline([1 2],'*',[],[],adj_p_speed(2)); %mdl_terrain_c.Coefficients.pValue(2))
         fig_i.Children.Children(ind).FontSize = 16;
@@ -1813,25 +1338,20 @@ for meas_i = 1:length(meas_names)
         fig_i.Children.Children(ind).FontName = 'Arial';
         fig_i.Children.Children(ind+1).LineWidth = 1.25;
     end
-%     fig_i = get(groot,'CurrentFigure');
-%     fig_i.Position = FIG_POSITION;
-%     fig_i.Children.FontSize = 13;
-%     fig_i.Children.XTickLabel =  trial_names_terrain;
+    end
     %-
     fig_i = get(groot,'CurrentFigure');
     set(fig_i,'Color','w')
     set(fig_i,'Units','inches','Position',[3 3 6 5])
     set(fig_i,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
-    fig_i.Children.FontSize = 13;
     ax = gca; %fig_i.CurrentAxes;
     set(ax,'LineWidth',1)
-    set(ax,'FontName','Arial','FontSize',12,'FontWeight','bold')
     set(ax,'OuterPosition',[0 0 1 1]);
     set(ax,'Position',[0.15 0.2 0.8 0.7]);  %[left bottom width height] This I what I added, You need to play with this
 %     set(ax,'XTick',sort(xticks));
     set(ax,'XTickLabel',trial_names_speed);
     xtickangle(30);
-    xlh = xlabel('Speed (m/s)','Units','normalized','FontSize',12);
+    xlh = xlabel('Speed (m/s)','Units','normalized');
     pos1=get(xlh,'Position');
     pos1(1,2)=pos1(1,2)-0.02;
     set(xlh,'Position',pos1);
@@ -1839,12 +1359,12 @@ for meas_i = 1:length(meas_names)
 %     text(0.45,-0.2,0,'Terrain Difficulty','FontSize',11,'FontWeight','bold','HorizontalAlignment','center',...
 %         'Units','normalized');
     %- set ylabel
-    ylabel(sprintf('%s (%s)',meas_ylabel{meas_i},meas_units{meas_i}),'FontSize',12);
+    ylabel(sprintf('%s (%s)',meas_ylabel{meas_i},meas_units{meas_i}));
     title(meas_titles{meas_i});
     ylim(YLIMS{meas_i});
+    set(ax,'FontName','Arial','FontSize',14,'FontWeight','bold')
+    set(ax, 'box', 'off')
     hold off;
-%     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
-%     saveas(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.jpg',meas_names{meas_i})]);
     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300); 
     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.pdf',meas_names{meas_i})],'ContentType','vector','Resolution',300); 
     
@@ -2128,10 +1648,11 @@ for meas_i = 1:length(meas_names)
     set(ax,'XTick',sort(xticks));
     set(ax,'XTickLabel',xtick_labs);
     xtickangle(30);
-    xlh = xlabel('Terrain Difficulty','Units','normalized','FontSize',12);
-    pos1=get(xlh,'Position');
-    pos1(1,2)=pos1(1,2)-0.12;
-    set(xlh,'Position',pos1);
+    %-
+%     xlh = xlabel('Terrain Difficulty','Units','normalized','FontSize',12);
+%     pos1=get(xlh,'Position');
+%     pos1(1,2)=pos1(1,2)-0.12;
+%     set(xlh,'Position',pos1);
     %-
 %     shift = 0;
 %     mdl_spec='Var1~1+Var2';

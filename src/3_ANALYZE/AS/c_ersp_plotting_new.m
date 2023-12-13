@@ -98,7 +98,8 @@ test_2 = {'2Bounce_Human','2Bounce_BM'};
 test_3 = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'};
 COND_EVENT_CHAR = 'bounces';
 baseline_rng = [0,150];
-COND_DESIGNS = {test_1,test_2,test_3};
+% COND_DESIGNS = {test_1,test_2,test_3};
+COND_DESIGNS = {test_2};
 %##
 %* ERSP PARAMS
 ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
@@ -145,7 +146,7 @@ for cond_i = 1:length(COND_CHARS)
 end
 study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
 DATA_DIR = [source_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
+STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];ghhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhZ&}{++++++++AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep '_figs'];
 study_load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
@@ -340,9 +341,11 @@ ERSP_CHANLOCS = struct('labels', {});
 for des_i = 1:length(COND_DESIGNS)
     fprintf('==== Making Study Design ====\n');
     [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
-        'subjselect', {ALLEEG.subject},...
-        'variable1','cond',...
-        'values1', COND_DESIGNS{des_i});
+        'subjselect', {},...
+        'variable1','bounces',...
+        'values1', COND_DESIGNS{des_i},...
+        'variable2',{},...
+        'values2',{});
     for cluster_i = main_cl_inds
         %% (ERSP PLOT 2) CUSTOM
         %- ERSP DATA
@@ -387,7 +390,7 @@ for des_i = 1:length(COND_DESIGNS)
             tmp_std = std(tmp,[],2);
             tmp = repmat(tmp,1,size(allersp{cond_i},2)); 
             tmp_std = repmat(tmp_std,1,size(allersp{cond_i},2));
-            allersp{cond_i} = allersp{cond_i} - tmp;
+            allersp{cond_i} = (allersp{cond_i} - tmp);
         end
         %- compute statistics
         %* (06/10/2023) JS, making this fieldtrip method only
@@ -399,11 +402,11 @@ for des_i = 1:length(COND_DESIGNS)
 %                                         'alpha',ERSP_ALPHA,...
 %                                         'mcorrect',ERSP_MCORRECT,'mode','fieldtrip');
         %## Cropping Indicies
-        crop_inds = (alltimes>=ERSP_CROP_TIMES(1) & alltimes<=ERSP_CROP_TIMES(2));
-        alltimes = alltimes(crop_inds);
-        for cond_i = 1:length(allersp)
-            allersp{cond_i} = allersp{cond_i}(:,crop_inds,:);
-        end
+%         crop_inds = (alltimes>=ERSP_CROP_TIMES(1) & alltimes<=ERSP_CROP_TIMES(2));
+%         alltimes = alltimes(crop_inds);
+%         for cond_i = 1:length(allersp)
+%             allersp{cond_i} = allersp{cond_i}(:,crop_inds,:);
+%         end
         [pcond_ersp,pgroup_ersp,pinter_ersp,stat_cond,stat_group,stat_inter] = std_stat(allersp,...
                 'condstats', ERSP_CONDSTATS,...
                 'groupstats',ERSP_GROUPSTATS,...

@@ -61,6 +61,7 @@ EEG = eeg_checkset(EEG,'loaddata');
 if isempty(EEG.icaact)
     fprintf('%s) Recalculating ICA activations\n',EEG.subject);
     EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+    EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
 end
 
 %## (Crteria 1) Count brain components based on ICLabel

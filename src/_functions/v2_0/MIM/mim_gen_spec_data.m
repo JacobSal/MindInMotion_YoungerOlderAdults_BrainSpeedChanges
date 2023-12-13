@@ -81,6 +81,7 @@ toc
 fprintf('Computing specdata with substracted subject mean for cluster %i...\n',cluster_i)
 tic
 try
+    STUDY.etc.specparams.subtractsubjectmean = 'on';
     [~,specdata,specfreqs,pgroup,pcond,pinter] = std_specplot(STUDY, ALLEEG, 'clusters',cluster_i,...
         'comps',SPEC_PARAMS.comps,'subject',SPEC_PARAMS.subject,'freqrange',SPEC_PARAMS.freqrange,...
         'subtractsubjectmean','on','design',des_i);

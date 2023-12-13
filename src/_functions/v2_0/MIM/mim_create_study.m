@@ -32,6 +32,7 @@ parse(p,ALLEEG,study_fName,study_fPath,varargin{:});
 if ~exist(study_fPath,'dir')
     mkdir(study_fPath);
 end
+STUDY = [];
 %% ===================================================================== %%
 tmp_rmv_subjs = zeros(1,length(ALLEEG));
 %## DIPOLE REJECTION
@@ -259,7 +260,9 @@ fprintf('DONE. Writing subject rejection criteria table.\n');
 % ALLEEG = ALLEEG(~logical(tmp_rmv_subjs));
 % ALLEEG = TMP_ALLEEG(~cellfun(@isempty,TMP_ALLEEG));
 %% CREATE STUDY
+% (11/22/2023) is this step really needed? takes up a lot of space...
 % initiailize study
+%{
 fprintf('\n==== Making Study Modifications ====\n');
 [STUDY, ALLEEG] = std_editset([],ALLEEG,...
                                 'updatedat','off',...
@@ -272,13 +275,6 @@ fprintf('\n==== Making Study Modifications ====\n');
 % use eeglab_options to set memory options so it doesn't conflict.
 % (08/28/22) updatedat turnned off 
 % (08/28/22) savedat turned off
-% [STUDY, ALLEEG] = std_editset(STUDY,ALLEEG,...
-%                                 'updatedat','off',...
-%                                 'savedat','off','resave','on',...
-%                                 'commands', {'dipselect',0.2},...
-%                                 'filename',studyName,...
-%                                 'filepath',studyDir);
-% parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
 parfor subj_i = 1:length(ALLEEG)
     ALLEEG(subj_i).etc.full_setfile.filename = ALLEEG(subj_i).filename;
     ALLEEG(subj_i).etc.full_setfile.filepath = ALLEEG(subj_i).filepath;
@@ -286,8 +282,6 @@ parfor subj_i = 1:length(ALLEEG)
     ALLEEG(subj_i) = pop_saveset(ALLEEG(subj_i),'filename',ALLEEG(subj_i).filename,'filepath',ALLEEG(subj_i).filepath);
 end
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG); 
-% [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
-%                                         study_fName,study_fPath,...
-%                                         'RESAVE_DATASETS','on');
+%}
 end
 

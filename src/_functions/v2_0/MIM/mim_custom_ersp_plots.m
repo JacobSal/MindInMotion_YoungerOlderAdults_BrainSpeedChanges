@@ -1,6 +1,43 @@
 function [] = mim_custom_ersp_plots(STUDY,cond_test,warping_times,cluster_ind,...
     cluster_load_ind,des_i,save_dir,varargin)
 %MIM_GEN_ERSP_STATS Summary of this function goes here
+% Description
+% This MATLAB function generates and saves various Event-Related Spectral Perturbation (ERSP) plots for a given study using parallel processing. It supports multiple types of baseline correction and saves the output as MATLAB mat files.
+% 
+% Usage
+% matlab
+% Copy code
+% mim_custom_ersp_plots(STUDY, cond_test, warping_times, cluster_ind, cluster_load_ind, des_i, save_dir, varargin)
+% Inputs
+% STUDY : Struct - EEG study structure containing information about the dataset and experiment.
+% cond_test : Cell array - Cell array of conditions or tests to be analyzed.
+% warping_times : Numeric array - Times used for warping ERSP data.
+% cluster_ind : Numeric - Index representing the cluster to be processed.
+% cluster_load_ind : Numeric - Index for loading the cluster-specific ERSP data.
+% des_i : Numeric - Design index for the study.
+% save_dir : String - Directory path where the generated plots will be saved.
+% Optional Inputs
+% 'ALLERSP' : Cell array (default: empty) - Preloaded ERSP data for all subjects.
+% 'ALLTIMES' : Numeric array (default: empty) - Preloaded time values for ERSP data.
+% 'ALLFREQS' : Numeric array (default: empty) - Preloaded frequency values for ERSP data.
+% 'PCOND' : Cell array (default: empty) - Precomputed conditions for ERSP data.
+% 'PGROUP' : Cell array (default: empty) - Precomputed groups for ERSP data.
+% 'PINTER' : Cell array (default: empty) - Precomputed interactions for ERSP data.
+% 'DO_SUBJ_PLOTS' : Logical (default: false) - Flag to enable subject-specific plots.
+% 'CLUSTER_CLIM_MATCH' : Numeric array (default: empty) - Cluster color limits for matching.
+% Outputs
+% None. Generates and saves ERSP plots based on the specified parameters.
+% Examples
+% matlab
+% Copy code
+% % Example 1: Generate ERSP plots without subject-specific plots
+% mim_custom_ersp_plots(STUDY, {'Condition1', 'Condition2'}, warping_times, 1, 2, 3, '/path/to/save');
+% 
+% % Example 2: Generate ERSP plots with subject-specific plots
+% mim_custom_ersp_plots(STUDY, {'Condition1', 'Condition2'}, warping_times, 1, 2, 3, '/path/to/save', 'DO_SUBJ_PLOTS', true);
+
+% Date
+% Code Date: 07/17/2023
 % CAT CODE
 %  _._     _,-'""`-._
 % (,-.`._,'(       |\`-/|
@@ -285,30 +322,29 @@ function [] = ersp_single_subj_plot(STUDY,allersp,alltimes,allfreqs,...
         %- plot time freq
         [fig] = plot_tftopo(erspdata,alltimes,allfreqs,alltitles,[],warping_times,clim_max,colormap_ersp,...
                         PANEL_OFFSET,EVENT_CHARS,sub_freq_lims,FIGURE_POSITION);
-        saveas(fig,[save_dir filesep sprintf('%s_within_des%i_cl%i_stats.jpg',sub,STUDY.currentdesign,cluster_i)]);
-%         exportgraphics(fig,[save_dir filesep sprintf('%s_within_des%i_cl%i_stats.svg',sub,STUDY.currentdesign,cluster_i)],'ContentType','vector');
-        
+        exportgraphics(fig,[save_dir filesep sprintf('%s_within_des%i_cl%i_stats.jpg',sub,STUDY.currentdesign,cluster_i)]);
+%         exportgraphics(fig,[save_dir filesep sprintf('%s_within_des%i_cl%i_stats.pdf',sub,STUDY.currentdesign,cluster_i)],'ContentType','vector');
         close(fig)
         %- print averages
-        subj_chars{subj_i} = sub;
-        ic_val(subj_i) = ic;
-        cnt = 1;
-        for group_i = 1:size(allersp,2)
-            for cond_i = 1:size(allersp,1)
-                for freq_i = 1:length(FREQ_BANDS)
-                    tmpidx = (allfreqs>=min(FREQ_BANDS{freq_i}) & allfreqs<=max(FREQ_BANDS{freq_i}));
-                    freq_avgs(subj_i,cnt) = mean(erspdata{cond_i,group_i}(tmpidx,baseidx),'all');
-                    head_char{cnt} = sprintf('group%i_cond%i_%s',group_i,cond_i,FREQ_BANDS_CHARS{freq_i});
-                    cnt = cnt+1;
-                end
-            end
-        end
+%         subj_chars{subj_i} = sub;
+%         ic_val(subj_i) = ic;
+%         cnt = 1;
+%         for group_i = 1:size(allersp,2)
+%             for cond_i = 1:size(allersp,1)
+%                 for freq_i = 1:length(FREQ_BANDS)
+%                     tmpidx = (allfreqs>=min(FREQ_BANDS{freq_i}) & allfreqs<=max(FREQ_BANDS{freq_i}));
+%                     freq_avgs(subj_i,cnt) = mean(erspdata{cond_i,group_i}(tmpidx,baseidx),'all');
+%                     head_char{cnt} = sprintf('group%i_cond%i_%s',group_i,cond_i,FREQ_BANDS_CHARS{freq_i});
+%                     cnt = cnt+1;
+%                 end
+%             end
+%         end
     end
-    T1 = table(subj_chars,'VariableNames',{'subject_char'});
-    T2 = table(ic_val,'VariableNames',{'independent_component'});
-    T3 = array2table(freq_avgs,'VariableNames',head_char);
-    T_out = [T1,T2,T3];
-    writetable(T_out,[save_dir filesep sprintf('freq_averages_des%i_cluster%i.csv',STUDY.currentdesign,cluster_i)])
+%     T1 = table(subj_chars,'VariableNames',{'subject_char'});
+%     T2 = table(ic_val,'VariableNames',{'independent_component'});
+%     T3 = array2table(freq_avgs,'VariableNames',head_char);
+%     T_out = [T1,T2,T3];
+%     writetable(T_out,[save_dir filesep sprintf('freq_averages_des%i_cluster%i.csv',STUDY.currentdesign,cluster_i)])
 end
 %% (SUBFUNCTIONS) ====================================================== %%
 %## 
@@ -684,11 +720,13 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
         cond_chars = [STUDY.design(STUDY.currentdesign).variable(1).value];
         if any(chk_1)
             refErspCond = TERRAIN_REF_CHAR;
+            refErspCond_fext = TERRAIN_REF_CHAR;
             refErspCond_ind = find(chk_1);
         elseif any(chk_2)
              %SPEED_REF_CHAR; %'1p0';
             refErspCond_ind = find(chk_2);
             refErspCond = SPEED_OVERRIDE_CHARS{refErspCond_ind};
+            refErspCond_fext = SPEED_REF_CHAR;
         else
             error('Condition for reference ersp not found in STUDY design: %s',[STUDY.design(STUDY.currentdesign).variable(1).value])
         end
@@ -740,8 +778,8 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
 %         plot_times = alltimes(baseidx);
         [fig] = plot_contourf(ersp_raw,ersp_pcond,ersp_masked,alltimes,allfreqs,plot_alltitles,...
         warping_times,clim_max,colormap_ersp,PANEL_OFFSET,EVENT_CHARS,sub_freq_lims,FIGURE_POSITION);
-        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_compare-%s_des%i_cl%i.jpg',plottype_i,refErspCond,STUDY.currentdesign,cluster_i)],'Resolution',300);
-        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_compare-%s_des%i_cl%i.pdf',plottype_i,refErspCond,STUDY.currentdesign,cluster_i)],...
+        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_compare-%s_des%i_cl%i.jpg',plottype_i,refErspCond_fext,STUDY.currentdesign,cluster_i)],'Resolution',300);
+        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_stats_compare-%s_des%i_cl%i.pdf',plottype_i,refErspCond_fext,STUDY.currentdesign,cluster_i)],...
             'Resolution',300,'ContentType','vector');
         
         close(fig)
@@ -761,8 +799,8 @@ function [] = ersp_baseline_plots(STUDY,plottype_i,allersp,allfreqs,alltimes,pco
         plot_times = alltimes(baseidx);
         [fig] = plot_contourf(ersp_raw,ersp_pcond,ersp_masked,plot_times,plot_freqs,plot_alltitles,...
             warping_times,clim_max,colormap_ersp,PANEL_OFFSET,EVENT_CHARS,sub_freq_lims,FIGURE_POSITION);
-        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_notfull_stats_compare-%s_des%i_cl%i.jpg',plottype_i,refErspCond,STUDY.currentdesign,cluster_i)],'Resolution',300);
-        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_notfull_stats_compare-%s_des%i_cl%i.pdf',plottype_i,refErspCond,STUDY.currentdesign,cluster_i)],...
+        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_notfull_stats_compare-%s_des%i_cl%i.jpg',plottype_i,refErspCond_fext,STUDY.currentdesign,cluster_i)],'Resolution',300);
+        exportgraphics(fig,[save_dir filesep sprintf('erspplottype%i_notfull_stats_compare-%s_des%i_cl%i.pdf',plottype_i,refErspCond_fext,STUDY.currentdesign,cluster_i)],...
             'Resolution',300,'ContentType','vector');
         
         close(fig)

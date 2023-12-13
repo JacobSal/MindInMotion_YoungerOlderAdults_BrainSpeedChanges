@@ -52,12 +52,15 @@ cd(run_dir)
 addpath(source_dir)
 addpath(run_dir)
 %% SET WORKSPACE ======================================================= %%
-global ADD_CLEANING_SUBMODS
+global ADD_CLEANING_SUBMODS 
 ADD_CLEANING_SUBMODS = false;
 setWorkspace
 %% PARPOOL SETUP ======================================================= %%
 if ~ispc
-    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
+    %## NOTE, you will need to edit icadefs's EEGOPTION_FILE to contain the
+    %unix and pc paths for the option file on the M drive otherwise it just
+    %does weird stuff. 
+    pop_editoptions('option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0, ...
     'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
     disp(['SLURM_JOB_ID: ', getenv('SLURM_JOB_ID')]);
@@ -88,10 +91,10 @@ SUBJ_1YA = {'H1002','H1004','H1007','H1009',...
     'H1010','H1011','H1012','H1013','H1017',...
     'H1018','H1019','H1020','H1022','H1024',...
     'H1025','H1026','H1027','H1029','H1030','H1031',...
-    'H1032','H1033','H1034','H1034','H1036',...
+    'H1032','H1033','H1034','H1036',...
     'H1037','H1038','H1039','H1041','H1042',...
     'H1044','H1045','H1046','H1047','H1048'}; % JACOB,SAL (04/18/2023)
-SUBJ_2MA = {'H2002','H2007','H2008',...
+SUBJ_2MA = {'H2007','H2008',...
     'H2013','H2015','H2017','H2020','H2021',...
     'H2022','H2023','H2025','H2026','H2027',...
     'H2033','H2034','H2037','H2038','H2039',...
@@ -109,6 +112,7 @@ SUBJ_3MA = {'H3029','H3034','H3039','H3053',...
     'NH3104','NH3105','NH3106','NH3108','NH3110',...
     'NH3112','NH3113','NH3114','NH3123','NH3128',...
     };
+SUBJ_ERROR = {'H2002'}; % (11/22/2023) 08202023_OAN82_iccRX0p65_iccREMG0p4_changparams
 SUBJ_SLOW_WALKERS = {'H3042','H3046','H3047','H3073',...
     'H3092','NH3025','NH3051','NH3056','NH3071','NH3082'};
 SUBJ_NO_MRI = {'H2010','H2012','H2018','H2036','H2041',...
@@ -163,7 +167,7 @@ fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),l
 DATA_SET = 'MIM_dataset';
 %- study group and saving
 SESSION_NUMBER = '1';
-SAVE_ALLEEG = true;
+SAVE_ALLEEG = false;
 SAVE_EEG = true; %true;
 OVERRIDE_DIPFIT = true;
 %- epoching params
@@ -174,8 +178,10 @@ PERCENT_OVERLAP = 0.0; % percent overlap between epochs
 %* gait
 EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 STD_TIMEWARP = 3;
-EPOCH_TIME_LIMITS = [-0.5,4.5]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
+EPOCH_TIME_LIMITS = [-1,4.25]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
 % (10/13/20223) changing from [-1,4.25] to [-0.5,4.5] to match chang's
+% (10/25/20223) changing from [-0.5,4.5] to [-1,4.25] as it seems to help
+% with frequency decomposition artifact during ERSP creation
 % paper
 TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 if DO_SLIDING_WINDOW
@@ -202,10 +208,20 @@ end
 % dt = '07162023_MIM_OAN79_subset_prep_verified_gait';
 % dt = '07172023_nopowpowrej_test';
 % dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
-dt = '10052023_MIM_OAN70_noslowwalkers_gait';
+% dt = '10052023_MIM_OAN70_noslowwalkers_gait';
+% dt = '10252023_MIM_OAN70_noslowwalkers_gait_powpow0p25';
+% dt = '10252023_MIM_OAN70_noslowwalkers_gait_powpow0p20';
+% dt = '10302023_MIM_OAN70_noslowwalkers_gait_iccREMG0p4_powpow0p1';
+% dt = '10302023_MIM_OAN70_newnormalize_iccREMG0p4_powpow0p1';
+% dt = '10302023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+% dt = '11302023_MIM_OAN70_antsnormalize_iccREMG0p3_powpow0p1';
+dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
 %- Subject Directory information
 % OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
-OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
+% OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
+% OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p3_newparams'; % JACOB,SAL(09/26/2023)
+% OA_PREP_FPATH = '08202023_OAN82_iccRX0p60_iccREMG0p3_newparams';
+OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
@@ -248,7 +264,8 @@ for group_i = 1:length(SUBJ_ITERS)
     %         chanlocs_fPaths{cnt} = [DATA_DIR filesep DATA_SET filesep SUBJ_PICS{group_i}{subj_i} filesep 'EEG' filesep 'HeadScan' filesep 'CustomElectrodeLocations.mat'];
             chanlocs_fPaths{cnt} = [DATA_DIR filesep DATA_SET filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'CustomElectrodeLocations.mat'];
     %         dipfit_fPaths{cnt} = [OUTSIDE_DATA_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'head_model' filesep 'dipfit_struct.mat'];
-            dipfit_norm_fPaths{cnt} = [fPaths{cnt} filesep 'dipfit_fem_norm.mat'];
+%             dipfit_norm_fPaths{cnt} = [fPaths{cnt} filesep 'dipfit_fem_norm.mat'];
+            dipfit_norm_fPaths{cnt} = [fPaths{cnt} filesep 'dipfit_fem_norm_ants.mat'];
             %- Prints
             fprintf('==== Subject %s Paths ====\n',SUBJ_PICS{group_i}{subj_i})
             fprintf('ICA Exists: %i\n',(exist([fPaths{cnt} filesep fNames{cnt}],'file') && exist([fPaths{cnt} filesep 'W'],'file')))
@@ -285,19 +302,23 @@ groups = groups(inds);
 conditions = conditions(inds);
 subjectNames = subjectNames(inds);
 %% CREATE STUDY
+%{
 %## Create STUDY & ALLEEG structs
 if ~exist([save_dir filesep study_fName_1 '.study'],'file') %|| true
-    fprintf(1,'\n==== CLUSTERING SUBJECT DATA ====\n');
-    [MAIN_ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
-                        conditions,groups,sessions); %,...
-%                         'SAVE_EEG',SAVE_EEG); %,...
-%                         'CHANLOCS_FPATHS',chanlocs_fPaths);
-    [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,study_fName_1,save_dir);
-    [MAIN_STUDY,MAIN_ALLEEG] = std_checkset(MAIN_STUDY,MAIN_ALLEEG);
-    [MAIN_STUDY,MAIN_ALLEEG] = parfunc_save_study(MAIN_STUDY,MAIN_ALLEEG,...
-                                            study_fName_1,save_dir,...
-                                            'RESAVE_DATASETS','on');
-    fprintf(1,'\n==== DONE: CLUSTERING SUBJECT DATA ====\n');
+    fprintf(1,'\n==== GATHERING SUBJECT DATA ====\n');
+    try
+        [MAIN_ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
+                            conditions,groups,sessions);
+        [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,study_fName_1,save_dir);
+    catch e
+        fprintf('\n%s\n',getReport(e));
+        exit();
+    end
+%     [MAIN_STUDY,MAIN_ALLEEG] = std_checkset(MAIN_STUDY,MAIN_ALLEEG);
+%     [MAIN_STUDY,MAIN_ALLEEG] = parfunc_save_study(MAIN_STUDY,MAIN_ALLEEG,...
+%                                             study_fName_1,save_dir,...
+%                                             'RESAVE_DATASETS','on');
+    fprintf(1,'\n==== DONE: GATHERING SUBJECT DATA ====\n');
 else
     fprintf(1,'\n==== LOADING CLUSTER STUDY DATA ====\n');
     if ~ispc
@@ -306,6 +327,16 @@ else
         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',save_dir);
     end
     fprintf(1,'\n==== DONE: LOADING CLUSTER STUDY DATA ====\n');
+end
+%}
+%%
+try
+    [MAIN_ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
+                        conditions,groups,sessions);
+    [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,study_fName_1,save_dir);
+catch e
+    fprintf('\n%s\n',getReport(e));
+    exit();
 end
 %% INITIALIZE PARFOR LOOP VARS
 if exist('SLURM_POOL_SIZE','var')
@@ -324,7 +355,8 @@ rmv_subj = zeros(1,length(MAIN_ALLEEG));
 %## PARFOR LOOP
 parfor (subj_i = LOOP_VAR,POOL_SIZE)
     %## LOAD EEG DATA
-    EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
+    EEG = MAIN_ALLEEG(subj_i);
+%     EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
     fprintf('Running subject %s\n',EEG.subject)
     %- Recalculate ICA Matrices && Book Keeping
     EEG = eeg_checkset(EEG,'loaddata');
@@ -380,7 +412,7 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
                 if ~exist(tmp_fPath,'dir')
                     mkdir(tmp_fPath)
                 end
-                [~] = pop_saveset(ALLEEG(i),...
+                [~] = pop_saveset(ALLEEG(i),'savemode','twofiles',...
                     'filepath',tmp_fPath,'filename',sprintf([REGEX_FNAME '.set'],ALLEEG(i).condition));
                 cond_files(i).fPath = tmp_fPath;
                 cond_files(i).fName = sprintf([REGEX_FNAME '.set'],ALLEEG(i).condition);

@@ -8,13 +8,13 @@
 %   Summary: 
 
 %- run script
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/run_batch_preprocess.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA_YA/run_batch_preprocess.sh
 %- run amica
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/run_singlenode_amica_run.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA_YA/run_singlenode_amica_run.sh
 %- run amica_2nd
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/run_singlenode_amica_run_2nd.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA_YA/run_singlenode_amica_run_2nd.sh
 %- mim dipfit
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/source_mim_mcc_dipfit_exe.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA_YA/source_mim_mcc_dipfit_exe.sh
 
 %{
 %## RESTORE MATLAB
@@ -93,7 +93,7 @@ end
 SUBJ_1YA = {'H1002','H1004','H1007','H1009',...
     'H1010','H1011','H1012','H1013','H1017',...
     'H1018','H1019','H1020','H1022','H1024',...
-    'H1025','H1026','H1027','H1029','H1030','H1031',...
+    'H1026','H1027','H1029','H1030','H1031',...
     'H1032','H1033','H1034','H1035','H1036',...
     'H1037','H1038','H1039','H1041','H1042',...
     'H1044','H1045','H1046','H1047','H1048'}; % JACOB,SAL (04/18/2023)
@@ -113,8 +113,9 @@ SUBJ_3MA = {'H3029','H3034','H3039','H3053',...
     'NH3068','NH3069','NH3070','NH3074',...
     'NH3076','NH3086','NH3090','NH3102',...
     'NH3104','NH3105','NH3106','NH3108','NH3110',...
-    'NH3112','NH3113','NH3114','NH3123','NH3128',...
+    'NH3112','NH3112','NH3114','NH3123','NH3128',...
     };
+SUBJ_CHANG_RMV = {'H1025'};
 SUBJ_SLOW_WALKERS = {'H3042','H3046','H3047','H3073',...
     'H3092','NH3025','NH3051','NH3056','NH3071','NH3082'};
 SUBJ_NO_MRI = {'H2010','H2012','H2018','H2036','H2041',...
@@ -144,26 +145,11 @@ SUBJ_DONT_INC = {'NH3004','NH3023'};
 %             'NH3068_FU', 'NH3036_FU', 'NH3058_FU'};
 % SUBJ_MISSING_TRIAL_DATA = {'H1008','H2012','H2018','H3024','NH3002', 'NH3004','NH3009',...
 %     'NH3023','NH3027', 'NH3028', 'NH3129', 'NH3040'};
-%- (OY) Subject Picks 
-% SUBJ_PICS = {SUBJ_1YA}; 
-% GROUP_NAMES = {'H1000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
 %- (OA&YA) Subject Picks 
 SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
 GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
 SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%- (OA) Subject Picks 
-% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%- (0A) DEBUG SUBSET (06/17/2023)
-% SUBJ_PICS = {SUBJ_DEBUG};
-% GROUP_NAMES = {'debug'}; 
-% SUBJ_ITERS = {1:length(SUBJ_DEBUG)};
-%- test
-% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {[1,2],[5,6]};
+%-
 fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
 fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
 %% (PROCESSING PARAMS) ================================================= %%
@@ -171,10 +157,7 @@ fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),l
 %- dataset name
 DATA_SET = 'MIM_dataset';
 %- datetime override
-% OA_PREP_FNAME = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
-% OA_PREP_FNAME = '07122023_OAN79_iccRX0p9_iccREMG0p3'; % JACOB,SAL(07/12/2023)
-% OA_PREP_FNAME = '07142023_OAN79_iccRX0p55_iccREMG0p3_changparams'; % JACOB,SAL(07/14/2023)
-OA_PREP_FNAME = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(07/14/2023)
+OA_PREP_FNAME = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(07/14/2023)
 %## soft define
 %- path for local data
 DATA_DIR = [source_dir filesep '_data'];

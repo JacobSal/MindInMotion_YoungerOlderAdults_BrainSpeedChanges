@@ -92,37 +92,59 @@ SUBJ_PICS = {{'02','03','04','05','09','11','15','16','18','19','21','22',...
 SUBJ_ITERS = {(1:length(SUBJ_PICS{1}))};
 %% (PARAMETERS) ======================================================== %%
 fprintf('\nData Processing Parameters\n');
-%## Hard Defines
-%- dataset specific
-RECOMPUTE_SPEC = true;
-FREQ_FAC = 4;
-FREQ_LIMITS = [1,70];
-SPEC_MODE = 'psd'; %'fft'; %'psd'; 
-%- spec plotting parameters
-SPEC_FREQLIMITS = [3,50];
-SPEC_NACCU = 2000;
-% SPEC_XLIM = [1,100];
-SPEC_YLIM = [-30,-8];
-SPEC_CONDSTATS = 'on';        % ['on'|'off]
-SPEC_STAT_METHOD = 'perm';    % ['param'|'perm'|'bootstrap']
-SPEC_ALPHA = 0.05;           % [NaN|alpha], Significance threshold (0<alpha<<1)
-SPEC_MCORRECT = 'cluster'; %fdr
-SPEC_GROUPSTATS = 'off';
-SPEC_STAT_MODE = 'fieldtrip'; 
-SPEC_STAT_FTMETHOD = 'montecarlo';
-SPEC_SINGLETRIALS = 'off' ;  %['on'|'off'] load single trials spectral data (if available). Default is 'off'.
-%- 
+%## Hard Define
 DATA_SET = 'AS_dataset';
-COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
-EVENT_CHARS = {'Subject_hit'}; 
+%- compute measures for spectrum and ersp
+RECOMPUTE_SPEC = false;
+RECOMPUTE_ERSP = false;
+DO_TIMEWARP = false;
+DO_BASELINE_CORRECTION = false; %false;
+%- statistics & conditions
+EVENTS_TIMEWARP = {'Subject_hit','Subject_receive','Subject_hit'};
+% COND_CHARS = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
+COND_CHARS =  {'2Bounce_Human','2Bounce_BM'};
+EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 test_1 = {'1Bounce_Human','2Bounce_Human'};
 test_2 = {'2Bounce_Human','2Bounce_BM'};
 test_3 = {'1Bounce_Human','2Bounce_Human','2Bounce_BM'};
-COND_DESIGNS = {test_1,test_2,test_3};
+COND_EVENT_CHAR = 'bounces';
+baseline_rng = [0,150];
+% COND_DESIGNS = {test_1,test_2,test_3};
+COND_DESIGNS = {test_2};
+%##
+%* ERSP PARAMS
+ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
+    'groupstats','off',... %['on'|'off']
+    'method','perm',... % ['param'|'perm'|'bootstrap']
+    'singletrials','off',... % ['on'|'off'] load single trials spectral data (if available). Default is 'off'.
+    'mode','fieldtrip',... % ['eeglab'|'fieldtrip']
+    'fieldtripalpha',0.05,... % [NaN|alpha], Significance threshold (0<alpha<<1)
+    'fieldtripmethod','montecarlo',... %[('montecarlo'/'permutation')|'parametric']
+    'fieldtripmcorrect','cluster',...  % ['cluster'|'fdr']
+    'fieldtripnaccu',2000);
+% (10/20/2023) borrowing parameters from MIM study
+SPEC_PARAMS = struct('freqrange',[1,200],...
+    'subject','',...
+    'specmode','psd',...
+    'freqfac',4,...
+    'logtrials','on',...
+    'comps','all',...
+    'plot_freqrange',[4,60],...
+    'plot_ylim',[-35,-8],...
+    'subtractsubjectmean','on',...
+    'plotmode','normal');
+ERSP_PARAMS = struct('subbaseline','off',...
+    'timerange',[],...
+    'ersplim',[-2,2],...
+    'freqfac',4,...
+    'cycles',[3,0.8],...
+    'freqrange',[1,200]);
 %- datetime override
 % dt = '05252023_bounces_1h2h2bm_JS';
 % dt = '06122023_bounces_1h2h2bm_JS';
-dt = '06152023_bounces_1h2h2bm_JS';
+% dt = '06152023_bounces_1h2h2bm_JS';
+% dt = '07272023_bounces_1h_2h_2bm_JS';
+dt = '08182023_bounces_1h_2h_2bm_JS';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -160,188 +182,161 @@ else
     else
         [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',load_dir);
     end
-    [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
+%     [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
 end
 % STUDY.cluster = STUDY.etc.cluster_save;
 % disp(STUDY.cluster);
 % disp(STUDY.urcluster);
+%%
+STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
+        'groupstats',ERSP_STAT_PARAMS.groupstats,...
+        'method',ERSP_STAT_PARAMS.method,...
+        'singletrials',ERSP_STAT_PARAMS.singletrials,'mode',ERSP_STAT_PARAMS.mode,...
+        'fieldtripalpha',ERSP_STAT_PARAMS.fieldtripalpha,...
+        'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
+        'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
+STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_PARAMS.subbaseline,...
+      'ersplim',ERSP_PARAMS.ersplim,'freqrange',ERSP_PARAMS.freqrange); %,'timerange',ERSP_CROP_TIMES);
+SPEC_PARAMS.subtractsubjectmean = 'on';
+STUDY = pop_specparams(STUDY,'subtractsubjectmean',SPEC_PARAMS.subtractsubjectmean,...
+    'freqrange',SPEC_PARAMS.plot_freqrange,'plotmode','condensed',...
+    'plotconditions','together','ylim',SPEC_PARAMS.plot_ylim,'plotgroups','together');
+
 %% (PRECOMPUTE MEASURES) COMPUTE SPECTRUMS
-if RECOMPUTE_SPEC
-    parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
+tmp = strsplit(ALLEEG(1).filename,'.');
+spec_f = [ALLEEG(1).filepath filesep sprintf('%s.icaspec',ALLEEG(1).subject)];
+topo_f = [ALLEEG(1).filepath filesep sprintf('%s.icatopo',tmp{1})];
+if ~exist(spec_f,'file') || ~exist(topo_f,'file') || FORCE_RECALC_SPEC
+    parfor (subj_i = 1:length(ALLEEG),ceil(length(ALLEEG)/2))
         EEG = ALLEEG(subj_i);
-        tmp = STUDY;
+        TMP_STUDY = STUDY;
         EEG = eeg_checkset(EEG,'loaddata');
         if isempty(EEG.icaact)
             fprintf('%s) Recalculating ICA activations\n',EEG.subject);
             EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+            EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
         end
-        EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
         %- overrride datasetinfo to trick std_precomp to run.
-        tmp.datasetinfo = STUDY.datasetinfo(subj_i);
-        tmp.datasetinfo(1).index = 1;
-        [~, ~] = std_precomp(tmp, EEG,...
+        TMP_STUDY.datasetinfo = TMP_STUDY.datasetinfo(subj_i);
+        TMP_STUDY.datasetinfo(1).index = 1;
+        [~, ~] = std_precomp(TMP_STUDY, EEG,...
                     'components',...
                     'recompute','on',...
                     'spec','on',...
                     'scalp','on',...
                     'savetrials','on',...
                     'specparams',...
-                    {'specmode',SPEC_MODE,'freqfac',FREQ_FAC,...
-                    'freqrange',FREQ_LIMITS,'logtrials','on'});
+                    {'specmode',SPEC_PARAMS.specmode,'freqfac',SPEC_PARAMS.freqfac,...
+                    'freqrange',SPEC_PARAMS.freqrange,'logtrials',SPEC_PARAMS.logtrials});
     end
 end
-%% PLOT DIPOLES, PSD'S, && TOPOPLOTS
-fprintf('==== Making Dipole Plots ====\n');
-%     [~] = std_dipplot(STUDY,ALLEEG,'clusteras',2:length(STUDY.cluster),...
-%             'mode','multicolor','figure','on');
-%- main plot
-%{
-[~] = std_dipplot(STUDY,ALLEEG,'clusters',main_cl_inds(2:end),...
-            'mode','multicolor','figure','on');
-fig_i = get(groot,'CurrentFigure');
-saveas(fig_i,[save_dir filesep sprintf('allDipPlot_top.jpg')]);
-view([45,0,0])
-saveas(fig_i,[save_dir filesep sprintf('allDipPlot_sagittal.jpg')]);
-view([0,-45,0])
-saveas(fig_i,[save_dir filesep sprintf('allDipPlot_coronal.jpg')]);
-%- outlier plot
-[~] = std_dipplot(STUDY,ALLEEG,'clusters',outlier_cl_inds,...
-            'mode','multicolor','figure','on');
-fig_i = get(groot,'CurrentFigure');
-saveas(fig_i,[save_dir filesep sprintf('outlierDipPlot_top.jpg')]);
-view([45,0,0])
-saveas(fig_i,[save_dir filesep sprintf('outlierDipPlot_sagittal.jpg')]);
-view([0,-45,0])
-saveas(fig_i,[save_dir filesep sprintf('outlierDipPlot_coronal.jpg')]);
-%}
-%{
-for cluster_i = 2:length(STUDY.cluster)
-    std_dipplot(STUDY,ALLEEG,'clusters',cluster_i);
-    fig_i = get(groot,'CurrentFigure');
-%     saveas(fig_i,[save_dir filesep sprintf('DipPlot_0.fig')]);
-    saveas(fig_i,[save_dir filesep sprintf('cl%i_DipPlot_top.jpg',cluster_i)]);
-    view([45,0,0])
-%     saveas(fig_i,[save_dir filesep sprintf('allDipPlot_1.fig')]);
-    saveas(fig_i,[save_dir filesep sprintf('cl%i_allDipPlot_sagittal.jpg',cluster_i)]);
-    view([0,-45,0])
-%     saveas(fig_i,[save_dir filesep sprintf('allDipPlot_2.fig')]);
-    saveas(fig_i,[save_dir filesep sprintf('cl%i_allDipPlot_coronal.jpg',cluster_i)]);
-end
-%}
-%- Spec plot
-fprintf('==== Making Spectogram Plots ====\n');
-std_specplot(STUDY,ALLEEG,'clusters',main_cl_inds,...
-    'freqrange',[1,100]);
-fig_i = get(groot,'CurrentFigure');
-fig_i.Position = [500 300 1080 720];
-saveas(fig_i,[save_dir filesep sprintf('allSpecPlot.fig')]);
-saveas(fig_i,[save_dir filesep sprintf('allSpecPlot.jpg')]);
-%- Topo plot
-fprintf('==== Making Topograph Plots ====\n');
-std_topoplot(STUDY,ALLEEG,'clusters',main_cl_inds);
-fig_i = get(groot,'CurrentFigure');
-fig_i.Position = [500 300 1080 720];
-saveas(fig_i,[save_dir filesep sprintf('allTopoPlot.fig')]);
-saveas(fig_i,[save_dir filesep sprintf('allTopoPlot.jpg')]);
-close all
-%## POP VIEW PROPS
-%{
-if ~exist([save_dir filesep 'component_props'],'dir') 
-    mkdir([save_dir filesep 'component_props']);
-end
-%## RECALCULATE ICAACT MATRICES
-ALLEEG = eeg_checkset(ALLEEG,'loaddata');
-for subj_i = 1:length(ALLEEG)
-    if isempty(ALLEEG(subj_i).icaact)
-        fprintf('%s) Recalculating ICA activations\n',ALLEEG(subj_i).subject);
-        ALLEEG(subj_i).icaact = (ALLEEG(subj_i).icaweights*ALLEEG(subj_i).icasphere)*ALLEEG(subj_i).data(ALLEEG(subj_i).icachansind,:);
-        ALLEEG(subj_i).icaact    = reshape( ALLEEG(subj_i).icaact, size(ALLEEG(subj_i).icaact,1), ALLEEG(subj_i).pnts, ALLEEG(subj_i).trials);
-    end
-end
-for cluster_i = 2:length(STUDY.cluster)
-    sets_clust = STUDY.cluster(cluster_i).sets;
-    for i = 1:length(sets_clust)
-        subj_i = sets_clust(i);
-        comps_clust = STUDY.cluster(cluster_i).comps(i);
-        hold on;
-        pop_prop_extended(ALLEEG(subj_i),0,comps_clust,NaN,...
-        {'freqrange',[1 65],'freqfac',4,'limits',[1,60,-30,0]});
-        fig = get(groot,'CurrentFigure');
-        fig.Name = sprintf('%s_cluster%i_ic%i',...
-                            cluster_i,ALLEEG(subj_i).subject,comps_clust);
-        fig.Position = [500 300 1280 720]; 
-        hold off;
-
-%                 saveas(fig,[save_dir filesep 'component_props' filesep sprintf('cluster%i_%s_viewprops_ic%i.fig',cluster_i,ALLEEG(subj_i).subject,comps_clust)]);
-        saveas(fig,[save_dir filesep 'component_props' filesep sprintf('cluster%i_%s_viewprops_ic%i.png',cluster_i,ALLEEG(subj_i).subject,comps_clust)]);
-%                 savefig(fig,[save_dir filesep 'component_props' filesep sprintf('cluster%i_%s_viewprops_ic%i.fig',cluster_i,ALLEEG(subj_i).subject,comps_clust)]);
-        close all
-    end
-end
-close all
-%}
-%%
-STUDY = pop_statparams(STUDY, 'condstats', SPEC_CONDSTATS,...
-                    'method',SPEC_STAT_METHOD,...
-                    'singletrials',SPEC_SINGLETRIALS,'mode',SPEC_STAT_MODE,'fieldtripalpha',SPEC_ALPHA,...
-                    'fieldtripmethod',SPEC_STAT_FTMETHOD,'fieldtripmcorrect',SPEC_MCORRECT,'fieldtripnaccu',SPEC_NACCU);
-% STUDY = pop_statparams(STUDY, 'condstats', 'on',...
-%                     'groupstats','off',...
-%                     'statistics','perm',...
-%                     'effect','main',...
-%                     'method','perm',...
-%                     'singletrials','off','mode','eeglab');
-
-%% MAKEDESIGN & PLOT
-for des_i = 1:length(COND_DESIGNS)
-    %- (06/22/2023) JS, AS dataset requires variable1 to be changed;
-    %'condlabel' includes:['competitive','cooperative','moving_serve','stationary_serve'
-%     [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
-%             'subjselect', {ALLEEG.subject},...
-%             'variable1','condlabel',...
-%             'values1', COND_DESIGNS{des_i});
-    %- (06/22/2023) JS, AS dataset requires variable 1 to be changed
-    %'condlabel' includes:['1Bounce_Human','2Bounce_BM','2Bounce_Human','Serve_Human'
-    [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
-        'subjselect', {ALLEEG.subject},...
-        'variable1','bounces',...
-        'values1', COND_DESIGNS{des_i});
-    for cluster_i = main_cl_inds
-        %-
-    %     [STUDY, specdata, specfreqs, pgroup, pcond, pinter] = std_specplot(STUDY, ALLEEG,...
-    %             'clusters',cluster_i,'comps','all','subject','','freqrange', FREQ_LIMITS,'subtractsubjectmean','on');
-        %-
-        [STUDY, specdata, specfreqs, pgroup, pcond, pinter] = std_specplot(STUDY, ALLEEG,...
-                'clusters',cluster_i,'freqrange',SPEC_FREQLIMITS,'plotmode','condensed',...
-                'plotconditions','together','ylim',SPEC_YLIM); %'plotgroups','together'
-        fig_i = get(groot,'CurrentFigure');
-        %- set figure line colors
-        cc = linspecer(length(COND_DESIGNS{des_i}));
-        iter = 1;
-        for i = 1:length(fig_i.Children(2).Children)
-            set(fig_i.Children(2).Children(i),'LineWidth',1.5);
-            set(fig_i.Children(2).Children(i),'Color',horzcat(cc(iter,:),0.6));
-            if iter == length(cc)
-                iter = 1;
-            else
-                iter = iter + 1;
-            end                
+%% (PRECOMPUTE MEASURES) COMPUTE ERSPs
+icatimf_f = [ALLEEG(1).filepath filesep sprintf('%s.icatimef',ALLEEG(1).subject)];
+if ~exist(icatimf_f,'file') || FORCE_RECALC_ERSP
+    TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. making this too big can cause overlap between gait cyles
+%     disp(['Grand average (across all subj) warp to: ',num2str(averaged_warpto_events)]);
+%     parfor (subj_i = 1:length(ALLEEG),ceil(length(ALLEEG)/3))
+    for subj_i = 1:length(ALLEEG)
+        EEG = ALLEEG(subj_i);
+        TMP_STUDY = STUDY;
+        EEG = eeg_checkset(EEG,'loaddata');
+        if isempty(EEG.icaact)
+            fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+            EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
         end
-        %- tight layout
-        % (06/22/2023) JS, seems like changing the Position property also
-        % erases the statistics bar. Not sure how to fix?
-%         set(fig_i.Children(2),'Position',[0.26,0.26,0.54,0.51]); %DEFAULT
-%         set(fig_i.Children(3),'Position',[0.26,0.2345,0.54,0.0255]); %DEFAULT
-        set(fig_i.Children(2),'Position',[0.15,0.15,0.8,0.8]) %Default:[0.26,0.26,0.54,0.51]; Position::[left margin, lower margin, right margin, upper margin]
-        set(fig_i.Children(3),'Position',[0.15,0.15-0.0255,0.8,0.0255]) %Default:[0.26,0.2345,0.54,0.0255]
-        set(fig_i.Children(1),'Location','southeast') %reset Legend
-        drawnow;
-        %- save
-        saveas(fig_i,[save_dir filesep sprintf('%i_%s_specplot.fig',cluster_i,[COND_DESIGNS{des_i}{:}])]);
-        saveas(fig_i,[save_dir filesep sprintf('%i_%s_specplot.jpg',cluster_i,[COND_DESIGNS{des_i}{:}])]);
-        close(fig_i)
+        EEG.icaact = reshape(EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
+        %- overrride datasetinfo to trick std_precomp to run.
+        TMP_STUDY.datasetinfo = STUDY.datasetinfo(subj_i);
+        TMP_STUDY.datasetinfo(1).index = 1;
+        %- determine timewarping parameters
+         if DO_TIMEWARP
+            timewarp_param = EEG.timewarp.latencies;
+            timewarpms_param = averaged_warpto_events;
+         else
+             timewarp_param = [];
+             timewarpms_param = [];
+        end
+        %-
+        if DO_BASELINE_CORRECTION
+            % Baseline correction
+            [~, ~] = std_precomp(TMP_STUDY,EEG,'components','savetrials','on',...
+                    'recompute','on','ersp','on','itc','off',...
+                    'erspparams',{'parallel','off','cycles',ERSP_PARAMS.cycles,...
+                    'nfreqs',length((ERSP_PARAMS.freqrange(1):ERSP_PARAMS.freqrange(2))),...
+                    'ntimesout',TIMEWARP_NTIMES,'timewarp',timewarp_param,...
+                    'timewarpms',timewarpms_param,'baseline',[averaged_warpto_events(1),averaged_warpto_events(end)],...
+                    'trialbase','off','basenorm','on'}); %ERSP
+        else
+            % No baseline correction
+            [~, ~] = std_precomp(TMP_STUDY,EEG,'components','savetrials','on',...
+                    'recompute','on','ersp','on','itc','off',...
+                    'erspparams',{'parallel','off','cycles',ERSP_PARAMS.cycles,...
+                    'nfreqs',length((ERSP_PARAMS.freqrange(1):ERSP_PARAMS.freqrange(2))),'ntimesout',TIMEWARP_NTIMES,...
+                    'baseline',nan(),'timewarp',timewarp_param,...
+                    'timewarpms',timewarpms_param}); %ERSP
+        end
     end
 end
+%% MAKEDESIGN & PLOT
+%- get inds
+[~,main_cl_inds,~,valid_clusters,~,nonzero_clusters] = eeglab_get_cluster_comps(STUDY);
+%- clusters to plot
+CLUSTER_PICKS = main_cl_inds(2:end); %valid_clusters; %main_cl_inds(2:end); %valid_clusters
+%## PLOT cluster based information
+mim_gen_cluster_figs(STUDY,ALLEEG,save_dir,...
+    'CLUSTERS_TO_PLOT',CLUSTER_PICKS);
+mim_custom_spec_plots(STUDY,ALLEEG,save_dir,...
+    'CLUSTERS_TO_PLOT',CLUSTER_PICKS,...
+    'SPEC_PARAMS',SPEC_PARAMS);
+% for des_i = 1:length(COND_DESIGNS)
+%     %- (06/22/2023) JS, AS dataset requires variable1 to be changed;
+%     %'condlabel' includes:['competitive','cooperative','moving_serve','stationary_serve'
+% %     [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
+% %             'subjselect', {ALLEEG.subject},...
+% %             'variable1','condlabel',...
+% %             'values1', COND_DESIGNS{des_i});
+%     %- (06/22/2023) JS, AS dataset requires variable 1 to be changed
+%     %'condlabel' includes:['1Bounce_Human','2Bounce_BM','2Bounce_Human','Serve_Human'
+%     [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
+%         'subjselect', {ALLEEG.subject},...
+%         'variable1','bounces',...
+%         'values1', COND_DESIGNS{des_i});
+%     for cluster_i = main_cl_inds
+%         %-
+%     %     [STUDY, specdata, specfreqs, pgroup, pcond, pinter] = std_specplot(STUDY, ALLEEG,...
+%     %             'clusters',cluster_i,'comps','all','subject','','freqrange', FREQ_LIMITS,'subtractsubjectmean','on');
+%         %-
+%         [STUDY, specdata, specfreqs, pgroup, pcond, pinter] = std_specplot(STUDY, ALLEEG,...
+%                 'clusters',cluster_i,'freqrange',SPEC_FREQLIMITS,'plotmode','condensed',...
+%                 'plotconditions','together','ylim',SPEC_YLIM); %'plotgroups','together'
+%         fig_i = get(groot,'CurrentFigure');
+%         %- set figure line colors
+%         cc = linspecer(length(COND_DESIGNS{des_i}));
+%         iter = 1;
+%         for i = 1:length(fig_i.Children(2).Children)
+%             set(fig_i.Children(2).Children(i),'LineWidth',1.5);
+%             set(fig_i.Children(2).Children(i),'Color',horzcat(cc(iter,:),0.6));
+%             if iter == length(cc)
+%                 iter = 1;
+%             else
+%                 iter = iter + 1;
+%             end                
+%         end
+%         %- tight layout
+%         % (06/22/2023) JS, seems like changing the Position property also
+%         % erases the statistics bar. Not sure how to fix?
+% %         set(fig_i.Children(2),'Position',[0.26,0.26,0.54,0.51]); %DEFAULT
+% %         set(fig_i.Children(3),'Position',[0.26,0.2345,0.54,0.0255]); %DEFAULT
+%         set(fig_i.Children(2),'Position',[0.15,0.15,0.8,0.8]) %Default:[0.26,0.26,0.54,0.51]; Position::[left margin, lower margin, right margin, upper margin]
+%         set(fig_i.Children(3),'Position',[0.15,0.15-0.0255,0.8,0.0255]) %Default:[0.26,0.2345,0.54,0.0255]
+%         set(fig_i.Children(1),'Location','southeast') %reset Legend
+%         drawnow;
+%         %- save
+%         saveas(fig_i,[save_dir filesep sprintf('%i_%s_specplot.fig',cluster_i,[COND_DESIGNS{des_i}{:}])]);
+%         saveas(fig_i,[save_dir filesep sprintf('%i_%s_specplot.jpg',cluster_i,[COND_DESIGNS{des_i}{:}])]);
+%         close(fig_i)
+%     end
+% end
 %% Version History
 %{
 v1.0; (11/11/2022), JS: really need to consider updating bootstrap

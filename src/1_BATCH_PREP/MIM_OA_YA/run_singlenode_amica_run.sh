@@ -30,7 +30,7 @@ module load intel/2020 openmpi/4.1.5
 #%% PARAMS
 # REGEXP_SUBJ_DIR="$SUBJ_DIR/*/clean/*.param"
 # export SUBJ_EEG="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/07142023_OAN79_iccRX0p55_iccREMG0p3_changparams"
-export SUBJ_DIR="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/08202023_OAN82_iccRX0p65_iccREMG0p4_changparams"
+export SUBJ_DIR="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams"
 cd $SUBJ_DIR
 # export SUBJ_RUN=("H1002" "H1004" "H1007" "H1009" "H1010" "H1011" "H1012" "H1013" "H1017" "H1018" "H1019"
  # "H1020" "H1022" "H1024" "H1026" "H1027" "H1029" "H1030" "H1031" "H1032" "H1033" "H1034" "H1035"
@@ -71,17 +71,22 @@ for s in ${SUBJ_RUN[@]}
 do
 	export param_f=$SUBJ_DIR/$s/clean/*.param
 	export chk_f=$SUBJ_DIR/$s/clean/W
-	echo "Processing $shf file..."
+	echo "Processing $s eeg file..."
 	if test -f "$chk_f";
 	then
 		echo "ICA weight file is already generated: $chk_f"
 	else
-		echo "Calculating ICA weights..."
-		#srun --mpi=pmix_v3 /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_functions/v2_0/AMICA_15/amica15ub $param_f
-		srun --mpi=pmix_v3 /blue/dferris/share/s.peterson/test/AMICA_15/amica15ub $param_f
-		#%% This "wait" may be needed to ensure shared libraries aren't accessed multiple times?
-		wait
-		echo "done: $s"
+		if test -f $param_f;
+		then
+			echo "Calculating ICA weights..."
+			#srun --mpi=pmix_v3 /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_functions/v2_0/AMICA_15/amica15ub $param_f
+			srun --mpi=pmix_v3 /blue/dferris/share/s.peterson/test/AMICA_15/amica15ub $param_f
+			#%% This "wait" may be needed to ensure shared libraries aren't accessed multiple times?
+			wait
+			echo "done: $s"
+		else
+			echo "$param_f does not exist. Preprocess EEG for $s."
+		fi
 	fi
 done
 

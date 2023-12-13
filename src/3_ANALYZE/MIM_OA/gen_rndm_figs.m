@@ -433,27 +433,17 @@ end
 % saveas(fig_i,fullfile(save_dir,'Cluster_topo_avg.jpg'));
 exportgraphics(fig_i,[save_dir filesep sprintf('new_cluster_topo_avg.pdf')],'ContentType','vector','Resolution',300);
 saveas(fig_i,fullfile(save_dir,'new_cluster_topo_avg.fig'));
-%{
-% OFFSET = 4;
-% del_rng_min = 1;
-% del_rng_max = 1;
-% inds_del = [];
-% uiopen('M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\_save\10022023_cluster_slowwalkers_included\icrej_5\14\dipplot_alldipspc_top.fig');
-% fig_i = gcf;
-% for cluster_i = CLUSTERS_IN_FIG
-%     del_rng_max = del_rng_max+length(STUDY.cluster(cluster_i).sets)+OFFSET;
-%     if any(cluster_i == CLUSTERS_TO_KEEP)
-%         fprintf('keeping %i\n',cluster_i)
-%     else
-%         fprintf('min: %i\n',del_rng_min);
-%         fprintf('max: %i\n',del_rng_max);
-%         fprintf('cluster: %i\n',cluster_i)
-%         inds_del = [inds_del, (del_rng_min:del_rng_max)];
-%     end
-%     del_rng_min = del_rng_max+1;
-% end
-% delete(fig_i.Children.Children(inds_del))
-% view([0,0,90]);
-% view([90,0,0]);
-% DELETE_INDS = 
-%}
+%% (COMPONENT ANALYSIS)
+cluster_i = 12;
+sets = STUDY.cluster(cluster_i).sets;
+comps = STUDY.cluster(cluster_i).comps;
+%- 
+for i = 1:length(sets)
+    EEG = eeg_checkset(ALLEEG(sets(i)),'loaddata');
+    if isempty(EEG.icaact)
+        fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+        EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+        EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
+    end
+    pop_prop_extended(EEG,0,comps(i),NaN);
+end
