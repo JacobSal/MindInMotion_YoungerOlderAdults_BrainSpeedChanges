@@ -5,7 +5,7 @@
 #SBATCH --nodes=1 # Use one node
 #SBATCH --ntasks=1 # Run a single tasks
 #SBATCH --cpus-per-task=48 # Number of CPU cores per task
-#SBATCH --mem-per-cpu=15000mb # Total memory limit
+#SBATCH --mem-per-cpu=20000mb # Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
 #SBATCH --time=48:00:00 # Time limit hrs:min:sec
 #SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/_hpg_logs/%j_mcc_dipole_fit_exe.log # Standard output
@@ -26,12 +26,15 @@ module load mcr/2020a
 echo $MCRROOT
 echo $LD_LIBRARY_PATH
 # (EDIT)!
-export DONOT_RECREATE=false;
-export SUBJ_EEG="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/08202023_OAN82_iccRX0p65_iccREMG0p4_changparams"
+export DONOT_RECREATE=true;
+# cond_vals=$(echo "[1.65,0.33,0.33,0.01,0.126,2.5*10^-14]"); # csf, gray, scalp, skull, white, air
+export cond_vals=$(echo "[1.65,0.33,0.33,0.0042,0.126,2.5*10^-14]"); # csf, gray, scalp, skull, white, air
+# export SUBJ_EEG="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/08202023_OAN82_iccRX0p65_iccREMG0p4_changparams"
+# export SUBJ_EEG="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/08202023_OAN82_iccRX0p65_iccREMG0p3_newparams"
+export SUBJ_EEG="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/08202023_OAN82_iccRX0p60_iccREMG0p3_newparams"
 # SET SUBJECT DIRECTORIES
 export MCC_PATH="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/2_dipole_fit/MIM/mcc_dipfit/"
 export SUBJ_HEADMOD="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset"
-# ./mim_mcc_dipfit $SUBJ_HEADMOD/H2020/MRI $SUBJ_EEG/H2020/clean/H2020_cleanEEG_EMG_HP5std_iCC0p65_iCCEMG0p4_ChanRej0p7_TimeRej0p4_winTol10.set
 
 export SUBJ_RUN=("H1002" "H1004" "H1007" "H1009"
  "H1010" "H1011" "H1012" "H1013" "H1017" "H1018" "H1019"
@@ -75,19 +78,19 @@ export LD_PRELOAD="${LD_PRELOAD:+${LD_PRELOAD}:}${MCRROOT}/bin/glnxa64/libmwlaun
 # CSF_VALS=(1.65);
 # GRAY_VALS=(0.33);
 # SCALP_VALS=(0.33);
-# SKULL_VALS=(0.01,0.0024);
+# SKULL_VALS=(0.01,0.0042);
 # WHITE_VALS=(0.126);
 # AIR_VALS=(2.5*10^-14);
 for s in ${SUBJ_RUN[@]};
 do
-	# %% printouts
-	echo "Processing Subject $s"
-	echo "MRI folder: $SUBJ_HEADMOD/$s/MRI"
-	echo "ICA .set file path: $SUBJ_EEG/$s/clean/*.set"
 	export curr_f=$SUBJ_EEG/$s/head_model/dipfit_struct.mat
 	export mri_f=$SUBJ_HEADMOD/$s/MRI
 	export set_f=$SUBJ_EEG/$s/clean/*.set
 	export out_f=$SUBJ_EEG/$s/head_model/
+	# %% printouts
+	echo "Processing Subject $s"
+	echo "MRI folder: $SUBJ_HEADMOD/$s/MRI"
+	echo "ICA .set file path: $SUBJ_EEG/$s/clean/*.set"
 	if test -f "$curr_f" && $DONOT_RECREATE;
 	then
 		echo "$s headmodel file already generated."
@@ -105,7 +108,6 @@ do
 			force_recreate=1;
 		fi
 		# %% run program
-		cond_vals=$(echo "[1.65,0.33,0.33,0.01,0.126,2.5*10^-14]"); # csf, gray, scalp, skull, white, air
 		eval $MCC_PATH/_out/mim_mcc_dipfit "$mri_f" "$set_f" "$out_f" "$cond_vals" "FORCE_RECREATE" "$force_recreate"
 		wait
 		echo "done: $s"

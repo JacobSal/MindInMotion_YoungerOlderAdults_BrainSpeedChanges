@@ -88,7 +88,7 @@ DATA_SET = 'MIM_dataset';
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %- compute measures for spectrum and ersp
 FORCE_RECALC_SPEC = false;
-FORCE_RECALC_ERSP = false;
+FORCE_RECALC_ERSP = true;
 DO_TIMEWARP = true;
 DO_BASELINE_CORRECTION = false; 
 DO_SUBJ_PLOTS = true;
@@ -155,7 +155,13 @@ ERSP_PARAMS = struct('subbaseline','off',...
 % inside CL's PlotAndSaveERSP_CL_V3.m...
 %- datetime override
 % dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
-dt = '10052023_MIM_OAN70_noslowwalkers_gait';
+% dt = '10052023_MIM_OAN70_noslowwalkers_gait';
+% dt = '10252023_MIM_OAN70_noslowwalkers_gait_powpow0p20';
+% dt = '10302023_MIM_OAN70_noslowwalkers_gait_iccREMG0p4_powpow0p1';
+% dt = '10302023_MIM_OAN70_newnormalize_iccREMG0p4_powpow0p1';
+% dt = '10302023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+% dt = '11302023_MIM_OAN70_antsnormalize_iccREMG0p3_powpow0p1';
+dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
 %## Soft Define
 % study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 study_fName_1 = 'epoch_study';
@@ -174,30 +180,9 @@ ATLAS_PATH = [PATH_ROOT filesep 'par_EEGProcessing' filesep 'submodules',...
 % see. https://www.fieldtriptoolbox.org/template/atlas/
 ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI atalst
     [ATLAS_PATH filesep 'afni' filesep 'TTatlas+tlrc.HEAD'],... % tailarch atlas
-    [ATLAS_PATH filesep 'brainnetome' filesep 'BNA_MPM_thr25_1.25mm.nii'],...
-    [ATLAS_PATH filesep 'spm_anatomy' filesep 'AllAreas_v18_MPM.mat'],...
-    [ATLAS_PATH filesep 'vtpm' filesep 'vtpm.mat'],...
-    [ATLAS_PATH filesep 'yeo' filesep 'Yeo2011_17Networks_MNI152_FreeSurferConformed1mm_LiberalMask_colin27.nii'],...
-    [ATLAS_PATH filesep 'brainweb' filesep 'brainweb_discrete.mat']}; % also a discrete version of this
+    [ATLAS_PATH filesep 'spm_anatomy' filesep 'AllAreas_v18_MPM.mat']}; % also a discrete version of this
 %- (EDIT!) convert SUB_DIR
-SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\10052023_MIM_OAN70_noslowwalkers_gait\cluster';
-if ~ispc
-    SUB_DIR = convertPath2UNIX(SUB_DIR);
-else
-    SUB_DIR = convertPath2Drive(SUB_DIR);
-end
-%## USER SET
-% LOAD_DIFFERENT_STUDY = {true,true};
-% CLUSTER_K_PICKS = [12,14];
-% CLUSTER_STUDY_FNAMES = {'temp_study_rejics5',...
-%     'temp_study_rejics5'};
-% CLUSTER_DIRS = {[SUB_DIR filesep 'icrej_5' filesep '12'],...
-%     [SUB_DIR filesep 'icrej_5' filesep '14']};
-% CLUSTER_FILES = {'cl_inf_12.mat',...
-%     'cl_inf_14.mat'};
-% CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'icrej_5'],...
-%     [SUB_DIR filesep 'icrej_5']};
-% POSS_CLUSTER_CHARS = {};
+SUB_DIR = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
 LOAD_DIFFERENT_STUDY = {true};
 CLUSTER_K_PICKS = [12];
 CLUSTER_STUDY_FNAMES = {'temp_study_rejics5'};
@@ -207,8 +192,14 @@ CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'icrej_5']};
 POSS_CLUSTER_CHARS = {};
 % this is a matrix of integers matching the cluster number for clustering K=i to the index in the POSS_CLUSTER_CHARS
 CLUSTER_CLIM_MATCH = [];
-SUB_GROUP_FNAME = 'H3000'; %'H2000';
-SUB_GROUP_FNAME_REGEX = 'H3000''s'; %'H2000''s';
+SUB_GROUP_FNAME = [];
+SUB_GROUP_FNAME_REGEX = []; 
+% STUDY_DESI_PARAMS = {{'subjselect',{},...
+%             'variable2','cond','values2',{'flat','low','med','high'},...
+%             'variable1','group','values1',{'H2000''s','H3000''s'}},...
+%             {'subjselect',{},...
+%             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
+%             'variable1','group','values1',{'H2000''s','H3000''s'}}};
 STUDY_DESI_PARAMS = {{'subjselect',{},...
             'variable1','cond','values1',{'flat','low','med','high'},...
             'variable2','group','values2',{}},...
@@ -235,14 +226,10 @@ for k_i = 1:length(CLUSTER_K_PICKS)
     else
         cluster_study_dir = convertPath2Drive(CLUSTER_STUDY_DIRS{k_i});
     end
-    if ~exist([cluster_study_dir filesep CLUSTER_STUDY_FNAMES{k_i} '.study'],'file')
-        error('ERROR. study file does not exist');
+    if ~ispc
+        [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAMES{k_i} '_UNIX.study'],'filepath',cluster_study_dir);
     else
-        if ~ispc
-            [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAMES{k_i} '_UNIX.study'],'filepath',cluster_study_dir);
-        else
-            [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAMES{k_i} '.study'],'filepath',cluster_study_dir);
-        end
+        [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAMES{k_i} '.study'],'filepath',cluster_study_dir);
     end
     spec_data_dir = [cluster_dir filesep 'spec_data'];
     if ~exist(spec_data_dir,'dir')
@@ -505,15 +492,8 @@ for k_i = 1:length(CLUSTER_K_PICKS)
                                     STUDY.filename,spec_data_dir,...
                                     'RESAVE_DATASETS','off');
     %% CLUSTER DIAGNOSTIC PLOTS && SUBJECT SPECIFIC PER CLUSTER
-    %{
     %- get inds
     [~,main_cl_inds,~,valid_clusters,~,nonzero_clusters] = eeglab_get_cluster_comps(STUDY);
-    %- clusters to plot
-    CLUSTER_PICKS = main_cl_inds(2:end); %valid_clusters; %main_cl_inds(2:end); %valid_clusters
-    %## PLOT cluster based information
-    mim_gen_cluster_figs(STUDY,ALLEEG,CLUSTER_DIRS{k_i},...
-        'CLUSTERS_TO_PLOT',CLUSTER_PICKS);
-    %##
     STUDY.etc.dipparams.centrline = 'off';
     parfor (k = 1:length(main_cl_inds),length(main_cl_inds))
         clust_i = main_cl_inds(k);        
@@ -619,47 +599,15 @@ for k_i = 1:length(CLUSTER_K_PICKS)
             % Write the table to a CSV file
             writetable(T,[subj_save_dir filesep sprintf('%s_atlasinf_ic%i.csv',subj_char,comp_i)])
             %- (SPEC) Spec plot conds for des_i and all groups
-            %{
-            fprintf('Plotting Spectograms for Conditions...\n');
-            for des_i = 1:length(STUDY.design)
-                std_specplot(STUDY,ALLEEG,'clusters',clust_i,'comps',s_i,...
-                    'freqrange',SPEC_PARAMS.plot_freqrange,'plotmode','condensed','design',des_i);
-                fig_i = get(groot,'CurrentFigure');
-%                 fig_i.Position = [16 582 420 360];
-                set(fig_i,'position',[16 582 420 360],'color','w')
-                %- set figure line colors
-                cc = linspecer(length(STUDY.design(des_i).variable.value));
-                iter = 1;
-                for d = 1:length(fig_i.Children(2).Children)
-                    %- pane 1
-                    set(fig_i.Children(2).Children(d),'LineWidth',1.5);
-                    set(fig_i.Children(2).Children(d),'Color',horzcat(cc(iter,:),0.6));
-                    if iter == size(cc,1)
-                        iter = 1;
-                    else
-                        iter = iter + 1;
-                    end                
-                end
-                set(fig_i.Children(2),'FontSize',13);
-                set(fig_i.Children(2),'Position',[0.20,0.20,0.7,0.7])
-                set(fig_i.Children(1),'Location','northeast') %reset Legend
-                drawnow;
-                saveas(fig_i,[subj_save_dir filesep sprintf('%s_psd_des%i_ic%i.jpg',subj_char,des_i,comp_i)]);
-            end
-            %}
-    
             close all            
         end
     end
-    %}
+    %-
 end
 %% (STEP 2) PLOT
 %##
-clear('STUDY');
-clear('ALLEEG');
-clear('TMP_ALLEEG');
-% for k_i = 1:length(CLUSTER_K_PICKS)
-parfor (k_i = 1:length(CLUSTER_K_PICKS),length(CLUSTER_K_PICKS))
+for k_i = 1:length(CLUSTER_K_PICKS)
+% parfor (k_i = 1:length(CLUSTER_K_PICKS),length(CLUSTER_K_PICKS))
     fprintf('Loading Cluster K=%i',CLUSTER_K_PICKS(k_i));
     %## Loop Params
     clust_i = CLUSTER_K_PICKS(k_i);
@@ -681,25 +629,34 @@ parfor (k_i = 1:length(CLUSTER_K_PICKS),length(CLUSTER_K_PICKS))
     if ~exist(plot_store_dir,'dir')
         mkdir(plot_store_dir);
     end
+    
     %## Load Study
-    % (08/03/2023) JS, this can be optimized in the future by only loding
-    % in the file strucutre and maintaining a STUDY file with needed info
-    if LOAD_DIFFERENT_STUDY{k_i}
-        %- Create STUDY & ALLEEG structs
-        if ~exist([spec_data_dir filesep CLUSTER_STUDY_FNAMES{k_i} '.study'],'file')
-            error('error. study file does not exist');
-        else
-            if ~ispc
-                tmp = load('-mat',[spec_data_dir filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_FNAMES{k_i})]);
-                STUDY = tmp.STUDY;
-            else
-                tmp = load('-mat',[spec_data_dir filesep sprintf('%s.study',CLUSTER_STUDY_FNAMES{k_i})]);
-                STUDY = tmp.STUDY;
-            end
-        end
+    if ~exist([spec_data_dir filesep CLUSTER_STUDY_FNAMES{k_i} '.study'],'file')
+        error('ERROR. study file does not exist');
     else
-        error('error. Define a valid study path...');
+        if ~ispc
+            [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAMES{k_i} '_UNIX.study'],'filepath',spec_data_dir);
+        else
+            [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAMES{k_i} '.study'],'filepath',spec_data_dir);
+        end
     end
+    
+    %## CALCULATE GRANDAVERAGE WARPTOs
+    for subj_i = 1:length(ALLEEG)
+        %- assign percondition timewarping
+        ALLEEG(subj_i).timewarp.warpto = nanmedian(cat(1,ALLEEG(subj_i).etc.timewarp_by_cond.warpto));
+    end
+    allWarpTo = nan(length(ALLEEG),size(ALLEEG(1).timewarp.warpto,2));
+    for subj_i = 1:length(ALLEEG)
+        allWarpTo(subj_i,:) = ALLEEG(subj_i).timewarp.warpto; %stack subject specific median event latencies
+    end
+    averaged_warpto_events = floor(nanmean(allWarpTo)); % tends to be longer? (e.g., [0,262,706,982,1415])
+    %## (ERSP PLOT PREP) PREPARE STUDYFILE FOR EXTRACTION (BLACK-HAWK DOWN!)
+    TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. making this too big can cause overlap between gait cyles
+    ERSP_TIMERANGE=[averaged_warpto_events(1), averaged_warpto_events(end)];
+    STUDY.etc.averaged_warpto_events = averaged_warpto_events;
+    fprintf('Using timewarp limits: [%0.4g,%0.4f]\n',averaged_warpto_events(1),averaged_warpto_events(end));
+    disp(averaged_warpto_events);
     %## RE-POP PARAMS
     STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
         'groupstats',ERSP_STAT_PARAMS.groupstats,...
@@ -709,101 +666,64 @@ parfor (k_i = 1:length(CLUSTER_K_PICKS),length(CLUSTER_K_PICKS))
         'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
         'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
     STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_PARAMS.subbaseline,...
-          'ersplim',ERSP_PARAMS.ersplim,'freqrange',ERSP_PARAMS.freqrange,'timerange',ERSP_CROP_TIMES);
+          'ersplim',ERSP_PARAMS.ersplim,'freqrange',ERSP_PARAMS.freqrange,'timerange',ERSP_TIMERANGE);
     %## Cluster Update
     cluster_update = par_load(cluster_dir,CLUSTER_FILES{k_i});
-    STUDY.cluster = cluster_update;
     %- get inds
     [~,main_cl_inds,~,valid_clusters,~,nonzero_clusters] = eeglab_get_cluster_comps(STUDY);
     %- clusters to plot
-    CLUSTER_PICKS = main_cl_inds(2:end); %valid_clusters; %main_cl_inds(2:end); %valid_clusters
-    
-    %## Loop Through Designs
-    for des_i = 1:length(STUDY.design)
-        cond_test = STUDY.design(des_i).variable(1).value;
+    CLUSTER_PICKS = main_cl_inds(2:end); 
+    %## generate iter pairs
+    cl_inds = [STUDY.etc.mim_gen_ersp_data.clust_ind_cl];
+    des_inds = [STUDY.etc.mim_gen_ersp_data.des_ind];
+    tmp = [cl_inds', des_inds'];
+    iter_pairs = [];
+    for c_i = 1:length(CLUSTER_PICKS)
+        inds = CLUSTER_PICKS(c_i)==tmp(:,1);
+        iter_pairs = cat(1,iter_pairs,tmp(inds,:));
+    end
+    %## PARFOR
+    parfor (cnt = 1:size(iter_pairs,1),size(iter_pairs,1))
+        %- INITIATE ITERS
+        TMP_STUDY = STUDY;
+        cl_inds = [TMP_STUDY.etc.mim_gen_ersp_data.clust_ind_cl];
+        des_inds = [TMP_STUDY.etc.mim_gen_ersp_data.des_ind];
+        des_i = iter_pairs(cnt,2);
+        cluster_i = iter_pairs(cnt,1);
+        cond_test = TMP_STUDY.design(des_i).variable(1).value;
+        cluster_load_ind = find(logical(cl_inds == cluster_i) & logical(des_inds == des_i));
+        %- PRINT OUTS
         fprintf('Running Design: '); fprintf('%s,',cond_test{1:end-1}); fprintf('%s',cond_test{end}); fprintf('\n');
-        STUDY.currentdesign = des_i;
-        fprintf('Current design: %i\n',STUDY.currentdesign);
+        TMP_STUDY.currentdesign = des_i;
+        fprintf('Current design: %i\n',TMP_STUDY.currentdesign);
         fprintf('Statistics Parameters:\n');
-        disp(STUDY.etc.statistics)
+        disp(TMP_STUDY.etc.statistics)
         fprintf('Statistics Fieldtrip Parameters:\n');
-        disp(STUDY.etc.statistics.fieldtrip)
+        disp(TMP_STUDY.etc.statistics.fieldtrip)
         fprintf('Statistics EEGLAB Parameters:\n');
-        disp(STUDY.etc.statistics.eeglab)
+        disp(TMP_STUDY.etc.statistics.eeglab)
         fprintf('ERSP Parameters:\n');
-        disp(STUDY.etc.erspparams)
-        cl_inds = [STUDY.etc.mim_gen_ersp_data.clust_ind_cl];
-        des_inds = [STUDY.etc.mim_gen_ersp_data.des_ind];
-%         des_cls = TMP_STUDY.etc.mim_gen_ersp_data.clust_ind_cl([TMP_STUDY.etc.mim_gen_ersp_data.des_ind] == des_i);
-%         parfor (j = 1:length(CLUSTER_PICKS),length(CLUSTER_PICKS))
-        for j = 1:length(CLUSTER_PICKS)
-            cluster_i = CLUSTER_PICKS(j);
-            cluster_load_ind = find(logical(cl_inds == cluster_i) & logical(des_inds == des_i));
-%             cluster_load_ind = cluster_i;
-%             cluster_load_ind = TMP_STUDY.etc.mim_gen_ersp_data(des_i,cluster_i).cluster_n(1,cluster_i);
-            %- defaults
-            allersp = {};
-            alltimes = [];
-            allfreqs = [];
-            pcond = {};
-            pgroup = {};
-            pinter = {};
-            %- LOAD OPTION 1
-    %         fname = strsplit(STUDY.etc.mim_gen_ersp_data(des_i,cluster_i).ersp_fpaths,'/');
-    %         fpath = strjoin(fname(1:end-1),'/');
-    %         fname = fname{end};
-    %         ersp_data = par_load(fpath,fname);
-    %         allersp = ersp_data.allerspdata;
-    %         alltimes = ersp_data.alltimes;
-    %         allfreqs = ersp_data.allfreqs;
-            %- LOAD OPTION 2
-    %         fname = strsplit(STUDY.etc.mim_gen_ersp_data(des_i,cluster_i).ersp_norm_fpaths,'/');
-    %         fpath = strjoin(fname(1:end-1),'/');
-    %         fname = fname{end};
-    %         ersp_data_norm = par_load(fpath,fname);
-    %         allersp = ersp_data_norm.allerspdata;
-    %         alltimes = ersp_data_norm.alltimes;
-    %         allfreqs = ersp_data_norm.allfreqs;
-    %         pcond = ersp_data_norm.pcond;
-            %- LOAD OPTION 3
-    %         fname = strsplit(STUDY.etc.mim_gen_ersp_data(des_i,cluster_i).ersp_normcb_fpaths,'/');
-    %         fpath = strjoin(fname(1:end-1),'/');
-    %         fname = fname{end};
-    %         ersp_data_normcb = par_load(fpath,fname);
-    %         allersp = ersp_data_normcb.allerspdata;
-    %         alltimes = ersp_data_normcb.alltimes;
-    %         allfreqs = ersp_data_normcb.allfreqs;
-            %- LOAD OPTION 4
-    %         [~, allersp, alltimes, allfreqs, ~, ~] = std_readdata(STUDY,ALLEEG,...
-    %             'clusters',cluster_i,'singletrials',ERSP_SINGLETRIALS,... 
-    %             'datatype','ersp','freqrange',ERSP_FREQLIMITS,...
-    %             'design',des_i);
-    %         %* get stats
-    %         [pcond_ersp,pgroup_ersp,pinter_ersp,~,~,~] = std_stat(allersp,...
-    %                     'condstats', ERSP_CONDSTATS,...
-    %                     'groupstats',ERSP_GROUPSTATS,...
-    %                     'method',ERSP_STAT_METHOD,...
-    %                     'naccu',ERSP_NACCU,...
-    %                     'alpha',ERSP_ALPHA,...
-    %                     'mcorrect',ERSP_MCORRECT,'mode',STAT_MODE,'fieldtripalpha',ERSP_ALPHA,...
-    %                     'fieldtripmethod',FIELDTRIP_METHOD,'fieldtripmcorrect',ERSP_MCORRECT,'fieldtripnaccu',ERSP_NACCU);
-            %## RUN PLOTTING
-            fprintf('Plotting Cluster %i for design %i\n',cluster_i,des_i);
-            mim_custom_ersp_plots(STUDY,cond_test,averaged_warpto_events,...
-                cluster_i,cluster_load_ind,des_i,plot_store_dir,...
-                'DO_SUBJ_PLOTS',DO_SUBJ_PLOTS,...
-                'CLUSTER_CLIM_MATCH',CLUSTER_CLIM_MATCH,...
-                'ALLERSP',allersp,...
-                'ALLTIMES',alltimes,...
-                'ALLFREQS',allfreqs,...
-                'PCOND',pcond,...
-                'PGROUP',pgroup,...
-                'PINTER',pinter)
-            
-        end
+        disp(TMP_STUDY.etc.erspparams)
+        %- defaults
+        allersp = {};
+        alltimes = [];
+        allfreqs = [];
+        pcond = {};
+        pgroup = {};
+        pinter = {};%## RUN PLOTTING
+        fprintf('Plotting Cluster %i for design %i\n',cluster_i,des_i);
+        mim_custom_ersp_plots(TMP_STUDY,cond_test,averaged_warpto_events,...
+            cluster_i,cluster_load_ind,des_i,plot_store_dir,...
+            'DO_SUBJ_PLOTS',DO_SUBJ_PLOTS,...
+            'CLUSTER_CLIM_MATCH',CLUSTER_CLIM_MATCH,...
+            'ALLERSP',allersp,...
+            'ALLTIMES',alltimes,...
+            'ALLFREQS',allfreqs,...
+            'PCOND',pcond,...
+            'PGROUP',pgroup,...
+            'PINTER',pinter)
     end
 end
-
 %% Version History
 %{
 v1.0.01132023.0 : Initializing versioning for future iterations. Previous

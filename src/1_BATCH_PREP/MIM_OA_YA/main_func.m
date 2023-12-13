@@ -70,18 +70,20 @@ mim_config.std_threshold = 3;
 %- ICanClean parameters
 mim_config.ICC.params=[];
 mim_config.ICC.params.windowLength = 2; % 2023-1-10 Ryan said 2 is better % previously used 1; % sliding window that gets cleaned 
-mim_config.ICC.params.rhoSqThres_source = 0.9; % 2023-1-10 Use 0.65 for 4sec window %Default 0.9, NH3066 try 0.8, H3063 = 0.95, NH3068, H3072 try 0.85
+mim_config.ICC.params.rhoSqThres_source = 0.65; % 2023-1-10 Use 0.65 for 4sec window %Default 0.9, NH3066 try 0.8, H3063 = 0.95, NH3068, H3072 try 0.85
 %* (07/11/2023) JS, trying rhoSqThres_source 0.65
-%* (07/12/2023) JS, trying rhoSqThres_source 0.9 as a more conservative cutoff 
+%* (07/12/2023) JS, trying rhoSqThres_source 0.9 as a less aggressive cutoff 
+%* (10/30/2023) JS, trying rhoSqThres_source 0.6 as a  more aggressive cutoff
 mim_config.ICC.params.cleanXwith = 'X'; 
 %-- old parameterization (05/05/2023)
 mim_config.ICC.params.extraTime_pre = 1; % 2023-1-10 Ryan said use 1 (2-MiM_config.ICC.params.windowLength)/2; %wider window for stats
 mim_config.ICC.params.extraTime_post = 1; %MiM_config.ICC.params.extraTime_pre; %wider window for stats
 %- ICanClean Muscle parameters
 mim_config.ICC_muscle.params = mim_config.ICC.params;
-mim_config.ICC_muscle.params.rhoSqThres_source = 0.3; %with 4sec window, 0.9 is too high, 0 bad sources get removed...- -(EMG without highpass filter)
+mim_config.ICC_muscle.params.rhoSqThres_source = 0.4; %with 4sec window, 0.9 is too high, 0 bad sources get removed...- -(EMG without highpass filter)
 %* (07/11/2023) JS, trying rhoSqThres_source 0.4
-%* (07/12/2023) JS, trying rhoSqThres_source 0.3  as a more conservative cutoff 
+%* (10/26/2023) JS, trying rhoSqThres_source 0.3  as a more aggressive cutoff 
+%* (10/30/2023) JS, trying rhoSqThres_source 0.25  as a more aggressive cutoff 
 %- ICanClean Canonical Correlation Analysis parameters
 lagAmount_samples = 1;
 CCA_Rsq_thres = 0.2; %default 0.2
@@ -144,7 +146,7 @@ parse(p,subj_char,save_fPath,fOutput,fDataset,varargin{:});
 mim_config.CleanEEG_output     = [fOutput filesep 'clean'];
 mim_config.amicaEEG_output     = [fOutput filesep 'clean'];
 %% ===================================================================== %%
-%% SCRIPT PART 1
+%## (SCRIPT PART 1)
 EEG = [];
 ALLEEG = [];
 %## Find All Trials of Interest
@@ -167,7 +169,10 @@ for trial_i = nTrials
     [ALLEEG, EEG, CURRENTSET] = eeg_store( ALLEEG, EEG, 0 ); %append to new EEG to ALLEEG
 
     %% Deal with trial cropping
-    [DoCrop, ExactCrop, DoCrop_loadsol, ExactCrop_loadsol ] = CropTrialCheckFunc_checkLoadsol(subj_char,fileList(trial_i).name(1:end-4),...
+    fprintf('Cropping trial %i for subject %s',trial_i,subj_char)
+%     [DoCrop, ExactCrop, DoCrop_loadsol, ExactCrop_loadsol ] = CropTrialCheckFunc_checkLoadsol(subj_char,fileList(trial_i).name(1:end-4),...
+%         mim_config.subjMgmtFolder);
+    [ DoCrop, ExactCrop, DoCrop_loadsol, ExactCrop_loadsol ] = mim_check_trials(subj_char,fileList(trial_i).name(1:end-4),...
         mim_config.subjMgmtFolder);
     if DoCrop_loadsol % 
         % remove gait events not in the ExactCrop_loadsol range
@@ -496,23 +501,21 @@ EEG.etc.CleanType  = preprocess_pipeline;
 EEG.etc.Params     = mim_config;
 mkdir(mim_config.CleanEEG_output)
 
-[EEG_chans,~,~] = getChannelTypes_func(EEG) ;
+[EEG_chans,EMG_chans,Noise_chans] = getChannelTypes_func(EEG) ;
 % re-ref
 fprintf('==== %s FINAL REREFERENCING ====\n',subj_char)
 EEG = rerefC2CN2NExt2Ext_func(EEG,fullRankAvRefBool);
-EEG = pop_select(EEG,'channel',sort([EEG_chans]));%2022-5-13 not use EMG
 %- save output
+EEG = pop_select(EEG,'channel',sort([EEG_chans]));%2022-5-13 not use EMG
 EEG = pop_saveset(EEG,'filepath',mim_config.CleanEEG_output,...
                     'filename',sprintf('%s_cleanEEG_%s',subj_char,preprocess_pipeline),...
                     'savemode','twofiles');
+%- saving EMG output
+% EEG = pop_saveset(EEG,'filepath',mim_config.CleanEEG_output,...
+%                     'filename',sprintf('%s_cleanEEG_%s_wEMG_wNoise',subj_char,preprocess_pipeline),...
+%                     'savemode','twofiles');
 %% HPG IMPLEMENTATION ONLY
-% SEND to HPG
-% define output paths
-% write .sh script to subject folders
 disp([num2str(length(EEG_chans)),' remained']);
-% amica_cmd = prepare_HPG_AMICA_func_batch(EEG,sprintf('%s_cleanEEG_%s',subj_char,preprocess_pipeline),...
-%     mim_config.amicaOutputFolder_drive,mim_config.amicaOutputFolder_unix,...
-%     avgRefPCAReduction,mim_config.emailStr); %prepare AMICA files then follow instructions to manually run amica on hipergator
 float_fPath = [EEG.filepath filesep sprintf('%s_cleanEEG_%s.fdt',subj_char,preprocess_pipeline)];
 [EEG,amica_cmd] = mim_prep_hpg_amica(EEG,float_fPath,mim_config.amicaEEG_output,mim_config.emailStr,avg_ref_pca_reduction);
 EEG = pop_saveset(EEG,'filepath',mim_config.CleanEEG_output,...

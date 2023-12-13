@@ -81,7 +81,7 @@ if ~ispc
     mkdir([run_dir filesep getenv('SLURM_JOB_ID')])
     pp.JobStorageLocation = strcat([run_dir filesep], getenv('SLURM_JOB_ID'));
     %- create your p-pool (NOTE: gross!!)
-    pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
+    pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', Inf);
 else
     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
     'option_single', 1, 'option_memmapdata', 0,'option_saveversion6',1, ...
@@ -146,13 +146,13 @@ SUBJ_DONT_INC = {'NH3004','NH3023'};
 % GROUP_NAMES = {'H1000''s'}; 
 % SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
 %- (OA&YA) Subject Picks 
-% SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
+SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
+GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
+SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %- (OA) Subject Picks 
-SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-GROUP_NAMES = {'H2000''s','H3000''s'}; 
-SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
+% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
+% GROUP_NAMES = {'H2000''s','H3000''s'}; 
+% SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %- (0A) DEBUG SUBSET (06/17/2023)
 % SUBJ_PICS = {SUBJ_DEBUG};
 % GROUP_NAMES = {'debug'}; 
@@ -171,7 +171,12 @@ DATA_SET = 'MIM_dataset';
 % OA_PREP_FNAME = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 % OA_PREP_FNAME = '07122023_OAN79_iccRX0p9_iccREMG0p3'; % JACOB,SAL(07/12/2023)
 % OA_PREP_FNAME = '07142023_OAN79_iccRX0p55_iccREMG0p3_changparams'; % JACOB,SAL(07/14/2023)
-OA_PREP_FNAME = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(07/14/2023)
+% OA_PREP_FNAME = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(07/14/2023)
+% OA_PREP_FNAME = '08202023_OAN82_iccRX0p65_iccREMG0p3_newparams'; % JACOB,SAL(10/26/2023)
+% OA_PREP_FNAME = '10302023_OAN82_iccRX0p60_iccREMG0p4_newparams'; % JACOB,SAL(10/30/2023)
+% OA_PREP_FNAME = 'EMG_ANALYSIS'; % JACOB,SAL(07/14/2023)
+% OA_PREP_FNAME = '08202023_OAN82_iccRX0p60_iccREMG0p3_newparams'; % JACOB,SAL(07/14/2023)
+OA_PREP_FNAME = '11262023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(07/14/2023)
 %## soft define
 %- path for local data
 DATA_DIR = [source_dir filesep '_data'];
@@ -234,11 +239,9 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
     end
     %## RUN MAIN_FUNC
     try
-        if ~exist([save_dir filesep subjectNames{subj_i} filesep 'clean' filesep sprintf('%s_cleanEEG.set',subjectNames{subj_i})],'file') || true
-            [EEG,amica_cmd{subj_i},params{subj_i}] = main_func(subjectNames{subj_i},fPaths{subj_i},...
-                    [save_dir filesep subjectNames{subj_i}],STUDIES_DIR);
-            fprintf('%s\n',amica_cmd{subj_i}{2})
-        end
+        [EEG,amica_cmd{subj_i},params{subj_i}] = main_func(subjectNames{subj_i},fPaths{subj_i},...
+                [save_dir filesep subjectNames{subj_i}],STUDIES_DIR);
+        fprintf('%s\n',amica_cmd{subj_i}{2})
     catch e
         fprintf(['error. identifier: %s\n',...
                  'error. %s\n',...

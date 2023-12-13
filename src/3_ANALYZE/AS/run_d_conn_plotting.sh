@@ -12,7 +12,6 @@
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=hpg-default # cluster to run on, use slurm command 'sinfo -s'
-module purge
 module load matlab/2020b
 cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/AS/
 

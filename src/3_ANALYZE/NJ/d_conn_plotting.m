@@ -403,6 +403,7 @@ meth_i = 1; % method iter
 freq_dim = length(ALLEEG(1).etc.COND_CAT(1).Conn.freqs);
 FREQ_BANDS = {1:freq_dim;1:7;7:12;12:28;28:48;48:60};
 conn_store = nan(length(STUDY.cluster),length(STUDY.cluster),length(FREQ_BANDS),length(ALLEEG),length(ALLEEG(1).etc.COND_CAT));
+conn_sig_store = cell(length(STUDY.cluster),length(STUDY.cluster),length(ALLEEG),length(ALLEEG(1).etc.COND_CAT));
 for subj_i = 1:length(ALLEEG)
     conn_subj_out = par_load([save_dir filesep 'pr_conn_mats'],sprintf('%s_connmat.mat',ALLEEG(subj_i).subject));
     for freq_i = 1:length(FREQ_BANDS)
@@ -419,10 +420,21 @@ for subj_i = 1:length(ALLEEG)
             end
             display_names = display_names(idxcl);
             cluster_inds = idxcl;
-            %- nan mask
+            %- extract timexconn signals
+            if freq_i == 1
+                for i = 1:length(cluster_inds)
+                    for j = 1:length(cluster_inds)
+                        tmp = conn_subj_out{cond_i,meth_i};
+                        tmp(tmp == 0) = nan();
+                        tmp = squeeze(tmp(i,j,:,:));
+                        tmp = squeeze(nansum(tmp,1));
+                        conn_sig_store{i,j,subj_i,cond_i} = tmp;
+                    end
+                end
+            end
+            %- extract averages within frequency bands across time
             tmp = conn_subj_out{cond_i,meth_i};
             tmp(tmp == 0) = nan();
-            %- color limits handle
             %* sum across frequencies (recreate connectivity trace
             % previously decomposed using fourier transform)
             tmp = squeeze(tmp(:,:,FREQ_BANDS{freq_i},:));
@@ -435,6 +447,25 @@ for subj_i = 1:length(ALLEEG)
         end
     end
 end
+%% (NONZERO) SIGNALS PLOT
+for i = 1:size(conn_sig_store,1)
+    for j = 1:size(conn_sig_store,2)
+        figure();
+        for cond_i = 1:size(conn_sig_store,4)
+            y = nanmean(conn_sig_store(i,j,:,cond_i),3); %rand(1,10); % your mean vector;
+            x = 1:size(conn_sig_store,3); %1:numel(y);
+            std_dev = nanstd(conn_sig_store(i,j,:,cond_i),[],3);
+            curve1 = y + std_dev;
+            curve2 = y - std_dev;
+            x2 = [x, fliplr(x)];
+            inBetween = [curve1, fliplr(curve2)];
+            fill(x2, inBetween, 'g');
+            hold on;
+            plot(x, y, 'r', 'LineWidth', 2);
+        end
+    end
+end
+
 %% (NONZERO) CONNECTIVITY MATRICIES
 %## TIME
 tic
@@ -669,6 +700,6 @@ for eeg_i = 1:2
         end
     end
 end
-
 %## TIME
 toc
+%% ANOVA

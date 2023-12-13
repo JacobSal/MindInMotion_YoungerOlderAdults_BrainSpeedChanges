@@ -113,7 +113,7 @@ else
     end
     %## load chang's algorithmic clustering
     %* cluster parameters
-    pick_cluster = 21;
+    pick_cluster = 19;
     clustering_weights.dipoles = 1;
     clustering_weights.scalp = 0;
     clustering_weights.ersp = 0;
@@ -130,7 +130,7 @@ else
     cluster_update = par_load(cluster_dir,sprintf('cluster_update_%i.mat',pick_cluster));
     STUDY.cluster = cluster_update;
     %- get inds
-    [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
+    [comps_out,main_cl_inds,outlier_cl_inds,valid_clusters,main_cl_anat] = eeglab_get_cluster_comps(STUDY);
 end
 %% INITIALIZE PARFOR LOOP VARS
 if exist('SLURM_POOL_SIZE','var')
@@ -144,8 +144,10 @@ end
 FREQ_INTS = (1:length(ALLEEG(1).etc.js_processing(1).META.(conn_meas).connExtract));
 % CLUSTER_ITERS = [2,3,4,5,6,7,8,9];
 % CLUSTER_ASSIGNMENTS = {'RPPa','LPPa','PFC','LSM','ROc','ACC','RSM','Cerr'};
-CLUSTER_ITERS = [6,8,10,13,18];
-CLUSTER_ASSIGNMENTS = {'Precuneus','Cuneus','RSM','LSM','LPP'};
+% CLUSTER_ITERS = [6,8,10,13,18];
+% CLUSTER_ASSIGNMENTS = {'Precuneus','Cuneus','RSM','LSM','LPP'};
+CLUSTER_ITERS = main_cl_inds(2:end);
+CLUSTER_ASSIGNMENTS = [main_cl_anat{CLUSTER_ITERS}];
 %## VARIABLE INITIALIZATION
 tmp = ALLEEG(1).etc.conn_table;
 % CONN_METHODS = unique(tmp.t_conn_meas);
@@ -341,6 +343,21 @@ for freq_i = 1:size(uniq_freqs,1)
 %         close(fig_i)
     end
 end
+%% TEST TIMEFREQ GRID
+%{
+STAT_CHAR = {'bootstrap','nonzeros'};
+if ~exist([save_dir filesep 'conn_mats'],'dir')
+    mkdir([save_dir filesep 'conn_mats'])
+end
+parfor subj_i = 1:length(ALLEEG)
+% for subj_i = 1:length(ALLEEG)
+    [conn_subj_out]=as_cnct_stat_valid(ALLEEG(subj_i),STUDY,...
+        CLUSTER_ITERS,CLUSTER_ASSIGNMENTS,squeeze(comps_out(:,subj_i)),save_dir,...
+        'ALPHA',ALPHA,...
+        'CONN_METHODS',{CONN_MEAS_ANLYZ});
+    par_save(conn_subj_out,[save_dir filesep 'conn_mats'],sprintf('%s_connmat.mat',ALLEEG(subj_i).subject));            
+end
+%}
 %%
 if ~exist([save_dir filesep 'nz_bs_test'],'dir')
     mkdir([save_dir filesep 'nz_bs_test'])
@@ -359,116 +376,124 @@ parfor subj_i = 1:length(ALLEEG)
     par_save(phasernd_conn,[save_dir filesep 'pr_conn_mats'],sprintf('%s_connmat.mat',ALLEEG(subj_i).subject));
     par_save(bootstrap_conn,[save_dir filesep 'bs_conn_mats'],sprintf('%s_connmat.mat',ALLEEG(subj_i).subject));
 end
-%% TEST TIMEFREQ GRID
-% STAT_CHAR = {'bootstrap','nonzeros'};
-% if ~exist([save_dir filesep 'conn_mats'],'dir')
-%     mkdir([save_dir filesep 'conn_mats'])
-% end
-% parfor subj_i = 1:length(ALLEEG)
-% % for subj_i = 1:length(ALLEEG)
-%     [conn_subj_out]=as_cnct_stat_valid(ALLEEG(subj_i),STUDY,...
-%         CLUSTER_ITERS,CLUSTER_ASSIGNMENTS,squeeze(comps_out(:,subj_i)),save_dir,...
-%         'ALPHA',ALPHA,...
-%         'CONN_METHODS',{CONN_MEAS_ANLYZ});
-%     par_save(conn_subj_out,[save_dir filesep 'conn_mats'],sprintf('%s_connmat.mat',ALLEEG(subj_i).subject));            
-% end
-% freq_dim = length(ALLEEG(1).etc.COND_CAT(1).Conn.freqs);
-% time_dim = length(ALLEEG(1).etc.COND_CAT(1).Conn.winCenterTimes);
-% tmp_struct = struct('dims',{'to_clusters','from_clusters','frequency','timewindow','subjects','cond_1','cond_2','stat_i','eeg_i'},...
-%     'conditions',{conn_conds},...
-%     'cluster_nums',CLUSTER_ITERS,...
-%     'cluster_names',{CLUSTER_ASSIGNMENTS},...
-%     'connectivity_mat_eeg1',conn_store_1,...
-%     'connectivity_mat_eeg2',conn_store_2,...
-%     'conectivity_meas',CONN_MEAS_ANLYZ,...
-%     'bs_conds',{cond_bootstraps},...
-%     'frequencies',{ALLEEG(1).etc.COND_CAT(1).Conn.freqs},...
-%     'timewindows',{ALLEEG(1).etc.COND_CAT(1).Conn.winCenterTimes});
-% par_save(tmp_struct,save_dir, 'large_conn_stats_matrices.mat');
-% clear tmp_struct
+
 %% AVERAGING BOOTSTRAPPED & NONZEROED CONNECTIVITY MATRICIES
+STAT_CHAR = {'bootstrap','nonzero'};
 %## LOAD
+stat_i = 1;
 freq_dim = length(ALLEEG(1).etc.COND_CAT(1).Conn.freqs);
 FREQ_BANDS = {1:freq_dim;1:7;7:12;12:28;28:48;48:60};
-conn_store = nan(length(STUDY.cluster),length(STUDY.cluster),length(FREQ_BANDS),length(ALLEEG),length(conn_conds),length(conn_conds),2,2);
+conn_store = nan(length(STUDY.cluster),length(STUDY.cluster),length(FREQ_BANDS),length(ALLEEG),length(ALLEEG(1).etc.COND_CAT),length(ALLEEG(1).etc.COND_CAT),2);
 for subj_i = 1:length(ALLEEG)
-    conn_subj_out = par_load([save_dir filesep 'conn_mats'],sprintf('%s_connmat.mat',ALLEEG(subj_i).subject));
-    for freq_i = 1:length(FREQ_BANDS)
-        %- color limits handle
-        %* sum across frequencies (recreate connectivity trace
-        % previously decomposed using fourier transform)
-        tmp = conn_subj_out(:,:,FREQ_BANDS{freq_i},:,:,:,:,:);
-        tmp = squeeze(nansum(tmp,3));
-        tmp(tmp == 0) = nan();
-        %* average across time
-        tmp = squeeze(nanmean(tmp,3));
-        %- store
-        conn_store(:,:,subj_i,freq_i,:,:,:,:) = tmp;
+    if stat_i == 1
+        conn_subj_out = par_load([save_dir filesep 'bs_conn_mats'],sprintf('%s_connmat.mat',ALLEEG(subj_i).subject));
+    else
+        conn_subj_out = par_load([save_dir filesep 'pr_conn_mats'],sprintf('%s_connmat.mat',ALLEEG(subj_i).subject));
     end
-end
-%% CONNECTIVITY MATRICIES
-%## TIME
-tic
-%## CALC BOOTSTRAPPED MEAN
-done = [];
-for stat_i = 1:2
     for eeg_i = 1:2
         for freq_i = 1:length(FREQ_BANDS)
-            for cond_i = 1:size(conn_store,6)
-                for cond_j = 1:size(conn_store,7)
-                    if any((cond_j == done))
+            done = [];
+            for cond_i = 1:size(conn_subj_out,1)
+                for cond_j = 1:size(conn_subj_out,2)
+                    if any((cond_j==done)) || cond_i==cond_j
                         continue;
                     end
-                    %## SAVE_PATH
-                    FREQS_SUBPATH = sprintf('%i-%i',...
-                                FREQ_BANDS{freq_i}(1),FREQ_BANDS{freq_i}(end));
-                    save_sub_figs = [save_dir filesep 'bs_nz_cluster_mats' filesep FREQS_SUBPATH];
-                    if ~exist(save_sub_figs,'dir')
-                        mkdir(save_sub_figs);
-                    end
-                    %- plot
-                    cnt = 1;
-                    for i = 1:length(STUDY.cluster)
-                        N = length(STUDY.cluster(i).sets);
-                    %         clusterNames{i} = sprintf('(N=%i) Cluster %i',N,i);
-                        if any(i == CLUSTER_ITERS)
-                            %- assign name if available
-                            idx = find(i == CLUSTER_ITERS);
-                            clusterNames{idx} = sprintf('(N=%i) %s',N,CLUSTER_ASSIGNMENTS{(i == CLUSTER_ITERS)});
-                            cnt = cnt + 1;            
+                    %- generate display names based on CLUSTER_ASSIGNMENTS
+                    comps = squeeze(comps_out(:,subj_i));
+                    [tmpcl,idxcl] = sort(comps);
+                    idxcl = idxcl(tmpcl~=0);
+                    display_names = cell(length(tmpcl),1);
+                    for i = 1:length(idxcl)
+                        if any(idxcl(i) == CLUSTER_ITERS)
+                            display_names{idxcl(i)} = sprintf('%s_ic%i',CLUSTER_ASSIGNMENTS{(idxcl(i) == CLUSTER_ITERS)},comps(idxcl(i)));
                         end
                     end
-                    %## Extract
-                    tmp = squeeze(conn_store(:,:,:,freq_i,cond_i,cond_j,stat_i,eeg_i));
-                    %## average across subjects
-                    tmp = squeeze(nanmean(tmp,3));
-                    %## PLOT
-                    I = eye(size(tmp));
-                    I = (I == 0);
-                    tmp = tmp.*I;
+                    display_names = display_names(idxcl);
+                    cluster_inds = idxcl;
+                    %- color limits handle
+                    %* sum across frequencies (recreate connectivity trace
+                    % previously decomposed using fourier transform)
+                    tmp = squeeze(conn_subj_out{cond_i,cond_j}(:,:,FREQ_BANDS{freq_i},:,eeg_i));
+                    tmp = squeeze(nansum(tmp,3));
                     tmp(tmp == 0) = nan();
-                %     tmp = log(tmp);
-                    %- delte unused clusters
-                    tmp = tmp(CLUSTER_ITERS,:);
-                    tmp = tmp(:,CLUSTER_ITERS);
-                    %- plot
-                    figure;
-                    hnd = heatmap(tmp,'Colormap',jet); %,'CellLabelColor', 'None');
-                    title(sprintf('''%s'' Connectivity mean across clusters',conn_conds{cond_i}));
-                    hnd.YDisplayLabels = clusterNames;
-                    hnd.XDisplayLabels = clusterNames;
-                    hnd.ColorLimits = [0,0.05];
-                    hnd.GridVisible = 'off';
-                    hnd.CellLabelFormat = '%0.1g';
-                    fig_i = get(groot,'CurrentFigure');
-                    saveas(fig_i,[save_sub_figs filesep sprintf('%s_eeg%i_TimeFreqChart_%i-%i.jpg',STAT_CHAR{stat_i},eeg_i,cond_i,cond_j)]);
-                    saveas(fig_i,[save_sub_figs filesep sprintf('%s_eeg%i_TimeFreqChart_%i-%i.jpg',STAT_CHAR{stat_i},eeg_i,cond_i,cond_j)]);
-                    close(fig_i)
+                    %* average across time
+                    tmp = squeeze(nanmean(tmp,3));
+                    %- store
+                    conn_store(cluster_inds,cluster_inds,freq_i,subj_i,cond_i,cond_j,eeg_i) = tmp;
+                    done = [done cond_i];
                 end
             end
         end
     end
 end
+bs_struct = struct('dims',{'from_clusters','to_clusters','frequencies','condition_1','ocndition_2','eeg_masked'},...
+    'conditions',{conn_conds},...
+    'cluster_nums',CLUSTER_ITERS,...
+    'cluster_names',{CLUSTER_ASSIGNMENTS},...
+    'frequency_bands',uniq_freqs,...
+    'bootstrap_masked',mat_out_nan);
+par_save(tmp_struct,save_dir,'all_subj_connectivity.mat');
+%% CONNECTIVITY MATRICIES
+%## TIME
+tic
+%## CALC BOOTSTRAPPED MEAN
+done = [];
+for eeg_i = 1:2
+    for freq_i = 1:length(FREQ_BANDS)
+        for cond_i = 1:size(conn_store,6)
+            for cond_j = 1:size(conn_store,7)
+                if any((cond_j == done))
+                    continue;
+                end
+                %## SAVE_PATH
+                FREQS_SUBPATH = sprintf('%i-%i',...
+                            FREQ_BANDS{freq_i}(1),FREQ_BANDS{freq_i}(end));
+                save_sub_figs = [save_dir filesep 'bs_nz_cluster_mats' filesep FREQS_SUBPATH];
+                if ~exist(save_sub_figs,'dir')
+                    mkdir(save_sub_figs);
+                end
+                %- plot
+                cnt = 1;
+                for i = 1:length(STUDY.cluster)
+                    N = length(STUDY.cluster(i).sets);
+                    if any(i == CLUSTER_ITERS)
+                        %- assign name if available
+                        idx = find(i == CLUSTER_ITERS);
+                        clusterNames{idx} = sprintf('(N=%i) %s',N,CLUSTER_ASSIGNMENTS{(i == CLUSTER_ITERS)});
+                        cnt = cnt + 1;            
+                    end
+                end
+                %## Extract
+                tmp = squeeze(conn_store(:,:,:,freq_i,cond_i,cond_j,eeg_i));
+                %## average across subjects
+                tmp = squeeze(nanmean(tmp,3));
+                %## PLOT
+                I = eye(size(tmp));
+                I = (I == 0);
+                tmp = tmp.*I;
+                tmp(tmp == 0) = nan();
+            %     tmp = log(tmp);
+                %- delte unused clusters
+                tmp = tmp(CLUSTER_ITERS,:);
+                tmp = tmp(:,CLUSTER_ITERS);
+                %- plot
+                figure;
+                hnd = heatmap(tmp,'Colormap',jet); %,'CellLabelColor', 'None');
+                title(sprintf('%s: ',STAT_CHARS{stat_i},conn_conds{cond_i}));
+                hnd.YDisplayLabels = clusterNames;
+                hnd.XDisplayLabels = clusterNames;
+                hnd.ColorLimits = [0,0.05];
+                hnd.GridVisible = 'off';
+                hnd.CellLabelFormat = '%0.1g';
+                fig_i = get(groot,'CurrentFigure');
+                saveas(fig_i,[save_sub_figs filesep sprintf('%s_eeg%i_TimeFreqChart_%i-%i.jpg',STAT_CHAR{stat_i},eeg_i,cond_i,cond_j)]);
+                saveas(fig_i,[save_sub_figs filesep sprintf('%s_eeg%i_TimeFreqChart_%i-%i.jpg',STAT_CHAR{stat_i},eeg_i,cond_i,cond_j)]);
+                close(fig_i)
+            end
+        end
+    end
+end
+
 %## TIME
 toc
 %% BOOTSTRAPPED & NONZEROED CONNECTIVITY MATRICIES

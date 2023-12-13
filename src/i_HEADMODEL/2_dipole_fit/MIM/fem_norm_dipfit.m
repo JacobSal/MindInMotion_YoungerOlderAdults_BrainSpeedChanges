@@ -141,9 +141,9 @@ SUBJ_DONT_INC = {'NH3004','NH3023'};
 % GROUP_NAMES = {'H1000''s'}; 
 % SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
 %- (OA&YA) Subject Picks 
-% SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
+SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
+GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
+SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
 %- (OA) Subject Picks 
 % SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
 % GROUP_NAMES = {'H2000''s','H3000''s'}; 
@@ -153,9 +153,9 @@ SUBJ_DONT_INC = {'NH3004','NH3023'};
 % GROUP_NAMES = {'debug'}; 
 % SUBJ_ITERS = {1:length(SUBJ_DEBUG)};
 %- test
-SUBJ_PICS = {{'H2062','NH3040'}};
-GROUP_NAMES = {'test'}; 
-SUBJ_ITERS = {1:length(SUBJ_PICS{:})};
+% SUBJ_PICS = {{'H2062','NH3040'}};
+% GROUP_NAMES = {'test'}; 
+% SUBJ_ITERS = {1:length(SUBJ_PICS{:})};
 fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
 fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
 %% (PROCESSING PARAMS) ================================================= %%
@@ -165,6 +165,7 @@ fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),l
 % OA_PREP_FPATH = '07042023_OA_prep_verified'; % JACOB,SAL(04/10/2023)
 % OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
+% OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p3_newparams'; % JACOB,SAL(09/26/2023)
 %- hardcode data_dir
 DATA_SET = 'MIM_dataset';
 %- MRI normalization
@@ -183,6 +184,7 @@ subjectNames    = cell(1,length([SUBJ_ITERS{:}]));
 fNames          = cell(1,length([SUBJ_ITERS{:}]));
 fPaths          = cell(1,length([SUBJ_ITERS{:}]));
 dipfit_fPaths   = cell(1,length([SUBJ_ITERS{:}]));
+ants_fpaths     = cell(1,length([SUBJ_ITERS{:}]));
 stack_iter = 0;
 for group_i = 1:length(SUBJ_ITERS)
     sub_idx = SUBJ_ITERS{group_i}; 
@@ -193,6 +195,8 @@ for group_i = 1:length(SUBJ_ITERS)
         %## Generate Headmodels from MRI and Headscan
         subjectNames{cnt} = SUBJ_PICS{group_i}{subj_i};
         working_dirs{cnt} = [DATA_DIR filesep DATA_SET filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI'];
+        %- MRI fPaths (ants)
+        ants_fpaths = [working_dirs{cnt} filesep ];
         %- Segmentation (SimNIBS)
         simnibs_fPaths{cnt} = [working_dirs{cnt} filesep sprintf('%s_masks_contr.nii.gz',SUBJ_PICS{group_i}{subj_i})];
         %- Fiducials (acpc_rs)
@@ -236,7 +240,10 @@ LOOP_VAR = 1:length(working_dirs);
 parfor (subj_i = LOOP_VAR, POOL_SIZE) % (05/24/2023) JS, parfor might not
 % be possible for this loop. a problem with ft_sourceplot.
 % for subj_i = LOOP_VAR
-    [EEG,dipfit_fem_norm] = mim_norm_dipfit(fPaths{subj_i},fNames{subj_i},fiducial_fPaths{1,subj_i},dipfit_fPaths{subj_i});
+    [EEG,dipfit_fem_norm] = mim_norm_dipfit(fPaths{subj_i},fNames{subj_i},...
+        fiducial_fPaths{1,subj_i},dipfit_fPaths{subj_i},...
+        'MRI_NORM_METHOD','ants',...
+        'ANTS_FPATH',);
     par_save(dipfit_fem_norm,fPaths{subj_i},'dipfit_fem_norm.mat')
     EEG = pop_saveset(EEG,'filepath',EEG.filepath,'filename',EEG.filename); 
 end

@@ -6,7 +6,7 @@
 #SBATCH --mail-user=jsalminen@ufl.edu # Where to send mail
 #SBATCH --nodes=1 # Use one node
 #SBATCH --ntasks=1 # Run a single task
-#SBATCH --cpus-per-task=15 # Number of CPU cores per task
+#SBATCH --cpus-per-task=48 # Number of CPU cores per task
 #SBATCH --mem-per-cpu=15000mb # Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
 #SBATCH --time=06:00:00 # Time limit hrs:min:sec

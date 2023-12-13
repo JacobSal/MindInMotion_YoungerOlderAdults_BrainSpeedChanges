@@ -1,0 +1,22 @@
+function [EEG_chans, EMG_chans, Noise_chans] = getChannelTypes_func(EEG)
+    All_chans = 1:EEG.nbchan;
+    EEG_chans = find(strcmpi('EEG',{EEG.chanlocs.type}));
+    Noise_chans = find(strcmpi('Noise',{EEG.chanlocs.type}));
+    EMG_chans = find(strcmpi('EMG',{EEG.chanlocs.type}));
+    BioM_chans = find(strcmpi('BioM',{EEG.chanlocs.type}));
+    Acc_chans = find(strcmpi('Acc',{EEG.chanlocs.type}));
+    EOG_chans = find(strcmpi('EOG',{EEG.chanlocs.type}));
+    NEOG_chans = find(strcmpi('N-EOG',{EEG.chanlocs.type}));
+    Sync_chans = find(strcmpi('Sync',{EEG.chanlocs.type}));
+    Other_chans = setdiff(All_chans, unique([EEG_chans, Noise_chans, EMG_chans, BioM_chans, Acc_chans, EOG_chans, NEOG_chans, Sync_chans]));
+end
+%All_chans = 1:EEG.nbchan;
+%EEG_chans = 1:EEG.nbchan;
+%Noise_chans = [];
+%EMG_chans = [];
+%BioM_chans =[];
+%Acc_chans = [];
+%EOG_chans = [];
+%NEOG_chans = [];
+%Sync_chans = [];
+%Other_chans = setdiff(All_chans, unique([EEG_chans, Noise_chans, EMG_chans, BioM_chans, Acc_chans, EOG_chans, NEOG_chans, Sync_chans]));

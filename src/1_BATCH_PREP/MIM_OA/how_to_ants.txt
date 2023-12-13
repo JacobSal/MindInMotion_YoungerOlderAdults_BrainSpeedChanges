@@ -1,0 +1,14 @@
+Email from Sumire:
+"""
+ml gcc/5.2.0 
+ml ants
+
+should load ants. Check if loading was successful by entering "antsRegistation"  if it displays you a manual it was correctly loaded.
+
+# APPLICATION
+MNI_Template=/Users/sumiresato/Documents/MR_Templates/ANTs_c0Template_T1_IXI555_MNI152_GS_brain.nii 
+antsRegistrationSyNQuick.sh -d 3 -f $MNI_template -m ./cat_brain.nii -t s -o ants | tee myRegOutput.txt
+
+Briefly, -f is your MNI template (fixed), -m is your image in native space (moving) -o is the prefix for your output images.
+
+"""

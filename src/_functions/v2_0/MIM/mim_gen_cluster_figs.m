@@ -33,7 +33,7 @@ SPEC_PARAMS = struct('freqrange',[1,200],...
 DIP_ALL_POS=[16 100 1080 920];
 DIP_SING_POS=[16 582 420 360];
 TOPO_ALL_POS=[16 100 1240 920];
-% TOPO_SING_POS=[16 100 300 350];
+TOPO_SING_POS=[16 100 300 350];
 DO_SINGLE_CLUSTER_PLOTS = true;
 %-
 CLUSTERS_TO_PLOT = 1:length(STUDY.cluster);
@@ -82,11 +82,11 @@ end
 saveas(fig_i,fullfile(save_dir,'Cluster_topo_avg.jpg'));
 saveas(fig_i,fullfile(save_dir,'Cluster_topo_avg.fig'));
 %% (DIPOLE) Plot all dipole fit locations
-std_dipplot(STUDY,ALLEEG,'clusters',CLUSTERS_TO_PLOT,'figure','off');
-fig_i = get(groot,'CurrentFigure');
-set(fig_i,'position',DIP_ALL_POS,'color','w')
-% saveas(fig_i,[save_dir filesep 'dipplot_seperatepanes.pdf']);
-saveas(fig_i,[save_dir filesep 'dipplot_seperatepanes.jpg']);
+% std_dipplot(STUDY,ALLEEG,'clusters',CLUSTERS_TO_PLOT,'figure','off');
+% fig_i = get(groot,'CurrentFigure');
+% set(fig_i,'position',DIP_ALL_POS,'color','w')
+% % saveas(fig_i,[save_dir filesep 'dipplot_seperatepanes.pdf']);
+% saveas(fig_i,[save_dir filesep 'dipplot_seperatepanes.jpg']);
 %% (DIPOLE) Plot dipole fit locations after averaged within participants
 % std_dipplot_CL(STUDY,ALLEEG,'clusters',CLUSTERS_TO_PLOT,'figure','off','mode','together_averaged');
 % fig_i = get(groot,'CurrentFigure');
@@ -192,40 +192,41 @@ if DO_SINGLE_CLUSTER_PLOTS
             end
         end
     %     camzoom(1);
-        % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.jpg')],'Resolution',300);
-        exportgraphics(fig_i,[save_dir filesep sprintf('%inew_dipplot_alldipspc_top.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.jpg',cluster_i)],'Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.pdf',cluster_i)],'ContentType','vector','Resolution',300);
     %     saveas(fig_i,[save_dir filesep sprintf('new_dipplot_alldipspc_top.fig')]);
         view([45,0,0])
-        % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.jpg')],'Resolution',300);
-        exportgraphics(fig_i,[save_dir filesep sprintf('%inew_dipplot_alldipspc_coronal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.jpg',cluster_i)],'Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
         view([0,-45,0])
-        % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.jpg')],'Resolution',300);
-        exportgraphics(fig_i,[save_dir filesep sprintf('%inew_dipplot_alldipspc_sagittal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
-    end
-    %## TOPO PLOTS
-    if ~isfield(STUDY.cluster,'topo') 
-        STUDY.cluster(1).topo = [];
-    end
-    for i = 1:length(CLUSTERS_TO_PLOT) % For each cluster requested
-        clust_i = CLUSTERS_TO_PLOT(i);
-        disp(clust_i)
-        if isempty(STUDY.cluster(clust_i).topo)
-            % Using this custom modified code to allow taking average within participant for each cluster
-            STUDY = std_readtopoclust_CL(STUDY,ALLEEG,clust_i);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.jpg',cluster_i)],'Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+        %- 
+        %## TOPO PLOTS
+        if ~isfield(STUDY.cluster,'topo') 
+            STUDY.cluster(1).topo = [];
         end
+        for i = 1:length(CLUSTERS_TO_PLOT) % For each cluster requested
+            clust_i = CLUSTERS_TO_PLOT(i);
+            disp(clust_i)
+            if isempty(STUDY.cluster(clust_i).topo)
+                % Using this custom modified code to allow taking average within participant for each cluster
+                STUDY = std_readtopoclust_CL(STUDY,ALLEEG,clust_i);
+            end
+        end
+        figure;
+        std_topoplot_CL(STUDY,cluster_i,'together');
+        fig_i = get(groot,'CurrentFigure');
+        set(fig_i,'position',TOPO_SING_POS,'color','w')
+        for c = 2:length(fig_i.Children)
+            fig_i.Children(c).Title.Interpreter = 'none';
+            fig_i.Children(c).FontSize = 13;
+            fig_i.Children(c).FontName = 'Arial';
+        end
+        exportgraphics(fig_i,[save_dir filesep sprintf('%i_cluster_topo_avg.jpg',cluster_i)],'Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%i_cluster_topo_avg.pdf',cluster_i)],'ContentType','vector','Resolution',300);
     end
-    figure;
-    std_topoplot_CL(STUDY,CLUSTERS_TO_PLOT,'together');
-    fig_i = get(groot,'CurrentFigure');
-    set(fig_i,'position',TOPO_ALL_POS,'color','w')
-    for c = 2:length(fig_i.Children)
-        fig_i.Children(c).Title.Interpreter = 'none';
-        fig_i.Children(c).FontSize = 13;
-        fig_i.Children(c).FontName = 'Arial';
-    end
-    % saveas(fig_i,fullfile(save_dir,'Cluster_topo_avg.jpg'));
-    exportgraphics(fig_i,[save_dir filesep sprintf('new_cluster_topo_avg.pdf')],'ContentType','vector','Resolution',300);
-    saveas(fig_i,fullfile(save_dir,'new_cluster_topo_avg.fig'));
+    %     saveas(fig_i,fullfile(save_dir,sprintf('%i_cluster_topo_avg.fig',cluster_i)));
     %{
     for i = 1:length(CLUSTERS_TO_PLOT)
         clust_i = CLUSTERS_TO_PLOT(i);
