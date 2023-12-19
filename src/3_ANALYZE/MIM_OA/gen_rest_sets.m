@@ -86,15 +86,51 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
+%## (MIND IN MOTION) DATASET SPECIFIC PARAMS (05/24/2023)
+SUBJ_1YA = {'H1002','H1004','H1007','H1009',...
+    'H1010','H1011','H1012','H1013','H1017',...
+    'H1018','H1019','H1020','H1022','H1024',...
+    'H1025','H1026','H1027','H1029','H1030','H1031',...
+    'H1032','H1033','H1034','H1035','H1036',...
+    'H1037','H1038','H1039','H1041','H1042',...
+    'H1044','H1045','H1046','H1047','H1048'}; % JACOB,SAL (04/18/2023)
+SUBJ_2MA = {'H2002','H2007','H2008',...
+    'H2013','H2015','H2017','H2020','H2021',...
+    'H2022','H2023','H2025','H2026','H2027',...
+    'H2033','H2034','H2037','H2038','H2039',...
+    'H2042','H2052','H2059','H2062','H2082',...
+    'H2090','H2095','H2111','H2117'};
+SUBJ_3MA = {'H3029','H3034','H3039','H3053',...
+    'H3063','H3072','H3077','H3103',...
+    'H3107',...
+    'NH3006','NH3007','NH3008','NH3010','NH3021',...
+    'NH3026','NH3030','NH3036','NH3040',...
+    'NH3041','NH3043','NH3054',...
+    'NH3055','NH3058','NH3059','NH3066',...
+    'NH3068','NH3069','NH3070','NH3074',...
+    'NH3076','NH3086','NH3090','NH3102',...
+    'NH3104','NH3105','NH3106','NH3108','NH3110',...
+    'NH3112','NH3113','NH3114','NH3123','NH3128',...
+    };
+SUBJ_SLOW_WALKERS = {'H3042','H3046','H3047','H3073',...
+    'H3092','NH3025','NH3051','NH3056','NH3071','NH3082'};
+SUBJ_NO_MRI = {'H2010','H2012','H2018','H2036','H2041',...
+    'H2072','H3018','H3120','NH3002','NH3009','NH3027','NH3129'};
+SUBJ_MISSING_COND = {'H3024','NH3028'};
+% NH3040 bug was due to an entry error in Trial_Cropping_V2_test.xlsx (fixed)
+SUBJ_DONT_INC = {'NH3004','NH3023'};
+SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
+GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
+SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
+
 fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
 fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
 DATA_SET = 'MIM_dataset';
-OA_PREP_FPATH = 'EMG_ANALYSIS';
-dt = 'tmp_emg_analysis';
+OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
+dt = 'spca_analysis';
 %- study group and saving
 SAVE_ALLEEG = false;
 %- epoching params
@@ -170,17 +206,8 @@ inds = logical(dipfit_norm_fPaths);
 fPaths = fPaths(inds);
 fNames = fNames(inds);
 subjectNames = subjectNames(inds);
+%% ===================================================================== %%
 %{
-%% ===================================================================== %%
-%## MAKE EMG CHANNELS BIPOLAR
-NEW_EMG_CHANNELS = {'LSCM','LTrap','RSCM','RTrap'};
-EMG_PAIRS = {{'LSSCM','LISCM'},...
-             {'LSTrap','LITrap'},...
-             {'RSSCM','RISCM'},...
-             {'RSTrap','RITrap'}};
-
-%% ===================================================================== %%
-
 %## GENERATE EPOCH MAIN FUNC
 tmp = cell(1,length(fPaths));
 rmv_subj = zeros(1,length(fPaths));
@@ -201,14 +228,6 @@ parfor (subj_i = 1:length(fPaths),floor(length(fPaths)/3))
     [EEG_chans,EMG_chans,Noise_chans] = getChannelTypes_func(EEG);    %-
     EEG = pop_select(EEG, 'channel',[EMG_chans]);
     EEG.etc.valid_eeg = ones(size(EEG.data,2),1);
-    %## reference channels to each other
-    tmp = EEG.data;
-    chans = {EEG.chanlocs.labels};
-    for i = 1:length(EMG_PAIRS)
-        ind1 = strcmp(chans,EMG_PAIRS{i}{1})
-        ind2 = strcmp(chans,EMG_PAIRS{i}{2})
-        newc = tmp(ind1,:) - tmp(ind2,:)
-    end
     %## PARSE TRIALS
     epoched_fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED];
     fPath = [epoched_fPath filesep [TRIAL_TYPES{:}]];
@@ -587,103 +606,105 @@ tmpSTUDY = pop_statparams(STUDY, 'condstats', STAT_PARAMS.condstats,...
 tmpSTUDY_commonbase = pop_erspparams(tmpSTUDY, 'subbaseline','on',...
         'timerange',ERSP_PARAMS.timerange, 'ersplim',ERSP_PARAMS.ersplim);  % 'subbaseline' - ['on'|'off'] subtract the same baseline across conditions for ERSP     
 %##
-if ~exist([save_dir filesep 'emg_data'],'dir')
-    mkdir([save_dir filesep 'emg_data']);
-end
 chan_i = 1;
 des_i = 1;
 for subj_i = 1:length(ALLEEG)
-    for chan_i = 1:length(EMG_CHANNELS)
-        for des_i = 1:2
-            %## TIME
-            tic1 = tic;
-            design_char = sprintf('%i',des_i);
-            %##
-            ersp_savef = {};
-            ersp_subbase_savef = {};
-            ersp_subbase_combase_savef = {};
-            ersp_singletrial_subbase_savef = {};
-            %## ERSP calculation for no normalization 
-            fprintf('Gathering ERSP without any normalization for cluster %i\n',chan_i)
-            tic
-            try
-                [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot(STUDY,ALLEEG,...
-                    CHAN_OR_CLUST,EMG_CHANNELS(chan_i),...
-                    'subject',ALLEEG(subj_i).subject,...
-                    'freqrange',ERSP_PARAMS.freqrange,...
-                    'design',des_i); 
-                %- save dat
-                ersp_data = struct('allerspdata',{allerspdata},'alltimes',{alltimes},'allfreqs',{allfreqs},...
-                    'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
-                par_save(ersp_data,save_dir,sprintf('%s_ersp_data_%s_%s.mat',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char));
-        %         ersp_savef = [save_dir filesep 'emg_data' filesep sprintf('%s_ersp_data_%s_%s.mat',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char)];
-                %- save fig
-                fig_i = get(groot,'CurrentFigure');
-                exportgraphics(fig_i,[save_dir filesep 'emg_data' filesep sprintf('%s_ersp_plot_%s_%s.jpg',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char)],'Resolution',300)
-                close(fig_i)
-            catch e
-                fprintf(['error. code block 1\n',...
-                    'error. identifier: %s\n',...
-                    'error. %s\n',...
-                    'stack. %s\n'],e.identifier,e.message,getReport(e));
-            end
-            toc
-            %## ERSP calculation for normalization 
-            fprintf('Gathering ERSP after baseline correction using times {%0.2f,%0.2f] for cluster %i\n',averaged_warpto_events(1),averaged_warpto_events(5),chan_i);
-            tic
-            try
-                disp(tmpSTUDY.etc.statistics)
-            %                 disp(ersp_load_params.common_base);
-                [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot_customParams(tmpSTUDY,ALLEEG,...
-                    parameters,...
-                    CHAN_OR_CLUST,EMG_CHANNELS(chan_i),...
-                    'subject',ALLEEG(subj_i).subject,...
-                    'freqrange',ERSP_PARAMS.freqrange,...
-                    'design',des_i);
-                %- save dat
-                ersp_data = struct('allerspdata',{allerspdata},'alltimes',{alltimes},'allfreqs',{allfreqs},...
-                    'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
-                par_save(ersp_data,save_dir,sprintf('%s_ersp_data_subbase_%s_%s.mat',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char));
-        %         ersp_savef = [save_dir filesep 'emg_data' filesep sprintf('%s_ersp_data_%s_%s.mat',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char)];
-                %- save fig
-                fig_i = get(groot,'CurrentFigure');
-                exportgraphics(fig_i,[save_dir filesep 'emg_data' filesep sprintf('%s_ersp_plot_subbase_%s_%s.jpg',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char)],'Resolution',300)
-                close(fig_i)
-            catch e
-                fprintf(['error. code block 2\n',...
-                    'error. identifier: %s\n',...
-                    'error. %s\n',...
-                    'stack. %s\n'],e.identifier,e.message,getReport(e));
-            end
-            toc 
-            %##
-            fprintf('Gathering ERSP after baseline correction and common baseline using times {%0.2f,%0.2f] for cluster %i\n',averaged_warpto_events(1),averaged_warpto_events(5),chan_i);
-            tic
-            try
-                disp(tmpSTUDY_commonbase.etc.statistics)
-                disp(tmpSTUDY_commonbase.etc.erspparams)
-                [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot_customParams(tmpSTUDY_commonbase,ALLEEG,...
-                    parameters,...
-                    CHAN_OR_CLUST,EMG_CHANNELS(chan_i),...
-                    'subject',ALLEEG(subj_i).subject,...
-                    'freqrange',ERSP_PARAMS.freqrange,...
-                    'design',des_i); 
-                %- save dat
-                ersp_data = struct('allerspdata',{allerspdata},'alltimes',{alltimes},'allfreqs',{allfreqs},...
-                    'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
-                par_save(ersp_data,save_dir,sprintf('%s_ersp_data_commonbase_%s_%s.mat',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char));
-        %         ersp_savef = [save_dir filesep 'emg_data' filesep sprintf('%s_ersp_data_%s_%s.mat',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char)];
-                %- save fig
-                fig_i = get(groot,'CurrentFigure');
-                exportgraphics(fig_i,[save_dir filesep 'emg_data' filesep sprintf('%s_ersp_plot_commonbase_%s_%s.jpg',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char)],'Resolution',300)
-                close(fig_i)
-            catch e
-                fprintf(['error. code block 3\n',...
-                    'error. identifier: %s\n',...
-                    'error. %s\n',...
-                    'stack. %s\n'],e.identifier,e.message,getReport(e));
-            end
-            toc
-        end
+    %## TIME
+    tic1 = tic;
+    design_char = sprintf('design_%i',des_i);
+    %##
+    ersp_savef = {};
+    ersp_subbase_savef = {};
+    ersp_subbase_combase_savef = {};
+    ersp_singletrial_subbase_savef = {};
+    %## ERSP calculation for no normalization 
+    fprintf('Gathering ERSP without any normalization for cluster %i\n',chan_i)
+    tic
+    try
+        [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot(STUDY,ALLEEG,...
+            CHAN_OR_CLUST,EMG_CHANNELS(chan_i),...
+            'subject',ALLEEG(subj_i).subject,...
+            'freqrange',ERSP_PARAMS.freqrange,...
+            'design',des_i); 
+        %- save dat
+        ersp_data = struct('allerspdata',{allerspdata},'alltimes',{alltimes},'allfreqs',{allfreqs},...
+            'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
+        par_save(ersp_data,save_dir,sprintf('ersp_data_cl%i_%s.mat',chan_i,design_char));
+        ersp_savef = [save_dir filesep sprintf('ersp_data_cl%i_%s.mat',chan_i,design_char)];
+        %- save fig
+        fig_i = get(groot,'CurrentFigure');
+    %             fig_i.Position = [500 300 1480 920];
+%         saveas(fig_i,[save_dir filesep sprintf('allcomps_ersp_plot_cl%i_%s',cluster_i,design_char)])
+        exportgraphics(fig_i,[save_dir filesep sprintf('allcomps_ersp_plot_cl%s_%s.jpg',EMG_CHANNELS{chan_i},design_char)],'Resolution',300)
+%         close(fig_i)
+    catch e
+        fprintf(['error. code block 1\n',...
+            'error. identifier: %s\n',...
+            'error. %s\n',...
+            'stack. %s\n'],e.identifier,e.message,getReport(e));
     end
+    toc
+    %## ERSP calculation for normalization 
+    fprintf('Gathering ERSP after baseline correction using times {%0.2f,%0.2f] for cluster %i\n',averaged_warpto_events(1),averaged_warpto_events(5),chan_i);
+    tic
+    try
+        disp(tmpSTUDY.etc.statistics)
+    %                 disp(ersp_load_params.common_base);
+        [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot_customParams(tmpSTUDY,ALLEEG,...
+            parameters,...
+            CHAN_OR_CLUST,EMG_CHANNELS(chan_i),...
+            'subject',ALLEEG(subj_i).subject,...
+            'freqrange',ERSP_PARAMS.freqrange,...
+            'design',des_i);
+        %- save dat
+        ersp_data = struct('allerspdata',{allerspdata},'alltimes',{alltimes},'allfreqs',{allfreqs},...
+            'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
+        par_save(ersp_data,save_dir,sprintf('ersp_data_cl%i_%s_subbaselined.mat',chan_i,design_char));
+        ersp_subbase_savef = [save_dir filesep sprintf('ersp_data_cl%i_%s_subbaselined.mat',chan_i,design_char)];
+        %- save fig
+        fig_i = get(groot,'CurrentFigure');
+    %             fig_i.Position = [500 300 1480 920];
+%         saveas(fig_i,[save_dir filesep sprintf('ersp_plot_cl%i_%s_allcomps_subbaselined',cluster_i,design_char)])
+        exportgraphics(fig_i,[save_dir filesep sprintf('allcomps_ersp_plot_cl%s_%s.jpg',EMG_CHANNELS{chan_i},design_char)],'Resolution',300)
+        
+%         close(fig_i)
+    catch e
+        fprintf(['error. code block 2\n',...
+            'error. identifier: %s\n',...
+            'error. %s\n',...
+            'stack. %s\n'],e.identifier,e.message,getReport(e));
+    end
+    toc 
+    %##
+    fprintf('Gathering ERSP after baseline correction and common baseline using times {%0.2f,%0.2f] for cluster %i\n',averaged_warpto_events(1),averaged_warpto_events(5),chan_i);
+    tic
+    try
+        disp(tmpSTUDY_commonbase.etc.statistics)
+        disp(tmpSTUDY_commonbase.etc.erspparams)
+        [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot_customParams(tmpSTUDY_commonbase,ALLEEG,...
+            parameters,...
+            CHAN_OR_CLUST,EMG_CHANNELS(chan_i),...
+            'subject',ALLEEG(subj_i).subject,...
+            'freqrange',ERSP_PARAMS.freqrange,...
+            'design',des_i); 
+        %- save dat
+        ersp_data = struct('allerspdata',{allerspdata},'alltimes',{alltimes},'allfreqs',{allfreqs},...
+            'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
+        par_save(ersp_data,save_dir,sprintf('spec_data_cl%i_%s_subbaselined_commonbase.mat',chan_i,design_char));
+        ersp_subbase_combase_savef = [save_dir filesep sprintf('spec_data_cl%i_%s_subbaselined_commonbase.mat',chan_i,design_char)];
+        %- save fig
+        fig_i = get(groot,'CurrentFigure');
+    %             fig_i.Position = [500 300 1480 920];
+%         saveas(fig_i,[save_dir filesep sprintf('ersp_plot_cl%i_%s_allcomps_subbaselined_commonbase',cluster_i,design_char)])
+        exportgraphics(fig_i,[save_dir filesep sprintf('allcomps_ersp_plot_cl%s_%s.jpg',EMG_CHANNELS{chan_i},design_char)],'Resolution',300)
+        
+%         close(fig_i)
+    catch e
+        fprintf(['error. code block 3\n',...
+            'error. identifier: %s\n',...
+            'error. %s\n',...
+            'stack. %s\n'],e.identifier,e.message,getReport(e));
+    end
+    toc
+
 end

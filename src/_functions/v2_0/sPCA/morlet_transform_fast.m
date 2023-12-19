@@ -1,4 +1,4 @@
-function [P,param_struct] = morlet_transform_fast(x,t,f,fc,FWHM_tc,squared)
+function [P,param_struct] = morlet_transform_fast(x,t,f,fc,FWHM_tc,squared,data_type)
 % MORLET_TRANSFORM: 
 %     Applies complex Morlet wavelet transform to the timeseries stored in the 
 %     matrix x with size (ntimes x ntimeseries). It returns a wavelet coefficient map 
@@ -50,65 +50,52 @@ function [P,param_struct] = morlet_transform_fast(x,t,f,fc,FWHM_tc,squared)
 
 FWHM_tc(FWHM_tc < 1) = 1;
 
-%signal parameters
+%- signal parameters
 Ts = t(2)-t(1); %sampling period of signal
 Fs = 1/Ts; %sampling frequency of signal
 
-%complex morlet wavelet parameters
+%- complex morlet wavelet parameters
 scales = f ./ fc; %scales for wavelet
 nscales = length(scales);
 
 sigma_tc(1:nscales) = FWHM_tc / sqrt(8*log(2));
 
-%compute wavelet kernels for each scale
+%- compute wavelet kernels for each scale
 W = cell(nscales,1);
 precision = 3;
 
 for s = 1:nscales
     time = scales(s)* [-precision*sigma_tc(s)/scales(s): 1/Fs : precision*sigma_tc(s)/scales(s)].';
     %-
-%     plot(time)
     W{s} = morlet_wavelet(time,fc,sigma_tc(s));
-    
+    %## VALIDATION PLOT
 %     W{s} = sqrt(scales(s)) * morlet_wavelet(time,fc,sigma_tc(s));
 %     if ~mod(log2(s),1)
 %         figure;plot(time,real(W{s}));
 %     end
 end
-% figure;
-% plot(W{s})
-
 %compute wavelet coefficients
 nx = size(x,2); %number of timeseries
 ntimes = size(x,1); %number of timepoints
 
 if nx > 1
-    P = zeros(ntimes,nx,nscales);
-    P_ifft = zeros(ntimes,nx,nscales);
+    P = zeros(ntimes,nx,nscales,data_type);
     for s = 1:nscales
         P(:,:,s) = conv2(x,W{s},'same') * 2/(sum(abs(W{s})));
-        P_ifft(:,:,s) = conv2(x,W{s},'same');
     end
 
 elseif nx ==1
-    P = zeros(ntimes,nscales);
-    P_ifft = zeros(ntimes,nscales);
+    P = zeros(ntimes,nscales,data_type);
     for s = 1:nscales
         P(:,s) = conv2(x,W{s},'same') * 2/(sum(abs(W{s}))); 
-        P_ifft(:,s) = conv2(x,W{s},'same');
     end
 end
 
-% %if only one timeseries, compress first dimension
-% if size(P,1)==1
-%     P = squeeze(P);
-% end
-
-%if return squared coefficients
+%-if return squared coefficients
 if strcmp(squared,'y')
     P = abs(P).^2; %return neural power
 end
-param_struct = struct('W',W,'scales',scales,'sigma_tc',sigma_tc,'precision',precision,'P_ifft',P_ifft);
+param_struct = struct('W',W,'scales',scales,'sigma_tc',sigma_tc,'precision',precision);
 end
 
 % % Convert dimensions in the format we want:

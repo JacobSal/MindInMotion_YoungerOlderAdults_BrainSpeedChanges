@@ -94,7 +94,7 @@ EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 %- connecitivty modeling
 CONN_FREQS = (1:200);
 FREQ_BANDS = {CONN_FREQS;1:7;7:12;12:28;28:48;48:60};
-CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
+CONN_METHODS = {'dDTF08'}; %{'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 CNCTANL_TOOLBOX = 'sift'; %'bsmart'
 WINDOW_LENGTH = 0.5;
 WINDOW_STEP_SIZE = 0.025;
@@ -106,7 +106,8 @@ DO_PHASE_RND = true;
 % dt = '06122023_bounces_1h2h2bm_JS';
 % dt = '06152023_bounces_1h2h2bm_JS';
 % dt = '07272023_bounces_1h_2h_2bm_JS';
-dt = '08182023_bounces_1h_2h_2bm_JS';
+% dt = '08182023_bounces_1h_2h_2bm_JS';
+dt = '12182023_bounces_1h_2h_2bm_JS_0p25-1';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -145,6 +146,7 @@ else
         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
     end
 end
+[comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(MAIN_STUDY);
 %% INITIALIZE PARFOR LOOP VARS
 fPaths = {MAIN_ALLEEG.filepath};
 fNames = {MAIN_ALLEEG.filename};
@@ -173,7 +175,7 @@ parfor (subj_i = 1:length(LOOP_VAR),ceil(length(LOOP_VAR)/2))
     fprintf('%s) Processing componets:\n',EEG.subject)
     fprintf('%i,',components'); fprintf('\n');
     %- re-epoch
-    ALLEEG = cell(1,length(TRIAL_TYPES));
+    ALLEEG = cell(1,length(EVENT_COND_COMBOS));
     for i = 1:length(EEG.etc.cond_files)
         if ~ispc
             ALLEEG{i} = pop_loadset('filepath',convertPath2UNIX(EEG.etc.cond_files(i).fPath),'filename',EEG.etc.cond_files(i).fName);
@@ -222,7 +224,7 @@ pop_editoptions('option_computeica',0);
 % [ALLEEG,MAIN_STUDY] = parfunc_rmv_subjs(tmp,MAIN_STUDY,rmv_subj);
 %- Save
 [MAIN_STUDY,tmp] = parfunc_save_study(MAIN_STUDY,tmp,...
-                                        study_fName_2,study_save_dir,...
+                                        study_fName_1,study_save_dir,...
                                         'STUDY_COND',[]);
 %% Version History
 %{

@@ -7,7 +7,7 @@
 %   Previous Version: n/a
 %   Summary: 
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/run_anlz_emg_artifact.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/run_gen_spca_ersps_timewarp.sh
 
 %{
 %## RESTORE MATLAB
@@ -86,15 +86,15 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
 fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
 fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
 DATA_SET = 'MIM_dataset';
-OA_PREP_FPATH = 'EMG_ANALYSIS';
-dt = 'tmp_emg_analysis';
+OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams';
+dt = 'spca_analysis';
 %- study group and saving
 SAVE_ALLEEG = false;
 %- epoching params
@@ -126,7 +126,6 @@ if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
 %% Store fNames and fPaths
-
 subjectNames    = cell(1,length([SUBJ_ITERS{:}]));
 fNames          = cell(1,length([SUBJ_ITERS{:}]));
 fPaths          = cell(1,length([SUBJ_ITERS{:}]));
@@ -170,14 +169,6 @@ inds = logical(dipfit_norm_fPaths);
 fPaths = fPaths(inds);
 fNames = fNames(inds);
 subjectNames = subjectNames(inds);
-%{
-%% ===================================================================== %%
-%## MAKE EMG CHANNELS BIPOLAR
-NEW_EMG_CHANNELS = {'LSCM','LTrap','RSCM','RTrap'};
-EMG_PAIRS = {{'LSSCM','LISCM'},...
-             {'LSTrap','LITrap'},...
-             {'RSSCM','RISCM'},...
-             {'RSTrap','RITrap'}};
 
 %% ===================================================================== %%
 
@@ -196,18 +187,6 @@ parfor (subj_i = 1:length(fPaths),floor(length(fPaths)/3))
         fprintf('%s) Recalculating ICA activations\n',EEG.subject);
         EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
         EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
-    end
-    %## SELECT EMG CHANNELS
-    [EEG_chans,EMG_chans,Noise_chans] = getChannelTypes_func(EEG);    %-
-    EEG = pop_select(EEG, 'channel',[EMG_chans]);
-    EEG.etc.valid_eeg = ones(size(EEG.data,2),1);
-    %## reference channels to each other
-    tmp = EEG.data;
-    chans = {EEG.chanlocs.labels};
-    for i = 1:length(EMG_PAIRS)
-        ind1 = strcmp(chans,EMG_PAIRS{i}{1})
-        ind2 = strcmp(chans,EMG_PAIRS{i}{2})
-        newc = tmp(ind1,:) - tmp(ind2,:)
     end
     %## PARSE TRIALS
     epoched_fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED];
@@ -395,8 +374,7 @@ ERSP_PARAMS = struct('subbaseline','off',...
     'ersplim',[-2,2],...
     'freqfac',4,...
     'cycles',[3,0.8],...
-    'freqrange',[1,200],...
-    'channels',{{'LSSCM';'LISCM';'LSTrap';'LITrap';'RISCM';'RSSCM';'RITrap';'RSTrap'}});
+    'freqrange',[1,200]);
 %% CALCULATE GRANDAVERAGE WARPTOs
 for subj_i = 1:length(ALLEEG)
     %- assign percondition timewarping
@@ -412,7 +390,7 @@ end
 averaged_warpto_events = floor(nanmean(allWarpTo)); % tends to be longer? (e.g., [0,262,706,982,1415])
 %% (ERSP PLOT PREP) PREPARE STUDYFILE FOR EXTRACTION (BLACK-HAWK DOWN!)
 TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. making this too big can cause overlap between gait cyles
-ERSP_CROP_TIMES=[averaged_warpto_events(1), averaged_warpto_events(end)];
+ERSP_CROP_TIMES=[averaged_warpto_events(1), averaged_warpto_events(end)+1];
 STUDY.etc.averaged_warpto_events = averaged_warpto_events;
 fprintf('Using timewarp limits: [%0.4g,%0.4f]\n',averaged_warpto_events(1),averaged_warpto_events(end));
 disp(averaged_warpto_events);
@@ -451,7 +429,7 @@ parfor (subj_i = 1:length(ALLEEG),ceil(length(ALLEEG)/3))
     %-
     if DO_BASELINE_CORRECTION
         % Baseline correction
-        [~, ~] = std_precomp(TMP_STUDY,EEG,ERSP_PARAMS.channels,'savetrials','on',...
+        [~, ~] = std_precomp(TMP_STUDY,EEG,'components','savetrials','on',...
                 'recompute','on','ersp','on','itc','off',...
                 'erspparams',{'parallel','off','cycles',ERSP_PARAMS.cycles,...
                 'nfreqs',length((ERSP_PARAMS.freqrange(1):ERSP_PARAMS.freqrange(2))),...
@@ -460,7 +438,7 @@ parfor (subj_i = 1:length(ALLEEG),ceil(length(ALLEEG)/3))
                 'trialbase','off','basenorm','on'}); %ERSP
     else
         % No baseline correction
-        [~, ~] = std_precomp(TMP_STUDY,EEG,'channels','savetrials','on',...
+        [~, ~] = std_precomp(TMP_STUDY,EEG,'components','savetrials','off',...
                 'recompute','on','ersp','on','itc','off',...
                 'erspparams',{'parallel','off','cycles',ERSP_PARAMS.cycles,...
                 'nfreqs',length((ERSP_PARAMS.freqrange(1):ERSP_PARAMS.freqrange(2))),'ntimesout',TIMEWARP_NTIMES,...
@@ -472,218 +450,3 @@ end
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                         STUDY.filename,STUDY.filepath,...
                                         'RESAVE_DATASETS','off');
-%}
-%% ===================================================================== %%
-if ~ispc
-    [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_2 '_UNIX.study'],'filepath',save_dir);
-else
-    [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_2 '.study'],'filepath',save_dir);
-end
-%% ERSP PARAMS
-ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
-    'groupstats','off',... %['on'|'off']
-    'method','perm',... % ['param'|'perm'|'bootstrap']
-    'singletrials','off',... % ['on'|'off'] load single trials spectral data (if available). Default is 'off'.
-    'mode','fieldtrip',... % ['eeglab'|'fieldtrip']
-    'fieldtripalpha',0.05,... % [NaN|alpha], Significance threshold (0<alpha<<1)
-    'fieldtripmethod','montecarlo',... %[('montecarlo'/'permutation')|'parametric']
-    'fieldtripmcorrect','cluster',...  % ['cluster'|'fdr']
-    'fieldtripnaccu',2000);
-SPEC_PARAMS = struct('freqrange',[1,200],...
-    'subject','',...
-    'specmode','psd',...
-    'freqfac',4,...
-    'logtrials','on',...
-    'comps','all',...
-    'plot_freqrange',[4,60],...
-    'plot_ylim',[-35,-8],...
-    'subtractsubjectmean','on',...
-    'plotmode','normal');
-ERSP_PARAMS = struct('subbaseline','off',...
-    'timerange',[],...
-    'ersplim',[],...
-    'freqfac',4,...
-    'cycles',[3,0.8],...
-    'freqrange',[1,200],...
-    'channels',{});
-%% CALCULATE GRANDAVERAGE WARPTOs
-for subj_i = 1:length(ALLEEG)
-    %- assign percondition timewarping
-    ALLEEG(subj_i).timewarp.warpto = nanmedian(cat(1,ALLEEG(subj_i).etc.timewarp_by_cond.warpto));
-%     ALLEEG(subj_i).timewarp.warpto = nanmean(cat(1,ALLEEG(subj_i).etc.timewarp_by_cond.warpto));
-end
-allWarpTo = nan(length(ALLEEG),size(ALLEEG(1).timewarp.warpto,2));
-% allWarpTo = zeros(length(ALLEEG),size(ALLEEG(1).timewarp.warpto,2));
-for subj_i = 1:length(ALLEEG)
-    allWarpTo(subj_i,:) = ALLEEG(subj_i).timewarp.warpto; %stack subject specific median event latencies
-end
-% grandAvgWarpTo = floor(nanmedian(allWarpTo)); % tends to be shorter? (e.g., [0,242,686,915,1357])
-averaged_warpto_events = floor(nanmean(allWarpTo)); % tends to be longer? (e.g., [0,262,706,982,1415])
-%% (ERSP PLOT PREP) PREPARE STUDYFILE FOR EXTRACTION (BLACK-HAWK DOWN!)
-TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. making this too big can cause overlap between gait cyles
-ERSP_CROP_TIMES=[averaged_warpto_events(1), averaged_warpto_events(end)];
-STUDY.etc.averaged_warpto_events = averaged_warpto_events;
-fprintf('Using timewarp limits: [%0.4g,%0.4f]\n',averaged_warpto_events(1),averaged_warpto_events(end));
-disp(averaged_warpto_events);
-%## ersp plot per cluster per condition
-STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
-        'groupstats',ERSP_STAT_PARAMS.groupstats,...
-        'method',ERSP_STAT_PARAMS.method,...
-        'singletrials',ERSP_STAT_PARAMS.singletrials,'mode',ERSP_STAT_PARAMS.mode,...
-        'fieldtripalpha',ERSP_STAT_PARAMS.fieldtripalpha,...
-        'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
-        'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
-STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_PARAMS.subbaseline,...
-      'ersplim',ERSP_PARAMS.ersplim,'freqrange',ERSP_PARAMS.freqrange,'timerange',ERSP_CROP_TIMES);
-SPEC_PARAMS.subtractsubjectmean = 'on';
-STUDY = pop_specparams(STUDY,'subtractsubjectmean',SPEC_PARAMS.subtractsubjectmean,...
-    'freqrange',SPEC_PARAMS.plot_freqrange,'plotmode','condensed',...
-    'plotconditions','together','ylim',SPEC_PARAMS.plot_ylim,'plotgroups','together');
-%%
-icatimf_f = [ALLEEG(1).filepath filesep sprintf('%s.dattimef',ALLEEG(1).subject)];
-%- load .icatimef load-in parameters
-tmp = load(icatimf_f,'-mat');
-%- 
-parameters = tmp.parameters;
-parameters{find(strcmp(parameters,'baseline'))+1} = [averaged_warpto_events(1),averaged_warpto_events(end)];
-parameters = [parameters, {'trialbase'}, {'off'}];
-cellArray = parameters(1,2:2:length(parameters));
-fields = parameters(1,1:2:length(parameters)-1);
-parameters = cell2struct(cellArray,fields,2);
-%-
-CHAN_OR_CLUST = 'channels';
-EMG_CHANNELS = {'LSSCM';'LISCM';'LSTrap';'LITrap';'RISCM';'RSSCM';'RITrap';'RSTrap'};
-%## DEFINE DEFAULTS
-STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
-    'method','perm',... % ['param'|'perm'|'bootstrap']
-    'singletrials','off',... % ['on'|'off'] load single trials spectral data (if available). Default is 'off'.
-    'mode','fieldtrip',... % ['eeglab'|'fieldtrip']
-    'fieldtripalpha',0.05,... % [NaN|alpha], Significance threshold (0<alpha<<1)
-    'fieldtripmethod','montecarlo',... %[('montecarlo'/'permutation')|'parametric']
-    'fieldtripmcorrect','fdr',...  % ['cluster'|'fdr']
-    'fieldtripnaccu',2000); 
-% (07/31/2023) JS, changing fieldtripnaccu from 2000 to 10000 to match CL's
-% pipeline although this doesn't align with her YA manuscript methods?
-ERSP_PARAMS = struct('subbaseline','on',...
-    'timerange',[averaged_warpto_events(1) averaged_warpto_events(end)],...
-    'ersplim',[],...
-    'freqrange',[1,200]);
-STUDY_DESI_PARAMS = {{'subjselect',{},...
-    'variable1','cond','values1',{'flat','low','med','high'},...
-    'variable2','group','values2',{}},...
-    {'subjselect',{},...
-    'variable1','cond','values1',{'0p25','0p5','0p75','1p0'},...
-    'variable2','group','values2',{}}};
-STUDY.cache = [];
-for des_i = 1:length(STUDY_DESI_PARAMS)
-    [STUDY] = std_makedesign(STUDY,ALLEEG,des_i,STUDY_DESI_PARAMS{des_i}{:});
-end
-%## PARAMS SETUP
-tmpSTUDY = pop_statparams(STUDY, 'condstats', STAT_PARAMS.condstats,...
-        'method',STAT_PARAMS.method,...
-        'singletrials',STAT_PARAMS.singletrials,'mode',STAT_PARAMS.mode,...
-        'fieldtripalpha',STAT_PARAMS.fieldtripalpha,'fieldtripmethod',STAT_PARAMS.fieldtripmethod,...
-        'fieldtripmcorrect',STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',STAT_PARAMS.fieldtripnaccu);
-tmpSTUDY_commonbase = pop_erspparams(tmpSTUDY, 'subbaseline','on',...
-        'timerange',ERSP_PARAMS.timerange, 'ersplim',ERSP_PARAMS.ersplim);  % 'subbaseline' - ['on'|'off'] subtract the same baseline across conditions for ERSP     
-%##
-if ~exist([save_dir filesep 'emg_data'],'dir')
-    mkdir([save_dir filesep 'emg_data']);
-end
-chan_i = 1;
-des_i = 1;
-for subj_i = 1:length(ALLEEG)
-    for chan_i = 1:length(EMG_CHANNELS)
-        for des_i = 1:2
-            %## TIME
-            tic1 = tic;
-            design_char = sprintf('%i',des_i);
-            %##
-            ersp_savef = {};
-            ersp_subbase_savef = {};
-            ersp_subbase_combase_savef = {};
-            ersp_singletrial_subbase_savef = {};
-            %## ERSP calculation for no normalization 
-            fprintf('Gathering ERSP without any normalization for cluster %i\n',chan_i)
-            tic
-            try
-                [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot(STUDY,ALLEEG,...
-                    CHAN_OR_CLUST,EMG_CHANNELS(chan_i),...
-                    'subject',ALLEEG(subj_i).subject,...
-                    'freqrange',ERSP_PARAMS.freqrange,...
-                    'design',des_i); 
-                %- save dat
-                ersp_data = struct('allerspdata',{allerspdata},'alltimes',{alltimes},'allfreqs',{allfreqs},...
-                    'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
-                par_save(ersp_data,save_dir,sprintf('%s_ersp_data_%s_%s.mat',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char));
-        %         ersp_savef = [save_dir filesep 'emg_data' filesep sprintf('%s_ersp_data_%s_%s.mat',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char)];
-                %- save fig
-                fig_i = get(groot,'CurrentFigure');
-                exportgraphics(fig_i,[save_dir filesep 'emg_data' filesep sprintf('%s_ersp_plot_%s_%s.jpg',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char)],'Resolution',300)
-                close(fig_i)
-            catch e
-                fprintf(['error. code block 1\n',...
-                    'error. identifier: %s\n',...
-                    'error. %s\n',...
-                    'stack. %s\n'],e.identifier,e.message,getReport(e));
-            end
-            toc
-            %## ERSP calculation for normalization 
-            fprintf('Gathering ERSP after baseline correction using times {%0.2f,%0.2f] for cluster %i\n',averaged_warpto_events(1),averaged_warpto_events(5),chan_i);
-            tic
-            try
-                disp(tmpSTUDY.etc.statistics)
-            %                 disp(ersp_load_params.common_base);
-                [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot_customParams(tmpSTUDY,ALLEEG,...
-                    parameters,...
-                    CHAN_OR_CLUST,EMG_CHANNELS(chan_i),...
-                    'subject',ALLEEG(subj_i).subject,...
-                    'freqrange',ERSP_PARAMS.freqrange,...
-                    'design',des_i);
-                %- save dat
-                ersp_data = struct('allerspdata',{allerspdata},'alltimes',{alltimes},'allfreqs',{allfreqs},...
-                    'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
-                par_save(ersp_data,save_dir,sprintf('%s_ersp_data_subbase_%s_%s.mat',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char));
-        %         ersp_savef = [save_dir filesep 'emg_data' filesep sprintf('%s_ersp_data_%s_%s.mat',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char)];
-                %- save fig
-                fig_i = get(groot,'CurrentFigure');
-                exportgraphics(fig_i,[save_dir filesep 'emg_data' filesep sprintf('%s_ersp_plot_subbase_%s_%s.jpg',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char)],'Resolution',300)
-                close(fig_i)
-            catch e
-                fprintf(['error. code block 2\n',...
-                    'error. identifier: %s\n',...
-                    'error. %s\n',...
-                    'stack. %s\n'],e.identifier,e.message,getReport(e));
-            end
-            toc 
-            %##
-            fprintf('Gathering ERSP after baseline correction and common baseline using times {%0.2f,%0.2f] for cluster %i\n',averaged_warpto_events(1),averaged_warpto_events(5),chan_i);
-            tic
-            try
-                disp(tmpSTUDY_commonbase.etc.statistics)
-                disp(tmpSTUDY_commonbase.etc.erspparams)
-                [~,allerspdata,alltimes,allfreqs,pgroup,pcond,pinter] = std_erspplot_customParams(tmpSTUDY_commonbase,ALLEEG,...
-                    parameters,...
-                    CHAN_OR_CLUST,EMG_CHANNELS(chan_i),...
-                    'subject',ALLEEG(subj_i).subject,...
-                    'freqrange',ERSP_PARAMS.freqrange,...
-                    'design',des_i); 
-                %- save dat
-                ersp_data = struct('allerspdata',{allerspdata},'alltimes',{alltimes},'allfreqs',{allfreqs},...
-                    'pgroup',{pgroup},'pcond',{pcond},'pinter',{pinter});
-                par_save(ersp_data,save_dir,sprintf('%s_ersp_data_commonbase_%s_%s.mat',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char));
-        %         ersp_savef = [save_dir filesep 'emg_data' filesep sprintf('%s_ersp_data_%s_%s.mat',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char)];
-                %- save fig
-                fig_i = get(groot,'CurrentFigure');
-                exportgraphics(fig_i,[save_dir filesep 'emg_data' filesep sprintf('%s_ersp_plot_commonbase_%s_%s.jpg',ALLEEG(subj_i).subject,EMG_CHANNELS{chan_i},design_char)],'Resolution',300)
-                close(fig_i)
-            catch e
-                fprintf(['error. code block 3\n',...
-                    'error. identifier: %s\n',...
-                    'error. %s\n',...
-                    'stack. %s\n'],e.identifier,e.message,getReport(e));
-            end
-            toc
-        end
-    end
-end

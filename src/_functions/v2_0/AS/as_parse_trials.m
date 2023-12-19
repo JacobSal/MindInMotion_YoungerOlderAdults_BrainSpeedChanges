@@ -213,7 +213,7 @@ switch epoch_method
                 'newname',sprintf('Merged datasets %s epochs',EEG.subject),'epochinfo', 'yes');
             TMP_EEG = eeg_checkset(TMP_EEG);
             %- Remove baseline 150ms before receive or hit
-%             TMP_EEG = pop_rmbase(TMP_EEG,[epoch_length_timelim(1)*1000 epoch_length_timelim(2)*1000-epoch_length_timelim(2)*1000-BASELINE_LATENCY_MS] ,[]);
+%             TMP_EEG = pop_rmbase(TMP_EEG,[epoch_length_timelim(1)*1000 0] ,[]);
 %             TMP_EEG = eeg_checkset(TMP_EEG);
             %{
             for i = 1:length(CONDLABEL_CHARS)
@@ -240,7 +240,7 @@ switch epoch_method
                 TMP_TMP_EEG = pop_selectevent(TMP_EEG,struct_field_cond,cond_chars{i},...
                     'deleteevents','off','deleteepochs','on','invertepochs','off');
                 %## set parameters
-                TMP_TMP_EEG.etc.epoch_type = sprintf('timewarp-%s',event_chars{j});
+                TMP_TMP_EEG.etc.epoch_type = sprintf('timelock-%s',event_chars{j});
                 TMP_TMP_EEG.etc.epoch.condition = [cond_chars{i} '_' event_chars{j}];
     %             TMP_TMP_EEG.etc.epoch.epoch_length_timelim = ;
                 TMP_TMP_EEG.filename = sprintf('%s_%s_%s_EPOCH_TMPEEG.set',TMP_TMP_EEG.subject,cond_chars{i},event_chars{j});

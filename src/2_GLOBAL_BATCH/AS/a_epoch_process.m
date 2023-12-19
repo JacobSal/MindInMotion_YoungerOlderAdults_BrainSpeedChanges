@@ -145,14 +145,16 @@ switch epoch_method
         EPOCH_PARAMS.struct_field_cond = 'bounces';
         EPOCH_PARAMS.struct_field_event = 'cond';
         EPOCH_PARAMS.regexp_slidingwindow = {'Human','BM'};
-        EPOCH_PARAMS.epoch_length_timelim = [-0.25,0.5];
+        EPOCH_PARAMS.epoch_length_timelim = [-0.15,1.5];
+        %- (12/18/2023) JS, trying [-0.15,1.5] from [-0.25,0.5];
     otherwise
-        error('error. choose a valid EPOCH_METHOD');   
+        error('error. choose a valid EPOCH_METHOD');
 end
 %- datetime override
 % dt = '06152023_bounces_1h2h2bm_JS';
 % dt = '07272023_bounces_1h_2h_2bm_JS';
-dt = '08182023_bounces_1h_2h_2bm_JS';
+% dt = '08182023_bounces_1h_2h_2bm_JS';
+dt = '12182023_bounces_1h_2h_2bm_JS_0p25-1';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(EPOCH_PARAMS.cond_chars)*length(EPOCH_PARAMS.event_chars),1);
