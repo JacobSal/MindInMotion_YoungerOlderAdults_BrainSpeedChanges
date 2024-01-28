@@ -36,7 +36,7 @@ tic
 %## DEFINE DEFAULTS
 %- Cutoff for Correlations ot determine bad components
 % NOTE: correlation coefficient threshold, 0.5-0.7= moderate correlation
-BAD_IC_CUTOFF = 0.1; 
+BAD_IC_CUTOFF = 0.3; 
 % NOTE (10/25/2023), Originally at 0.3; setting to 0.25 to be more
 % aggressive on cleaning.
 % NOTE (10/26/2023), Originally at 0.25; setting to 0.20 to be more

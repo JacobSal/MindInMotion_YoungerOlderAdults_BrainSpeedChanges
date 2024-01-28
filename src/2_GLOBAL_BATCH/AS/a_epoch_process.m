@@ -138,15 +138,23 @@ switch epoch_method
     case 'event_locked'
         EPOCH_PARAMS = [];
         EPOCH_PARAMS.epoch_method = 'event_locked';
+%         EPOCH_PARAMS.event_chars = {'Subject_hit'};
+%         EPOCH_PARAMS.event_chars = {'Subject_receive'};
         EPOCH_PARAMS.event_chars = {'Subject_hit'};
+        %- (12/28/2023) JS, may be interesting to understand what is going
+        %on around 'Subject_receive' events... sticking with 'Subject_hit'
+        %for now but changing epoching mechanism.
         EPOCH_PARAMS.events_timewarp = {};
-        EPOCH_PARAMS.cond_chars = {'2Bounce_Human','2Bounce_BM'};
+%         EPOCH_PARAMS.cond_chars = {'1Bounce_Human','1Bounce_BM'};
+        EPOCH_PARAMS.cond_chars = {'1Bounce_Human','Serve_Human'};
         EPOCH_PARAMS.std_timewarp = 0;
         EPOCH_PARAMS.struct_field_cond = 'bounces';
-        EPOCH_PARAMS.struct_field_event = 'cond';
+        EPOCH_PARAMS.struct_field_event = 'type';
         EPOCH_PARAMS.regexp_slidingwindow = {'Human','BM'};
-        EPOCH_PARAMS.epoch_length_timelim = [-0.15,1.5];
+        EPOCH_PARAMS.epoch_length_timelim = [-0.5,1.5];
         %- (12/18/2023) JS, trying [-0.15,1.5] from [-0.25,0.5];
+        %- (12/28/2023) JS, trying to understand brain act. before ball hit
+        % so using [-1,0.5] 
     otherwise
         error('error. choose a valid EPOCH_METHOD');
 end
@@ -154,7 +162,10 @@ end
 % dt = '06152023_bounces_1h2h2bm_JS';
 % dt = '07272023_bounces_1h_2h_2bm_JS';
 % dt = '08182023_bounces_1h_2h_2bm_JS';
-dt = '12182023_bounces_1h_2h_2bm_JS_0p25-1';
+% dt = '12182023_bounces_1h_2h_2bm_JS_0p25-1';
+% dt = '12282023_bounces_1h_2bm_JS_n1-0p5';
+% dt = '01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5';
+dt = '01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(EPOCH_PARAMS.cond_chars)*length(EPOCH_PARAMS.event_chars),1);
@@ -169,8 +180,8 @@ end
 DATA_DIR = [source_dir filesep '_data'];
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-study_fName_1 = sprintf('%s_all_comps_study',[EVENT_COND_COMBOS{:}]);
-study_fName_2 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
+study_fName_1 = 'all_comps_study';
+study_fName_2 = 'epoch_study';
 cluster_info_fpath = [STUDIES_DIR filesep 'as_cluster_info' filesep 'cluster_info.mat'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
@@ -364,6 +375,8 @@ end
 %% SAVE BIG STUDY
 fprintf('==== Reformatting Study ====\n');
 %- remove bugged out subjects
+fprintf('Bugged Subjects:\n');
+fprintf('%s\n',MAIN_ALLEEG(cellfun(@isempty,tmp)).subject);
 tmp = tmp(~cellfun(@isempty,tmp));
 %## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
 fss = cell(1,length(tmp));
@@ -406,7 +419,53 @@ STUDY.etc.a_epoch_process.epoch_alleeg_fpaths = alleeg_fpaths;
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                             study_fName_2,save_dir,...
                                             'STUDY_COND',[]);
-
+%%
+SUBJ_PICS = {MAIN_STUDY.datasetinfo.subject};
+SUBJ_ITERS = {(1:length(SUBJ_PICS{1}))};
+cluster_struct = STUDY.urcluster;
+cluster_struct_orig = STUDY.urcluster;
+% subj_chars_orig = SUBJ_PICS{1};
+% subj_chars_orig = cellfun(@(x) [{} sprintf('Pilot%s',x)],subj_chars_orig);
+subj_chars_orig = SUBJ_PICS;
+subj_chars = {STUDY.datasetinfo.subject};
+subj_keep = zeros(length(subj_chars),1);
+for subj_i = 1:length(subj_chars_orig)
+    disp(any(strcmp(subj_chars_orig{subj_i},subj_chars)));
+    if any(strcmp(subj_chars_orig{subj_i},subj_chars))
+        subj_keep(subj_i) = 1;
+    end
+end
+subjs_rmv = find(~subj_keep);
+subj_keep = find(subj_keep);
+[val,ord] = sort(subj_keep);
+for cli = 2:length(cluster_struct)
+    si = cluster_struct(cli).sets;
+    ci = cluster_struct(cli).comps;
+    keep_si = setdiff(si,subjs_rmv);
+    tmp = cluster_struct(cli).preclust.preclustdata;
+    tmp_preclust = [];
+    tmp_si = [];
+    tmp_ci = [];
+    for i = 1:length(keep_si)
+        tmp_si = [tmp_si, repmat(ord(keep_si(i) == val),1,sum(keep_si(i) == si))];
+        tmp_ci = [tmp_ci, ci(keep_si(i) == si)];
+        
+        tmp_preclust = [tmp_preclust; tmp(keep_si(i) == si,:)];
+    end
+    cluster_struct(cli).sets = tmp_si;
+    cluster_struct(cli).comps = tmp_ci;
+    cluster_struct(cli).preclust.preclustdata = tmp_preclust;
+end
+cluster_struct(1).sets = [cluster_struct(2:end).sets];
+cluster_struct(1).comps = [cluster_struct(2:end).comps];
+%-
+STUDY.cluster = cluster_struct;
+STUDY.etc.a_epoch_process.epoch_params = EPOCH_PARAMS;
+STUDY.etc.a_epoch_process.epoch_chars = EVENT_COND_COMBOS;
+STUDY.etc.a_epoch_process.epoch_alleeg_fpaths = alleeg_fpaths;
+[STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
+                        STUDY.filename,STUDY.filepath,...
+                        'RESAVE_DATASETS','off');
 %% Version History
 %{
 v1.0; (11/11/2022), JS: really need to consider updating bootstrap

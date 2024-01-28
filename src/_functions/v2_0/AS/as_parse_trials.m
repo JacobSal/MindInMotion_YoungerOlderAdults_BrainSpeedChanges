@@ -206,6 +206,29 @@ switch epoch_method
         ALLEEG = cell(length(event_chars)*length(cond_chars),1); 
         timewarp_struct = cell(1,length(event_chars)*length(cond_chars));
         cnt = 1;
+        for i = 1:length(cond_chars)
+            %## POP EVENTS OF INTEREST FROM ESTABLISHED EPOCHS
+            TMP_EEG = pop_selectevent(EEG,struct_field_cond,cond_chars{i},...
+                    'deleteevents','off','deleteepochs','on','invertepochs','off');
+            TMP_EEG = eeg_checkset(TMP_EEG);
+            for j = 1:length(event_chars)
+                %## EPOCH EVENT OF INTEREST (SUB_EPOCH)
+                fprintf(1,'\n==== Processing %s::''%s'' ====\n',EEG.subject,cond_chars{i});
+                TMP_TMP_EEG = pop_epoch(TMP_EEG,event_chars(j),epoch_length_timelim,...
+                    'newname',sprintf('Merged datasets %s epochs',EEG.subject),'epochinfo', 'yes');
+                %## set parameters
+                TMP_TMP_EEG.etc.epoch_type = sprintf('timelock-%s',event_chars{j});
+                TMP_TMP_EEG.etc.epoch.condition = [cond_chars{i} '_' event_chars{j}];
+    %             TMP_TMP_EEG.etc.epoch.epoch_length_timelim = ;
+                TMP_TMP_EEG.filename = sprintf('%s_%s_%s_EPOCH_TMPEEG.set',TMP_TMP_EEG.subject,cond_chars{i},event_chars{j});
+                TMP_TMP_EEG.condition = [cond_chars{i} '_' event_chars{j}];
+                %## STORE IN ALLEEG
+                ALLEEG{cnt} = TMP_TMP_EEG;
+                timewarp_struct{cnt} = struct([]);
+                cnt=cnt+1;
+            end
+        end
+        %{
         for j = 1:length(event_chars)
             %## Extract Epochs & Remove Baseline
             %## Amanda's data already epoched so this code chunk is not needed 
@@ -251,6 +274,7 @@ switch epoch_method
                 cnt=cnt+1;
             end
         end
+        %}
 end
 fprintf(1,'\n==== DONE: EPOCHING ====\n');
 %- concatenate ALLEEG

@@ -80,10 +80,11 @@ else
 end
 %% ===================================================================== %%
 [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
-subj_names = {};
-for i = 1:length(SUBJ_PICS)
-    subj_names = [subj_names, SUBJ_PICS{i}];
-end
+subj_names = [SUBJ_PICS{:}];
+% subj_names = {};
+% for i = 1:length(SUBJ_PICS)
+%     subj_names = [subj_names, SUBJ_PICS{i}];
+% end
 %%
 %## hard define
 %- datset name
@@ -93,12 +94,14 @@ DATA_SET = 'MIM_dataset';
 % OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
 % OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p3_newparams'; % JACOB,SAL(09/26/2023)
 % OA_PREP_FPATH = '08202023_OAN82_iccRX0p60_iccREMG0p3_newparams'; 
-OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams'; 
+% OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams'; 
+OA_PREP_FPATH = '01132024_antsnorm_iccREEG0p65_iccREMG0p4_skull0p0042';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
 for subj_i = 1:length(subj_names)
+% for subj_i = find(strcmp(subj_names,'H3113'))
     subj_name = subj_names{subj_i};
     dipfit_fPath = [OUTSIDE_DATA_DIR filesep subj_name filesep 'head_model'];
     try

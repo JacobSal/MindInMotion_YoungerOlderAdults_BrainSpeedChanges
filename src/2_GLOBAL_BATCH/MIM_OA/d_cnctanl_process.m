@@ -7,7 +7,7 @@
 %   Previous Version: n/a
 %   Summary: 
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/AS/run_d_cnctanl_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_OA/run_d_cnctanl_process.sh
 
 %{
 %## RESTORE MATLAB
@@ -23,8 +23,8 @@ clearvars
 tic
 %% (REQUIRED SETUP 4 ALL SCRIPTS) ====================================== %%
 %- DATE TIME
-dt = datetime;
-dt.Format = 'MMddyyyy';
+study_dir_fname = datetime;
+study_dir_fname.Format = 'MMddyyyy';
 %- VARS
 USER_NAME = 'jsalminen'; %getenv('username');
 fprintf(1,'Current User: %s\n',USER_NAME);
@@ -83,67 +83,62 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (PARAMETERS) ======================================================== %%
-fprintf('\nData Processing Parameters\n');
-%## Hard Defines
-%- dataset specific
-DATA_SET = 'AS_dataset';
-%- study group and saving
-COND_CHARS = {'2Bounce_Human','2Bounce_BM'};
-EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
-%- connectivity process
+%## hard define
+%- datset name
+DATA_SET = 'MIM_dataset';
 %- connecitivty modeling
-CONN_FREQS = (1:200);
-FREQ_BANDS = {CONN_FREQS;1:7;7:12;12:28;28:48;48:60};
-CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
-CNCTANL_TOOLBOX = 'sift'; %'bsmart'
-WINDOW_LENGTH = 0.5;
-WINDOW_STEP_SIZE = 0.025;
-NEW_SAMPLE_RATE = [];
+CONN_FREQS = (4:50);
+% (01/19/2024) JS, trying 4:50 from 1:100(see. Steven Peterson 2019 NeuroImage)
+FREQ_BANDS = {CONN_FREQS;4:8;8:13;13:28};
+TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+CONN_METHODS = {'dDTF08','S'}; %{'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
+WINDOW_LENGTH = 0.4;
+% (01/19/2024) JS, trying 0.4 from 0.5 (see. Steven Peterson 2019 NeuroImage)
+WINDOW_STEP_SIZE = 0.02;
+% (01/19/2024) JS, trying 0.02 from 0.025 (see. Steven Peterson 2019 NeuroImage)
 DO_BOOTSTRAP = true;
+% (01/19/2024) JS, unsure to turn to false for quicker estimates?
 DO_PHASE_RND = true;
+MORDER = 32; 
 %- datetime override
-% dt = '05252023_bounces_1h2h2bm_JS';
-% dt = '06122023_bounces_1h2h2bm_JS';
-% dt = '06152023_bounces_1h2h2bm_JS';
-% dt = '07272023_bounces_1h_2h_2bm_JS';
-dt = '08182023_bounces_1h_2h_2bm_JS';
-%## Soft Define
-%- combinations of events and conditions
-EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
-cnt = 1;
-for cond_i = 1:length(COND_CHARS)
-    for event_i = 1:length(EVENT_CHARS)
-        EVENT_COND_COMBOS{cnt} = sprintf('%s_%s',COND_CHARS{cond_i},EVENT_CHARS{event_i});
-        cnt = cnt + 1;
-    end
-end
-%- path for local data
+study_fName_1 = 'epoch_study';
+study_dir_fname = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
+%## soft define
 DATA_DIR = [source_dir filesep '_data'];
-% OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
-% study_fName_2 = sprintf('%s_CONN_study',[EVENT_COND_COMBOS{:}]);
-study_save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
-study_load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
-conn_save_dir = [study_save_dir filesep '_figs' filesep 'conn'];
+study_load_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_fname)];
+save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_fname)];
+conn_save_dir = [study_save_dir filesep 'conn_data'];
+%- load cluster
+CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',study_dir_fname) filesep 'cluster'];
+CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
+CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
 %- create new study directory
-if ~exist(study_save_dir,'dir')
-    mkdir(study_save_dir);
+if ~exist(save_dir,'dir')
+    mkdir(save_dir);
 end
 if ~exist(conn_save_dir,'dir')
     mkdir(conn_save_dir);
 end
 %% LOAD EPOCH STUDY
+
 %- Create STUDY & ALLEEG structs
-if ~exist([study_load_dir filesep study_fName_1 '.study'],'file')
+if ~exist([CLUSTER_STUDY_DIR filesep CLUSTER_STUDY_FNAME '.study'],'file')
     error('ERROR. study file does not exist');
     exit(); %#ok<UNRCH>
 else
+%     if ~ispc
+%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',study_load_dir);
+%     else
+%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
+%     end
+    %## LOAD STUDY
     if ~ispc
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',study_load_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAME '_UNIX.study'],'filepath',CLUSTER_STUDY_DIR);
     else
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAME '.study'],'filepath',CLUSTER_STUDY_DIR);
     end
+    [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
 end
 %% INITIALIZE PARFOR LOOP VARS
 fPaths = {MAIN_ALLEEG.filepath};
@@ -151,12 +146,15 @@ fNames = {MAIN_ALLEEG.filename};
 LOOP_VAR = 1:length(MAIN_ALLEEG);
 tmp = cell(1,length(MAIN_ALLEEG));
 rmv_subj = zeros(1,length(MAIN_ALLEEG));
+%## CUT OUT NON VALID CLUSTERS
+inds = setdiff(1:length(comps_out),valid_cls);
+comps_out(inds,:) = 0;
 %% CONNECTIVITY MAIN FUNC
 fprintf('Computing Connectivity\n');
 pop_editoptions('option_computeica', 1);
 %## PARFOR LOOP
 EEG = [];
-parfor (subj_i = 1:length(LOOP_VAR),ceil(length(LOOP_VAR)/2))
+parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
 % for subj_i = LOOP_VAR
     %- Parse out components
     components = comps_out(:,subj_i);
@@ -185,6 +183,7 @@ parfor (subj_i = 1:length(LOOP_VAR),ceil(length(LOOP_VAR)/2))
     try
         %## RUN MAIN_FUNC
         [TMP,t_out] = cnctanl_sift_pipe(ALLEEG,components,CONN_METHODS,conn_save_dir,...
+            'MORDER',MORDER,...
             'DO_PHASE_RND',DO_PHASE_RND,...
             'DO_BOOTSTRAP',DO_BOOTSTRAP,...
             'FREQS',CONN_FREQS,...
@@ -200,6 +199,7 @@ parfor (subj_i = 1:length(LOOP_VAR),ceil(length(LOOP_VAR)/2))
         BIG_CAT = cat(1,TMP(:).CAT);
         EEG.etc.COND_CAT = BIG_CAT;
         EEG.etc.conn_table = t_out;
+        EEG.etc.conn_meta.comps_out = comps_out;
         fName = strsplit(EEG.filename,'.'); fName = [fName{1} '.mat'];
         par_save(t_out,EEG.filepath,fName,'_conntable');
         [EEG] = pop_saveset(EEG,...
@@ -219,11 +219,45 @@ parfor (subj_i = 1:length(LOOP_VAR),ceil(length(LOOP_VAR)/2))
 end
 pop_editoptions('option_computeica',0);
 %% SAVE BIG STUDY
-% [ALLEEG,MAIN_STUDY] = parfunc_rmv_subjs(tmp,MAIN_STUDY,rmv_subj);
-%- Save
-[MAIN_STUDY,tmp] = parfunc_save_study(MAIN_STUDY,tmp,...
-                                        study_fName_2,study_save_dir,...
-                                        'STUDY_COND',[]);
+fprintf('==== Reformatting Study ====\n');
+%- remove bugged out subjects
+tmp = tmp(~cellfun(@isempty,tmp));
+%## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
+fss = cell(1,length(tmp));
+for subj_i = 1:length(tmp)
+    fss{subj_i} = fields(tmp{subj_i});
+end
+fss = unique([fss{:}]);
+fsPrev = fss;
+for subj_i = 1:length(tmp)
+    EEG = tmp{subj_i};
+    fs = fields(EEG);
+    % delete fields not present in other structs.
+    out = cellfun(@(x) any(strcmp(x,fsPrev)),fs,'UniformOutput',false); 
+    out = [out{:}];
+    addFs = fs(~out);
+    if any(~out)
+        for j = 1:length(addFs)
+            EEG.(addFs{j}) = [];
+            fprintf('%s) Adding %s %s\n',EEG.subject,addFs{j})
+        end
+    end 
+    tmp{subj_i} = EEG;
+end
+tmp = cellfun(@(x) [[]; x], tmp);
+%##
+tmp = eeg_checkset(tmp,'eventconsistency');
+[STUDY, ALLEEG] = std_editset([],tmp,...
+                                'updatedat','off',...
+                                'savedat','off',...
+                                'name',study_fname_1,...
+                                'filename',study_fname_1,...
+                                'filepath',study_load_dir);
+%## ASSIGN PARAMETERS
+STUDY.etc.a_epoch_process.epoch_chars = TRIAL_TYPES;
+[STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
+                                            study_fname_1,study_load_dir,...
+                                            'STUDY_COND',[]);                               
 %% Version History
 %{
 v1.0; (11/11/2022), JS: really need to consider updating bootstrap

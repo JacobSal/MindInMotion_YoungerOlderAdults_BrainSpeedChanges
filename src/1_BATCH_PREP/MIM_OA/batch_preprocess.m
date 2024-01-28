@@ -103,7 +103,8 @@ DATA_SET = 'MIM_dataset';
 % OA_PREP_FNAME = '10302023_OAN82_iccRX0p60_iccREMG0p4_newparams'; % JACOB,SAL(10/30/2023)
 % OA_PREP_FNAME = 'EMG_ANALYSIS'; % JACOB,SAL(07/14/2023)
 % OA_PREP_FNAME = '08202023_OAN82_iccRX0p60_iccREMG0p3_newparams'; % JACOB,SAL(07/14/2023)
-OA_PREP_FNAME = '11262023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(07/14/2023)
+% OA_PREP_FNAME = '11262023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(07/14/2023)
+OA_PREP_FNAME = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 %## soft define
 %- path for local data
 DATA_DIR = [source_dir filesep '_data'];

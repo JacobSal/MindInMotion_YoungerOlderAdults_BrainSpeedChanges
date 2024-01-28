@@ -8,7 +8,7 @@
 %   Summary: 
 
 %- run .sh
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/run_anlz_mri_norm.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/run_ants_write_dip_csv.sh
 
 %{
 %## RESTORE MATLAB
@@ -101,7 +101,8 @@ OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
-for subj_i = 1:length(subj_names)
+% for subj_i = 1:length(subj_names)
+for subj_i = find(strcmp(SUBJ_PICS,'NH3113'))
     subj_name = subj_names{subj_i};
     dipfit_fPath = [OUTSIDE_DATA_DIR filesep subj_name filesep 'head_model'];
     try

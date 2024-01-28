@@ -93,7 +93,7 @@ end
 DATA_SET = 'MIM_dataset';
 %- study group and saving
 SESSION_NUMBER = '1';
-SAVE_ALLEEG = false;
+SAVE_ALLEEG = true;
 SAVE_EEG = true; %true;
 OVERRIDE_DIPFIT = true;
 %- epoching params
@@ -104,11 +104,12 @@ PERCENT_OVERLAP = 0.0; % percent overlap between epochs
 %* gait
 EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 STD_TIMEWARP = 3;
-EPOCH_TIME_LIMITS = [-1,4.25]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
-% (10/13/20223) changing from [-1,4.25] to [-0.5,4.5] to match chang's
-% (10/25/20223) changing from [-0.5,4.5] to [-1,4.25] as it seems to help
+EPOCH_TIME_LIMITS = [-0.5,4.5]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
+% (10/13/2023) changing from [-1,4.25] to [-0.5,4.5] to match chang's
+% (10/25/2023) changing from [-0.5,4.5] to [-1,4.25] as it seems to help
 % with frequency decomposition artifact during ERSP creation
 % paper
+% (01/23/2024) changing from [-1,4.25] to [-0.5,4.5] to match chang
 TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 if DO_SLIDING_WINDOW
     SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
@@ -141,7 +142,8 @@ end
 % dt = '10302023_MIM_OAN70_newnormalize_iccREMG0p4_powpow0p1';
 % dt = '10302023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
 % dt = '11302023_MIM_OAN70_antsnormalize_iccREMG0p3_powpow0p1';
-dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+% dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+dt = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 %- Subject Directory information
 % OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 % OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
@@ -256,6 +258,7 @@ else
 end
 %}
 %%
+%## Create STUDY & ALLEEG structs
 try
     [MAIN_ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
                         conditions,groups,sessions);
@@ -265,21 +268,17 @@ catch e
     exit();
 end
 %% INITIALIZE PARFOR LOOP VARS
-if exist('SLURM_POOL_SIZE','var')
-    POOL_SIZE = min([SLURM_POOL_SIZE,length(MAIN_ALLEEG)]);
-else
-    POOL_SIZE = 1;
-end
 fPaths = {MAIN_ALLEEG.filepath};
 fNames = {MAIN_ALLEEG.filename};
 LOOP_VAR = 1:length(MAIN_ALLEEG);
 tmp = cell(1,length(MAIN_ALLEEG));
 rmv_subj = zeros(1,length(MAIN_ALLEEG));
+alleeg_fpaths = cell(length(MAIN_ALLEEG),1);
 %- clear vars for memory
 % clear MAIN_ALLEEG
 %% GENERATE EPOCH MAIN FUNC
 %## PARFOR LOOP
-parfor (subj_i = LOOP_VAR,POOL_SIZE)
+parfor (subj_i = LOOP_VAR,SLURM_POOL_SIZE)
     %## LOAD EEG DATA
     EEG = MAIN_ALLEEG(subj_i);
 %     EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
@@ -343,6 +342,7 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
                 cond_files(i).fPath = tmp_fPath;
                 cond_files(i).fName = sprintf([REGEX_FNAME '.set'],ALLEEG(i).condition);
             end
+            alleeg_fpaths{subj_i} = cond_files;
         end
         ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
         ALLEEG.etc.cond_files = cond_files;
@@ -430,6 +430,8 @@ tmp = cellfun(@(x) [[]; x], tmp);
                                 'filename',study_fName_2,...
                                 'filepath',save_dir);
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
+STUDY.etc.a_epoch_process.epoch_chars = TRIAL_TYPES;
+STUDY.etc.a_epoch_process.epoch_alleeg_fpaths = alleeg_fpaths;
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                         STUDY.filename,STUDY.filepath,...
                                         'RESAVE_DATASETS','on');

@@ -529,3 +529,78 @@ for subj_i = LOOP_VAR
         fprintf('run this on unix\n');
     end
 end
+%% (HELPER SCRIPT) 
+%{
+M_MIND_IN_MOTION_DIR = [DATA_DIR filesep DATA_SET];
+subjs = [SUBJ_PICS{:}];
+% dt = '07042023_OA_prep_verified';
+% dt = '04182023_YA_N37_prep_verified';
+dt = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
+load_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
+save_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\spca_analysis';
+for subj_i = 1:length(subjs)
+    folder_from = [load_dir filesep subjs{subj_i} filesep 'clean'];
+    folder_to = [save_dir filesep subjs{subj_i} filesep 'spca_subsample'];
+    fprintf('Transfering folder for subject %s...\n',subjs{subj_i});
+    try
+        % if dirOut doesn't exist, create it.
+        if ~exist(folder_to,'dir')
+            fprintf('Making directory: %s\n',folder_to);
+            mkdir(folder_to);
+        end
+        % dont copy if float/set files already exist
+        dirFrom = dir([folder_from filesep 'cond*.mat']);
+        for fi = 1:length(dirFrom)
+            copyfile([dirFrom(1).folder filesep dirFrom(fi).name],folder_to);
+            delete([dirFrom(1).folder filesep dirFrom(fi).name])
+        end
+        dirFrom = dir([folder_from filesep 'chan*.jpg']);
+        for fi = 1:length(dirFrom)
+            copyfile([dirFrom(1).folder filesep dirFrom(fi).name],folder_to);
+            delete([dirFrom(1).folder filesep dirFrom(fi).name])
+        end
+        copyfile([folder_from filesep 'gait_ersp_spca.mat'],folder_to);
+        delete([folder_from filesep 'gait_ersp_spca.mat'])
+    catch e
+        fprintf('Error. on Subject %s:\n\n%s\n',subjs{subj_i},getReport(e));
+    end
+end
+%}
+%% (HELPER SCRIPT) TRANSFER SPCA RESULTS
+M_MIND_IN_MOTION_DIR = [DATA_DIR filesep DATA_SET];
+subjs = [SUBJ_PICS{:}];
+% dt = '07042023_OA_prep_verified';
+% dt = '04182023_YA_N37_prep_verified';
+% dt = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
+% load_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
+% save_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\spca_analysis';
+
+load_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\spca_analysis';
+save_dir = 'R:\Ferris-Lab\jsalminen\Experiments_Funding\Experiment_6_MIM_OA\data_set_saves\01122024_spca_analysis';
+for subj_i = 1:length(subjs)
+    folder_from = [load_dir filesep subjs{subj_i} filesep 'spca_subsample'];
+    folder_to = [save_dir filesep subjs{subj_i} filesep 'spca_subsample'];
+    fprintf('Transfering folder for subject %s...\n',subjs{subj_i});
+    try
+        % if dirOut doesn't exist, create it.
+        if ~exist(folder_to,'dir')
+            fprintf('Making directory: %s\n',folder_to);
+            mkdir(folder_to);
+        end
+        % dont copy if float/set files already exist
+        dirFrom = dir([folder_from filesep 'cond*.mat']);
+        for fi = 1:length(dirFrom)
+            copyfile([dirFrom(1).folder filesep dirFrom(fi).name],folder_to);
+            delete([dirFrom(1).folder filesep dirFrom(fi).name])
+        end
+        dirFrom = dir([folder_from filesep 'chan*.jpg']);
+        for fi = 1:length(dirFrom)
+            copyfile([dirFrom(1).folder filesep dirFrom(fi).name],folder_to);
+            delete([dirFrom(1).folder filesep dirFrom(fi).name])
+        end
+        copyfile([folder_from filesep 'gait_ersp_spca.mat'],folder_to);
+        delete([folder_from filesep 'gait_ersp_spca.mat'])
+    catch e
+        fprintf('Error. on Subject %s:\n\n%s\n',subjs{subj_i},getReport(e));
+    end
+end

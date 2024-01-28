@@ -38,9 +38,10 @@ tic
 %## HIGH LEVEL VARS
 %- connectivity statistics & surrogates params
 %* 
-DO_BOOTSTRAP = false;
+DO_BOOTSTRAP = true;
 %* boolean for phase randomization generation
 DO_PHASE_RND = true;
+ASSIGN_BOOTSTRAP_MEAN = true;
 %* 
 STAT_ALPHA = 0.01;
 %*
@@ -48,13 +49,14 @@ STAT_ALPHA = 0.01;
 % conn_estimators = {'dDTF08','dDTF','GGC'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 WINDOW_LENGTH = 0.5; % time (s)
 WINDOW_STEP_SIZE = 0.025; % time (s)
-FREQS = (1:200); % frequency (Hz)
+FREQS = (1:100); % frequency (Hz) %MAX IS 120Hz
 VERBOSITY_LEVEL = 1;
 GUI_MODE = 'nogui';
 FREQ_BANDS = {FREQS;1:7;7:12;12:28;28:48;48:60};
 N_PERMS_PHASE_RND = 2000; % number of null distribution samples to draw
-N_PERMS_BOOTSRAP = 2000;
+N_PERMS_BOOTSRAP = 200;
 MORDER = [];
+conn_mat_table = [];
 %% POP_PRE_PREPDATA
 PREPDATA_SIGNALTYPE = {'Components'};
 PREPDATA_DETRED = {'verb',VERBOSITY_LEVEL,'method',{'linear'}};
@@ -178,6 +180,11 @@ ESTVALMVAR_CRV      = p.Results.ESTVALMVAR_CRV;
 ESTVALMVAR_CC       = p.Results.ESTVALMVAR_CC;
 ESTVALMVAR_CS       = p.Results.ESTVALMVAR_CS;
 MORDER              = p.Results.MORDER;
+%- parameters
+DO_PHASE_RND = p.Results.DO_PHASE_RND;
+DO_BOOTSTRAP = p.Results.DO_BOOTSTRAP;
+FREQ_BANDS = p.Results.FREQ_BANDS;
+
 %- param mods
 %* 
 if isempty(ESTSELMOD_CFG)
@@ -396,42 +403,6 @@ disp('DONE.')
 disp('===================================')
 fprintf(1,'\n==== DONE: GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s ====\n',ALLEEG(1).subject);          
 %% ===================================================================== %%
-%## STEP 5.b) GENERATE PHASE RANDOMIZED DISTRIBUTION    
-% see. stat_surrogateGen
-% see. stat_surrogateStats
-if DO_PHASE_RND
-    fprintf(1,'\n==== GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
-    %## (1) ALTERNATIVE CODE 
-    for trial_i=1:length(ALLEEG)
-        %- Generate Phase Randomized Distribution
-        fprintf('\n==== PHASE RANDOMIZING CONNECTIVITY MEASURES ====\n')
-%         [ALLEEG(trial_i),~] = cnctanl_groupStats(ALLEEG(trial_i),'PhaseRnd');
-        %- clear PConn
-        ALLEEG(trial_i).CAT.PConn  = [];
-        STAT_PHASERND_CFG.modelingApproach = ALLEEG(trial_i).CAT.configs.est_fitMVAR;
-        STAT_PHASERND_CFG.connectivityModeling = ALLEEG(trial_i).CAT.configs.est_mvarConnectivity;
-        %- FEVAL
-        [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(trial_i),STAT_PHASERND_CFG);
-        ALLEEG(trial_i).CAT.PConn = PConn;
-        %- Save Phase randomized distribution
-        phasernd_dist = ALLEEG(trial_i).CAT.PConn;
-        fName = strsplit(ALLEEG(trial_i).filename,'.'); fName = [fName{1} '.mat'];
-        par_save(phasernd_dist,ALLEEG(trial_i).filepath,fName,'_PhaseRnd');
-        fprintf('done.\n')
-        %- Conduct Nonzero Test (Need Phase Randomized Distribution)
-%         fprintf('\n==== NONZERO STATISTICS ====\n')
-%         [ALLEEG(trial_i),~] = cnctanl_groupStats(ALLEEG(trial_i),'NonZero');
-%         %- Save Nonzero Stats
-%         nonzero_stats = ALLEEG(trial_i).CAT.Stats;
-%         fName = strsplit(ALLEEG(trial_i).filename,'.'); fName = [fName{1} '.mat'];
-%         par_save(nonzero_stats,ALLEEG(trial_i).filepath,fName,'_NonZero');
-        
-        fprintf('done.\n')
-    end
-    clear TMP_EEG
-    fprintf(1,'\n==== DONE: GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
-end
-%% ===================================================================== %%
 %## STEP 5.a) (BOOTSTRAPPING) GROUP STATISTICS 
 % (09/22/2022), JS, Might want to try and speed up bootstrap by
 % adapting stat_surrogateGen.m to use parfor for bootstrapping... If
@@ -472,15 +443,53 @@ if DO_BOOTSTRAP
     fprintf('\n==== DONE: CALCULATING BOOTSTRAP MEASURES ====\n')
 end
 %% ===================================================================== %%
+%## STEP 5.b) GENERATE PHASE RANDOMIZED DISTRIBUTION    
+% see. stat_surrogateGen
+% see. stat_surrogateStats
+if DO_PHASE_RND
+    fprintf(1,'\n==== GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
+    %## (1) ALTERNATIVE CODE 
+    for trial_i=1:length(ALLEEG)
+        %- Generate Phase Randomized Distribution
+        fprintf('\n==== PHASE RANDOMIZING CONNECTIVITY MEASURES ====\n')
+%         [ALLEEG(trial_i),~] = cnctanl_groupStats(ALLEEG(trial_i),'PhaseRnd');
+        %- clear PConn
+        ALLEEG(trial_i).CAT.PConn  = [];
+        STAT_PHASERND_CFG.modelingApproach = ALLEEG(trial_i).CAT.configs.est_fitMVAR;
+        STAT_PHASERND_CFG.connectivityModeling = ALLEEG(trial_i).CAT.configs.est_mvarConnectivity;
+        %- FEVAL
+        [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(trial_i),STAT_PHASERND_CFG);
+        ALLEEG(trial_i).CAT.PConn = PConn;
+        %- Save Phase randomized distribution
+        phasernd_dist = ALLEEG(trial_i).CAT.PConn;
+        fName = strsplit(ALLEEG(trial_i).filename,'.'); fName = [fName{1} '.mat'];
+        par_save(phasernd_dist,ALLEEG(trial_i).filepath,fName,'_PhaseRnd');
+        fprintf('done.\n')
+        %- Conduct Nonzero Test (Need Phase Randomized Distribution)
+%         fprintf('\n==== NONZERO STATISTICS ====\n')
+%         [ALLEEG(trial_i),~] = cnctanl_groupStats(ALLEEG(trial_i),'NonZero');
+%         %- Save Nonzero Stats
+%         nonzero_stats = ALLEEG(trial_i).CAT.Stats;
+%         fName = strsplit(ALLEEG(trial_i).filename,'.'); fName = [fName{1} '.mat'];
+%         par_save(nonzero_stats,ALLEEG(trial_i).filepath,fName,'_NonZero');
+        
+        fprintf('done.\n')
+    end
+    clear TMP_EEG
+    fprintf(1,'\n==== DONE: GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
+end
+
+%% ===================================================================== %%
+
 %## STEP 6) CONNECTIVITY MATRICES & VISUALS
 %## TABLE VARS
 t_fPaths = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
 t_fNames = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
 % t_conn_methods = cell(length(ALLEEG),1);
 t_conn_comps = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
-t_conn_mats = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
+% t_conn_mats = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
 t_conn_freqs = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
-t_conn_sigs = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
+% t_conn_sigs = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
 t_conn_meas = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
 disp(ALLEEG);
 %## Generate Connectivity Matrix
@@ -490,21 +499,22 @@ for conn_i = 1:length(conn_estimators)
         for trial_i = 1:length(ALLEEG)
             disp(ALLEEG(trial_i).CAT.Conn);
             %- calculate average connnectivity for each component pair across time
-            [statMat,extract_sig] = gen_connMatrix(ALLEEG(trial_i),conn_estimators{conn_i},FREQ_BANDS{freq_i},STAT_ALPHA);
+%             [statMat,extract_sig] = gen_connMatrix(ALLEEG(trial_i),conn_estimators{conn_i},FREQ_BANDS{freq_i},STAT_ALPHA);
             %- store outputs into a tabularable ("table able") format.
             t_conn_comps{cnt} = conn_components;
             t_fPaths{cnt} = ALLEEG(trial_i).filepath;
             t_fNames{cnt} = ALLEEG(trial_i).filename;
             t_conn_freqs{cnt} = FREQ_BANDS{freq_i};
-            t_conn_mats{cnt} = statMat;
-            t_conn_sigs{cnt} = extract_sig;
+%             t_conn_mats{cnt} = statMat;
+%             t_conn_sigs{cnt} = extract_sig;
             t_conn_meas{cnt} = conn_estimators{conn_i};
             cnt = cnt + 1;
         end
     end
 end
 %- create table
-conn_mat_table = table(t_fPaths,t_fNames,t_conn_comps,t_conn_meas,t_conn_freqs,t_conn_sigs,t_conn_mats);
+% conn_mat_table = table(t_fPaths,t_fNames,t_conn_comps,t_conn_meas,t_conn_freqs,t_conn_sigs,t_conn_mats);
+conn_mat_table = table(t_fPaths,t_fNames,t_conn_comps,t_conn_meas,t_conn_freqs);
 %% ===================================================================== %%
 %## STEP 7) WRAP UP 
 %- REMOVE FIELDS && SAVE

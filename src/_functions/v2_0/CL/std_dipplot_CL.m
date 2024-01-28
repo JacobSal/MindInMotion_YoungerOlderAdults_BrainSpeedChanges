@@ -85,6 +85,7 @@ function STUDY = std_dipplot_CL(STUDY, ALLEEG, varargin)
 cls = []; % plot all clusters in STUDY
 figureon = 1; % plot on a new figure
 mode = 'apart';
+
 STUDY = pop_dipparams(STUDY, 'default');
 
 opt_dipplot = {'projlines',STUDY.etc.dipparams.projlines, 'axistight', STUDY.etc.dipparams.axistight, 'projimg', STUDY.etc.dipparams.projimg, 'spheres', 'on', 'dipolelength', 0, 'density', STUDY.etc.dipparams.density};
@@ -109,7 +110,6 @@ for k = 3:2:nargin
                 end
             end
             if length(cls) == 1, mode = 'apart'; else mode = 'together'; end
-%             COLOR_OPTS = linspecer(length(cls));
         case 'comps'
             if strcmpi(STUDY.etc.dipparams.density, 'on')
                 disp('Single dipole should not be plotted using dipole density, reverting to dipole plotting');
@@ -144,7 +144,6 @@ if strcmpi(mode, 'together')
         opt_dipplot{end} = 'off';
     end
 end
-COLOR_OPTS = linspecer(length(cls)+1);
 
 % select clusters to plot
 % -----------------------
@@ -623,30 +622,29 @@ if strcmpi(mode, 'multicolor')
   %%%%%%%%%%%%%%%%%%%%% color list %%%%%%%%%%%%%%%%%%%%%
   % This color list was developped for std_envtopo
   % modified from dipgroups below
-%   colors{1}  = [1 1 1];            % White
-%   colors{2}  = [1 1 0];            % Yellow
-%   colors{3}  = [1 0 1];            % Fuchsia
-%   colors{4}  = [1 0 0];            % Red
-%   colors{5}  = [0.875 0.875 0.875]; % Silver
-%   colors{6}  = [0.5 0.5 0.5];      % Gray
-%   colors{7}  = [0.5 0.5 0];        % Olive
-%   colors{8}  = [0.5 0 0.5];        % Purple
-%   colors{9}  = [0.5 0 0];          % Maroon
-%   colors{10} = [0 1 1];            % Aqua
-%   colors{11} = [0 1 0];            % Lime
-%   colors{12} = [0 0.5 0.5];        % Teal
-%   colors{13} = [0 0.5 0];          % Green
-%   colors{14} = [0 0 1];            % Blue
-%   colors{15} = [0 0 0.5];          % Navy
-%   colors{16} = [0 0 0];            % Black
-%   % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-%   % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-%   colors = colors([4 13 14 3 11 10 9 7 8 12 15 6 1 ]);
-    colors = cell(1,length(COLOR_OPTS));
-      for i = 1:size(COLOR_OPTS,1)
-          colors{i} = COLOR_OPTS(i,:);
-      end
-  fig_h = figure;
+  % Young Adult Color - update by 20231231 
+  colors{1}  = [1 1 1];            % White
+  colors{2}  = [1 1 0];            % Yellow
+  colors{3}  = [221,52,151]/255;            % Pink
+  colors{4}  = [1 0 0];            % Red
+%       colors{5}  = [0.875 0.875 0.875]; % Silver
+%       colors{6}  = [0.5 0.5 0.5];      % Gray
+  colors{5}  = [250 140 0]/255;    % oragne
+  colors{6}  = [210 173 255]/255;   % purple
+  colors{7}  = [0.5 0.5 0];        % Olive
+  colors{8}  = [0.5 0 0.5];        % Purple
+  colors{9}  = [0.5 0 0];          % Maroon
+  colors{10} = [0 1 1];            % Aqua
+  colors{11} = [0 1 0];            % Lime
+  colors{12} = [0 0.5 0.5];        % Teal
+  colors{13} = [0 0.5 0];          % Green
+  colors{14} = [0 0 1];            % Blue
+  colors{15} = [0 0 0.5];          % Navy
+  colors{16} = [0.8 0.8 0.8];            % Gray
+  % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+  % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+  colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+fig_h = figure;
   orient tall
   set(fig_h,'Color', 'black');
   set(fig_h,'Name', 'All clusters dipoles','NumberTitle','off');
@@ -775,39 +773,29 @@ if strcmpi(mode,'together_averaged_multicolor')
       %%%%%%%%%%%%%%%%%%%%% color list %%%%%%%%%%%%%%%%%%%%%
       % This color list was developped for std_envtopo
       % modified from dipgroups below
-%       if length(cls) < 16
-%           colors{1}  = [1 1 1];            % White
-%           colors{2}  = [1 1 0];            % Yellow
-%           colors{3}  = [1 0 1];            % Fuchsia
-%           colors{4}  = [1 0 0];            % Red
-%     %       colors{5}  = [0.875 0.875 0.875]; % Silver
-%     %       colors{6}  = [0.5 0.5 0.5];      % Gray
-%           colors{5}  = [250 140 0]/255;    % oragne
-%           colors{6}  = [210 173 255]/255;   % purple
-%           colors{7}  = [0.5 0.5 0];        % Olive
-%           colors{8}  = [0.5 0 0.5];        % Purple
-%           colors{9}  = [0.5 0 0];          % Maroon
-%           colors{10} = [0 1 1];            % Aqua
-%           colors{11} = [0 1 0];            % Lime
-%           colors{12} = [0 0.5 0.5];        % Teal
-%           colors{13} = [0 0.5 0];          % Green
-%           colors{14} = [0 0 1];            % Blue
-%           colors{15} = [0 0 0.5];          % Navy
-%           colors{16} = [0.3 0.3 0.3];            % Black
-%           % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-%           % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-%           colors = colors([4 11 14 2 13 10 5 12 15 16 1 ]);
-%       else
-%           colors = cell(1,length(COLOR_OPTS));
-%           for i = 1:length(COLOR_OPTS)
-%               colors{i} = COLOR_OPTS(i,:);
-%           end
-%       end
-      colors = cell(1,size(COLOR_OPTS,1));
-      for i = 1:size(COLOR_OPTS,1)
-          colors{i} = COLOR_OPTS(i,:);
-      end
-      N = length(cls);
+      % Young Adult Color - update by 20231231 
+      colors{1}  = [1 1 1];            % White
+      colors{2}  = [1 1 0];            % Yellow
+      colors{3}  = [221,52,151]/255;            % Pink
+      colors{4}  = [1 0 0];            % Red
+%       colors{5}  = [0.875 0.875 0.875]; % Silver
+%       colors{6}  = [0.5 0.5 0.5];      % Gray
+      colors{5}  = [250 140 0]/255;    % oragne
+      colors{6}  = [210 173 255]/255;   % purple
+      colors{7}  = [0.5 0.5 0];        % Olive
+      colors{8}  = [0.5 0 0.5];        % Purple
+      colors{9}  = [0.5 0 0];          % Maroon
+      colors{10} = [0 1 1];            % Aqua
+      colors{11} = [0 1 0];            % Lime
+      colors{12} = [0 0.5 0.5];        % Teal
+      colors{13} = [0 0.5 0];          % Green
+      colors{14} = [0 0 1];            % Blue
+      colors{15} = [0 0 0.5];          % Navy
+      colors{16} = [0.8 0.8 0.8];            % Gray
+      % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+      % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+      colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+    N = length(cls);
     rowcols(2) = ceil(sqrt(N)); % Number of rows in the subplot figure.
     rowcols(1) = ceil(N/rowcols(2));
     fig_h = figure; 
@@ -959,31 +947,28 @@ if strcmpi(mode,'together_averaged_multicolor_separate')
       %%%%%%%%%%%%%%%%%%%%% color list %%%%%%%%%%%%%%%%%%%%%
       % This color list was developped for std_envtopo
       % modified from dipgroups below
-%       colors{1}  = [1 1 1];            % White
-%       colors{2}  = [1 1 0];            % Yellow
-%       colors{3}  = [1 0 1];            % Fuchsia
-%       colors{4}  = [1 0 0];            % Red
-% %       colors{5}  = [0.875 0.875 0.875]; % Silver
-% %       colors{6}  = [0.5 0.5 0.5];      % Gray
-%       colors{5}  = [250 140 0]/255;    % oragne
-%       colors{6}  = [210 173 255]/255;   % purple
-%       colors{7}  = [0.5 0.5 0];        % Olive
-%       colors{8}  = [0.5 0 0.5];        % Purple
-%       colors{9}  = [0.5 0 0];          % Maroon
-%       colors{10} = [0 1 1];            % Aqua
-%       colors{11} = [0 1 0];            % Lime
-%       colors{12} = [0 0.5 0.5];        % Teal
-%       colors{13} = [0 0.5 0];          % Green
-%       colors{14} = [0 0 1];            % Blue
-%       colors{15} = [0 0 0.5];          % Navy
-%       colors{16} = [0.3 0.3 0.3];            % Black
-%       % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-%       % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-%       colors = colors([4 11 14 2 13 10 5 12 15 16 1 ]);
-    colors = cell(1,size(COLOR_OPTS,1));
-      for i = 1:size(COLOR_OPTS,1)
-          colors{i} = COLOR_OPTS(i,:);
-      end
+      % Young Adult Color - update by 20231231 
+      colors{1}  = [1 1 1];            % White
+      colors{2}  = [1 1 0];            % Yellow
+      colors{3}  = [221,52,151]/255;            % Pink
+      colors{4}  = [1 0 0];            % Red
+%       colors{5}  = [0.875 0.875 0.875]; % Silver
+%       colors{6}  = [0.5 0.5 0.5];      % Gray
+      colors{5}  = [250 140 0]/255;    % oragne
+      colors{6}  = [210 173 255]/255;   % purple
+      colors{7}  = [0.5 0.5 0];        % Olive
+      colors{8}  = [0.5 0 0.5];        % Purple
+      colors{9}  = [0.5 0 0];          % Maroon
+      colors{10} = [0 1 1];            % Aqua
+      colors{11} = [0 1 0];            % Lime
+      colors{12} = [0 0.5 0.5];        % Teal
+      colors{13} = [0 0.5 0];          % Green
+      colors{14} = [0 0 1];            % Blue
+      colors{15} = [0 0 0.5];          % Navy
+      colors{16} = [0.8 0.8 0.8];            % Gray
+      % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+      % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+      colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
     N = length(cls);
     rowcols(2) = ceil(sqrt(N)); % Number of rows in the subplot figure.
     rowcols(1) = ceil(N/rowcols(2));
@@ -1126,44 +1111,229 @@ if strcmpi(mode,'together_averaged_multicolor_separate')
    end %finished going over all clusters
    set(fig_h, 'resize','on'); 
 end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Added by Chang Liu - 2023-12-28 , plot each cluster individually
+if strcmpi(mode,'together_averaged_multicolor_separate_groups')
+      %%%%%%%%%%%%%%%%%%%%% color list %%%%%%%%%%%%%%%%%%%%%
+      % This color list was developped for std_envtopo
+      % modified from dipgroups below
+      
+      % Young Adult Color
+      colors{1}  = [1 1 1];            % White
+      colors{2}  = [1 1 0];            % Yellow
+      colors{3}  = [221,52,151]/255;            % Pink
+      colors{4}  = [1 0 0];            % Red
+%       colors{5}  = [0.875 0.875 0.875]; % Silver
+%       colors{6}  = [0.5 0.5 0.5];      % Gray
+      colors{5}  = [250 140 0]/255;    % oragne
+      colors{6}  = [210 173 255]/255;   % purple
+      colors{7}  = [0.5 0.5 0];        % Olive
+      colors{8}  = [0.5 0 0.5];        % Purple
+      colors{9}  = [0.5 0 0];          % Maroon
+      colors{10} = [0 1 1];            % Aqua
+      colors{11} = [0 1 0];            % Lime
+      colors{12} = [0 0.5 0.5];        % Teal
+      colors{13} = [0 0.5 0];          % Green
+      colors{14} = [0 0 1];            % Blue
+      colors{15} = [0 0 0.5];          % Navy
+      colors{16} = [0.8 0.8 0.8];            % Gray
+      % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+      % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+      colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+      
+      % Older Adult Color
+      colors_OA{1}  = [0.8 0.8 0.8];            % White
+      colors_OA{2}  = [254,224,139]/255;            % Yellow
+      colors_OA{3}  = [250,159,181]/255;            % Fuchsia
+      colors_OA{4}  = [214,96,77]/255;            % Red
+%       colors{5}  = [0.875 0.875 0.875]; % Silver
+%       colors{6}  = [0.5 0.5 0.5];      % Gray
+      colors_OA{5}  = [253,174,97]/255;    % oragne
+      colors_OA{6}  = [128,115,172]/255;   % purple
+      colors_OA{7}  = [223,194,125]/255;        % Olive
+      colors_OA{8}  = [0.5 0 0.5];        % Purple
+      colors_OA{9}  = [178,24,43]/255;          % Maroon
+      colors_OA{10} = [0 1 1];            % Aqua
+      colors_OA{11} = [217,239,139]/255;            % Lime
+      colors_OA{12} = [0 0.5 0.5];        % Teal
+      colors_OA{13} = [26,152,80]/255;          % Green
+      colors_OA{14} = [146,197,222]/255;            % Blue
+      colors_OA{15} = [69,117,180]/255;          % Navy
+      colors_OA{16} = [0.1 0.1 0.1];            % Gray
+      colors_OA = colors_OA([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+    N = length(cls);
+    rowcols(2) = ceil(sqrt(N)); % Number of rows in the subplot figure.
+    rowcols(1) = ceil(N/rowcols(2));
+    fig_h = figure; 
+    orient tall
+    set(fig_h,'Color', 'black');
+    set(fig_h,'Name', 'All clusters dipoles','NumberTitle','off');
+    set(fig_h, 'resize','off');
+    for l = 1:N
+        %color, size for every cluster can be passed as arguments, or
+        %automatically iterate through a set of colors/sizes
+        if ~isempty(dipcolor)
+          clusterColors{l} = dipcolor{idx};
+        else
+          colorIndex = mod(l-1, length(colors))+1;
+%           clusterColors{l} = colors{colorIndex};
+          clusterColors{l} = colors{coloridx};
+        end
+
+        if ~isempty(dipsize)
+          clusterSizes(l) = dipsize(1);
+        else
+          %after rotating through color list once, change size of dipole
+          if l <= length(colors)
+            clusterSizes(l) = 20;
+          elseif l <= 2*length(colors)
+            clusterSizes(l) = 20;
+          else
+            clusterSizes(l) = 15;
+          end
+        end
+        len = length(STUDY.cluster(cls(l)).comps);
+        max_r = 0;
+        clear cluster_dip_models;
+        if ~isfield(STUDY.cluster(cls(l)),'dipole')
+            STUDY = std_centroid_avg(STUDY,ALLEEG, cls(l), 'dipole');
+        elseif isempty(STUDY.cluster(cls(l)).dipole)
+            STUDY = std_centroid_avg(STUDY,ALLEEG, cls(l), 'dipole');
+        end
+        
+        subj_in_cluster = unique(STUDY.cluster(cls(l)).sets);%Subjects in this cluster
+        for j = 1:length(subj_in_cluster)
+            tmppos_sb = [0 0 0];
+            tmpmom_sb = [0 0 0];
+            tmprv_sb = 0;
+            comp_ind = find(STUDY.cluster(cls(l)).sets == subj_in_cluster(j));
+            for k = 1:length(comp_ind) 
+                fprintf('.');
+                comp  = STUDY.cluster(cls(l)).comps(comp_ind(k));
+                abset = STUDY.cluster(cls(l)).sets(1,comp_ind(k));
+
+                if ~isfield(ALLEEG(abset), 'dipfit')
+                   warndlg2(['No dipole information available in dataset ' num2str(abset) ' , abort plotting'], 'Aborting plot dipoles');
+                   return;
+                end
+                tmppos_sb = tmppos_sb + ALLEEG(abset).dipfit.model(comp).posxyz;
+                tmpmom_sb = tmpmom_sb + ALLEEG(abset).dipfit.model(comp).momxyz;
+                tmprv_sb = tmprv_sb + ALLEEG(abset).dipfit.model(comp).rv;
+                if strcmpi(ALLEEG(abset).dipfit.coordformat, 'spherical')
+                    if isfield(ALLEEG(abset).dipfit, 'hdmfile') %dipfit 2 spherical model
+                       load('-mat', ALLEEG(abset).dipfit.hdmfile);
+                       max_r = max(max_r, max(vol.r));
+                   else % old version of dipfit
+                       max_r = max(max_r,max(ALLEEG(abset).dipfit.vol.r));
+                   end
+                end
+            end
+           cluster_dip_models(j).posxyz = tmppos_sb/length(comp_ind) ;
+           cluster_dip_models(j).momxyz = tmpmom_sb/length(comp_ind) ;
+           cluster_dip_models(j).rv = tmprv_sb/length(comp_ind);
+        end % finished going over cluster comps
+%         STUDY.cluster(cls(l)).dipole =
+%         computecentroid(cluster_dip_models);%This is already computed
+%         before - CL 2022-1-8
+%         cluster_dip_models(end + 1) = computecentroid(cluster_dip_models);
+        dip_color = cell(1,length(cluster_dip_models));
+        
+        dip_color(dipsize == 1) = {colors{coloridx}};
+        dip_color(dipsize > 1) = {colors_OA{coloridx}};%OA adult color
+%         dip_color(end) = {clusterColors{l}}; 
+        dip_size = ones(1,length(cluster_dip_models))*20;
+%         dip_size = dipsize*10;
+%         dip_size(end) = 40;
+        options = opt_dipplot;
+        options{end + 1} =  'gui';
+        options{end + 1} =  'off';
+        options{end+1} =  'mri';
+        options{end+1} =  ALLEEG(abset).dipfit.mrifile;
+        options{end+1} =  'coordformat';
+        options{end+1} =  ALLEEG(abset).dipfit.coordformat;
+        options{end+1} = 'color';
+        options{end+1} = dip_color;
+        options{end+1} = 'dipolesize';
+        options{end+1} = dip_size;
+        if strcmpi(ALLEEG(abset).dipfit.coordformat, 'spherical')
+            options{end+1} = 'sphere';
+            options{end+1} = max_r;
+        else
+            options{end+1} = 'meshdata';
+            options{end+1} = ALLEEG(abset).dipfit.hdmfile;
+        end
+        options{end+1} = 'spheres';
+        options{end+1} = 'off';
+        % Dealing with projection lines
+        if strcmpi(options{2},'on')
+            projlinesvect = ones(1,length(cluster_dip_models));
+        elseif strcmpi(options{2},'off') && strcmp(STUDY.etc.dipparams.centrline,'on')
+            projlinesvect = zeros(1,length(cluster_dip_models));
+            projlinesvect(end) = 1;
+        elseif strcmpi(options{2},'off')
+            projlinesvect = zeros(1,length(cluster_dip_models));
+        end
+           options{2} = projlinesvect;
+        
+%         hsbplot = subplot(rowcols(1),rowcols(2),l);
+%         % Creating new axis for title only
+%         set(hsbplot,'visible','off');
+%         htitle = title([ STUDY.cluster(cls(l)).name ' (' num2str(length(unique(STUDY.cluster(cls(l)).sets(1,:)))) ' Ss, ' num2str(length(STUDY.cluster(cls(l)).comps)),' ICs)'],'color','white','Visible', 'on');
+%         if rowcols(1)> 1, set(htitle,'Position', get(htitle,'Position')+ [0 0.05 0].*get(htitle,'Position') ); end
+%         axes('Position', get(hsbplot,'Position'),'Color', 'black');
+        dipplot_simplified_CL(cluster_dip_models, options{:});
+
+        %diptitle = [STUDY.cluster(cls(l)).name ', ' num2str(length(unique(STUDY.cluster(cls(l)).sets(1,:)))) 'Ss'];
+        %title(diptitle, 'Color', 'white');
+        % Complex axcopy
+        %if l == 1
+        %    for gind = 1:length(options) % remove the 'gui' 'off' option
+        %        if ischar(options{gind}) 
+        %            if strfind(options{gind}, 'gui')
+        %                break;
+        %            end
+        %        end
+        %    end
+        %    options(gind:gind+1) = [];
+        %end
+        %dipinfo.dipmod =  cluster_dip_models;
+        %dipinfo.op = options;
+        %dipinfo.title = diptitle;
+        %set(gcf, 'UserData', dipinfo);
+        %set(gca,'UserData', dipinfo);
+        %axcopy(gcf, ['dipinfo = get(gca, ''''UserData''''); dipplot(dipinfo.dipmod, dipinfo.op{:}); set(gcf, ''''Name'''', dipinfo.title,''''NumberTitle'''',''''off'''');']);
+   end %finished going over all clusters
+   set(fig_h, 'resize','on'); 
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % - Added by Chang 08/11/2022
 if strcmpi(mode,'together_averaged_only')
       %%%%%%%%%%%%%%%%%%%%% color list %%%%%%%%%%%%%%%%%%%%%
       % This color list was developped for std_envtopo
       % modified from dipgroups below
-%       if length(cls) < 16
-%           colors{1}  = [1 1 1];            % White
-%           colors{2}  = [1 1 0];            % Yellow
-%           colors{3}  = [1 0 1];            % Fuchsia
-%           colors{4}  = [1 0 0];            % Red
-%     %       colors{5}  = [0.875 0.875 0.875]; % Silver
-%     %       colors{6}  = [0.5 0.5 0.5];      % Gray
-%           colors{5}  = [250 140 0]/255;    % oragne
-%           colors{6}  = [210 173 255]/255;   % purple
-%           colors{7}  = [0.5 0.5 0];        % Olive
-%           colors{8}  = [0.5 0 0.5];        % Purple
-%           colors{9}  = [0.5 0 0];          % Maroon
-%           colors{10} = [0 1 1];            % Aqua
-%           colors{11} = [0 1 0];            % Lime
-%           colors{12} = [0 0.5 0.5];        % Teal
-%           colors{13} = [0 0.5 0];          % Green
-%           colors{14} = [0 0 1];            % Blue
-%           colors{15} = [0 0 0.5];          % Navy
-%           colors{16} = [0.3 0.3 0.3];            % Black
-%           % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-%           % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-%           colors = colors([4 11 14 2 13 10 5 12 15 16 1 ]);
-%       else
-%           colors = cell(1,length(COLOR_OPTS));
-%           for i = 1:length(COLOR_OPTS)
-%               colors{i} = COLOR_OPTS(i,:);
-%           end
-%       end
-    colors = cell(1,size(COLOR_OPTS,1));
-      for i = 1:size(COLOR_OPTS,1)
-          colors{i} = COLOR_OPTS(i,:);
-      end
+      % Young Adult Color - update by 20231231 
+      colors{1}  = [1 1 1];            % White
+      colors{2}  = [1 1 0];            % Yellow
+      colors{3}  = [221,52,151]/255;            % Pink
+      colors{4}  = [1 0 0];            % Red
+%       colors{5}  = [0.875 0.875 0.875]; % Silver
+%       colors{6}  = [0.5 0.5 0.5];      % Gray
+      colors{5}  = [250 140 0]/255;    % oragne
+      colors{6}  = [210 173 255]/255;   % purple
+      colors{7}  = [0.5 0.5 0];        % Olive
+      colors{8}  = [0.5 0 0.5];        % Purple
+      colors{9}  = [0.5 0 0];          % Maroon
+      colors{10} = [0 1 1];            % Aqua
+      colors{11} = [0 1 0];            % Lime
+      colors{12} = [0 0.5 0.5];        % Teal
+      colors{13} = [0 0.5 0];          % Green
+      colors{14} = [0 0 1];            % Blue
+      colors{15} = [0 0 0.5];          % Navy
+      colors{16} = [0.8 0.8 0.8];            % Gray
+      % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+      % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+      colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
     N = length(cls);
     rowcols(2) = ceil(sqrt(N)); % Number of rows in the subplot figure.
     rowcols(1) = ceil(N/rowcols(2));
@@ -1287,7 +1457,7 @@ if strcmpi(mode,'together_averaged_only')
 %         if rowcols(1)> 1, set(htitle,'Position', get(htitle,'Position')+ [0 0.05 0].*get(htitle,'Position') ); end
 %         axes('Position', get(hsbplot,'Position'),'Color', 'black');
         dipplot_simplified_CL(cluster_dip_models, options{:});
-        clear cluster_dip_models
+        clear cluster_dip_models cluster_dip_models_sub %modified by Chang Liu - 20230113
         %diptitle = [STUDY.cluster(cls(l)).name ', ' num2str(length(unique(STUDY.cluster(cls(l)).sets(1,:)))) 'Ss'];
         %title(diptitle, 'Color', 'white');
         % Complex axcopy
@@ -1622,30 +1792,27 @@ function [cluster_dip_models, options] = dipgroups(ALLEEG, STUDY, cls, comp_to_d
         %%%%%%%%%%%%%%%%%%%%% color list %%%%%%%%%%%%%%%%%%%%%
         % This color list was developped for std_envtopo
         % 16 colors names officially supported by W3C specification for HTML
-%         colors{1,1}  = [1 1 1];            % White
-%         colors{2,1}  = [1 1 0];            % Yellow
-%         colors{3,1}  = [1 0 1];            % Fuchsia
-%         colors{4,1}  = [1 0 0];            % Red
-%         colors{5,1}  = [0.75  0.75  0.75]; % Silver
-%         colors{6,1}  = [0.5 0.5 0.5];      % Gray
-%         colors{7,1}  = [0.5 0.5 0];        % Olive
-%         colors{8,1}  = [0.5 0 0.5];        % Purple
-%         colors{9,1}  = [0.5 0 0];          % Maroon
-%         colors{10,1} = [0 1 1];            % Aqua
-%         colors{11,1} = [0 1 0];            % Lime
-%         colors{12,1} = [0 0.5 0.5];        % Teal
-%         colors{13,1} = [0 0.5 0];          % Green
-%         colors{14,1} = [0 0 1];            % Blue
-%         colors{15,1} = [0 0 0.5];          % Navy
-%         colors{16,1} = [0 0 0];            % Black
-%         % Silver is twice brighter because silver is used for a background color
-%         colors{5,1} = [0.875 0.875 0.875];
-%         % Choosing and sorting 12 colors for line plot, namely Red, Blue, Green, Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, and Gray
-%         selectedcolors = colors([4 13 14 3 11 10 9 7 8 12 15 6]);
-    colors = cell(1,size(COLOR_OPTS,1));
-      for i = 1:size(COLOR_OPTS,1)
-          colors{i} = COLOR_OPTS(i,:);
-      end
+        colors{1,1}  = [1 1 1];            % White
+        colors{2,1}  = [1 1 0];            % Yellow
+        colors{3,1}  = [1 0 1];            % Fuchsia
+        colors{4,1}  = [1 0 0];            % Red
+        colors{5,1}  = [0.75  0.75  0.75]; % Silver
+        colors{6,1}  = [0.5 0.5 0.5];      % Gray
+        colors{7,1}  = [0.5 0.5 0];        % Olive
+        colors{8,1}  = [0.5 0 0.5];        % Purple
+        colors{9,1}  = [0.5 0 0];          % Maroon
+        colors{10,1} = [0 1 1];            % Aqua
+        colors{11,1} = [0 1 0];            % Lime
+        colors{12,1} = [0 0.5 0.5];        % Teal
+        colors{13,1} = [0 0.5 0];          % Green
+        colors{14,1} = [0 0 1];            % Blue
+        colors{15,1} = [0 0 0.5];          % Navy
+        colors{16,1} = [0 0 0];            % Black
+        % Silver is twice brighter because silver is used for a background color
+        colors{5,1} = [0.875 0.875 0.875];
+        % Choosing and sorting 12 colors for line plot, namely Red, Blue, Green, Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, and Gray
+        selectedcolors = colors([4 13 14 3 11 10 9 7 8 12 15 6]);
+
     % determine the new dip colors
     for n = 1:length(subj_groupnum)
         dip_color{1,n}=selectedcolors{subj_groupnum(n,1)+1};

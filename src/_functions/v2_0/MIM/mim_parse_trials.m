@@ -145,7 +145,8 @@ end
 %% SUBFUNCTION 
 function [EEG] = sliding_window_epoch(EEG,cond_char,window_len,percent_overlap,...
     cond_char_field,approx_trial_len)
-%## Looking at cooperative vs competitive vs ball_machie
+%## Extract Trial Boundaries
+spc = (abs(window_len)/2)*(1-percent_overlap);
 %- find conditions that match input string
 tmp_all = strcmp({EEG.event.(cond_char_field)},cond_char);
 % tmp_all = contains({EEG.event.(COND_CHAR_FIELD)},'Human');
@@ -157,11 +158,24 @@ EEG.event(trial_start).cond = cond_char;
 EEG.event(trial_end).type = 'tmp_end';
 EEG.event(trial_end).cond = cond_char;
 tmp_all = strcmp({EEG.event.cond},cond_char);
+%- option 1
 tmp_start = strcmp({EEG.event.type},'tmp_start');
 tmp_end = strcmp({EEG.event.type},'tmp_end');
 valid_idxs = find(tmp_all & (tmp_start | tmp_end));
-%-
-spc = (abs(window_len)/2)*(1-percent_overlap);
+%- option 2
+% valid_idxs = find(diff(tmp_all));
+%## check for trial length and boundary events(errors occur if trial is cut up by boundary
+%event insert).
+% for i = 1:2:length(valid_idxs)
+%     dt = EEG.event(valid_idxs(i)).latency - EEG.event(valid_idxs(i+1)).latency;
+%     if dt/1000 < approx_trial_len
+%         tmpt = EEG.event(valid_idxs(i)).latency+(approx_trial_len*EEG.srate);
+%         tmpe = create_event_entry(tmpt,1,...
+%                     'appended_tmp_end','trial_mark',dt,cond_char);
+%         EEG.event = [EEG.event; ];
+%     end
+% end
+% EEG = eeg_checkset(EEG,'eventconsistency');
 %- initiate loop
 trial_cnt = 1;
 tmp_event = EEG.event;
@@ -185,7 +199,7 @@ for i = 1:2:length(valid_idxs)
     for j = 2:length(intervals)
         chk_intv = intervals(j) < (tmp_event(valid_idxs(i+1)).latency - EEG.srate*spc);
         if j == 1
-            event_type = TRIAL_BEG_CHAR;
+            event_type = 'tmp_start';
         elseif j > 1
             event_type = cond_char;
         end

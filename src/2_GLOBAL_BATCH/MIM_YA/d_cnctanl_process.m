@@ -23,8 +23,8 @@ clearvars
 tic
 %% (REQUIRED SETUP 4 ALL SCRIPTS) ====================================== %%
 %- DATE TIME
-dt = datetime;
-dt.Format = 'MMddyyyy';
+study_dir_fname = datetime;
+study_dir_fname.Format = 'MMddyyyy';
 %- VARS
 USER_NAME = 'jsalminen'; %getenv('username');
 fprintf(1,'Current User: %s\n',USER_NAME);
@@ -83,68 +83,61 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (PARAMETERS) ======================================================== %%
-%## Hard Defines
+%## hard define
 %- datset name
 DATA_SET = 'MIM_dataset';
-%- datetime override
-% dt = '04172023_MIM_OA_subset_N85_speed_terrain_merge';
-dt = '07222023_MIM_YAN33_subset_prep_verified_gait_conn';
-%- epoching params
-% TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
-TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-%- cluster parameters
-pick_cluster = 14;
-clustering_weights.dipoles = 1;
-clustering_weights.scalp = 0;
-clustering_weights.ersp = 0;
-clustering_weights.spec = 0;
-clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
-    '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
-    '_spec_',num2str(clustering_weights.spec)];
 %- connecitivty modeling
-CONN_FREQS = (1:100);
-CONN_METHODS = {'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
-CNCTANL_TOOLBOX = 'sift'; %'bsmart'
-WINDOW_LENGTH = 0.5;
-WINDOW_STEP_SIZE = 0.025;
-FREQ_BANDS = {CONN_FREQS;1:7;7:12;12:28;28:48;48:60};
-%- connectivity statistics 
-DO_PHASE_RND = true;
+CONN_FREQS = (4:50);
+% (01/19/2024) JS, trying 4:50 from 1:100(see. Steven Peterson 2019 NeuroImage)
+FREQ_BANDS = {CONN_FREQS;4:8;8:13;13:28};
+TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+CONN_METHODS = {'dDTF08','S'}; %{'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
+WINDOW_LENGTH = 0.4;
+% (01/19/2024) JS, trying 0.4 from 0.5 (see. Steven Peterson 2019 NeuroImage)
+WINDOW_STEP_SIZE = 0.02;
+% (01/19/2024) JS, trying 0.02 from 0.025 (see. Steven Peterson 2019 NeuroImage)
 DO_BOOTSTRAP = true;
-%## Soft Defines
+% (01/19/2024) JS, unsure to turn to false for quicker estimates?
+DO_PHASE_RND = true;
+MORDER = 32; 
+%- datetime override
+study_fname_1 = 'epoch_study';
+study_dir_fname = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
+%- Subject Directory information
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
-study_save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
-study_load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
-conn_save_dir = [study_save_dir filesep '_figs' filesep 'conn'];
+study_load_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_fname)];
+save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_fname)];
+conn_save_dir = [study_load_dir filesep 'conn_data'];
+%- load cluster
+CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',study_dir_fname) filesep 'cluster'];
+CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
+CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
 %- create new study directory
-if ~exist(study_save_dir,'dir')
-    mkdir(study_save_dir);
+if ~exist(save_dir,'dir')
+    mkdir(save_dir);
 end
 if ~exist(conn_save_dir,'dir')
     mkdir(conn_save_dir);
 end
 %% LOAD EPOCH STUDY
 %- Create STUDY & ALLEEG structs
-if ~exist([study_load_dir filesep study_fName_1 '.study'],'file')
+if ~exist([CLUSTER_STUDY_DIR filesep CLUSTER_STUDY_FNAME '.study'],'file')
     error('ERROR. study file does not exist');
     exit(); %#ok<UNRCH>
 else
+%     if ~ispc
+%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',study_load_dir);
+%     else
+%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
+%     end
+    %## LOAD STUDY
     if ~ispc
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',study_load_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAME '_UNIX.study'],'filepath',CLUSTER_STUDY_DIR);
     else
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAME '.study'],'filepath',CLUSTER_STUDY_DIR);
     end
-    %## load chang's algorithmic clustering
-    
-    %* load cluster information
-    cluster_load_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
-    cluster_dir = [cluster_load_dir filesep clustering_method filesep num2str(pick_cluster)];
-    cluster_update = par_load(cluster_dir,sprintf('cluster_update_%i.mat',pick_cluster));
-    MAIN_STUDY.cluster = cluster_update;
-    %- get inds
-    [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(MAIN_STUDY);
+    [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
 end
 %% INITIALIZE PARFOR LOOP VARS
 fPaths = {MAIN_ALLEEG.filepath};
@@ -152,14 +145,16 @@ fNames = {MAIN_ALLEEG.filename};
 LOOP_VAR = 1:length(MAIN_ALLEEG);
 tmp = cell(1,length(MAIN_ALLEEG));
 rmv_subj = zeros(1,length(MAIN_ALLEEG));
+%## CUT OUT NON VALID CLUSTERS
+inds = setdiff(1:length(comps_out),valid_cls);
+comps_out(inds,:) = 0;
 %% CONNECTIVITY MAIN FUNC
 fprintf('Computing Connectivity\n');
-
+pop_editoptions('option_computeica', 1);
 %## PARFOR LOOP
 EEG = [];
-parfor (subj_i = 1:length(LOOP_VAR),ceil(length(LOOP_VAR)/2))
+parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
 % for subj_i = LOOP_VAR
-    pop_editoptions('option_computeica', 1);
     %- Parse out components
     components = comps_out(:,subj_i);
     components = sort(components(components ~= 0));
@@ -187,6 +182,7 @@ parfor (subj_i = 1:length(LOOP_VAR),ceil(length(LOOP_VAR)/2))
     try
         %## RUN MAIN_FUNC
         [TMP,t_out] = cnctanl_sift_pipe(ALLEEG,components,CONN_METHODS,conn_save_dir,...
+            'MORDER',MORDER,...
             'DO_PHASE_RND',DO_PHASE_RND,...
             'DO_BOOTSTRAP',DO_BOOTSTRAP,...
             'FREQS',CONN_FREQS,...
@@ -202,6 +198,7 @@ parfor (subj_i = 1:length(LOOP_VAR),ceil(length(LOOP_VAR)/2))
         BIG_CAT = cat(1,TMP(:).CAT);
         EEG.etc.COND_CAT = BIG_CAT;
         EEG.etc.conn_table = t_out;
+        EEG.etc.conn_meta.comps_out = comps_out;
         fName = strsplit(EEG.filename,'.'); fName = [fName{1} '.mat'];
         par_save(t_out,EEG.filepath,fName,'_conntable');
         [EEG] = pop_saveset(EEG,...
@@ -221,11 +218,105 @@ parfor (subj_i = 1:length(LOOP_VAR),ceil(length(LOOP_VAR)/2))
 end
 pop_editoptions('option_computeica',0);
 %% SAVE BIG STUDY
-% [ALLEEG,MAIN_STUDY] = parfunc_rmv_subjs(tmp,MAIN_STUDY,rmv_subj);
-%- Save
-[MAIN_STUDY,tmp] = parfunc_save_study(MAIN_STUDY,tmp,...
-                                        study_fName_1,study_save_dir,...
-                                        'STUDY_COND',[]);
+fprintf('==== Reformatting Study ====\n');
+%- remove bugged out subjects
+tmp = tmp(~cellfun(@isempty,tmp));
+%## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
+fss = cell(1,length(tmp));
+for subj_i = 1:length(tmp)
+    fss{subj_i} = fields(tmp{subj_i});
+end
+fss = unique([fss{:}]);
+fsPrev = fss;
+for subj_i = 1:length(tmp)
+    EEG = tmp{subj_i};
+    fs = fields(EEG);
+    % delete fields not present in other structs.
+    out = cellfun(@(x) any(strcmp(x,fsPrev)),fs,'UniformOutput',false); 
+    out = [out{:}];
+    addFs = fs(~out);
+    if any(~out)
+        for j = 1:length(addFs)
+            EEG.(addFs{j}) = [];
+            fprintf('%s) Adding %s %s\n',EEG.subject,addFs{j})
+        end
+    end 
+    tmp{subj_i} = EEG;
+end
+tmp = cellfun(@(x) [[]; x], tmp);
+%##
+tmp = eeg_checkset(tmp,'eventconsistency');
+[STUDY, ALLEEG] = std_editset([],tmp,...
+                                'updatedat','off',...
+                                'savedat','off',...
+                                'name',study_fname_1,...
+                                'filename',study_fname_1,...
+                                'filepath',study_load_dir);
+%## ASSIGN PARAMETERS
+STUDY.etc.a_epoch_process.epoch_chars = TRIAL_TYPES;
+[STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
+                                            study_fname_1,study_load_dir,...
+                                            'STUDY_COND',[]);
+%%
+%{
+SUBJ_PICS = {MAIN_STUDY.datasetinfo.subject};
+SUBJ_ITERS = {(1:length(SUBJ_PICS{1}))};
+cluster_struct = STUDY.urcluster;
+cluster_struct_orig = STUDY.urcluster;
+% subj_chars_orig = SUBJ_PICS{1};
+% subj_chars_orig = cellfun(@(x) [{} sprintf('Pilot%s',x)],subj_chars_orig);
+subj_chars_orig = SUBJ_PICS;
+subj_chars = {STUDY.datasetinfo.subject};
+subj_keep = zeros(length(subj_chars),1);
+for subj_i = 1:length(subj_chars_orig)
+    disp(any(strcmp(subj_chars_orig{subj_i},subj_chars)));
+    if any(strcmp(subj_chars_orig{subj_i},subj_chars))
+        subj_keep(subj_i) = 1;
+    end
+end
+subjs_rmv = find(~subj_keep);
+subj_keep = find(subj_keep);
+[val,ord] = sort(subj_keep);
+for cli = 2:length(cluster_struct)
+    si = cluster_struct(cli).sets;
+    ci = cluster_struct(cli).comps;
+    keep_si = setdiff(si,subjs_rmv);
+    tmp = cluster_struct(cli).preclust.preclustdata;
+    tmp_preclust = [];
+    tmp_si = [];
+    tmp_ci = [];
+    for i = 1:length(keep_si)
+        tmp_si = [tmp_si, repmat(ord(keep_si(i) == val),1,sum(keep_si(i) == si))];
+        tmp_ci = [tmp_ci, ci(keep_si(i) == si)];
+        
+        tmp_preclust = [tmp_preclust; tmp(keep_si(i) == si,:)];
+    end
+    cluster_struct(cli).sets = tmp_si;
+    cluster_struct(cli).comps = tmp_ci;
+    cluster_struct(cli).preclust.preclustdata = tmp_preclust;
+end
+cluster_struct(1).sets = [cluster_struct(2:end).sets];
+cluster_struct(1).comps = [cluster_struct(2:end).comps];
+%-
+STUDY.cluster = cluster_struct;
+STUDY.etc.a_epoch_process = MAIN_STUDY.etc.a_epoch_process;
+STUDY.etc.d_cnctanl_process.params = comps_out;
+STUDY.etc.d_cnctanl_process.params = struct('CONN_METHODS',CONN_METHODS,...
+            'MORDER',MORDER,...
+            'DO_PHASE_RND',DO_PHASE_RND,...
+            'DO_BOOTSTRAP',DO_BOOTSTRAP,...
+            'FREQS',CONN_FREQS,...
+            'WINDOW_LENGTH',WINDOW_LENGTH,... 
+            'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE,...
+            'GUI_MODE','nogui',...
+            'VERBOSITY_LEVEL',1,...
+            'ESTSELMOD_CFG',[],...
+            'FREQ_BANDS',FREQ_BANDS);
+
+[STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
+                        STUDY.filename,STUDY.filepath,...
+                        'RESAVE_DATASETS','off');
+%}
 %% Version History
 %{
 v1.0; (11/11/2022), JS: really need to consider updating bootstrap

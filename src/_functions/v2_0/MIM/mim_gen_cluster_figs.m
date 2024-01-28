@@ -34,7 +34,7 @@ DIP_ALL_POS=[16 100 1080 920];
 DIP_SING_POS=[16 582 420 360];
 TOPO_ALL_POS=[16 100 1240 920];
 TOPO_SING_POS=[16 100 300 350];
-DO_SINGLE_CLUSTER_PLOTS = true;
+DO_SINGLE_CLUSTER_PLOTS = false;
 %-
 CLUSTERS_TO_PLOT = 1:length(STUDY.cluster);
 %## Define Parser
@@ -97,17 +97,20 @@ STUDY.etc.dipparams.centrline = 'off';
 std_dipplot_CL(STUDY,ALLEEG,'clusters',CLUSTERS_TO_PLOT,'figure','off','mode','together_averaged_only','spheres','off','projlines','off');
 fig_i = get(groot,'CurrentFigure');
 set(fig_i,'position',DIP_SING_POS,'color','w')
-camzoom(1);
+camzoom(1.2^2);
 % camzoom(1.2^2);
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.jpg')],'Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.pdf')],'ContentType','vector','Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.eps')],'ContentType','vector','Resolution',300);
 saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.fig')]);
 view([45,0,0])
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.jpg')],'Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.eps')],'ContentType','vector','Resolution',300);
 view([0,-45,0])
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.jpg')],'Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.eps')],'ContentType','vector','Resolution',300);
 %{
 saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.jpg')]);
 saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.pdf')]);
@@ -128,14 +131,17 @@ set(fig_i,'position',DIP_SING_POS,'color','w')
 camzoom(1);
 % camzoom(1.2^2);
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.jpg')],'Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.pdf')],'ContentType','vector','Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.eps')],'ContentType','vector','Resolution',300);
 saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.fig')]);
 view([45,0,0])
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.jpg')],'Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.eps')],'ContentType','vector','Resolution',300);
 view([0,-45,0])
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.jpg')],'Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.eps')],'ContentType','vector','Resolution',300);
 %{
 saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.jpg')]);
 saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.fig')]);
