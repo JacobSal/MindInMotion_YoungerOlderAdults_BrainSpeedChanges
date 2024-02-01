@@ -7,7 +7,9 @@ library(tidyverse)
 # mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\12282023_bounces_1h_2bm_JS_n1-0p5\\_figs\\conn\\dDTF08\\R_data\\";
 # mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\12282023_bounces_1h_2bm_JS_n1-0p5\\_figs\\conn\\S\\R_data\\";
 # mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5\\_figs\\conn\\S\\R_data\\";
-mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5\\_figs\\conn\\dDTF08\\R_data\\";
+# mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5\\_figs\\conn\\dDTF08\\R_data\\";
+# mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5\\_figs\\conn\\dDTF08\\R_data\\";
+mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01292023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75\\_figs\\conn\\dDTF08\\R_data\\";
 
 # CLUSTER ASSIGNMENTS
 #- test 1
@@ -18,27 +20,33 @@ mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_s
 # sub_ints = c(1,2,3,4,5,6,7,9,10);
 #- test 2
 cluster_ints =   c(1,2,3,4,5,6,7,8,9);
-cluster_names = c('RPPa-Oc','Cuneus','Precuneus','RFrontal','LPPa-Oc','LSM','RSM','SuppMotor','LFrontal');
-sub_ints = c(1,2,3,4,5,6,7,8,9);
+# cluster_names = c('RPPa-Oc','Cuneus','Precuneus','RFrontal','LPPa-Oc','LSM','RSM','SuppMotor','LFrontal');
+# sub_ints = c(1,2,3,4,5,6,7,8,9);
+# cluster_names = c('RPPa-Oc','RFrontal','LPPa-Oc','LSM','RSM','LFrontal');
+# sub_ints = c(1,4,5,6,7,9);
+cluster_names = c('RSM','RPPa-Oc','LPPa-Oc','LSM','LFrontal','RFrontal')
+sub_ints = c(7,1,5,6,9,4)
 # (01/24/2024) JS, removing ltemporal from analysis
 
 # CONDITIONS = c("Human_Subject_hit","BM_Subject_hit");
-CONDITIONS = c("2Bounce_BM_Subject_receive","2Bounce_Human_Subject_receive");
-
+# CONDITIONS = c("2Bounce_BM_Subject_receive","2Bounce_Human_Subject_receive");
+# CONDITIONS = c("1Bounce_Human_Subject_hit","Serve_Human_Subject_hit");
+CONDITIONS = c("2Bounce_Human_Subject_hit","1Bounce_Human_Subject_hit","Serve_Human_Subject_hit");
 #%% PLOT PARAMS
 # CIRC_XLIM = c(0,20)
 # MULTI_FACTOR = 10^2
-CIRC_XLIM = c(0,5)
+CIRC_XLIM = c(0,10)
 MULTI_FACTOR = 10^4
-CIRC_MAJOR_TICKS = c(0,5,10);
+CIRC_MAJOR_TICKS = c(0,2.5,5,7.5,10,15,20);
 CIRC_MINOR_TICK = 2
 ALPHA = 0.05;
 
 # CONDITIONS = c("BM_Subject_hit");
 # BASE_COND = c("Human_Subject_hit");
-CONDITIONS = c("2Bounce_BM_Subject_receive");
-BASE_COND = c("2Bounce_Human_Subject_receive");
-
+# CONDITIONS = c("2Bounce_BM_Subject_receive");
+# BASE_COND = c("2Bounce_Human_Subject_receive");
+CONDITIONS = c("2Bounce_Human_Subject_hit","1Bounce_Human_Subject_hit");
+BASE_COND = c("Serve_Human_Subject_hit");
 cli=cluster_ints
 clj=cluster_ints
 for(cond in CONDITIONS){
@@ -91,11 +99,12 @@ for(cond in CONDITIONS){
     }
     
     #FDR correction
-    # for(i in cli){
-    #   pvals_theta_box[,i]=p.adjust(pvals_theta_box[,i],method='fdr')
-    #   pvals_alpha_box[,i]=p.adjust(pvals_alpha_box[,i],method='fdr')
-    #   pvals_all_box[,i]=p.adjust(pvals_all_box[,i],method='fdr')
-    # }
+    for(i in cli){
+      pvals_theta_box[,i]=p.adjust(pvals_theta_box[,i],method='fdr')
+      pvals_alpha_box[,i]=p.adjust(pvals_alpha_box[,i],method='fdr')
+      pvals_beta_box[,i]=p.adjust(pvals_beta_box[,i],method='fdr')
+      pvals_all_box[,i]=p.adjust(pvals_all_box[,i],method='fdr')
+    }
     
     #Check for significance
     isSig_theta_box = matrix(0L, nrow = length(cli), ncol = length(cli))
@@ -176,11 +185,11 @@ for(cond in CONDITIONS){
     }else if(plotBand_cort=='beta'){
       dat_in = cortBeta
     }
-    png(paste(mat_dir,cond,"-",BASE_COND,"_",plotBand_cort,".jpg",sep=""),bg="transparent",width = 4000, height =4000,res=2)
+    png(paste(mat_dir,cond,"-",BASE_COND,"_",plotBand_cort,".jpg",sep=""),bg="transparent",width = 4500, height =4000,res=2)
     color_vals = c('purple','orange','blue','magenta','gold','red','cyan','green','yellow','tan','black','pink')#'#FF00FF','#FF6600','#0000FF','#FF0000','#D4AA00','#800080','#00FF00','#00FFFF')
     color_vals_links = adjustcolor(color_vals, alpha.f = 0.5)
     # circos.par(cell.padding = c(0,0,0,0),gap.degree=1)
-    circos.par(cell.padding = c(0,0,0,0),start.degree = 24)
+    circos.par(cell.padding = c(0,0,0,0),start.degree = 30)
     sign_vals = sign(dat_in)
     A = abs(dat_in)*MULTI_FACTOR
     circos.initialize(cluster_names, xlim = CIRC_XLIM) #cbind(mag_upper, mag_lower)) 
@@ -207,16 +216,14 @@ for(cond in CONDITIONS){
                              if(theta < ang1 || theta > ang2)  aa = c(0.5, 0.25)
                              
                              #plot cortical labels
-                             
-                             circos.text(x=mean(xlim), y=2.5, labels=name, facing = dd, cex=300,  adj = aa, col=color_vals[i])
+                             circos.text(x=mean(xlim), y=3.5, labels=name, facing = dd, cex=400,  adj = aa, col=color_vals[i])
                              
                              #plot main sector
                              circos.rect(xleft=xlim[1], ybottom=ylim[1], xright=xlim[2], ytop=ylim[2], 
                                          col = color_vals[i], border=color_vals[i])
-                             
                              #plot axis
-                             circos.axis(labels.cex=250, direction = "outside", major.at=CIRC_MAJOR_TICKS, #seq(from=0,to=floor(12),by=4), 
-                                         minor.ticks=CIRC_MINOR_TICK, lwd=2,labels.niceFacing=FALSE) # , labels.away.percentage = 0.15
+                             circos.axis(labels.cex=350, direction = "outside", major.tick=TRUE, major.tick.length=0.7, major.at=CIRC_MAJOR_TICKS, labels.facing=dd, #seq(from=0,to=floor(12),by=4), 
+                                         minor.ticks=CIRC_MINOR_TICK, lwd=9) # , labels.away.percentage = 0.15
                            }) 
     
     # Add nonsignificant links first

@@ -86,7 +86,7 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('ya');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
 subject_chars = [SUBJ_PICS{:}];
 % fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
 % fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
@@ -96,9 +96,9 @@ subject_chars = [SUBJ_PICS{:}];
 %- datset name
 DATA_SET = 'MIM_dataset';
 ica_orig_dir = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
-% cluster_study_dir = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
-% cluster_study_dir = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
-cluster_study_dir = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
+cluster_study_dir = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
+% cluster_study_dir = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
+
 study_fName_1 = 'epoch_study';
 spca_study_dir = '01122024_spca_analysis';
 study_fName_2 = 'epoch_study';
@@ -226,12 +226,14 @@ for subj_i = 1:length(subject_chars)
                     tf_gpmorig_c{cnt} = squeeze(spca_ersp.apply_spca_cond.gpm_orig(:,tmp_c,:));
                     tf_pc1_c{cnt} = squeeze(spca_ersp.apply_spca_cond.psc1(:,tmp_c,:));
                     tf_coeff_c{cnt} = spca_ersp.coeffs;
+%                     tf_freqs{cnt} = [];
+%                     tf_times{cnt} = [];
                     cond_c{cnt} = condition_gait{cond_i};
                     subj_c{cnt} = subject_chars{subj_i};
                     tmp = regexp(subject_chars{subj_i},'\d','match');
                     group_c{cnt} = str2num(tmp{1});
                     cluster_c{cnt} = cl_i;
-                    comp_c{cnt} = fprintf('study_ic, %i; unmix_ic, %i; keep_ic, %i;',comp_i,tmp_c,ic_keep(comp_i));
+                    comp_c{cnt} = sprintf('study_ic, %i; unmix_ic, %i; keep_ic, %i;',comp_i,tmp_c,ic_keep(comp_i));
                                 %struct('eeglab_study',comp_i,...
 %                                     'unmix',tmp_c,...
 %                                     'ic_keep',ic_keep(comp_i));
@@ -240,7 +242,6 @@ for subj_i = 1:length(subject_chars)
             end
         end
         loop_store{subj_i} = table(subj_c,group_c,cluster_c,cond_c,comp_c,tf_erspcorr_c,tf_gpmcorr_c,tf_ersporig_c,tf_gpmorig_c,tf_pc1_c,tf_coeff_c);
-
     catch e
         fprintf('\nError occured on subject %s\n%s\n',subject_chars{subj_i},getReport(e));
     end

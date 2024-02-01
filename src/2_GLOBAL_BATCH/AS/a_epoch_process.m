@@ -146,12 +146,12 @@ switch epoch_method
         %for now but changing epoching mechanism.
         EPOCH_PARAMS.events_timewarp = {};
 %         EPOCH_PARAMS.cond_chars = {'1Bounce_Human','1Bounce_BM'};
-        EPOCH_PARAMS.cond_chars = {'1Bounce_Human','Serve_Human'};
+        EPOCH_PARAMS.cond_chars = {'2Bounce_Human','1Bounce_Human','Serve_Human'};
         EPOCH_PARAMS.std_timewarp = 0;
         EPOCH_PARAMS.struct_field_cond = 'bounces';
         EPOCH_PARAMS.struct_field_event = 'type';
         EPOCH_PARAMS.regexp_slidingwindow = {'Human','BM'};
-        EPOCH_PARAMS.epoch_length_timelim = [-0.5,1.5];
+        EPOCH_PARAMS.epoch_length_timelim = [-1.5,1.5];
         %- (12/18/2023) JS, trying [-0.15,1.5] from [-0.25,0.5];
         %- (12/28/2023) JS, trying to understand brain act. before ball hit
         % so using [-1,0.5] 
@@ -165,7 +165,9 @@ end
 % dt = '12182023_bounces_1h_2h_2bm_JS_0p25-1';
 % dt = '12282023_bounces_1h_2bm_JS_n1-0p5';
 % dt = '01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5';
-dt = '01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5';
+% dt = '01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5';
+% dt = '01292023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
+dt = '01312023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(EPOCH_PARAMS.cond_chars)*length(EPOCH_PARAMS.event_chars),1);
@@ -466,6 +468,9 @@ STUDY.etc.a_epoch_process.epoch_alleeg_fpaths = alleeg_fpaths;
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                         STUDY.filename,STUDY.filepath,...
                         'RESAVE_DATASETS','off');
+% [MAIN_STUDY,MAIN_ALLEEG] = parfunc_save_study(MAIN_STUDY,MAIN_ALLEEG,...
+%                         'recovered',MAIN_STUDY.filepath,...
+%                         'RESAVE_DATASETS','off');
 %% Version History
 %{
 v1.0; (11/11/2022), JS: really need to consider updating bootstrap

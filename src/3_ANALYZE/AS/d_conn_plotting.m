@@ -7,9 +7,8 @@
 %   Previousds Version: n/a
 %   Summary: s
 
-%- run .sh
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/AS/run_d_conn_plotting.sh
-
+%- sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/AS/run_d_conn_plotting.sh
+ 
 %{
 %## RESTORE MATLAB
 % WARNING: restores defdault pathing to matlab 
@@ -86,7 +85,10 @@ DATA_SET = 'AS_dataset';
 % COND_CHARS = {'2Bounce_Human','2Bounce_BM'}; %'1Bounce_BM'
 % EVENT_CHARS = {'Subject_receive'}; %, 'Subject_receive'};
 %- rally serve analysis
-COND_CHARS =  {'1Bounce_Human','Serve_Human'};
+% COND_CHARS =  {'1Bounce_Human','Serve_Human'};
+% EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
+%- rally, serve, return analysis
+COND_CHARS =  {'2Bounce_Human','1Bounce_Human','Serve_Human'};
 EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 %- datetime override
 % dt = '05252023_bounces_1h2h2bm_JS';
@@ -97,7 +99,9 @@ EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 % dt = '12182023_bounces_1h_2h_2bm_JS_0p25-1';
 % dt = '12282023_bounces_1h_2bm_JS_n1-0p5';
 % dt = '01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5';
-dt = '01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5';
+% dt = '01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5';
+% dt = '01292023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
+dt = '01312023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
 %## soft define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -138,12 +142,58 @@ else
     [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
 %     EVENT_COND_COMBOS = MAIN_STUDY.etc.a_epoch_process.epoch_chars;
     %## CUT OUT NON VALID CLUSTERS
-%     valid_cls = [3,4,5,6,7,8,9,11,12];
-%     inds = setdiff(1:length(comps_out),valid_cls);
-%     comps_out(inds,:) = 0;
-    MAIN_ALLEEG(1).etc.conn_meta.comps_out;
+    valid_cls = [3,4,5,6,7,8,9,11,12];
+    inds = setdiff(1:length(comps_out),valid_cls);
+    comps_out(inds,:) = 0;
+%     MAIN_ALLEEG(1).etc.conn_meta.comps_out;
 end
 %%
+%{
+SUBJ_PICS = {MAIN_STUDY.datasetinfo.subject};
+SUBJ_ITERS = {(1:length(SUBJ_PICS{1}))};
+cluster_struct = STUDY.urcluster;
+cluster_struct_orig = STUDY.urcluster;
+% subj_chars_orig = SUBJ_PICS{1};
+% subj_chars_orig = cellfun(@(x) [{} sprintf('Pilot%s',x)],subj_chars_orig);
+subj_chars_orig = SUBJ_PICS;
+subj_chars = {STUDY.datasetinfo.subject};
+subj_keep = zeros(length(subj_chars),1);
+for subj_i = 1:length(subj_chars_orig)
+    disp(any(strcmp(subj_chars_orig{subj_i},subj_chars)));
+    if any(strcmp(subj_chars_orig{subj_i},subj_chars))
+        subj_keep(subj_i) = 1;
+    end
+end
+subjs_rmv = find(~subj_keep);
+subj_keep = find(subj_keep);
+[val,ord] = sort(subj_keep);
+for cli = 2:length(cluster_struct)
+    si = cluster_struct(cli).sets;
+    ci = cluster_struct(cli).comps;
+    keep_si = setdiff(si,subjs_rmv);
+    tmp = cluster_struct(cli).preclust.preclustdata;
+    tmp_preclust = [];
+    tmp_si = [];
+    tmp_ci = [];
+    for i = 1:length(keep_si)
+        tmp_si = [tmp_si, repmat(ord(keep_si(i) == val),1,sum(keep_si(i) == si))];
+        tmp_ci = [tmp_ci, ci(keep_si(i) == si)];
+        
+        tmp_preclust = [tmp_preclust; tmp(keep_si(i) == si,:)];
+    end
+    cluster_struct(cli).sets = tmp_si;
+    cluster_struct(cli).comps = tmp_ci;
+    cluster_struct(cli).preclust.preclustdata = tmp_preclust;
+end
+cluster_struct(1).sets = [cluster_struct(2:end).sets];
+cluster_struct(1).comps = [cluster_struct(2:end).comps];
+%-
+STUDY.cluster = cluster_struct;
+STUDY.etc.a_epoch_process.epoch_params = EPOCH_PARAMS;
+STUDY.etc.a_epoch_process.epoch_chars = EVENT_COND_COMBOS;
+STUDY.etc.a_epoch_process.epoch_alleeg_fpaths = alleeg_fpaths;
+%}
+%% ===================================================================== %%
 % CLUSTER_ITERS = [3,7,5,4];
 % CLUSTER_ASSIGNMENTS = {'RPPa-Oc','LPPa-Oc','Precuneus','Cuneus'}; % (06/27/2023) JS, unsure on these as of yet.
 CLUSTER_ITERS = [3,4,5,6,7,8,9,10,11,12];
@@ -161,7 +211,7 @@ FREQ_BANDS.gamma = (30:50);
 DO_PLOT = true;
 CLIM = [0,0.005];
 % CLIM = [-0.005,0.005];
-ALPHA = 0.1;
+ALPHA = 0.05;
 PLOT_CI = true;
 FREQSCALE = 'log';
 CONN_MEAS = 'dDTF08';
@@ -207,6 +257,7 @@ BOOSTRAP_STRUCT.bootstrap_mat = [];
 %- bootstrap mean mat
 BOOTSTRAP_CELL = cell(length(MAIN_ALLEEG));
 %%
+%{
 %## SUBJECT LOOP
 parfor (subj_i = 1:length(MAIN_ALLEEG),length(MAIN_ALLEEG))
 % for subj_i = 1:length(MAIN_ALLEEG)
@@ -314,8 +365,9 @@ end
 BOOTSTRAP_CELL = cat(6,BOOTSTRAP_CELL{:});
 BOOSTRAP_STRUCT.bootstrap_mat = BOOTSTRAP_CELL;
 par_save(BOOSTRAP_STRUCT,save_dir_txf,sprintf('bootstrap_mean_mat.mat'));
-
+%}
 %% ===================================================================== %%
+%{
 %## BOOTSTRAP ANALYSIS
 %- param changes
 CLIM = [-0.005,0.005];
@@ -521,11 +573,12 @@ parfor (subj_i = 1:length(MAIN_ALLEEG),length(MAIN_ALLEEG))
     BOOTSTRAP_SUBJ_STRUCT.conn_meas = CONN_MEAS;
     par_save(BOOTSTRAP_SUBJ_STRUCT,save_dir_bootmats,sprintf('%s_boot_struct.mat',EEG.subject));
 end
+%}
 %% ===================================================================== %%
 %## BASELINE BOOTSTRAP ANALYSIS
 %- param changes
 CLIM = [-0.005,0.005];
-BASELINE_TIME = [-1,0.5];
+BASELINE_TIME = [-0.5,0];
 %- save directory
 save_dir_bootmats =  [save_dir filesep 'bootstrap_baseline_mat_files'];
 if ~exist(save_dir_bootmats,'dir')
@@ -656,7 +709,7 @@ parfor (subj_i = 1:length(MAIN_ALLEEG),length(MAIN_ALLEEG))
         masked_conns{cond_i} = new_conn;
         fig_i = get(groot,'CurrentFigure');
         set(fig_i,'Position',[0.05,0.3,0.7,0.7]);
-        exportgraphics(fig_i,[save_dir_bootmats filesep sprintf('%s',out1) filesep sprintf('%s_masked_boot_grid.jpg',EEG.subject)]);
+        exportgraphics(fig_i,[save_dir_bootmats filesep sprintf('%s',out1) filesep sprintf('%s_%i_masked_boot_grid.jpg',EEG.subject,cond_i)]);
         
         %## PLOT TIME INTEGRATD TRACES FOR CHOICE FREQUENCY BANDS
         noms = fieldnames(FREQ_BANDS);
@@ -705,8 +758,9 @@ parfor (subj_i = 1:length(MAIN_ALLEEG),length(MAIN_ALLEEG))
     BOOTSTRAP_SUBJ_STRUCT.conn_meas = CONN_MEAS;
     par_save(BOOTSTRAP_SUBJ_STRUCT,save_dir_bootmats,sprintf('%s_boot_struct.mat',EEG.subject));
 end
-
+%}
 %% ===================================================================== %%
+%{
 %## PHASERANDOMIZATION ANALYSIS
 %- param changes
 CLIM = [0,0.005];
@@ -715,8 +769,8 @@ save_dir_nonzmats =  [save_dir filesep 'nonzero_mat_files'];
 if ~exist(save_dir_nonzmats,'dir')
     mkdir(save_dir_nonzmats)
 end
-for subj_i = 1:length(MAIN_ALLEEG)
-% parfor (subj_i = 1:length(MAIN_ALLEEG),length(MAIN_ALLEEG))
+% for subj_i = 1:length(MAIN_ALLEEG)
+parfor (subj_i = 1:length(MAIN_ALLEEG),length(MAIN_ALLEEG))
     %## INITATE STRUCT
     freq_inds = [];
     PHASERND_SUBJ_STRUCT = [];
@@ -795,11 +849,11 @@ for subj_i = 1:length(MAIN_ALLEEG)
         %- compute stats
         [tmp_stats,~,~] = stat_surrogateStats('ALLEEG',ALLEEG(cond_i),...
                          'statTest',{'Hnull',...
-                            'tail','both',... %[left|right|one|both]
-                            'testMethod','quantile',...
-                            'computeci',true,...
-                            'alpha',ALPHA,...
-                            'mcorrection','fdr',...
+                            'tail','one',... %[left|right|one|both]
+                            'testMethod','quantile',... %'quantile','condstat'
+                            'computeci',false,... %[true|false}
+                            'alpha',0.95,... %0-1
+                            'mcorrection','none',... % ['none','fdr','bonferroni','numvars']
                             'statcondargs',{'mode','perm'}},...
                         'connmethods',{CONN_MEAS},...
                         'VerbosityLevel',1);
@@ -829,7 +883,7 @@ for subj_i = 1:length(MAIN_ALLEEG)
         
         fig_i = get(groot,'CurrentFigure');
         set(fig_i,'Position',[0.05,0.3,0.7,0.7]);
-        exportgraphics(fig_i,[save_dir_nonzmats filesep sprintf('%s',out1) filesep sprintf('%s_masked_boot_grid.jpg',EEG.subject)]);
+        exportgraphics(fig_i,[save_dir_nonzmats filesep sprintf('%s',out1) filesep sprintf('%s_%i_masked_boot_grid.jpg',EEG.subject,cond_i)]);
         %## PLOT TIME INTEGRATD TRACES FOR CHOICE FREQUENCY BANDS
         noms = fieldnames(FREQ_BANDS);
         %## CLEANUP
@@ -844,6 +898,11 @@ for subj_i = 1:length(MAIN_ALLEEG)
     PHASERND_SUBJ_STRUCT.subject = EEG.subject;
     PHASERND_SUBJ_STRUCT.conn_meas = CONN_MEAS;
     par_save(PHASERND_SUBJ_STRUCT,save_dir_nonzmats,sprintf('%s_phasernd_struct.mat',EEG.subject));
+end
+%}
+%%
+for i = 1:length(MAIN_ALLEEG)
+    disp(sum(strcmp('Serve_Human',{MAIN_ALLEEG(i).event.bounces})))
 end
 %%
 % for cond_i = COND_N

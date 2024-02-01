@@ -133,7 +133,8 @@ ERSP_PARAMS = struct('subbaseline','off',...
 % dt = '06122023_bounces_1h2h2bm_JS';
 % dt = '06152023_bounces_1h2h2bm_JS';
 % dt = '07272023_bounces_1h_2h_2bm_JS';
-dt = '12282023_bounces_1h_2bm_JS_n1-0p5';
+% dt = '12282023_bounces_1h_2bm_JS_n1-0p5';
+dt = '01292023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -144,7 +145,8 @@ for cond_i = 1:length(COND_CHARS)
         cnt = cnt + 1;
     end
 end
-study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
+% study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
+stdy_fName_1 = 'epoch_study';
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep '_figs'];
@@ -170,6 +172,7 @@ else
         [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
     end
     [comps_out,main_cl_inds,outlier_cl_inds,valid_cluster] = eeglab_get_cluster_comps(STUDY);
+    valid_cls = [3,4,5,6,7,8,9,11,12];
 end
 %% CALCULATE GRANDAVERAGE WARPTO
 %{

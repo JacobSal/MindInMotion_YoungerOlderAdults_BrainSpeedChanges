@@ -94,7 +94,7 @@ DATA_SET = 'AS_dataset';
 % EVENT_CHARS = {'Subject_receive'};
 %- connectivity process
 %- connecitivty modeling
-CONN_FREQS = (4:50);
+CONN_FREQS = (1:64);
 % (01/19/2024) JS, trying 4:50 from 1:100(see. Steven Peterson 2019 NeuroImage)
 FREQ_BANDS = {CONN_FREQS;4:8;8:13;13:28};
 CONN_METHODS = {'dDTF08','Coh','S'}; %{'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
@@ -104,7 +104,7 @@ WINDOW_STEP_SIZE = 0.02;
 % (01/19/2024) JS, trying 0.02 from 0.025 (see. Steven Peterson 2019 NeuroImage)
 DO_BOOTSTRAP = true;
 % (01/19/2024) JS, unsure to turn to false for quicker estimates?
-DO_PHASE_RND = true;
+DO_PHASE_RND = false;
 MORDER = 32; 
 % (01/04/2024) JS, setting model order to 17. mean of the estimated model
 % orders across all subjects for study: '12282023_bounces_1h_2bm_JS_n1-0p5'
@@ -119,7 +119,9 @@ MORDER = 32;
 % dt = '12182023_bounces_1h_2h_2bm_JS_0p25-1';
 % dt = '12282023_bounces_1h_2bm_JS_n1-0p5';
 % dt = '01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5';
-dt = '01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5';
+% dt = '01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5';
+% dt = '01292023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
+dt = '01312023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
 %## Soft Define
 %- combinations of events and conditions
 % EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -216,6 +218,7 @@ inds = setdiff(1:length(comps_out),valid_cls);
 comps_out(inds,:) = 0;
 %% CONNECTIVITY MAIN FUNC
 fprintf('Computing Connectivity\n');
+AVG_SERVE_TRIALS = 6;
 pop_editoptions('option_computeica', 1);
 %## PARFOR LOOP
 EEG = [];
@@ -243,6 +246,19 @@ parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
         else
             ALLEEG{i} = pop_loadset('filepath',convertPath2Drive(EEG.etc.cond_files(i).fPath),'filename',EEG.etc.cond_files(i).fName);
         end
+%         if contains(EEG.etc.cond_files(i).fName,{'1Bounce','2Bounce'})
+%             %#
+% %             inds = randi(length(EEG.epoch),AVG_SERVE_TRIALS,1)
+% %             tmp = pop_selectevent(EEG,'event',inds)
+%             %#
+%             tmp_all = ALLEEG{i};
+%             while length(tmp_all.epoch)~=AVG_SERVE_TRIALS
+%                 tmp_all = ALLEEG{i};
+%                 inds = randi(length(tmp_all.epoch),AVG_SERVE_TRIALS,1)
+%                 tmp_all = pop_selectevent(tmp_all,'event',inds);
+%             end
+%             ALLEEG{i} = tmp_all;
+%         end
     end
     ALLEEG = cellfun(@(x) [[],x],ALLEEG);
     try
@@ -256,8 +272,7 @@ parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
             'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE,...
             'GUI_MODE','nogui',...
             'VERBOSITY_LEVEL',1,...
-            'ESTSELMOD_CFG',[],...
-            'FREQ_BANDS',FREQ_BANDS);
+            'ESTSELMOD_CFG',[]);
 %         for i=1:length(TMP)
 %             par_save(TMP(i).CAT)
 %         end
@@ -330,13 +345,13 @@ STUDY.urcluster = MAIN_STUDY.urcluster;
 %%
 % SUBJ_PICS = {{'02','03','04','05','09','11','15','16','18','19','21','22',...
 %             '23','24','25','27','28','29','30','31','32','33','35','36','38'}};
-SUBJ_PICS = {MAIN_STUDY.datasetinfo.subject};
+SUBJ_PICS = {{MAIN_STUDY.datasetinfo.subject}};
 SUBJ_ITERS = {(1:length(SUBJ_PICS{1}))};
 cluster_struct = STUDY.urcluster;
 cluster_struct_orig = STUDY.urcluster;
 % subj_chars_orig = SUBJ_PICS{1};
 % subj_chars_orig = cellfun(@(x) [{} sprintf('Pilot%s',x)],subj_chars_orig);
-subj_chars_orig = SUBJ_PICS;
+subj_chars_orig = SUBJ_PICS{1};
 subj_chars = {STUDY.datasetinfo.subject};
 subj_keep = zeros(length(subj_chars),1);
 for subj_i = 1:length(subj_chars_orig)
@@ -371,8 +386,8 @@ cluster_struct(1).comps = [cluster_struct(2:end).comps];
 %-
 STUDY.cluster = cluster_struct;
 STUDY.etc.a_epoch_process = MAIN_STUDY.etc.a_epoch_process;
-STUDY.etc.d_cnctanl_process.params = comps_out;
-STUDY.etc.d_cnctanl_process.params = struct('CONN_METHODS',CONN_METHODS,...
+STUDY.etc.d_cnctanl_process.params = comps_out(:,subj_keep);
+STUDY.etc.d_cnctanl_process.params = struct('CONN_METHODS',{CONN_METHODS},...
             'MORDER',MORDER,...
             'DO_PHASE_RND',DO_PHASE_RND,...
             'DO_BOOTSTRAP',DO_BOOTSTRAP,...
@@ -381,8 +396,7 @@ STUDY.etc.d_cnctanl_process.params = struct('CONN_METHODS',CONN_METHODS,...
             'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE,...
             'GUI_MODE','nogui',...
             'VERBOSITY_LEVEL',1,...
-            'ESTSELMOD_CFG',[],...
-            'FREQ_BANDS',FREQ_BANDS);
+            'ESTSELMOD_CFG',[]);
 
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                         STUDY.filename,STUDY.filepath,...

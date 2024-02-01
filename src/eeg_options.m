@@ -14,7 +14,7 @@ option_single = 1 ; % If set, use single precision number (32-bit instead of 64-
 option_memmapdata = 0 ; % If set, use memory mapped array under Matlab 7.x. This may slow down some computation (beta).
 option_eegobject = 0 ; % If set, use the EEGLAB EEG object instead of the standard EEG structure (beta).
 % ICA options 
-option_computeica = 0 ; % If set, precompute ICA activations. This requires more RAM but allows faster plotting of component activations.
+option_computeica = 1 ; % If set, precompute ICA activations. This requires more RAM but allows faster plotting of component activations.
 option_scaleicarms = 1 ; % If set, scale ICA component activities to RMS (Root Mean Square) in microvolt (recommended).
 % Folder options
 option_rememberfolder = 1 ; % If set, when browsing to open a new dataset assume the folder/directory of the previous dataset.

@@ -7,18 +7,13 @@ library(tidyverse)
 # mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\12282023_bounces_1h_2bm_JS_n1-0p5\\_figs\\conn\\dDTF08\\R_data\\";
 # mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\12282023_bounces_1h_2bm_JS_n1-0p5\\_figs\\conn\\S\\R_data\\";
 # mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5\\_figs\\conn\\S\\R_data\\";
-mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5\\_figs\\conn\\dDTF08\\R_data\\";
+# mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5\\_figs\\conn\\dDTF08\\R_data\\";
+# mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5\\_figs\\conn\\dDTF08\\R_data\\";
+# mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01292023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75\\_figs\\conn\\dDTF08\\R_data\\";
+mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01312023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75\\_figs\\conn\\dDTF08\\R_data\\";
 
-# check out data structure
-# list.import.mat <- R.matlab::readMat(sprintf("%s\\%s",mat_dir,"boot_cli_clj_fi_c.mat"))
-# list.import.mat <- R.matlab::readMat(sprintf("%s\\%s",mat_dir,"nonz_cli_clj_fi_s_c.mat"))
-# key_fsum_tave <- list.import.mat$SAVEVAR %>% unlist()
-# list.import.mat <- R.matlab::readMat(sprintf("%s\\%s",mat_dir,"nonz_cli_clj_fi_c.mat"))
-# key_fullave <- list.import.mat$SAVEVAR %>% unlist()
 
 # CLUSTER ASSIGNMENTS
-
-
 #- test 1
 # cluster_ints =   c(1,2,3,4,5,6,7,8,9,10);
 # cluster_names = c('RPPa-Oc','Cuneus','Precuneus','RFrontal','LPPa-Oc','LSM','RSM','LTemp','SuppMotor','LFrontal');
@@ -31,19 +26,23 @@ cluster_ints =   c(1,2,3,4,5,6,7,8,9);
 # sub_ints = c(1,2,3,4,5,6,7,8,9);
 # cluster_names = c('RPPa-Oc','RFrontal','LPPa-Oc','LSM','RSM','LFrontal');
 # sub_ints = c(1,4,5,6,7,9);
-cluster_names = c("RPPa-Oc","LPPa-Oc","Precuneus","Cuneus")
-sub_ints = c(1,5,3,2)
+cluster_names = c('RSM','RPPa-Oc','LPPa-Oc','LSM','LFrontal','RFrontal')
+sub_ints = c(7,1,5,6,9,4)
+# cluster_names = c("RPPa-Oc","LPPa-Oc","Precuneus","Cuneus")
+# sub_ints = c(1,5,3,2)
 # (01/24/2024) JS, removing ltemporal from analysis
 
 # CONDITIONS = c("Human_Subject_hit","BM_Subject_hit");
-CONDITIONS = c("2Bounce_BM_Subject_receive","2Bounce_Human_Subject_receive");
+# CONDITIONS = c("2Bounce_BM_Subject_receive","2Bounce_Human_Subject_receive");
+# CONDITIONS = c("1Bounce_Human_Subject_hit","Serve_Human_Subject_hit");
+CONDITIONS = c("2Bounce_Human_Subject_hit","1Bounce_Human_Subject_hit","Serve_Human_Subject_hit");
 
 #%% PLOT PARAMS
 # CIRC_XLIM = c(0,20)
 # MULTI_FACTOR = 10^2
 CIRC_XLIM = c(0,5)
 MULTI_FACTOR = 10^4
-CIRC_MAJOR_TICKS = c(0,5,10);
+CIRC_MAJOR_TICKS = c(0,1,2,3,4,5); #c(0,2.5,5,7.5,10,15,20);
 CIRC_MINOR_TICK = 2
 ALPHA = 0.05;
 
@@ -94,13 +93,16 @@ for(cond in CONDITIONS){
         }
       }
     }
+    # ANOVA
+    
     
     #FDR correction
-    # for(i in cli){
-    #   pvals_theta_box[,i]=p.adjust(pvals_theta_box[,i],method='fdr')
-    #   pvals_alpha_box[,i]=p.adjust(pvals_alpha_box[,i],method='fdr')
-    #   pvals_all_box[,i]=p.adjust(pvals_all_box[,i],method='fdr')
-    # }
+    for(i in cli){
+      pvals_theta_box[,i]=p.adjust(pvals_theta_box[,i],method='fdr')
+      pvals_alpha_box[,i]=p.adjust(pvals_alpha_box[,i],method='fdr')
+      pvals_beta_box[,i]=p.adjust(pvals_beta_box[,i],method='fdr')
+      pvals_all_box[,i]=p.adjust(pvals_all_box[,i],method='fdr')
+    }
     
     #Check for significance
     isSig_theta_box = matrix(0L, nrow = length(cli), ncol = length(cli))
@@ -140,7 +142,7 @@ for(cond in CONDITIONS){
     betaAve[isSig_all_box==0]=0
     #Chord plot (for cortico-cortical data)
     library(circlize)
-    circos.clear()
+    
     
     #Rearrange order in matrix
     # 
@@ -166,16 +168,19 @@ for(cond in CONDITIONS){
     }else if(plotBand_cort=='beta'){
       dat_in = cortBeta
     }
-    png(paste(mat_dir,cond,"_",plotBand_cort,".jpg",sep=""),bg="transparent",width = 4000, height =4000,res=2)
+    #%%
+    circos.clear()
+    png(paste(mat_dir,cond,"_",plotBand_cort,".jpg",sep=""),bg="transparent",width = 4096, height =3160,res=2)
     color_vals = c('purple','orange','blue','magenta','gold','red','cyan','green','yellow','tan','black','pink')#'#FF00FF','#FF6600','#0000FF','#FF0000','#D4AA00','#800080','#00FF00','#00FFFF')
     color_vals_links = adjustcolor(color_vals, alpha.f = 0.5)
     # circos.par(cell.padding = c(0,0,0,0),gap.degree=1)
-    circos.par(cell.padding = c(0,0,0,0),start.degree = 24)
+    # circos.par(cell.padding = c(0,0,0,0),start.degree = 30)
+    circos.par(start.degree = 30,canvas.xlim=c(-1.2,1.2),canvas.ylim=c(-1.2,1.2))
     sign_vals = sign(dat_in)
     A = abs(dat_in)*MULTI_FACTOR
     circos.initialize(cluster_names, xlim = CIRC_XLIM) #cbind(mag_upper, mag_lower)) 
     
-    
+    par(family="Times New Roman")
     circos.trackPlotRegion(ylim = c(0, 1), track.height = 0.05,
                            #panel.fun for each sector
                            panel.fun = function(x, y) {
@@ -197,16 +202,14 @@ for(cond in CONDITIONS){
                              if(theta < ang1 || theta > ang2)  aa = c(0.5, 0.25)
                              
                              #plot cortical labels
-                             
-                             circos.text(x=mean(xlim), y=2.5, labels=name, facing = dd, cex=300,  adj = aa, col=color_vals[i])
+                             circos.text(x=mean(xlim),family="serif", y=5, labels=name, facing = dd, cex=600,  adj = aa, col=color_vals[i])
                              
                              #plot main sector
                              circos.rect(xleft=xlim[1], ybottom=ylim[1], xright=xlim[2], ytop=ylim[2], 
                                          col = color_vals[i], border=color_vals[i])
-                             
                              #plot axis
-                             circos.axis(labels.cex=250, direction = "outside", major.at=CIRC_MAJOR_TICKS, #seq(from=0,to=floor(12),by=4), 
-                                         minor.ticks=CIRC_MINOR_TICK, lwd=2,labels.niceFacing=FALSE) # , labels.away.percentage = 0.15
+                             circos.axis(labels.cex=300,direction = "outside", major.tick=TRUE, major.tick.length=0.6, major.at=CIRC_MAJOR_TICKS, labels.facing=dd, #seq(from=0,to=floor(12),by=4), 
+                                         minor.ticks=CIRC_MINOR_TICK, lwd=9) # , labels.away.percentage = 0.15
                            }) 
     
     # Add nonsignificant links first
@@ -217,16 +220,16 @@ for(cond in CONDITIONS){
           if(sign_vals[i,j]==0){
             if(plotBand_cort=='theta'){
               data_temp = abs(netData_ave$SAVEVAR[[1]])*MULTI_FACTOR
-              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.4)) 
+              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.8)) 
             }else if(plotBand_cort=='alpha'){
               data_temp = abs(netData_ave$SAVEVAR[[2]])*MULTI_FACTOR
-              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.4)) 
+              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.8)) 
             }else if(plotBand_cort=='all'){
               data_temp = abs(netData_ave$SAVEVAR[[4]])*MULTI_FACTOR
-              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.4)) 
+              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.8)) 
             }else if(plotBand_cort=='beta'){
               data_temp = abs(netData_ave$SAVEVAR[[3]])*MULTI_FACTOR
-              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.4)) 
+              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.8)) 
             }
             curr_starts_gray[i] = curr_starts_gray[i]+data_temp[i,j]
             curr_starts_gray[j] = curr_starts_gray[j]+data_temp[j,i]
@@ -240,21 +243,23 @@ for(cond in CONDITIONS){
       for(j in 1:length(sub_ints)){
         if((A[i,j]!=0 | A[j,i]!=0) & (A[j,i]>A[i,j])){
           if(sign_vals[i,j]>0 & sign_vals[j,i]>0){
-            circos.link(cluster_names[i], c(curr_starts[i],curr_starts[i]+A[i,j]), cluster_names[j], c(curr_starts[j],curr_starts[j]+A[j,i]), col = adjustcolor('red', alpha.f = 0.6))#color_vals_links[8]) 
+            circos.link(cluster_names[i], c(curr_starts[i],curr_starts[i]+A[i,j]), cluster_names[j], c(curr_starts[j],curr_starts[j]+A[j,i]), col = adjustcolor('red', alpha.f = 0.7))#color_vals_links[8]) 
             curr_starts[i] = curr_starts[i]+A[i,j]
             curr_starts[j] = curr_starts[j]+A[j,i]
           }else if(sign_vals[i,j]<0 & sign_vals[j,i]<0){
-            circos.link(cluster_names[i], c(curr_starts[i],curr_starts[i]+A[i,j]), cluster_names[j], c(curr_starts[j],curr_starts[j]+A[j,i]), col = adjustcolor('blue', alpha.f = 0.6)) 
+            circos.link(cluster_names[i], c(curr_starts[i],curr_starts[i]+A[i,j]), cluster_names[j], c(curr_starts[j],curr_starts[j]+A[j,i]), col = adjustcolor('blue', alpha.f = 0.7)) 
             curr_starts[i] = curr_starts[i]+A[i,j]
             curr_starts[j] = curr_starts[j]+A[j,i]
           }else if(sign_vals[i,j]!=0 & sign_vals[j,i]!=0){
-            circos.link(cluster_names[i], c(curr_starts[i],curr_starts[i]+A[i,j]), cluster_names[j], c(curr_starts[j],curr_starts[j]+A[j,i]), col = adjustcolor('magenta', alpha.f = 0.6)) 
+            circos.link(cluster_names[i], c(curr_starts[i],curr_starts[i]+A[i,j]), cluster_names[j], c(curr_starts[j],curr_starts[j]+A[j,i]), col = adjustcolor('magenta', alpha.f = 0.7)) 
             curr_starts[i] = curr_starts[i]+A[i,j]
             curr_starts[j] = curr_starts[j]+A[j,i]
           }
         }
       }
     }
+    # circos.xaxis();
     dev.off()
+    #%%
   }
 }

@@ -458,6 +458,7 @@ for cond_i = 1:length(COND_NAMES)
         hnd.XDisplayLabels = cl_chars;
         hnd.ColorLimits = COLOR_LIMITS;
         hnd.GridVisible = 'off';
+        hnd.FontName = 'Times New Roman';
         hnd.CellLabelFormat = '%0.1g';
         hnd.NodeChildren(3).Title.Interpreter = 'none';
         fig_i = get(groot,'CurrentFigure');
@@ -700,7 +701,6 @@ for i = 1:length(VALS_OUT.cluster_inds)
         exportgraphics(fig,[save_sub_figs filesep sprintf('%sto%s_txf_comboplot.jpg',VALS_OUT.cluster_chars{i},VALS_OUT.cluster_chars{j})]);
     end
 end
-
 %% ===================================================================== %%
 %## SIGNAL COMPARISONS
 % freq_1 = 1;

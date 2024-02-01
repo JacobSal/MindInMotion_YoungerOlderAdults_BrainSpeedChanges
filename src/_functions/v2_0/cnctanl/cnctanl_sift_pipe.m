@@ -37,13 +37,11 @@ tic
 %% (DEFINE DEFAULTS) =================================================== %%
 %## HIGH LEVEL VARS
 %- connectivity statistics & surrogates params
-%* 
+%* boolean for model bootstrap distribution
 DO_BOOTSTRAP = true;
 %* boolean for phase randomization generation
 DO_PHASE_RND = true;
 ASSIGN_BOOTSTRAP_MEAN = true;
-%* 
-STAT_ALPHA = 0.01;
 %*
 % conn_components = (1:size(ALLEEG(1).icaweights,1))';
 % conn_estimators = {'dDTF08','dDTF','GGC'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
@@ -52,14 +50,59 @@ WINDOW_STEP_SIZE = 0.025; % time (s)
 FREQS = (1:100); % frequency (Hz) %MAX IS 120Hz
 VERBOSITY_LEVEL = 1;
 GUI_MODE = 'nogui';
-FREQ_BANDS = {FREQS;1:7;7:12;12:28;28:48;48:60};
-N_PERMS_PHASE_RND = 2000; % number of null distribution samples to draw
+N_PERMS_PHASE_RND = 200; % number of null distribution samples to draw
 N_PERMS_BOOTSRAP = 200;
+% (01/29/2024) changing these to 200 to save on computation time, but 2000
+% iterations may be more robust.
 MORDER = [];
 conn_mat_table = [];
+%% (VALIDATION OPERATIONS) ============================================= %%
+%- figure savepath
+sd_validfunc = (@(x) exist(x,'dir'));
+dbs_validFcn = @(x) assert(islogical(x),'Value must be (true/false). Determines whether a bootstrapped distribution will be created.');
+dpr_validFcn = @(x) assert(islogical(x),'Value must be (true/false). Determines whether a phase randomized distribution will be created.');
+esmc_validate = @(x) assert(isempty(x) || isstruct(x),'Value must be EMPTY or STRUCT. See pop_est_selModOrder.m for more details.');
+evmc_validate = @(x) assert(isempty(x) || iscell(x),'Value must be EMPTY or CELL of CHARS & VALUES. See. pop_est_validateMVAR.m for more details.');
+mo_validate = @(x) assert(isempty(x) || isnumeric(x),'Value must be EMPTY or NUMERIC. Determines the model order for MVAR.');
+
+%% (PARSE) ============================================================= %%
+p = inputParser;
+%## REQUIRED
+addRequired(p,'ALLEEG',@isstruct)
+addRequired(p,'conn_components',@isnumeric)
+addRequired(p,'conn_estimators',@iscell)
+addRequired(p,'save_dir',sd_validfunc)
+%## PARAMETER
+addParameter(p,'ESTSELMOD_CFG',[],esmc_validate);
+addParameter(p,'ESTVALMVAR_CW',[],evmc_validate);
+addParameter(p,'ESTVALMVAR_CRV',[],evmc_validate);
+addParameter(p,'ESTVALMVAR_CC',[],evmc_validate);
+addParameter(p,'ESTVALMVAR_CS',[],evmc_validate);
+addParameter(p,'DO_PHASE_RND',DO_PHASE_RND,dpr_validFcn);
+addParameter(p,'DO_BOOTSTRAP',DO_BOOTSTRAP,dbs_validFcn);
+addParameter(p,'FREQS',FREQS,@isnumeric) 
+addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH,@isnumeric) % number of current set in previous load
+addParameter(p,'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE,@isnumeric) % MIM folder overwrite in special cases
+addParameter(p,'GUI_MODE',GUI_MODE,@ischar)
+addParameter(p,'VERBOSITY_LEVEL',VERBOSITY_LEVEL,@isnumeric)
+addParameter(p,'MORDER',MORDER,mo_validate);
+parse(p,ALLEEG,conn_components,conn_estimators,save_dir,varargin{:});
+
+%## SET DEFAULTS
+%- parameters
+WINDOW_LENGTH       = p.Results.WINDOW_LENGTH;               % sliding window length in seconds
+WINDOW_STEP_SIZE    = p.Results.WINDOW_STEP_SIZE;             % sliding window step size in seconds
+GUI_MODE            = p.Results.GUI_MODE;                      % whether or not to show the Graphical User Interfaces. Can be 'nogui' or anything else (to show the gui)
+VERBOSITY_LEVEL     = p.Results.VERBOSITY_LEVEL;              % Verbosity Level (0=no/minimal output, 2=graphical output)
+FREQS               = p.Results.FREQS;
+MORDER              = p.Results.MORDER;
+DO_PHASE_RND = p.Results.DO_PHASE_RND;
+DO_BOOTSTRAP = p.Results.DO_BOOTSTRAP;
 %% POP_PRE_PREPDATA
 PREPDATA_SIGNALTYPE = {'Components'};
-PREPDATA_DETRED = {'verb',VERBOSITY_LEVEL,'method',{'linear'}};
+PREPDATA_DETRED = {'verb',VERBOSITY_LEVEL,'method',{'linear'},...
+    'piecewise',{'seglength',0.33,'stepsize',0.0825},...
+    'plot',false};
 PREPDATA_NORMDATA = {'verb',VERBOSITY_LEVEL,'method',{'time', 'ensemble'}};
 %% POP_EST_SELMODORDER
 %- structs
@@ -120,8 +163,8 @@ ESTVALMVAR_CHECKSTABILITY = {'winStartIdx',[],...
                                  'prctWinToSample',100,...
                                  'verb',VERBOSITY_LEVEL};
 %% POP_EST_MVARCONNECTIVITY
-ABSVALSQ        = false;
-SPECTRAL_DB     = false;
+ABSVALSQ        = true;
+SPECTRAL_DB     = true;
 %% STAT_SURROGATEGEN
 %- BOOTSTRAP
 STAT_BOOTSTRAP_CFG = [];
@@ -135,14 +178,6 @@ STAT_PHASERND_CFG.mode.arg_selection = 'PhaseRand';
 STAT_PHASERND_CFG.modelingApproach = [];%ALLEEG(trial_i).CAT.configs.est_fitMVAR;
 STAT_PHASERND_CFG.connectivityModeling = [];%ALLEEG(trial_i).CAT.configs.est_mvarConnectivity;
 STAT_PHASERND_CFG.verb = 1;
-%% (VALIDATION OPERATIONS) ============================================= %%
-%- figure savepath
-sd_validfunc = (@(x) exist(x,'dir'));
-dbs_validFcn = @(x) assert(islogical(x),'Value must be (true/false). Determines whether a bootstrapped distribution will be created.');
-dpr_validFcn = @(x) assert(islogical(x),'Value must be (true/false). Determines whether a phase randomized distribution will be created.');
-esmc_validate = @(x) assert(isempty(x) || isstruct(x),'Value must be EMPTY or STRUCT. See pop_est_selModOrder.m for more details.');
-evmc_validate = @(x) assert(isempty(x) || iscell(x),'Value must be EMPTY or CELL of CHARS & VALUES. See. pop_est_validateMVAR.m for more details.');
-mo_validate = @(x) assert(isempty(x) || isnumeric(x),'Value must be EMPTY or NUMERIC. Determines the model order for MVAR.');
 %% (PARSE) ============================================================= %%
 p = inputParser;
 %## REQUIRED
@@ -151,6 +186,11 @@ addRequired(p,'conn_components',@isnumeric)
 addRequired(p,'conn_estimators',@iscell)
 addRequired(p,'save_dir',sd_validfunc)
 %## PARAMETER
+addParameter(p,'ESTSELMOD_CFG',DEF_ESTSELMOD,esmc_validate);
+addParameter(p,'ESTVALMVAR_CW',ESTVALMVAR_CHECKWHITENESS,evmc_validate);
+addParameter(p,'ESTVALMVAR_CRV',ESTVALMVAR_CHECKRESIDUALVARIANCE,evmc_validate);
+addParameter(p,'ESTVALMVAR_CC',ESTVALMVAR_CHECKCONSISTENCY,evmc_validate);
+addParameter(p,'ESTVALMVAR_CS',ESTVALMVAR_CHECKSTABILITY,evmc_validate);
 addParameter(p,'DO_PHASE_RND',DO_PHASE_RND,dpr_validFcn);
 addParameter(p,'DO_BOOTSTRAP',DO_BOOTSTRAP,dbs_validFcn);
 addParameter(p,'FREQS',FREQS,@isnumeric) 
@@ -158,32 +198,15 @@ addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH,@isnumeric) % number of current set
 addParameter(p,'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE,@isnumeric) % MIM folder overwrite in special cases
 addParameter(p,'GUI_MODE',GUI_MODE,@ischar)
 addParameter(p,'VERBOSITY_LEVEL',VERBOSITY_LEVEL,@isnumeric)
-addParameter(p,'ESTSELMOD_CFG',DEF_ESTSELMOD,esmc_validate);
-addParameter(p,'ESTVALMVAR_CW',ESTVALMVAR_CHECKWHITENESS,evmc_validate);
-addParameter(p,'ESTVALMVAR_CRV',ESTVALMVAR_CHECKRESIDUALVARIANCE,evmc_validate);
-addParameter(p,'ESTVALMVAR_CC',ESTVALMVAR_CHECKCONSISTENCY,evmc_validate);
-addParameter(p,'ESTVALMVAR_CS',ESTVALMVAR_CHECKSTABILITY,evmc_validate);
-addParameter(p,'FREQ_BANDS',FREQ_BANDS,@iscell);
 addParameter(p,'MORDER',MORDER,mo_validate);
 parse(p,ALLEEG,conn_components,conn_estimators,save_dir,varargin{:});
-
 %## SET DEFAULTS
 %- Optional
-WINDOW_LENGTH       = p.Results.WINDOW_LENGTH;               % sliding window length in seconds
-WINDOW_STEP_SIZE    = p.Results.WINDOW_STEP_SIZE;             % sliding window step size in seconds
-GUI_MODE            = p.Results.GUI_MODE;                      % whether or not to show the Graphical User Interfaces. Can be 'nogui' or anything else (to show the gui)
-VERBOSITY_LEVEL     = p.Results.VERBOSITY_LEVEL;              % Verbosity Level (0=no/minimal output, 2=graphical output)
-FREQS               = p.Results.FREQS;
 ESTSELMOD_CFG       = p.Results.ESTSELMOD_CFG;
 ESTVALMVAR_CW       = p.Results.ESTVALMVAR_CW;
 ESTVALMVAR_CRV      = p.Results.ESTVALMVAR_CRV;
 ESTVALMVAR_CC       = p.Results.ESTVALMVAR_CC;
 ESTVALMVAR_CS       = p.Results.ESTVALMVAR_CS;
-MORDER              = p.Results.MORDER;
-%- parameters
-DO_PHASE_RND = p.Results.DO_PHASE_RND;
-DO_BOOTSTRAP = p.Results.DO_BOOTSTRAP;
-FREQ_BANDS = p.Results.FREQ_BANDS;
 
 %- param mods
 %* 
@@ -331,16 +354,26 @@ fprintf('\n');
 %- Here we can check that our selected parameters make sense
 for cond_i = 1:length(ALLEEG)
     fprintf('MVAR PARAMETER SUMMARY FOR CONDITION: %s\n\n',ALLEEG(cond_i).condition);
-    est_dispMVARParamCheck(ALLEEG(cond_i),struct('morder',model_order','winlen',WINDOW_LENGTH,'winstep',WINDOW_STEP_SIZE,'verb',VERBOSITY_LEVEL))
+    est_dispMVARParamCheck(ALLEEG(cond_i),struct('morder',model_order',...
+        'winlen',WINDOW_LENGTH,'winstep',WINDOW_STEP_SIZE,'verb',VERBOSITY_LEVEL))
 end
 %- Once we have identified our optimal model order, we can fit our VAR model.
 % Fit a model using the options specifed for model order selection.
 % Note that EEG.CAT.MODEL now contains the model structure with
 % coefficients (in MODEL.AR), prediction errors (MODEL.PE) and other
 % self-evident information. 
-[ALLEEG] = pop_est_fitMVAR(ALLEEG,GUI_MODE,...
+% [ALLEEG] = pop_est_fitMVAR(ALLEEG,GUI_MODE,...
+%         ALLEEG(1).CAT.configs.est_selModelOrder.modelingApproach,...
+%         'ModelOrder',model_order);
+%##
+TMP = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
+[TMP, cfg] = pop_est_fitMVAR(TMP,GUI_MODE,...
         ALLEEG(1).CAT.configs.est_selModelOrder.modelingApproach,...
         'ModelOrder',model_order);
+for cond_i = 1:length(ALLEEG)
+    ALLEEG(cond_i).CAT.MODEL = TMP.CAT.MODEL;
+    ALLEEG(cond_i).CAT.configs.('est_fitMVAR') = cfg;
+end
 
 %- Alternately, we can fit the VAR parameters using a Kalman filter (see
 % doc est_fitMVARKalman for more info on arguments)
@@ -411,17 +444,17 @@ fprintf(1,'\n==== DONE: GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s ====\n',
 % (12/7/2022), JS, need to update this boostrapping to include ALLEEG
 if DO_BOOTSTRAP
     fprintf('\n==== CALCULATING BOOTSTRAP MEASURES ====\n')
-    for trial_i=1:length(ALLEEG)
+    for cond_i=1:length(ALLEEG)
         %- calculate BootStrap distribution
 %         ALLEEG(trial_i) = cnctanl_groupStats(ALLEEG(trial_i),'BootStrap');
         %- clear PConn
-        ALLEEG(trial_i).CAT.PConn  = [];
-        [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(trial_i),STAT_BOOTSTRAP_CFG);
-        ALLEEG(trial_i).CAT.PConn = PConn;
+        ALLEEG(cond_i).CAT.PConn  = [];
+        [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(cond_i),STAT_BOOTSTRAP_CFG);
+        ALLEEG(cond_i).CAT.PConn = PConn;
         %- save BootStrap distribution 
-        bootstrap_dist = ALLEEG(trial_i).CAT.PConn;
-        fName = strsplit(ALLEEG(trial_i).filename,'.'); fName = [fName{1} '.mat'];
-        par_save(bootstrap_dist,ALLEEG(trial_i).filepath,fName,'_BootStrap');
+        bootstrap_dist = ALLEEG(cond_i).CAT.PConn;
+        fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
+        par_save(bootstrap_dist,ALLEEG(cond_i).filepath,fName,'_BootStrap');
         %- BootStrap corrected statistics per condition
 %         fprintf('\n==== BETWEEN CONDITION STATISTICS ====\n')
 %         [ALLEEG(trial_i),~] = cnctanl_groupStats(ALLEEG(trial_i),'BtwnCond');
@@ -432,13 +465,13 @@ if DO_BOOTSTRAP
     end
     %- assign mean of bootstrap as Conn value
     if ASSIGN_BOOTSTRAP_MEAN
-        for trial_i = 1:length(ALLEEG)
-            ALLEEG(trial_i).CAT.Conn = stat_getDistribMean(ALLEEG(trial_i).CAT.PConn);
+        for cond_i = 1:length(ALLEEG)
+            ALLEEG(cond_i).CAT.Conn = stat_getDistribMean(ALLEEG(cond_i).CAT.PConn);
         end
     end 
-    for trial_i = 1:length(ALLEEG)
+    for cond_i = 1:length(ALLEEG)
         %- clear bootstrap calculation
-        ALLEEG(trial_i).CAT.PConn = [];
+        ALLEEG(cond_i).CAT.PConn = [];
     end    
     fprintf('\n==== DONE: CALCULATING BOOTSTRAP MEASURES ====\n')
 end
@@ -449,21 +482,21 @@ end
 if DO_PHASE_RND
     fprintf(1,'\n==== GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
     %## (1) ALTERNATIVE CODE 
-    for trial_i=1:length(ALLEEG)
+    for cond_i=1:length(ALLEEG)
         %- Generate Phase Randomized Distribution
         fprintf('\n==== PHASE RANDOMIZING CONNECTIVITY MEASURES ====\n')
 %         [ALLEEG(trial_i),~] = cnctanl_groupStats(ALLEEG(trial_i),'PhaseRnd');
         %- clear PConn
-        ALLEEG(trial_i).CAT.PConn  = [];
-        STAT_PHASERND_CFG.modelingApproach = ALLEEG(trial_i).CAT.configs.est_fitMVAR;
-        STAT_PHASERND_CFG.connectivityModeling = ALLEEG(trial_i).CAT.configs.est_mvarConnectivity;
+        ALLEEG(cond_i).CAT.PConn  = [];
+        STAT_PHASERND_CFG.modelingApproach = ALLEEG(cond_i).CAT.configs.est_fitMVAR;
+        STAT_PHASERND_CFG.connectivityModeling = ALLEEG(cond_i).CAT.configs.est_mvarConnectivity;
         %- FEVAL
-        [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(trial_i),STAT_PHASERND_CFG);
-        ALLEEG(trial_i).CAT.PConn = PConn;
+        [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(cond_i),STAT_PHASERND_CFG);
+        ALLEEG(cond_i).CAT.PConn = PConn;
         %- Save Phase randomized distribution
-        phasernd_dist = ALLEEG(trial_i).CAT.PConn;
-        fName = strsplit(ALLEEG(trial_i).filename,'.'); fName = [fName{1} '.mat'];
-        par_save(phasernd_dist,ALLEEG(trial_i).filepath,fName,'_PhaseRnd');
+        phasernd_dist = ALLEEG(cond_i).CAT.PConn;
+        fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
+        par_save(phasernd_dist,ALLEEG(cond_i).filepath,fName,'_PhaseRnd');
         fprintf('done.\n')
         %- Conduct Nonzero Test (Need Phase Randomized Distribution)
 %         fprintf('\n==== NONZERO STATISTICS ====\n')
@@ -483,48 +516,37 @@ end
 
 %## STEP 6) CONNECTIVITY MATRICES & VISUALS
 %## TABLE VARS
-t_fPaths = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
-t_fNames = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
-% t_conn_methods = cell(length(ALLEEG),1);
-t_conn_comps = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
-% t_conn_mats = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
-t_conn_freqs = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
-% t_conn_sigs = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
-t_conn_meas = cell(length(ALLEEG)*length(conn_estimators)*length(FREQ_BANDS),1);
+t_fPaths = cell(length(ALLEEG)*length(conn_estimators),1);
+t_fNames = cell(length(ALLEEG)*length(conn_estimators),1);
+t_conn_comps = cell(length(ALLEEG)*length(conn_estimators),1);
+t_conn_meas = cell(length(ALLEEG)*length(conn_estimators),1);
+t_cond_char = cell(length(ALLEEG)*length(conn_estimators),1);
 disp(ALLEEG);
 %## Generate Connectivity Matrix
 cnt = 1;
 for conn_i = 1:length(conn_estimators)
-    for freq_i = 1:length(FREQ_BANDS)
-        for trial_i = 1:length(ALLEEG)
-            disp(ALLEEG(trial_i).CAT.Conn);
-            %- calculate average connnectivity for each component pair across time
-%             [statMat,extract_sig] = gen_connMatrix(ALLEEG(trial_i),conn_estimators{conn_i},FREQ_BANDS{freq_i},STAT_ALPHA);
-            %- store outputs into a tabularable ("table able") format.
-            t_conn_comps{cnt} = conn_components;
-            t_fPaths{cnt} = ALLEEG(trial_i).filepath;
-            t_fNames{cnt} = ALLEEG(trial_i).filename;
-            t_conn_freqs{cnt} = FREQ_BANDS{freq_i};
-%             t_conn_mats{cnt} = statMat;
-%             t_conn_sigs{cnt} = extract_sig;
-            t_conn_meas{cnt} = conn_estimators{conn_i};
-            cnt = cnt + 1;
-        end
+    for cond_i = 1:length(ALLEEG)
+        disp(ALLEEG(cond_i).CAT.Conn);
+        t_conn_comps{cnt} = conn_components;
+        t_fPaths{cnt} = ALLEEG(cond_i).filepath;
+        t_fNames{cnt} = ALLEEG(cond_i).filename;
+        t_conn_meas{cnt} = conn_estimators{conn_i};
+        t_cond_char{cnt} = ALLEEG(cond_i).condition;
+        cnt = cnt + 1;
     end
 end
 %- create table
-% conn_mat_table = table(t_fPaths,t_fNames,t_conn_comps,t_conn_meas,t_conn_freqs,t_conn_sigs,t_conn_mats);
-conn_mat_table = table(t_fPaths,t_fNames,t_conn_comps,t_conn_meas,t_conn_freqs);
+conn_mat_table = table(t_fPaths,t_fNames,t_conn_comps,t_conn_meas,t_cond_char);
 %% ===================================================================== %%
 %## STEP 7) WRAP UP 
 %- REMOVE FIELDS && SAVE
-for trial_i = 1:length(ALLEEG)
+for cond_i = 1:length(ALLEEG)
     %- clear STATS & PCONN for space saving.
-    if isfield(ALLEEG(trial_i).CAT,'Stats')
-        ALLEEG(trial_i).CAT = rmfield(ALLEEG(trial_i).CAT,'Stats');
+    if isfield(ALLEEG(cond_i).CAT,'Stats')
+        ALLEEG(cond_i).CAT = rmfield(ALLEEG(cond_i).CAT,'Stats');
     end
-    if isfield(ALLEEG(trial_i).CAT,'PConn')
-        ALLEEG(trial_i).CAT = rmfield(ALLEEG(trial_i).CAT,'PConn');
+    if isfield(ALLEEG(cond_i).CAT,'PConn')
+        ALLEEG(cond_i).CAT = rmfield(ALLEEG(cond_i).CAT,'PConn');
     end
 end
 fprintf(1,'\n==== DONE: GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
