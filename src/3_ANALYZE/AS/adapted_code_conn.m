@@ -103,7 +103,9 @@ EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 % dt = '01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5';
 % dt = '01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5';
 % dt = '01292023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
-dt = '01312023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
+% dt = '01312023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
+dt = '02012023_subjrec_2bounces_rally_serve_human_epochfix_JS_n1p5-1p5';
+% dt = '02012023_subjrec_2bounces_rally_serve_human_epochfixfix_JS_n1p5-1p5';
 %## soft define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -114,6 +116,7 @@ for cond_i = 1:length(COND_CHARS)
         cnt = cnt + 1;
     end
 end
+EVENT_COND_COMBOS{cnt} = 'StandingBaseline';
 %- path for local data
 % study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
 study_fName_1 = 'epoch_study';
@@ -154,6 +157,47 @@ else
     inds = setdiff(1:length(comps_out),valid_cls);
     comps_out(inds,:) = 0;
 end
+%%
+% SUBJ_PICS = {{'02','03','04','05','09','11','15','16','18','19','21','22',...
+%             '23','24','25','27','28','29','30','31','32','33','35','36','38'}};
+% cluster_struct = MAIN_STUDY.urcluster;
+% cluster_struct_orig = MAIN_STUDY.urcluster;
+% subj_chars_orig = SUBJ_PICS{1};
+% subj_chars_orig = cellfun(@(x) [{} sprintf('Pilot%s',x)],subj_chars_orig);
+% subj_chars = {MAIN_STUDY.datasetinfo.subject};
+% subj_keep = zeros(length(subj_chars),1);
+% for subj_i = 1:length(subj_chars_orig)
+%     disp(any(strcmp(subj_chars_orig{subj_i},subj_chars)));
+%     if any(strcmp(subj_chars_orig{subj_i},subj_chars))
+%         subj_keep(subj_i) = 1;
+%     end
+% end
+% subjs_rmv = find(~subj_keep);
+% subj_keep = find(subj_keep);
+% [val,ord] = sort(subj_keep);
+% for cli = 2:length(cluster_struct)
+%     si = cluster_struct(cli).sets;
+%     ci = cluster_struct(cli).comps;
+%     keep_si = setdiff(si,subjs_rmv);
+%     tmp = cluster_struct(cli).preclust.preclustdata;
+%     tmp_preclust = [];
+%     tmp_si = [];
+%     tmp_ci = [];
+%     for i = 1:length(keep_si)
+%         tmp_si = [tmp_si, repmat(ord(keep_si(i) == val),1,sum(keep_si(i) == si))];
+%         tmp_ci = [tmp_ci, ci(keep_si(i) == si)];
+%         tmp_preclust = [tmp_preclust; tmp(keep_si(i) == si,:)];
+%     end
+%     cluster_struct(cli).sets = tmp_si;
+%     cluster_struct(cli).comps = tmp_ci;
+%     cluster_struct(cli).preclust.preclustdata = tmp_preclust;
+% end
+% cluster_struct(1).sets = [cluster_struct(2:end).sets];
+% cluster_struct(1).comps = [cluster_struct(2:end).comps];
+% MAIN_STUDY.cluster = cluster_struct;
+% [MAIN_STUDY,MAIN_ALLEEG] = parfunc_save_study(MAIN_STUDY,MAIN_ALLEEG,...
+%                         MAIN_STUDY.filename,MAIN_STUDY.filepath,...
+%                         'RESAVE_DATASETS','off');
 %%
 %{
 sub_ints = [3,6,7,8,9,12];
@@ -223,7 +267,10 @@ REPEATED_MEAS = 1;
 ALPHA = 0.05;
 NUM_ITERS = 200;
 SIFT_ALPHA = 0.95;
-BASELINE_TIME = [0,0.5];
+% BASELINE_TIME = [-0.75,-0.15];
+% TIME_LIMS=[-0.75 0.75];
+% TIME_LIMS_AVE=[0.15 0.75];
+BASELINE_TIME = [-0.5,0];
 TIME_LIMS=[-0.5 0.5];
 TIME_LIMS_AVE=[0 0.5];
 % do baseline 0 0.64
@@ -288,135 +335,115 @@ subj_inds = 1:length(MAIN_ALLEEG);
 %     end
 % end
 % subj_inds = find(~rej_subj);
+conn_vals = cell(length(COND_NAMES),1);
 %## 
+conn_i = 1;
 trial_nums = zeros(length(subj_inds),length(COND_NAMES));
-for conn_i = 1:length(CONN_MEASURES)
-    for cond_i=1:length(COND_NAMES)
-        fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep COND_NAMES{cond_i}];
-        if ~exist(fpath,'dir')
-            mkdir(fpath);
-        end
-        connStruct_boot=cell(length(cluster_struct),length(cluster_struct));
-        maskStruct_boot=cell(length(cluster_struct),length(cluster_struct));
-        connStruct_nonz_pconn = cell(length(cluster_struct),length(cluster_struct));
-        connStruct_boot_pconn = cell(length(cluster_struct),length(cluster_struct));
-        connStruct_boot_pconn_ci = cell(length(cluster_struct),length(cluster_struct));
-        subj_cl_ics=zeros(length(cluster_struct),length(cluster_struct));
-        %##
-        for subj_i=1:length(subj_inds)
-            EEG = MAIN_ALLEEG(subj_inds(subj_i));
-            CAT = EEG.etc.COND_CAT(cond_i);
-            fprintf('%s) Number of trials: %i',EEG.subject,CAT.trials);
-            trial_nums(subj_i,cond_i) = CAT.trials;
-            %- laod statistics
-%             save_dir_bootmats = [save_dir filesep CONN_MEASURES{conn_i} filesep boot_folder];
-%             save_dir_nonzmats =  [save_dir filesep CONN_MEASURES{conn_i} filesep nonz_folder];
-%             BOOTSTRAP_STRUCT = par_load(save_dir_bootmats,sprintf('%s_boot_struct.mat',EEG.subject));
-%             PHASERND_STRUCT = par_load(save_dir_nonzmats,sprintf('%s_phasernd_struct.mat',EEG.subject));
-%             boot_in = BOOTSTRAP_STRUCT.masked_conn{cond_i};
-            %- baseline boot test
-%             boot_in = BOOTSTRAP_STRUCT.stats{cond_i}.(CONN_MEASURES{conn_i}).pval;
-%             boot_in = BOOTSTRAP_STRUCT.masked_conn{cond_i};
-%             boot_in = BOOTSTRAP_STRUCT.averages{cond_i};
-            %- Hab boot test
-%             boot_in = BOOTSTRAP_STRUCT.stats{HAB_BOOT_INDS(1,1),HAB_BOOT_INDS(1,2)}.(CONN_MEASURES{conn_i}).pval;
-%             boot_in = BOOTSTRAP_STRUCT.masked_conn{HAB_BOOT_INDS(1,1),HAB_BOOT_INDS(1,2)};
-%             boot_in = BOOTSTRAP_STRUCT.averages{HAB_BOOT_INDS(1,1),HAB_BOOT_INDS(1,2)};
-            %- nonzero test
-%             nonz_in = PHASERND_STRUCT.masked_conn{cond_i};
-%             nonz_in = PHASERND_STRUCT.stats{cond_i}.(CONN_MEASURES{conn_i}).pval;
-            %- determine IC to Cluster assignments
-            icaDat2Add=[]; icaEst4_crossVal=[]; ic_nums=[]; cl_num=[];
-            for j=1:length(cluster_ints)
-                if ~any(cluster_struct(cluster_ints(j)).sets==subj_inds(subj_i))
-                else
-                    ic_nums=[ic_nums j];
-                    cl_num=[cl_num cluster_ints(j)];
-                end
-            end
-%             disp(ic_nums)
-            %- assign data to cells and save
-            subj_cl_ics(ic_nums,ic_nums)=subj_cl_ics(ic_nums,ic_nums)+1;
-            for j=1:length(ic_nums)
-                for k=1:length(ic_nums)
-                    fprintf('\tAssiging edge %i->%i\n',ic_nums(j),ic_nums(k))
-                    %- option 1
-%                     connStruct_boot{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=squeeze(nonz_in(j,k,fAllInds,tInds));
-                    %- option 2
-%                     connStruct_boot{ic_nums(j),ic_nums(k)}(numConns_boot(ic_nums(j),ic_nums(k)),:,:)=squeeze(CAT.Conn.(CONN_MEASURES{conn_i})(j,k,:,:));
-                    %- option 3
-%                     connStruct_boot{ic_nums(j),ic_nums(k)}(numConns_boot(ic_nums(j),ic_nums(k)),:,:)=squeeze(boot_in(j,k,:,:));
-                    %- option 4
-%                     mask = squeeze(PHASERND_STRUCT.stats{cond_i}.(CONN_MEASURES{conn_i}).pval(j,k,fAllInds,tInds))<SIFT_ALPHA;
-%                     fprintf('\tphasernd sum: %i\n',sum(mask(:)));
-%                     mask_comp = squeeze(PHASERND_STRUCT.stats{cond_i}.(CONN_MEASURES{conn_i}).thresh(j,k,fAllInds,tInds));
-%                     fprintf('\tphasernd sum: %i(%i)\n',sum(mask(:)),sum(mask_comp(:)));
-                    
-                    connStruct_boot{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=real(squeeze(CAT.Conn.(CONN_MEASURES{conn_i})(j,k,fAllInds,tInds)));
-%                     connStruct_boot{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=real(squeeze(boot_in(j,k,fAllInds,tInds)));
-%                     connStruct_boot{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=real(squeeze(boot_in(j,k,fAllInds,tInds)).*mask);
-%                     connStruct_boot{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=real(squeeze(CAT.Conn.(CONN_MEASURES{conn_i})(j,k,fAllInds,tInds)).*mask);
-%                     maskStruct_boot{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=real(mask);
-                    
-                    %- mask saves
-%                     connStruct_boot_pconn{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=squeeze(BOOTSTRAP_STRUCT.stats{HAB_BOOT_INDS(1,1),HAB_BOOT_INDS(1,2)}.(CONN_MEASURES{conn_i}).pval(j,k,:,:));
-%                     connStruct_boot_pconn{ic_nums(j),ic_nums(k)}(numConns_boot(ic_nums(j),ic_nums(k)),:,:)=squeeze(BOOTSTRAP_STRUCT.stats{cond_i}.(CONN_MEASURES{conn_i}).pval(j,k,:,:));
-%                     connStruct_nonz_pconn{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=squeeze(PHASERND_STRUCT.stats{cond_i}.(CONN_MEASURES{conn_i}).pval(j,k,:,:));
-    %                 disp('Hi!');
-                end
-            end
-        end
-        par_save(connStruct_boot,fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
-        par_save(maskStruct_boot,fpath,sprintf('maskStruct%s_boot.mat',CONN_MEASURES{conn_i}));
-%         par_save(connStruct_boot_pconn,fpath,sprintf('connStruct%s_bootpconn.mat',CONN_MEASURES{conn_i}));
-%         par_save(connStruct_nonz_pconn,fpath,sprintf('connStruct%s_nonzpconn.mat',CONN_MEASURES{conn_i}));
-        %###
-        % Set basetime to NaN if you don't want to significant mask
-        % Otherwise set basetime to the limits of your cycle, ex. stride
-        
-        baselines=[];
-        connStruct = zeros(length(cluster_struct),length(cluster_struct),length(fAllInds),length(alltimes));
+for cond_i=1:length(COND_NAMES)
+    fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep COND_NAMES{cond_i}];
+    if ~exist(fpath,'dir')
+        mkdir(fpath);
+    end
+    connStruct_boot=cell(length(cluster_struct),length(cluster_struct));
+%     maskStruct_boot=cell(length(cluster_struct),length(cluster_struct));
+%     connStruct_nonz_pconn = cell(length(cluster_struct),length(cluster_struct));
+%     connStruct_boot_pconn = cell(length(cluster_struct),length(cluster_struct));
+%     connStruct_boot_pconn_ci = cell(length(cluster_struct),length(cluster_struct));
+    subj_cl_ics=zeros(length(cluster_struct),length(cluster_struct));
+    %##
+    for subj_i=1:length(subj_inds)
+        EEG = MAIN_ALLEEG(subj_inds(subj_i));
+        CAT = EEG.etc.COND_CAT(cond_i);
+        fprintf('%s) Number of trials: %i',EEG.subject,CAT.trials);
+        trial_nums(subj_i,cond_i) = CAT.trials;
+        %- determine IC to Cluster assignments
+        icaDat2Add=[]; icaEst4_crossVal=[]; ic_nums=[]; cl_num=[];
         for j=1:length(cluster_ints)
-            for k=1:length(cluster_ints)
-                %## BASELINE
-                %- Calculate and subtract baseline
-                baseidx=find(alltimes>=BASELINE_TIME(1) & alltimes<=BASELINE_TIME(2));
-                baseVals = median(connStruct_boot{j,k}(:,:,baseidx),3);
+            if ~any(cluster_struct(cluster_ints(j)).sets==subj_inds(subj_i))
+            else
+                ic_nums=[ic_nums j];
+                cl_num=[cl_num cluster_ints(j)];
+            end
+        end
+%             disp(ic_nums)
+        %- assign data to cells and save
+        subj_cl_ics(ic_nums,ic_nums)=subj_cl_ics(ic_nums,ic_nums)+1;
+        for j=1:length(ic_nums)
+            for k=1:length(ic_nums)
+                fprintf('\tAssiging edge %i->%i\n',ic_nums(j),ic_nums(k))
+                connStruct_boot{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=real(squeeze(CAT.Conn.(CONN_MEASURES{conn_i})(j,k,fAllInds,tInds)));
+
+            end
+        end
+    end
+    
+    par_save(connStruct_boot,fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
+end
+%%
+for cond_i = 1:length(COND_NAMES)
+    fpath = [destination_folder filesep CONN_MEASURES{1} filesep 'R_data' filesep COND_NAMES{4}];
+    base_conn = par_load(fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{1}));
+    fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep COND_NAMES{cond_i}];
+    connStruct_boot = par_load(fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
+    for j=1:length(cluster_ints)
+        for k=1:length(cluster_ints)
+            basestand = median(base_conn{j,k}(:,:,:),3);
+            connStruct_boot{j,k} = connStruct_boot{j,k}-repmat(basestand, [1, 1, length(alltimes)]);
+        end
+    end
+    par_save(connStruct_boot,fpath,sprintf('connStruct%s_basecorr.mat',CONN_MEASURES{conn_i}));
+end
+%%
+% fpath = [destination_folder filesep CONN_MEASURES{1} filesep 'R_data' filesep COND_NAMES{4}];
+% base_conn = par_load(fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{1}));
+for cond_i = 1:length(COND_NAMES)
+    fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep COND_NAMES{cond_i}];
+%     connStruct_boot = par_load(fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
+    connStruct_boot = par_load(fpath,sprintf('connStruct%s_basecorr.mat',CONN_MEASURES{conn_i}));
+    baselines=[];
+    connStruct = zeros(length(cluster_struct),length(cluster_struct),length(fAllInds),length(alltimes));
+    for j=1:length(cluster_ints)
+        for k=1:length(cluster_ints)
+            %## BASELINE
+            %- Calculate and subtract baseline
+            baseidx=find(alltimes>=BASELINE_TIME(1) & alltimes<=BASELINE_TIME(2));
+            baseVals = median(connStruct_boot{j,k}(:,:,baseidx),3);
+%             baseVals = median(base_conn{j,k}(:,:,:),3);
 %                 baseVals = mean(connStruct_boot{j,k}(:,:,baseidx),3);
-                if DO_FDR_BOOTSTAT
-                    %## GROUPSIFT BASELINE TEST (SUBTRACTION PERM)
-    %                 curr_ersp_compare = connStruct_boot{j,k};
-                    curr_ersp_compare = repmat(baseVals, [1, 1, length(alltimes)]);
-                    curr_ersp_compare = permute(curr_ersp_compare,[3 2 1]);
-                    curr_ersp = connStruct_boot{j,k}-repmat(baseVals, [1, 1, length(alltimes)]);
-                    curr_ersp = permute(curr_ersp,[3 2 1]);
-    %                 [mask,tscore,pval] = clusterLevelPermutationTest(curr_ersp(tInds_ave,:,:),curr_ersp_orig(tInds_ave,:,:),...
-    %                                     1,ALPHA,NUM_ITERS); 
-                    [mask,tscore,pval] = clusterLevelPermutationTest(curr_ersp,curr_ersp_compare,...
-                                        REPEATED_MEAS,ALPHA,NUM_ITERS); 
-                    pval_fdr = fdr(pval);
-                    fprintf('\nPercent un-masked: %0.1f%%\n',100*(sum(pval_fdr<ALPHA,[1,2])/(size(pval_fdr,1)*size(pval_fdr,2))));
-                    curr_ersp = permute(curr_ersp,[2,1,3]);
-                    curr_ersp = median(curr_ersp,3);
-                    curr_maskedersp = curr_ersp;
-                    curr_maskedersp(pval_fdr>=ALPHA) = 0;
+            if DO_FDR_BOOTSTAT
+                %## GROUPSIFT BASELINE TEST (SUBTRACTION PERM)
+%                 curr_ersp_compare = connStruct_boot{j,k};
+                curr_ersp_compare = repmat(baseVals, [1, 1, length(alltimes)]);
+                curr_ersp_compare = permute(curr_ersp_compare,[3 2 1]);
+                curr_ersp = connStruct_boot{j,k}; %-repmat(baseVals, [1, 1, length(alltimes)]);
+                curr_ersp = permute(curr_ersp,[3 2 1]);
+%                 [mask,tscore,pval] = clusterLevelPermutationTest(curr_ersp(tInds_ave,:,:),curr_ersp_orig(tInds_ave,:,:),...
+%                                     1,ALPHA,NUM_ITERS); 
+                [mask,tscore,pval] = clusterLevelPermutationTest(curr_ersp,curr_ersp_compare,...
+                                    REPEATED_MEAS,ALPHA,NUM_ITERS); 
+                pval_fdr = fdr(pval);
+                fprintf('\nPercent un-masked: %0.1f%%\n',100*(sum(pval_fdr<ALPHA,[1,2])/(size(pval_fdr,1)*size(pval_fdr,2))));
+                curr_ersp = permute(curr_ersp,[2,1,3]);
+                curr_ersp = median(curr_ersp,3);
+                curr_maskedersp = curr_ersp;
+                curr_maskedersp(pval_fdr>=ALPHA) = 0;
 %                     curr_maskedersp(squeeze(sum(maskStruct_boot{j,k},1))<2) = 0;
-                else
-                    curr_ersp = connStruct_boot{j,k}-repmat(baseVals, [1, 1, length(alltimes)]);
-                    curr_ersp = permute(curr_ersp,[2 3 1]);
-                    %- Use bootstat & bootstrap and significance mask
-                    pboot = bootstat(curr_ersp,'median(arg1,3);','boottype','shuffle',...
-                        'label','ERSP','bootside','both','naccu',200,...
-                        'basevect',baseidx,'alpha',ALPHA,'dimaccu',2);
-                    fprintf('\n');
-                    curr_ersp = median(curr_ersp,3);
-                    curr_maskedersp = curr_ersp;
-                    curr_maskedersp(curr_ersp > repmat(pboot(:,1),[1 size(curr_ersp,2)]) & curr_ersp < repmat(pboot(:,2),[1 size(curr_ersp,2)])) = 0;
-                end
-                %- store
-                curr_maskedersp=permute(curr_maskedersp,[3 1 2]);
-                connStruct(j,k,:,:)=squeeze(curr_maskedersp);
-                %## NO BASELINE (SIFT STATS)
+            else
+                curr_ersp = connStruct_boot{j,k}-repmat(baseVals, [1, 1, length(alltimes)]);
+                curr_ersp = permute(curr_ersp,[2 3 1]);
+                %- Use bootstat & bootstrap and significance mask
+                pboot = bootstat(curr_ersp,'median(arg1,3);','boottype','shuffle',...
+                    'label','ERSP','bootside','both','naccu',2000,...
+                    'basevect',baseidx,'alpha',ALPHA,'dimaccu',2);
+                fprintf('\n');
+                curr_ersp = median(curr_ersp,3);
+                curr_maskedersp = curr_ersp;
+                curr_maskedersp(curr_ersp > repmat(pboot(:,1),[1 size(curr_ersp,2)]) & curr_ersp < repmat(pboot(:,2),[1 size(curr_ersp,2)])) = 0;
+            end
+            %- store
+            curr_maskedersp=permute(curr_maskedersp,[3 1 2]);
+            connStruct(j,k,:,:)=squeeze(curr_maskedersp);
+            %## NO BASELINE (SIFT STATS)
 %                 curr_ersp = permute(connStruct_boot{j,k},[2 3 1]);
 %                 %- use SIFT output (either boot, nonz, or both), must be stats!
 % %                 mask_in = permute(connStruct_nonz_pconn{j,k}<ALPHA,[2 3 1]);
@@ -432,12 +459,11 @@ for conn_i = 1:length(CONN_MEASURES)
 %                 %- store
 %                 curr_maskedersp=permute(curr_maskedersp,[3 1 2]);
 %                 connStruct(j,k,:,:)=squeeze(curr_maskedersp);
-                
-            end
+
         end
-        par_save(connStruct,fpath,sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{conn_i}));
-        
     end
+    par_save(connStruct,fpath,sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{conn_i}));
+
 end
 %% NO BASELINE (Condition Difference Bootstat)
 %{
@@ -527,6 +553,9 @@ valt_b3 = [];
 jt = [];
 kt = [];
 %##
+% fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data'];
+% baseconn_boot = par_load([fpath filesep COND_NAMES{4}],sprintf('connStruct%s_boot.mat',CONN_MEASURES{1}));
+% baseconn = par_load([fpath filesep COND_NAMES{4}],sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{1}));
 for conn_i = 1:length(CONN_MEASURES)
     fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data'];
     if ~exist(fpath,'dir')
@@ -535,7 +564,8 @@ for conn_i = 1:length(CONN_MEASURES)
     for cond_i=1:length(COND_NAMES)
         net_vals = NET_VALS;
         net_vals_ave = NETVALS_AVE;
-        connStruct_boot = par_load([fpath filesep COND_NAMES{cond_i}],sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
+        connStruct_boot = par_load(fpath,sprintf('connStruct%s_basecorr.mat',CONN_MEASURES{conn_i}));
+%         connStruct_boot = par_load([fpath filesep COND_NAMES{cond_i}],sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
         connStruct = par_load([fpath filesep COND_NAMES{cond_i}],sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{conn_i}));
 %         connStruct_boot = par_load([fpath filesep 'btwn_cond'],sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
 %         connStruct = par_load([fpath filesep 'btwn_cond'],sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{conn_i}));
@@ -547,9 +577,13 @@ for conn_i = 1:length(CONN_MEASURES)
                 %- baseline using mean of period
                 baseidx=find(alltimes>=BASELINE_TIME(1) & alltimes<=BASELINE_TIME(2));
 %                 baseVals=mean(connStruct_boot{j,k}(:,:,baseidx),3);
-                baseVals=median(connStruct_boot{j,k}(:,:,baseidx),3);
-                tmp = squeeze(median(baseVals,1));
+                baseVals = median(connStruct_boot{j,k}(:,:,baseidx),3);
+%                 baseVals = median(baseconn_boot{j,k}(:,:,:),3);
+%                 tmp = squeeze(median(baseVals,1));
+%                 baseVals = median(base_conn{j,k}(:,:,:),3);
                 curr_ersp = real(connStruct_boot{j,k}-repmat(real(baseVals), [1, 1, length(alltimes)]));
+%                 baseVals = median(curr_ersp(:,:,baseidx),3);
+%                 curr_ersp = real(curr_ersp-repmat(real(baseVals), [1, 1, length(alltimes)]));
                 non_base_ersp = connStruct_boot{j,k};
                 %- no baseline
 %                 curr_ersp = real(connStruct_boot{j,k});
@@ -558,6 +592,7 @@ for conn_i = 1:length(CONN_MEASURES)
                 bootDat_alpha=curr_ersp(:,fAlphaInds,tInds);
                 bootDat_beta=curr_ersp(:,fBetaInds,tInds);
                 bootDat_all=curr_ersp(:,:,tInds);
+                
                 for subj_i=1:size(bootDat_theta,1)
                     %-
                     tt = squeeze(baseVals(subj_i,:));
@@ -668,12 +703,13 @@ for conn_i = 1:length(CONN_MEASURES)
         par_save(net_vals_ave,fpath,sprintf('netVals_%s_aveTime.mat',strjoin(strsplit(COND_NAMES{cond_i},' '),'_')));
     end
 end
+
 %% corrected conn validation
 sub_ints = [7,1,5,6,9,4];
 % sub_ints = [1,2,3,4,5,6,7,8,9];
 cluster_names = {'RPPa-Oc','Cuneus','Precuneus','RFrontal','LPPa-Oc','LSM','RSM','SuppMotor','LFrontal'}; % (06/27/2023) JS, unsure on these as of yet.
-COLOR_LIMITS = [-0.0001,0.0001];
-for cond_i = 1:3
+COLOR_LIMITS = [-0.00001,0.00001];
+for cond_i = 1:length(COND_NAMES)
     datain = par_load(fpath,sprintf('netVals_%s_aveTime.mat',strjoin(strsplit(COND_NAMES{cond_i},' '),'_')));
 %     tmp = squeeze(nanmedian(base_conn_cond(:,cond_i,sub_ints,sub_ints),1));
 %         tmp = squeeze(base_corr_cond(cond_i,sub_ints,sub_ints));
@@ -710,13 +746,13 @@ sub_ints = [7,1,5,6,9,4];
 % sub_ints = [1,2,3,4,5,6,7,8,9];
 cluster_names = {'RPPa-Oc','Cuneus','Precuneus','RFrontal','LPPa-Oc','LSM','RSM','SuppMotor','LFrontal'}; % (06/27/2023) JS, unsure on these as of yet.
 % COLOR_LIMITS = [-0.0001,0.0001];
-COLOR_LIMITS = [0,5];
+COLOR_LIMITS = [0,1];
 % base_conn_cond(base_conn_cond==0) = nan();
 fn = fieldnames(store_s);
 fn = fn(3:end);
 % fn = {'base_corr_alpha','base_corr_theta','base_corr_beta'};
 for data_i = 1:length(fn)
-    for cond_i = 1:3
+    for cond_i = 1:4
     %     tmp = squeeze(nanmedian(base_conn_cond(:,cond_i,sub_ints,sub_ints),1));
 %         tmp = squeeze(base_corr_cond(cond_i,sub_ints,sub_ints));
         tmp = squeeze(store_s.(fn{data_i})(cond_i,sub_ints,sub_ints));
@@ -747,11 +783,22 @@ for data_i = 1:length(fn)
     end
 end
 %% GLM TEST
+% subjt = categorical(subjt);
 subjt = categorical(subjt);
 condt = categorical(condt);
 jt = categorical(jt);
 kt = categorical(kt);
-cond_table = table(subjt,condt,jt,kt,valt_a1,valt_a2,valt_a3,valt_t1,valt_t2,valt_t3,valt_b1,valt_b2,valt_b3);
+valt_a1 = double(valt_a1);
+valt_a2 = double(valt_a2);
+valt_a3 = double(valt_a3);
+valt_t1 = double(valt_t1);
+valt_t2 = double(valt_t2);
+valt_t3 = double(valt_t3);
+valt_b1 = double(valt_b1);
+valt_b2 = double(valt_b2);
+valt_b3 = double(valt_b3);
+cond_table = table(subjt,condt,jt,kt,(valt_a1),(valt_a2),(valt_a3),...
+    (valt_t1),(valt_t2),(valt_t3),(valt_b1),(valt_b2),(valt_b3));
 table_vars = cond_table.Properties.VariableNames;
 table_vars = table_vars(5:end);
 for i = 1:length(table_vars)
@@ -760,10 +807,11 @@ for i = 1:length(table_vars)
 %     mdl_one = fitlm(cond_table,modelspec);
 %     modelspec = sprintf('%s~1+condt',table_vars{i});
 %     mdl_one = fitlm(cond_table,modelspec);
-    modelspec = sprintf('%s~1+condt+(1|subjt)',table_vars{i});
+%     modelspec = sprintf('%s~1+condt+(condt|subjt)',table_vars{i});
+    modelspec = sprintf('%s~1+condt+jt*kt',table_vars{i});
     mdl_one = fitlme(cond_table,modelspec);
     modelspec = sprintf('%s~1',table_vars{i});
-    mdl_comp = fitlm(cond_table,modelspec);
+    mdl_comp = fitlme(cond_table,modelspec);
     [stats] = anova(mdl_one);
     terrain_mixc_f = stats{2,5};
     disp(mdl_one)

@@ -139,6 +139,7 @@ switch epoch_method
                 percent_overlap,struct_field_cond,approx_trial_length);
             TMP_EEG.etc.epoch.type='sliding-window';
     %         TMP_EEG.condition = REGEXP_BOUNCES;
+            TMP_EEG.condition = regexp_slidingwindow{i};
             %## STORE IN ALLEEG
             ALLEEG{cnt} = TMP_EEG;
             timewarp_struct{cnt} = struct([]);
@@ -202,7 +203,7 @@ switch epoch_method
             end
         end
     case 'event_locked'
-        %## EVENT TIMEWARPING CODE
+        %## EVENT LOCKED TO STIM CODE
         ALLEEG = cell(length(event_chars)*length(cond_chars),1); 
         timewarp_struct = cell(1,length(event_chars)*length(cond_chars));
         cnt = 1;
@@ -275,6 +276,43 @@ switch epoch_method
             end
         end
         %}
+    case 'sub_epoch'
+        %## EVENT NEW EVENT LOCKED
+        % (02/01/2024) JS, this does not support multiple event_chars parameter
+        % right now.
+        ALLEEG = cell(length(event_chars)*length(cond_chars),1); 
+        timewarp_struct = cell(1,length(event_chars)*length(cond_chars));
+        event_i = 1;
+        cnt = 1;
+        for i = 1:length(cond_chars)
+            fprintf(1,'\n==== Processing %s: ''%s'' ====\n',EEG.subject,cond_chars{i});
+            indsb = strcmp({EEG.event.(struct_field_cond)},cond_chars{i});
+            epochb = [EEG.event(indsb).epoch];
+            indse = diff([epochb,epochb(end)]);
+            tmpe = epochb(logical(indse));
+            epoch_keep = zeros(1,length(tmpe));
+            epoch_field = sprintf('event%s',struct_field_cond);
+            for j = 1:length(tmpe)
+                lats = [EEG.epoch(tmpe(j)).eventlatency{:}];
+                tmpi = (lats == 0);
+                epoch_type = [EEG.epoch(tmpe(j)).(epoch_field){tmpi}];
+                if strcmp(epoch_type,cond_chars{i})
+                    epoch_keep(j) = tmpe(j);
+                end
+            end
+            epoch_keep = epoch_keep(epoch_keep~=0);
+            TMP_EEG = pop_select(EEG,'trial',epoch_keep);
+            %## set parameters
+            TMP_EEG.etc.epoch_type = sprintf('timelock-%s-%s',cond_chars{i},event_chars{event_i});
+            TMP_EEG.etc.epoch.condition = [cond_chars{i} '_' event_chars{event_i}];
+%             TMP_TMP_EEG.etc.epoch.epoch_length_timelim = ;
+            TMP_EEG.filename = sprintf('%s_%s_%s_EPOCH_TMPEEG.set',TMP_EEG.subject,cond_chars{i},event_chars{event_i});
+            TMP_EEG.condition = [cond_chars{i} '_' event_chars{event_i}];
+            %## STORE IN ALLEEG
+            ALLEEG{cnt} = TMP_EEG;
+            timewarp_struct{cnt} = struct([]);
+            cnt = cnt + 1;
+        end
 end
 fprintf(1,'\n==== DONE: EPOCHING ====\n');
 %- concatenate ALLEEG
@@ -306,7 +344,8 @@ end
 %% SUBFUNCTION 
 function [EEG] = sliding_window_epoch(EEG,cond_char,window_len,percent_overlap,...
     cond_char_field,approx_trial_len)
-%## Looking at cooperative vs competitive vs ball_machie
+%## Extract Trial Boundaries
+spc = (abs(window_len)/2)*(1-percent_overlap);
 %- find conditions that match input string
 tmp_all = strcmp({EEG.event.(cond_char_field)},cond_char);
 % tmp_all = contains({EEG.event.(COND_CHAR_FIELD)},'Human');
@@ -318,11 +357,24 @@ EEG.event(trial_start).cond = cond_char;
 EEG.event(trial_end).type = 'tmp_end';
 EEG.event(trial_end).cond = cond_char;
 tmp_all = strcmp({EEG.event.cond},cond_char);
+%- option 1
 tmp_start = strcmp({EEG.event.type},'tmp_start');
 tmp_end = strcmp({EEG.event.type},'tmp_end');
 valid_idxs = find(tmp_all & (tmp_start | tmp_end));
-%-
-spc = (abs(window_len)/2)*(1-percent_overlap);
+%- option 2
+% valid_idxs = find(diff(tmp_all));
+%## check for trial length and boundary events(errors occur if trial is cut up by boundary
+%event insert).
+% for i = 1:2:length(valid_idxs)
+%     dt = EEG.event(valid_idxs(i)).latency - EEG.event(valid_idxs(i+1)).latency;
+%     if dt/1000 < approx_trial_len
+%         tmpt = EEG.event(valid_idxs(i)).latency+(approx_trial_len*EEG.srate);
+%         tmpe = create_event_entry(tmpt,1,...
+%                     'appended_tmp_end','trial_mark',dt,cond_char);
+%         EEG.event = [EEG.event; ];
+%     end
+% end
+% EEG = eeg_checkset(EEG,'eventconsistency');
 %- initiate loop
 trial_cnt = 1;
 tmp_event = EEG.event;
@@ -346,7 +398,7 @@ for i = 1:2:length(valid_idxs)
     for j = 2:length(intervals)
         chk_intv = intervals(j) < (tmp_event(valid_idxs(i+1)).latency - EEG.srate*spc);
         if j == 1
-            event_type = TRIAL_BEG_CHAR;
+            event_type = 'tmp_start';
         elseif j > 1
             event_type = cond_char;
         end
@@ -387,7 +439,7 @@ EEG = pop_epoch( EEG,{cond_char},[-window_len/2,window_len/2],...
         'newname',sprintf('Merged_Datasets_%s_Epochs',EEG.subject),...
         'epochinfo','yes');
 end
-%## 
+%## SUBFUNCTIONS
 function [event] = create_event_entry(varargin)
     dt_tmp = datetime;
     dt_tmp.Format = 'MMddyyyy';

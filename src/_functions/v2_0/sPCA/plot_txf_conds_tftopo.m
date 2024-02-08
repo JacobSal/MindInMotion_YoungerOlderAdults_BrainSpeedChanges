@@ -119,9 +119,10 @@ end
 %## Add Stats To Plot
 if ~isempty(allpcond)
     subplot(1,length(allersp)+1,length(allersp)+1)
-    tftopo(allpcond,alltimes,allfreqs,'limits',... 
+    tftopo(allpcond*1000,alltimes,allfreqs,'limits',... 
     [PLOT_STRUCT.time_lims PLOT_STRUCT.freq_lims PLOT_STRUCT.clim],...
     'logfreq','native');
+    % (02/05/2024) adding *1000 to ensure high visibility of stats
     % contourf(allersp);
     ax = gca;
     hold on;

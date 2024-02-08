@@ -41,7 +41,7 @@ else  % isunix
 end
 %- define the directory to the src folder
 source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '3_ANALYZE' filesep 'AS'];
+run_dir = [source_dir filesep '3_ANALYZE' filesep 'MIM_YA'];
 %% CD ================================================================== %%
 %- cd to run directory
 cd(run_dir)
@@ -82,47 +82,37 @@ end
 %% (PARAMETERS) ======================================================== %%
 %## PATHS
 %- hardcode data_dir
-DATA_SET = 'AS_dataset';
-COND_CHARS =  {'2Bounce_Human','2Bounce_BM'};
-% COND_CHARS =  {'1Bounce_Human','Serve_Human'};
-% EVENT_CHARS = {'Subject_hit'}; 
-EVENT_CHARS = {'Subject_receive'}; 
+DATA_SET = 'MIM_dataset';
+%- ball machine vs human rally
+TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+CONN_METHODS = {'dDTF08','S'};
 %- datetime override
-% dt = '05252023_bounces_1h2h2bm_JS';
-% dt = '06122023_bounces_1h2h2bm_JS';
-% dt = '06152023_bounces_1h2h2bm_JS';
-% dt = '07272023_bounces_1h_2h_2bm_JS';
-% dt = '08182023_bounces_1h_2h_2bm_JS';
-% dt = '12182023_bounces_1h_2h_2bm_JS_0p25-1';
-% dt = '12282023_bounces_1h_2bm_JS_n1-0p5';
-dt = '01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5';
-% dt = '01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5';
+study_dir_fname = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
 %## soft define
-%- combinations of events and conditions
-EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
-cnt = 1;
-for cond_i = 1:length(COND_CHARS)
-    for event_i = 1:length(EVENT_CHARS)
-        EVENT_COND_COMBOS{cnt} = sprintf('%s_%s',COND_CHARS{cond_i},EVENT_CHARS{event_i});
-        cnt = cnt + 1;
-    end
-end
 %- path for local data
-study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
+% study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
+study_fName_1 = 'epoch_study';
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep '_figs' filesep 'conn'];
-load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
+save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_fname) filesep '_figs' filesep 'conn'];
+load_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_fname)];
+%- load cluster
+CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',study_dir_fname) filesep 'cluster'];
+CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
+CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
+CLUSTER_K = 12;
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
-%% LOAD STUDIES && ALLEEGS
-if exist('SLURM_POOL_SIZE','var')
-    POOL_SIZE = min([SLURM_POOL_SIZE,length(EVENT_COND_COMBOS)*4]);
+if ~ispc
+    addpath(convertPath2UNIX('M:\jsalminen\GitHub\par_EEGProcessing\submodules\groupSIFT'));
 else
-    POOL_SIZE = 1;
+    addpath(convertPath2Drive('M:\jsalminen\GitHub\par_EEGProcessing\submodules\groupSIFT'));
 end
+
+%% LOAD STUDIES && ALLEEGS
+
 %- Create STUDY & ALLEEG structs
 if ~exist([load_dir filesep study_fName_1 '.study'],'file')
     error('ERROR. study file does not exist');
@@ -132,14 +122,82 @@ else
     else
         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',load_dir);
     end
+    cl_struct = par_load([CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+    MAIN_STUDY.cluster = cl_struct;
     [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
-    EVENT_COND_COMBOS = MAIN_STUDY.etc.a_epoch_process.epoch_chars;
-    %## CUT OUT NON VALID CLUSTERS
-    inds = setdiff(1:length(comps_out),valid_cls);
-    comps_out(inds,:) = 0;
+    condition_gait = unique({MAIN_STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
+    subject_chars = {MAIN_STUDY.datasetinfo.subject};
+    %-
+    fPaths = {MAIN_STUDY.datasetinfo.filepath};
+    fNames = {MAIN_STUDY.datasetinfo.filename};
 end
+%%
+% SUBJ_PICS = {{'02','03','04','05','09','11','15','16','18','19','21','22',...
+%             '23','24','25','27','28','29','30','31','32','33','35','36','38'}};
+% cluster_struct = MAIN_STUDY.urcluster;
+% cluster_struct_orig = MAIN_STUDY.urcluster;
+% subj_chars_orig = SUBJ_PICS{1};
+% subj_chars_orig = cellfun(@(x) [{} sprintf('Pilot%s',x)],subj_chars_orig);
+% subj_chars = {MAIN_STUDY.datasetinfo.subject};
+% subj_keep = zeros(length(subj_chars),1);
+% for subj_i = 1:length(subj_chars_orig)
+%     disp(any(strcmp(subj_chars_orig{subj_i},subj_chars)));
+%     if any(strcmp(subj_chars_orig{subj_i},subj_chars))
+%         subj_keep(subj_i) = 1;
+%     end
+% end
+% subjs_rmv = find(~subj_keep);
+% subj_keep = find(subj_keep);
+% [val,ord] = sort(subj_keep);
+% for cli = 2:length(cluster_struct)
+%     si = cluster_struct(cli).sets;
+%     ci = cluster_struct(cli).comps;
+%     keep_si = setdiff(si,subjs_rmv);
+%     tmp = cluster_struct(cli).preclust.preclustdata;
+%     tmp_preclust = [];
+%     tmp_si = [];
+%     tmp_ci = [];
+%     for i = 1:length(keep_si)
+%         tmp_si = [tmp_si, repmat(ord(keep_si(i) == val),1,sum(keep_si(i) == si))];
+%         tmp_ci = [tmp_ci, ci(keep_si(i) == si)];
+%         tmp_preclust = [tmp_preclust; tmp(keep_si(i) == si,:)];
+%     end
+%     cluster_struct(cli).sets = tmp_si;
+%     cluster_struct(cli).comps = tmp_ci;
+%     cluster_struct(cli).preclust.preclustdata = tmp_preclust;
+% end
+% cluster_struct(1).sets = [cluster_struct(2:end).sets];
+% cluster_struct(1).comps = [cluster_struct(2:end).comps];
+% MAIN_STUDY.cluster = cluster_struct;
+% [MAIN_STUDY,MAIN_ALLEEG] = parfunc_save_study(MAIN_STUDY,MAIN_ALLEEG,...
+%                         MAIN_STUDY.filename,MAIN_STUDY.filepath,...
+%                         'RESAVE_DATASETS','off');
+%%
+%{
+sub_ints = [3,6,7,8,9,12];
 % mim_gen_cluster_figs(MAIN_STUDY,MAIN_ALLEEG,save_dir,...
-%     'CLUSTERS_TO_PLOT',valid_cls);
+%     'CLUSTERS_TO_PLOT',sub_ints);
+DIP_SING_POS=[16 582 420 360];
+% different clusters have different colors
+MAIN_STUDY.etc.dipparams.centrline = 'off';
+std_dipplot_CL(MAIN_STUDY,MAIN_ALLEEG,'clusters',sub_ints,'figure','off','mode','together_averaged_multicolor','spheres','off','projlines','off');
+fig_i = get(groot,'CurrentFigure');
+set(fig_i,'position',DIP_SING_POS,'color','w')
+camzoom(1.2^2);
+% camzoom(1.2^2);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.eps')],'ContentType','vector','Resolution',300);
+saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.fig')]);
+view([45,0,0])
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.eps')],'ContentType','vector','Resolution',300);
+view([0,-45,0])
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.eps')],'ContentType','vector','Resolution',300);
+%}
 %%
 % CLUSTER_ITERS = [3,7,5,4];
 % CLUSTER_ASSIGNMENTS = {'RPPa-Oc','LPPa-Oc','Precuneus','Cuneus'}; % (06/27/2023) JS, unsure on these as of yet.
@@ -150,7 +208,8 @@ end
 % (01/24/2024) JS, updated to only include clusters considered in AS
 % neuroimage paper.
 %%
-save_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\AS_dataset\_studies\12282023_bounces_1h_2bm_JS_n1-0p5\_figs\conn';
+% save_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\AS_dataset\_studies\12282023_bounces_1h_2bm_JS_n1-0p5\_figs\conn';
+% 
 destination_folder = save_dir;  %change as appropriate
 if ~exist(destination_folder,'dir')
     mkdir(destination_folder);
@@ -159,39 +218,54 @@ end
 % CONN_MEASURES = {'S'}; %{'dDTF08','S'};
 CONN_MEASURES = {'dDTF08'}; %{'dDTF08','S'};
 FREQ_CROP = [4:50];
+FREQ_BANDS = struct('theta',(4:8),...
+    'alpha',(8:13),...
+    'beta',(14:30),...
+    'all',FREQ_CROP);
 nonz_folder = 'nonzero_mat_files';
 % boot_folder = 'bootstrap_baseline_mat_files';
 boot_folder = 'bootstrap_mat_files';
-HAB_BOOT_INDS = [2,1]; %[1,2];
-% cluster_ints = [3,4,5,6,7,8,9,10,11,12];
-% cluster_names = {'RPPa-Oc','Cuneus','Precuneus','RSuppMotor','LPPa-Oc','LSM','RSM','LTemp','Cing','LSuppMotor'}; % (06/27/2023) JS, unsure on these as of yet.
-cluster_ints = [3,4,5,6,7,8,9,10,11,12];
-sub_ints = [3,4,5,7];
-cluster_names = {'RPPa-Oc','Cuneus','Precuneus','RFrontal','LPPa-Oc','LSM','RSM','LTemp','SuppMotor','LFrontal'}; % (06/27/2023) JS, unsure on these as of yet.
-
-usefdr = 0;
-ALPHA = 0.1;
+HAB_BOOT_INDS = [2,1];
+%- clusters to process
+cluster_names = {'ROc','LPPa','RSupp','LSupp','neck','RPPa','PostCing','LSM','LOc','RSM','AntCing','PreCun'}; % (06/27/2023) JS, unsure on these as of yet.
+cluster_ints = [3,4,5,6,7,8,9,10,11,12,13,14];
+[val,ind] = setdiff(cluster_ints,valid_cls);
+cluster_ints(ind) = [];
+sub_ints = [3,4,5,6,8,9,10,11,12,13,14];
+[val,ind] = setdiff(cluster_ints,valid_cls);
+sub_ints(ind) = [];
+%- processing parameters
+DO_FDR_BOOTSTAT = false;
+REPEATED_MEAS = 1;
+ALPHA = 0.05;
+NUM_ITERS = 200;
+SIFT_ALPHA = 0.95;
+% BASELINE_TIME = [-0.75,-0.15];
+% TIME_LIMS=[-0.75 0.75];
+% TIME_LIMS_AVE=[0.15 0.75];
 BASELINE_TIME = [-0.5,0];
 TIME_LIMS=[-0.5 0.5];
 TIME_LIMS_AVE=[0 0.5];
+% do baseline 0 0.64
 % cluster_ints = [3,7,5,4];
 % cluster_names = {'RPPa-Oc','LPPa-Oc','Precuneus','Cuneus'}; % (06/27/2023) JS, unsure on these as of yet.
 % COND_PAIR_ORDER = [1,2];
-save_dir_bootmats =  [save_dir filesep CONN_MEASURES{1} filesep 'bootstrap_baseline_mat_files'];
-BOOTSTRAP_STRUCT = par_load(save_dir_bootmats,sprintf('%s_boot_struct.mat',MAIN_ALLEEG(1).subject));
-CONN_MEAS = BOOTSTRAP_STRUCT.conn_meas;
-FREQ_BANDS = BOOTSTRAP_STRUCT.FREQ_BAND_INF.FREQ_BANDS;
-FREQ_NAMES = fieldnames(FREQ_BANDS);
+% save_dir_bootmats =  [save_dir filesep CONN_MEASURES{1} filesep 'bootstrap_baseline_mat_files'];
+% BOOTSTRAP_STRUCT = par_load(save_dir_bootmats,sprintf('%s_boot_struct.mat',MAIN_ALLEEG(1).subject));
+% CONN_MEAS = BOOTSTRAP_STRUCT.conn_meas;
+% FREQ_BANDS = BOOTSTRAP_STRUCT.FREQ_BAND_INF.FREQ_BANDS;
+% FREQ_NAMES = fieldnames(FREQ_BANDS);
 allfreqs = MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.freqs;
 % alltimes = MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes;
 cluster_struct = MAIN_STUDY.cluster;
-subj_inds = 1:length(MAIN_ALLEEG);
 fAllInds=find(allfreqs>=FREQ_CROP(1) & allfreqs<=FREQ_CROP(end));
 tInds=find(MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes>=TIME_LIMS(1) & MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes<=TIME_LIMS(2));
 alltimes = MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes;
 alltimes = alltimes(tInds);
+tInds_ave = find(alltimes>=TIME_LIMS_AVE(1) & alltimes<=TIME_LIMS_AVE(2));
+
 %## LOAD TEMP EEG DATA
-COND_NAMES = MAIN_STUDY.etc.a_epoch_process.epoch_chars; %unique(EEG.etc.conn_table.t_fNames);
+COND_NAMES = MAIN_STUDY.etc.a_epoch_process.epoch_chars; %EVENT_COND_COMBOS; %MAIN_STUDY.etc.a_epoch_process.epoch_chars; %unique(EEG.etc.conn_table.t_fNames);
 % tmp = unique(MAIN_ALLEEG(1).etc.conn_table.t_fNames);
 % COND_NAMES = cell(length(tmp),1);
 % for i = 1:length(tmp)
@@ -202,10 +276,12 @@ COND_NAMES = MAIN_STUDY.etc.a_epoch_process.epoch_chars; %unique(EEG.etc.conn_ta
 % end
 %% MODEL ORDER & VALIDATION DATA
 %{
-[tbl_out,tbl_summary_out] = cnctanl_valfigs_to_table(save_dir,COND_CHARS);
+% [tbl_out,tbl_summary_out] = cnctanl_valfigs_to_table(save_dir,COND_CHARS);
+[tbl_out,tbl_summary_out] = cnctanl_valfigs_to_table([STUDIES_DIR filesep sprintf('%s',dt) filesep 'conn_data'],COND_CHARS);
+
 %-
-fprintf('HQ minimum information crit model order: %0.2f\n',median(tbl_summary_out.min_modorder_info_crit_hq_line));
-fprintf('HQ minimum information crit model order: %0.2f\n',iqr(tbl_summary_out.min_modorder_info_crit_hq_line));
+fprintf('HQ median information crit model order: %0.2f\n',median(tbl_summary_out.min_modorder_info_crit_hq_line));
+fprintf('HQ iqr information crit model order: %0.2f\n',iqr(tbl_summary_out.min_modorder_info_crit_hq_line));
 %-
 fprintf('AIC minimum information crit model order: %0.2f\n',mean(tbl_summary_out.min_modorder_info_crit_aic_line));
 fprintf('HQ mean histogram model order: %0.2f\n',mean(tbl_summary_out.mean_hist_hq_amnts));
@@ -221,113 +297,126 @@ writetable(tbl_summary_out,[save_dir filesep 'model_crit_summary.xlsx']);
 %}
 %%
 %## REJECT SUBJECTS
-rej_subj = zeros(size(comps_out,2),1); 
-for subj_i = 1:size(comps_out,2)
-    tmp = comps_out(sub_ints,subj_i)>0;
-    if ~all(tmp)
-        fprintf('Reject: %i\n',subj_i);
-        rej_subj(subj_i) = 1;
-    end
-end
-subj_inds = find(~rej_subj);
-% subj_chars = {PHASERND_STRUCT.subject};
+subj_inds = 1:length(MAIN_ALLEEG);
+%-
+% rej_subj = zeros(size(comps_out,2),1); 
+% for subj_i = 1:size(comps_out,2)
+%     tmp = comps_out(sub_ints,subj_i)>0;
+%     if ~all(tmp)
+%         fprintf('Reject: %i\n',subj_i);
+%         rej_subj(subj_i) = 1;
+%     end
+% end
+% subj_inds = find(~rej_subj);
+conn_vals = cell(length(COND_NAMES),1);
 %## 
-for conn_i = 1:length(CONN_MEASURES)
-    for cond_i=1:length(COND_NAMES)
-        fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep COND_NAMES{cond_i}];
-        if ~exist(fpath,'dir')
-            mkdir(fpath);
-        end
-        connStruct_boot=cell(length(cluster_struct),length(cluster_struct));
-        connStruct_nonz_pconn = cell(length(cluster_struct),length(cluster_struct));
-        connStruct_boot_pconn = cell(length(cluster_struct),length(cluster_struct));
-        connStruct_boot_pconn_ci = cell(length(cluster_struct),length(cluster_struct));
-        subj_cl_ics=zeros(length(cluster_struct),length(cluster_struct));
-        %##
-        for subj_i=1:length(subj_inds)
-            EEG = MAIN_ALLEEG(subj_inds(subj_i));
-%             CAT = EEG.etc.COND_CAT(cond_i);
-            %- laod statistics
-            save_dir_bootmats = [save_dir filesep CONN_MEASURES{conn_i} filesep boot_folder];
-            save_dir_nonzmats =  [save_dir filesep CONN_MEASURES{conn_i} filesep nonz_folder];
-            BOOTSTRAP_STRUCT = par_load(save_dir_bootmats,sprintf('%s_boot_struct.mat',EEG.subject));
-            PHASERND_STRUCT = par_load(save_dir_nonzmats,sprintf('%s_phasernd_struct.mat',EEG.subject));
-%             boot_in = BOOTSTRAP_STRUCT.masked_conn{cond_i};
-            %- baseline boot test
-%             boot_in = BOOTSTRAP_STRUCT.stats{cond_i}.(CONN_MEASURES{conn_i}).pval;
-%             boot_in = BOOTSTRAP_STRUCT.masked_conn{cond_i};
-            boot_in = BOOTSTRAP_STRUCT.averages{cond_i};
-            %- Hab boot test
-%             boot_in = BOOTSTRAP_STRUCT.stats{HAB_BOOT_INDS(1,1),HAB_BOOT_INDS(1,2)}.(CONN_MEASURES{conn_i}).pval;
-%             boot_in = BOOTSTRAP_STRUCT.masked_conn{HAB_BOOT_INDS(1,1),HAB_BOOT_INDS(1,2)};
-%             boot_in = BOOTSTRAP_STRUCT.averages{HAB_BOOT_INDS(1,1),HAB_BOOT_INDS(1,2)};
-            %- nonzero test
-            nonz_in = PHASERND_STRUCT.masked_conn{cond_i};
-%             nonz_in = PHASERND_STRUCT.stats{cond_i}.(CONN_MEASURES{conn_i}).pval;
-            %- determine IC to Cluster assignments
-            icaDat2Add=[]; icaEst4_crossVal=[]; ic_nums=[];
-            for j=1:length(cluster_ints)
-                if ~any(cluster_struct(cluster_ints(j)).sets==subj_inds(subj_i))
-                else
-                    ic_nums=[ic_nums j];
-                end
-            end
-%             disp(ic_nums)
-            %- assign data to cells and save
-            subj_cl_ics(ic_nums,ic_nums)=subj_cl_ics(ic_nums,ic_nums)+1;
-            for j=1:length(ic_nums)
-                for k=1:length(ic_nums)
-                    fprintf('%s) Assiging edge %i->%i\n',EEG.subject,ic_nums(j),ic_nums(k))
-                    %- option 1
-%                     connStruct_boot{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=squeeze(nonz_in(j,k,:,:));
-                    %- option 2
-%                     connStruct_boot{ic_nums(j),ic_nums(k)}(numConns_boot(ic_nums(j),ic_nums(k)),:,:)=squeeze(CAT.Conn.(CONN_MEASURES{conn_i})(j,k,:,:));
-                    %- option 3
-%                     connStruct_boot{ic_nums(j),ic_nums(k)}(numConns_boot(ic_nums(j),ic_nums(k)),:,:)=squeeze(boot_in(j,k,:,:));
-                    %- option 4
-                    connStruct_boot{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=real(squeeze(boot_in(j,k,fAllInds,tInds)).*squeeze(PHASERND_STRUCT.stats{cond_i}.(CONN_MEASURES{conn_i}).pval(j,k,fAllInds,tInds)));
-                    %- mask saves
-%                     connStruct_boot_pconn{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=squeeze(BOOTSTRAP_STRUCT.stats{HAB_BOOT_INDS(1,1),HAB_BOOT_INDS(1,2)}.(CONN_MEASURES{conn_i}).pval(j,k,:,:));
-%                     connStruct_boot_pconn{ic_nums(j),ic_nums(k)}(numConns_boot(ic_nums(j),ic_nums(k)),:,:)=squeeze(BOOTSTRAP_STRUCT.stats{cond_i}.(CONN_MEASURES{conn_i}).pval(j,k,:,:));
-%                     connStruct_nonz_pconn{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=squeeze(PHASERND_STRUCT.stats{cond_i}.(CONN_MEASURES{conn_i}).pval(j,k,:,:));
-    %                 disp('Hi!');
-                end
-            end
-        end
-        par_save(connStruct_boot,fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
-%         par_save(connStruct_boot_pconn,fpath,sprintf('connStruct%s_bootpconn.mat',CONN_MEASURES{conn_i}));
-%         par_save(connStruct_nonz_pconn,fpath,sprintf('connStruct%s_nonzpconn.mat',CONN_MEASURES{conn_i}));
-        %###
-        % Set basetime to NaN if you don't want to significant mask
-        % Otherwise set basetime to the limits of your cycle, ex. stride
-        
-        baselines=[];
-        connStruct = zeros(length(cluster_struct),length(cluster_struct),length(fAllInds),length(alltimes));
+conn_i = 1;
+trial_nums = zeros(length(subj_inds),length(COND_NAMES));
+for cond_i=1:length(COND_NAMES)
+    fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep COND_NAMES{cond_i}];
+    if ~exist(fpath,'dir')
+        mkdir(fpath);
+    end
+    connStruct_boot=cell(length(cluster_struct),length(cluster_struct));
+%     maskStruct_boot=cell(length(cluster_struct),length(cluster_struct));
+%     connStruct_nonz_pconn = cell(length(cluster_struct),length(cluster_struct));
+%     connStruct_boot_pconn = cell(length(cluster_struct),length(cluster_struct));
+%     connStruct_boot_pconn_ci = cell(length(cluster_struct),length(cluster_struct));
+    subj_cl_ics=zeros(length(cluster_struct),length(cluster_struct));
+    %##
+    for subj_i=1:length(subj_inds)
+        EEG = MAIN_ALLEEG(subj_inds(subj_i));
+        CAT = EEG.etc.COND_CAT(cond_i);
+        fprintf('%s) Number of trials: %i',EEG.subject,CAT.trials);
+        trial_nums(subj_i,cond_i) = CAT.trials;
+        %- determine IC to Cluster assignments
+        icaDat2Add=[]; icaEst4_crossVal=[]; ic_nums=[]; cl_num=[];
         for j=1:length(cluster_ints)
-            for k=1:length(cluster_ints)
-                %## BASELINE
-                %- Calculate and subtract baseline
-                baseidx=find(alltimes>=BASELINE_TIME(1) & alltimes<=BASELINE_TIME(2));
-                baseVals = median(connStruct_boot{j,k}(:,:,baseidx),3);
+            if ~any(cluster_struct(cluster_ints(j)).sets==subj_inds(subj_i))
+            else
+                ic_nums=[ic_nums j];
+                cl_num=[cl_num cluster_ints(j)];
+            end
+        end
+%             disp(ic_nums)
+        %- assign data to cells and save
+        subj_cl_ics(ic_nums,ic_nums)=subj_cl_ics(ic_nums,ic_nums)+1;
+        for j=1:length(ic_nums)
+            for k=1:length(ic_nums)
+                fprintf('\tAssiging edge %i->%i\n',ic_nums(j),ic_nums(k))
+                connStruct_boot{ic_nums(j),ic_nums(k)}(subj_cl_ics(ic_nums(j),ic_nums(k)),:,:)=real(squeeze(CAT.Conn.(CONN_MEASURES{conn_i})(j,k,fAllInds,tInds)));
+
+            end
+        end
+    end
+    
+    par_save(connStruct_boot,fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
+end
+%%
+for cond_i = 1:length(COND_NAMES)
+    fpath = [destination_folder filesep CONN_MEASURES{1} filesep 'R_data' filesep COND_NAMES{4}];
+    base_conn = par_load(fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{1}));
+    fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep COND_NAMES{cond_i}];
+    connStruct_boot = par_load(fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
+    for j=1:length(cluster_ints)
+        for k=1:length(cluster_ints)
+            basestand = median(base_conn{j,k}(:,:,:),3);
+            connStruct_boot{j,k} = connStruct_boot{j,k}-repmat(basestand, [1, 1, length(alltimes)]);
+        end
+    end
+    par_save(connStruct_boot,fpath,sprintf('connStruct%s_basecorr.mat',CONN_MEASURES{conn_i}));
+end
+%%
+% fpath = [destination_folder filesep CONN_MEASURES{1} filesep 'R_data' filesep COND_NAMES{4}];
+% base_conn = par_load(fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{1}));
+for cond_i = 1:length(COND_NAMES)
+    fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep COND_NAMES{cond_i}];
+%     connStruct_boot = par_load(fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
+    connStruct_boot = par_load(fpath,sprintf('connStruct%s_basecorr.mat',CONN_MEASURES{conn_i}));
+    baselines=[];
+    connStruct = zeros(length(cluster_struct),length(cluster_struct),length(fAllInds),length(alltimes));
+    for j=1:length(cluster_ints)
+        for k=1:length(cluster_ints)
+            %## BASELINE
+            %- Calculate and subtract baseline
+            baseidx=find(alltimes>=BASELINE_TIME(1) & alltimes<=BASELINE_TIME(2));
+            baseVals = median(connStruct_boot{j,k}(:,:,baseidx),3);
+%             baseVals = median(base_conn{j,k}(:,:,:),3);
 %                 baseVals = mean(connStruct_boot{j,k}(:,:,baseidx),3);
+            if DO_FDR_BOOTSTAT
+                %## GROUPSIFT BASELINE TEST (SUBTRACTION PERM)
+%                 curr_ersp_compare = connStruct_boot{j,k};
+                curr_ersp_compare = repmat(baseVals, [1, 1, length(alltimes)]);
+                curr_ersp_compare = permute(curr_ersp_compare,[3 2 1]);
+                curr_ersp = connStruct_boot{j,k}; %-repmat(baseVals, [1, 1, length(alltimes)]);
+                curr_ersp = permute(curr_ersp,[3 2 1]);
+%                 [mask,tscore,pval] = clusterLevelPermutationTest(curr_ersp(tInds_ave,:,:),curr_ersp_orig(tInds_ave,:,:),...
+%                                     1,ALPHA,NUM_ITERS); 
+                [mask,tscore,pval] = clusterLevelPermutationTest(curr_ersp,curr_ersp_compare,...
+                                    REPEATED_MEAS,ALPHA,NUM_ITERS); 
+                pval_fdr = fdr(pval);
+                fprintf('\nPercent un-masked: %0.1f%%\n',100*(sum(pval_fdr<ALPHA,[1,2])/(size(pval_fdr,1)*size(pval_fdr,2))));
+                curr_ersp = permute(curr_ersp,[2,1,3]);
+                curr_ersp = median(curr_ersp,3);
+                curr_maskedersp = curr_ersp;
+                curr_maskedersp(pval_fdr>=ALPHA) = 0;
+%                     curr_maskedersp(squeeze(sum(maskStruct_boot{j,k},1))<2) = 0;
+            else
                 curr_ersp = connStruct_boot{j,k}-repmat(baseVals, [1, 1, length(alltimes)]);
                 curr_ersp = permute(curr_ersp,[2 3 1]);
                 %- Use bootstat & bootstrap and significance mask
                 pboot = bootstat(curr_ersp,'median(arg1,3);','boottype','shuffle',...
-                    'label','ERSP','bootside','both','naccu',200,...
+                    'label','ERSP','bootside','both','naccu',2000,...
                     'basevect',baseidx,'alpha',ALPHA,'dimaccu',2);
-%                 pboot = bootstat(curr_ersp,'mean(arg1,3);','boottype','shuffle',...
-%                     'label','ERSP','bootside','both','naccu',200,...
-%                     'basevect',baseidx,'alpha',ALPHA,'dimaccu',2);
-%                 [p_fdr,p_mask] = fdr(pboot,ALPHA,'parametric');
                 fprintf('\n');
                 curr_ersp = median(curr_ersp,3);
                 curr_maskedersp = curr_ersp;
                 curr_maskedersp(curr_ersp > repmat(pboot(:,1),[1 size(curr_ersp,2)]) & curr_ersp < repmat(pboot(:,2),[1 size(curr_ersp,2)])) = 0;
-                %- store
-                curr_maskedersp=permute(curr_maskedersp,[3 1 2]);
-                connStruct(j,k,:,:)=squeeze(curr_maskedersp);
-                %## NO BASELINE (SIFT STATS)
+            end
+            %- store
+            curr_maskedersp=permute(curr_maskedersp,[3 1 2]);
+            connStruct(j,k,:,:)=squeeze(curr_maskedersp);
+            %## NO BASELINE (SIFT STATS)
 %                 curr_ersp = permute(connStruct_boot{j,k},[2 3 1]);
 %                 %- use SIFT output (either boot, nonz, or both), must be stats!
 % %                 mask_in = permute(connStruct_nonz_pconn{j,k}<ALPHA,[2 3 1]);
@@ -343,12 +432,11 @@ for conn_i = 1:length(CONN_MEASURES)
 %                 %- store
 %                 curr_maskedersp=permute(curr_maskedersp,[3 1 2]);
 %                 connStruct(j,k,:,:)=squeeze(curr_maskedersp);
-                
-            end
+
         end
-        par_save(connStruct,fpath,sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{conn_i}));
-        
     end
+    par_save(connStruct,fpath,sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{conn_i}));
+
 end
 %% NO BASELINE (Condition Difference Bootstat)
 %{
@@ -405,7 +493,42 @@ fThetaInds=find(CAT.Conn.freqs>=FREQ_BANDS.theta(1) & CAT.Conn.freqs<=FREQ_BANDS
 fAlphaInds=find(CAT.Conn.freqs>=FREQ_BANDS.alpha(1) & CAT.Conn.freqs<=FREQ_BANDS.alpha(end));
 fBetaInds=find(CAT.Conn.freqs>=FREQ_BANDS.beta(1) & CAT.Conn.freqs<=FREQ_BANDS.beta(end));
 % fAllInds=find(CAT.Conn.freqs>=FREQ_CROP(1) & CAT.Conn.freqs<=FREQ_CROP(end));
+% base_conn_cond = zeros(length(MAIN_ALLEEG),length(COND_NAMES),length(cluster_ints),length(cluster_ints));
+% base_corr_cond = zeros(length(MAIN_ALLEEG),length(COND_NAMES),length(cluster_ints),length(cluster_ints));
+% base_conn_cond = cell(length(COND_NAMES),length(cluster_ints),length(cluster_ints));
+% base_corr_cond = cell(length(COND_NAMES),length(cluster_ints),length(cluster_ints));
+conn_vec = {cell(length(COND_NAMES),length(cluster_ints),length(cluster_ints))};
+subj_vec = {cell(length(COND_NAMES),length(cluster_ints),length(cluster_ints))};
+cond_vec = {cell(length(COND_NAMES),length(cluster_ints),length(cluster_ints))};
+store_s = struct('subjects',subj_vec,...
+    'condition',cond_vec,...
+    'base_conn_alpha',conn_vec,...
+    'base_corr_alpha',conn_vec,...
+    'post_conn_alpha',conn_vec,...
+    'base_conn_theta',conn_vec,...
+    'base_corr_theta',conn_vec,...
+    'post_conn_theta',conn_vec,...
+    'base_conn_beta',conn_vec,...
+    'base_corr_beta',conn_vec,...
+    'post_conn_beta',conn_vec);
+
+subjt = [];
+condt = [];
+valt_a1 = [];
+valt_a2 = [];
+valt_a3 = [];
+valt_t1 = [];
+valt_t2 = [];
+valt_t3 = [];
+valt_b1 = [];
+valt_b2 = [];
+valt_b3 = [];
+jt = [];
+kt = [];
 %##
+% fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data'];
+% baseconn_boot = par_load([fpath filesep COND_NAMES{4}],sprintf('connStruct%s_boot.mat',CONN_MEASURES{1}));
+% baseconn = par_load([fpath filesep COND_NAMES{4}],sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{1}));
 for conn_i = 1:length(CONN_MEASURES)
     fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data'];
     if ~exist(fpath,'dir')
@@ -414,7 +537,8 @@ for conn_i = 1:length(CONN_MEASURES)
     for cond_i=1:length(COND_NAMES)
         net_vals = NET_VALS;
         net_vals_ave = NETVALS_AVE;
-        connStruct_boot = par_load([fpath filesep COND_NAMES{cond_i}],sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
+        connStruct_boot = par_load(fpath,sprintf('connStruct%s_basecorr.mat',CONN_MEASURES{conn_i}));
+%         connStruct_boot = par_load([fpath filesep COND_NAMES{cond_i}],sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
         connStruct = par_load([fpath filesep COND_NAMES{cond_i}],sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{conn_i}));
 %         connStruct_boot = par_load([fpath filesep 'btwn_cond'],sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
 %         connStruct = par_load([fpath filesep 'btwn_cond'],sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{conn_i}));
@@ -425,8 +549,15 @@ for conn_i = 1:length(CONN_MEASURES)
                 %## BASELINE
                 %- baseline using mean of period
                 baseidx=find(alltimes>=BASELINE_TIME(1) & alltimes<=BASELINE_TIME(2));
-                baseVals=mean(connStruct_boot{j,k}(:,:,baseidx),3);
+%                 baseVals=mean(connStruct_boot{j,k}(:,:,baseidx),3);
+                baseVals = median(connStruct_boot{j,k}(:,:,baseidx),3);
+%                 baseVals = median(baseconn_boot{j,k}(:,:,:),3);
+%                 tmp = squeeze(median(baseVals,1));
+%                 baseVals = median(base_conn{j,k}(:,:,:),3);
                 curr_ersp = real(connStruct_boot{j,k}-repmat(real(baseVals), [1, 1, length(alltimes)]));
+%                 baseVals = median(curr_ersp(:,:,baseidx),3);
+%                 curr_ersp = real(curr_ersp-repmat(real(baseVals), [1, 1, length(alltimes)]));
+                non_base_ersp = connStruct_boot{j,k};
                 %- no baseline
 %                 curr_ersp = real(connStruct_boot{j,k});
                 %## EXTRACT FREQ BANDS & TIMES
@@ -434,30 +565,110 @@ for conn_i = 1:length(CONN_MEASURES)
                 bootDat_alpha=curr_ersp(:,fAlphaInds,tInds);
                 bootDat_beta=curr_ersp(:,fBetaInds,tInds);
                 bootDat_all=curr_ersp(:,:,tInds);
+                
                 for subj_i=1:size(bootDat_theta,1)
+                    %-
+                    tt = squeeze(baseVals(subj_i,:));
+                    ttt = connStruct_boot{j,k};
+                    ttt = squeeze(ttt(subj_i,:,tInds));
+                    
+%                     base_conn_cond(subj_i,cond_i,j,k) = mean(tmptmp(:));
+%                     base_corr_cond(subj_i,cond_i,j,k) = mean(bootDat_all(:));
+%                     base_conn_cond{cond_i,j,k} = [base_conn_cond{cond_i,j,k}, mean(tmptmp(:))];
+%                     base_corr_cond{cond_i,j,k} = [base_corr_cond{cond_i,j,k}, mean(bootDat_all(:))];
+%                     base_conn_cond{cond_i,j,k} = [base_conn_cond{cond_i,j,k}, mean(tt(fBetaInds))];
+%                     base_corr_cond{cond_i,j,k} = [base_corr_cond{cond_i,j,k}, mean(bootDat_beta(:))];
+%                     store_s.subjects{cond_i,j,k} = [store_s.subjects{cond_i,j,k}, subj_i];
+%                     store_s.condition{cond_i,j,k} = [store_s.condition{cond_i,j,k}, cond_i];
+%                     store_s.base_conn_alpha{cond_i,j,k} = [store_s.base_conn_alpha{cond_i,j,k}, mean(tt(fAlphaInds))];
+%                     store_s.base_corr_alpha{cond_i,j,k} = [store_s.base_corr_alpha{cond_i,j,k}, mean(bootDat_alpha(:))];
+%                     store_s.post_conn_alpha{cond_i,j,k} = [store_s.post_conn_alpha{cond_i,j,k}, mean(ttt(fAlphaInds,:),'all')];
+%                     store_s.base_conn_theta{cond_i,j,k} = [store_s.base_conn_theta{cond_i,j,k}, mean(tt(fThetaInds))];
+%                     store_s.base_corr_theta{cond_i,j,k} = [store_s.base_corr_theta{cond_i,j,k}, mean(bootDat_theta(:))];
+%                     store_s.post_conn_theta{cond_i,j,k} = [store_s.post_conn_theta{cond_i,j,k}, mean(ttt(fThetaInds,:),'all')];
+%                     store_s.base_conn_beta{cond_i,j,k} = [store_s.base_conn_beta{cond_i,j,k}, mean(tt(fBetaInds))];
+%                     store_s.base_corr_beta{cond_i,j,k} = [store_s.base_corr_beta{cond_i,j,k}, mean(bootDat_beta(:))];
+%                     store_s.post_conn_beta{cond_i,j,k} = [store_s.post_conn_beta{cond_i,j,k}, mean(ttt(fBetaInds,:),'all')];
+%                     %-
+%                     subjt = [subjt; subj_i];
+%                     condt = [condt; cond_i];
+%                     jt = [jt; j];
+%                     kt = [kt; k];
+%                     valt_a1 = [valt_a1; mean(tt(fAlphaInds))];
+%                     valt_a2 = [valt_a2; mean(bootDat_alpha(:))];
+%                     valt_a3 = [valt_a3; mean(ttt(fAlphaInds,:),'all')];
+%                     valt_t1 = [valt_t1; mean(tt(fThetaInds))];
+%                     valt_t2 = [valt_t2; mean(bootDat_theta(:))];
+%                     valt_t3 = [valt_t3; mean(ttt(fThetaInds,:),'all')];
+%                     valt_b1 = [valt_b1; mean(tt(fBetaInds))];
+%                     valt_b2 = [valt_b2; mean(bootDat_beta(:))];
+%                     valt_b3 = [valt_b3; mean(ttt(fBetaInds,:),'all')];
+                    %-
                     A=bootDat_theta(subj_i,:,:);
                     A(squeeze(connStruct(j,k,fThetaInds,tInds))==0)=0; %mask using average mask
                     net_vals.theta{j,k}=[net_vals.theta{j,k} mean(squeeze(mean(squeeze(A),1)))]; %A(:))];
                     tmp_dat = connStruct(j,k,fThetaInds,tInds);
                     net_vals_ave.theta(j,k)= mean(tmp_dat(:));
+                    
+                    t1 = non_base_ersp(subj_i,fThetaInds,tInds);
+                    t2 = non_base_ersp(subj_i,fThetaInds,baseidx);
+                    store_s.base_conn_theta{cond_i,j,k} = [store_s.base_conn_theta{cond_i,j,k}, mean(t2(:))];
+                    store_s.base_corr_theta{cond_i,j,k} = [store_s.base_corr_theta{cond_i,j,k}, mean(squeeze(mean(squeeze(A),1)))];
+                    store_s.post_conn_theta{cond_i,j,k} = [store_s.post_conn_theta{cond_i,j,k}, mean(t1(:))];
+                    valt_t1 = [valt_t1; mean(t2(:))];
+                    valt_t2 = [valt_t2; mean(squeeze(mean(squeeze(A),1)))];
+                    valt_t3 = [valt_t3; mean(t1(:))];
+                    
 
                     A=bootDat_alpha(subj_i,:,:);
                     A(squeeze(connStruct(j,k,fAlphaInds,tInds))==0)=0; %mask using average mask
                     net_vals.alpha{j,k}=[net_vals.alpha{j,k} mean(squeeze(mean(squeeze(A),1)))]; %A(:))];
                     tmp_dat = connStruct(j,k,fAlphaInds,tInds);
                     net_vals_ave.alpha(j,k)= mean(tmp_dat(:));
+                    
+                    t1 = non_base_ersp(subj_i,fAlphaInds,tInds);
+                    t2 = non_base_ersp(subj_i,fAlphaInds,baseidx);
+                    store_s.base_conn_alpha{cond_i,j,k} = [store_s.base_conn_alpha{cond_i,j,k}, mean(t2(:))];
+                    store_s.base_corr_alpha{cond_i,j,k} = [store_s.base_corr_alpha{cond_i,j,k}, mean(squeeze(mean(squeeze(A),1)))];
+                    store_s.post_conn_alpha{cond_i,j,k} = [store_s.post_conn_alpha{cond_i,j,k}, mean(t1(:))];
+                    valt_a1 = [valt_a1; mean(t2(:))];
+                    valt_a2 = [valt_a2; mean(squeeze(mean(squeeze(A),1)))];
+                    valt_a3 = [valt_a3; mean(t1(:))];
 
                     A=bootDat_beta(subj_i,:,:);
                     A(squeeze(connStruct(j,k,fBetaInds,tInds))==0)=0; %mask using average mask
                     net_vals.beta{j,k}=[net_vals.beta{j,k} mean(squeeze(mean(squeeze(A),1)))]; %A(:))];
                     tmp_dat = connStruct(j,k,fBetaInds,tInds);
                     net_vals_ave.beta(j,k)= mean(tmp_dat(:));
+                    
+                    t1 = non_base_ersp(subj_i,fBetaInds,tInds);
+                    t2 = non_base_ersp(subj_i,fBetaInds,baseidx);
+                    store_s.base_conn_beta{cond_i,j,k} = [store_s.base_conn_beta{cond_i,j,k}, mean(t2(:))];
+                    store_s.base_corr_beta{cond_i,j,k} = [store_s.base_corr_beta{cond_i,j,k}, mean(squeeze(mean(squeeze(A),1)))];
+                    store_s.post_conn_beta{cond_i,j,k} = [store_s.post_conn_beta{cond_i,j,k}, mean(t1(:))];
+                    valt_b1 = [valt_b1; mean(t2(:))];
+                    valt_b2 = [valt_b2; mean(squeeze(mean(squeeze(A),1)))];
+                    valt_b3 = [valt_b3; mean(t1(:))];
 
                     A=bootDat_all(subj_i,:,:);
                     A(squeeze(connStruct(j,k,:,tInds))==0)=0; %mask using average mask
                     net_vals.all{j,k}=[net_vals.all{j,k} mean(squeeze(mean(squeeze(A),1)))]; %A(:))];
                     tmp_dat = connStruct(j,k,:,tInds);
                     net_vals_ave.all(j,k)= mean(tmp_dat(:));
+                    
+                    store_s.subjects{cond_i,j,k} = [store_s.subjects{cond_i,j,k}, subj_i];
+                    store_s.condition{cond_i,j,k} = [store_s.condition{cond_i,j,k}, cond_i];
+                    
+                    
+                    
+                    %-
+                    subjt = [subjt; subj_i];
+                    condt = [condt; cond_i];
+                    jt = [jt; j];
+                    kt = [kt; k];
+                    
+                    
+                    
                 end
             end
         end
@@ -465,18 +676,160 @@ for conn_i = 1:length(CONN_MEASURES)
         par_save(net_vals_ave,fpath,sprintf('netVals_%s_aveTime.mat',strjoin(strsplit(COND_NAMES{cond_i},' '),'_')));
     end
 end
+
+%% corrected conn validation
+sub_ints = [7,1,5,6,9,4];
+% sub_ints = [1,2,3,4,5,6,7,8,9];
+cluster_names = {'RPPa-Oc','Cuneus','Precuneus','RFrontal','LPPa-Oc','LSM','RSM','SuppMotor','LFrontal'}; % (06/27/2023) JS, unsure on these as of yet.
+COLOR_LIMITS = [-0.00001,0.00001];
+for cond_i = 1:length(COND_NAMES)
+    datain = par_load(fpath,sprintf('netVals_%s_aveTime.mat',strjoin(strsplit(COND_NAMES{cond_i},' '),'_')));
+%     tmp = squeeze(nanmedian(base_conn_cond(:,cond_i,sub_ints,sub_ints),1));
+%         tmp = squeeze(base_corr_cond(cond_i,sub_ints,sub_ints));
+%     tmp = squeeze(median([base_conn_cond(cond_i,sub_ints,sub_ints)]));
+    fn = fieldnames(datain);
+    for i = 1:length(fn)
+        tmp = datain.(fn{i});
+        tmp = tmp(sub_ints,sub_ints);
+        I = eye(size(tmp));
+        I = (I == 0);
+        tmp = tmp.*I;
+        tmp(tmp == 0) = nan();
+        %- plot
+    %     figure;
+        figure;
+        hnd = heatmap(tmp,'Colormap',linspecer); %,'CellLabelColor', 'None');
+        %- create title
+        hnd.YDisplayLabels = cluster_names(sub_ints);
+        hnd.XDisplayLabels = cluster_names(sub_ints);
+        hnd.ColorLimits = COLOR_LIMITS;
+        hnd.GridVisible = 'off';
+        hnd.FontName = 'Times New Roman';
+        hnd.FontSize = 16;
+        hnd.CellLabelFormat = '%0.1g';
+        hnd.NodeChildren(3).Title.Interpreter = 'none';
+        fig_i = get(groot,'CurrentFigure');
+        set(fig_i,'Position',[10,100,720,620])
+        exportgraphics(fig_i,[destination_folder filesep sprintf('%s_condheatmap_%s.jpg',COND_NAMES{cond_i},fn{i})],'Resolution',300);
+        close(fig_i);
+    end
+end
+%% corrected conn validation
+sub_ints = [7,1,5,6,9,4];
+% sub_ints = [1,2,3,4,5,6,7,8,9];
+cluster_names = {'RPPa-Oc','Cuneus','Precuneus','RFrontal','LPPa-Oc','LSM','RSM','SuppMotor','LFrontal'}; % (06/27/2023) JS, unsure on these as of yet.
+% COLOR_LIMITS = [-0.0001,0.0001];
+COLOR_LIMITS = [0,1];
+% base_conn_cond(base_conn_cond==0) = nan();
+fn = fieldnames(store_s);
+fn = fn(3:end);
+% fn = {'base_corr_alpha','base_corr_theta','base_corr_beta'};
+for data_i = 1:length(fn)
+    for cond_i = 1:4
+    %     tmp = squeeze(nanmedian(base_conn_cond(:,cond_i,sub_ints,sub_ints),1));
+%         tmp = squeeze(base_corr_cond(cond_i,sub_ints,sub_ints));
+        tmp = squeeze(store_s.(fn{data_i})(cond_i,sub_ints,sub_ints));
+        tmp = cellfun(@median,tmp)*10^4;
+    %     tmp = squeeze(median([base_conn_cond(cond_i,sub_ints,sub_ints)]));
+        I = eye(size(tmp));
+        I = (I == 0);
+        tmp = tmp.*I;
+        tmp(tmp == 0) = nan();
+        %- plot
+    %     figure;
+        figure;
+        hnd = heatmap(tmp,'Colormap',linspecer); %,'CellLabelColor', 'None');
+        %- create title
+        hnd.YDisplayLabels = cluster_names(sub_ints);
+        hnd.XDisplayLabels = cluster_names(sub_ints);
+        hnd.ColorLimits = COLOR_LIMITS;
+        hnd.GridVisible = 'off';
+        hnd.FontName = 'Times New Roman';
+        hnd.FontSize = 16;
+        hnd.CellLabelFormat = '%0.2g';
+        hnd.NodeChildren(3).Title.Interpreter = 'none';
+        fig_i = get(groot,'CurrentFigure');
+        set(fig_i,'Position',[10,100,720,620])
+        exportgraphics(fig_i,[destination_folder filesep sprintf('%s_condheatmap_%s.jpg',COND_NAMES{cond_i},fn{data_i})],'Resolution',300);
+        close(fig_i);
+        pause(1);
+    end
+end
+%% GLM TEST
+% subjt = categorical(subjt);
+subjt = categorical(subjt);
+condt = categorical(condt);
+jt = categorical(jt);
+kt = categorical(kt);
+valt_a1 = double(valt_a1);
+valt_a2 = double(valt_a2);
+valt_a3 = double(valt_a3);
+valt_t1 = double(valt_t1);
+valt_t2 = double(valt_t2);
+valt_t3 = double(valt_t3);
+valt_b1 = double(valt_b1);
+valt_b2 = double(valt_b2);
+valt_b3 = double(valt_b3);
+cond_table = table(subjt,condt,jt,kt,(valt_a1),(valt_a2),(valt_a3),...
+    (valt_t1),(valt_t2),(valt_t3),(valt_b1),(valt_b2),(valt_b3));
+table_vars = cond_table.Properties.VariableNames;
+table_vars = table_vars(5:end);
+for i = 1:length(table_vars)
+    %## (MAIN TEST) CONDITION MIXED EFFECTS
+%     modelspec = sprintf('%s~1+condt+subjt',table_vars{i});
+%     mdl_one = fitlm(cond_table,modelspec);
+%     modelspec = sprintf('%s~1+condt',table_vars{i});
+%     mdl_one = fitlm(cond_table,modelspec);
+%     modelspec = sprintf('%s~1+condt+(condt|subjt)',table_vars{i});
+    modelspec = sprintf('%s~1+condt+jt*kt',table_vars{i});
+    mdl_one = fitlme(cond_table,modelspec);
+    modelspec = sprintf('%s~1',table_vars{i});
+    mdl_comp = fitlme(cond_table,modelspec);
+    [stats] = anova(mdl_one);
+    terrain_mixc_f = stats{2,5};
+    disp(mdl_one)
+    disp(anova(mdl_one));
+    fid = fopen([save_dir filesep sprintf('%s_mdl_fitlme.txt',table_vars{i})],'wt');
+    %- converst Summary anova to char array
+    txt = evalc('anova(mdl_one)');
+    fprintf(fid,'ANOVA EVAL\n');
+    fprintf(fid,'%s',txt);
+    fprintf(fid,'\n');
+    %- Convert summary to char array
+    fprintf(fid,'FITGLME EVAL\n');
+    txt = evalc('mdl_one');
+    fprintf(fid,'%s',txt);
+%     for j = 1:length(vals_tn)
+%         fprintf(fid,'%i: %s\n',j,unique(cond_table.cond_t(j));
+%     end
+    %- multiple comparisons
+    for y = 1:numel(mdl_one.CoefficientNames)
+        fprintf(fid,'Contrast position %i: %s\n', y, char(mdl_one.CoefficientNames{y}));
+    end
+    p_mcomp = [];
+%     [pVal] = coefTest(mdl_one, [0,1,0,0]); fprintf(fid,'multicomp intercept:cat_1_2, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
+%     [pVal] = coefTest(mdl_one, [0,0,1,0]); fprintf(fid,'multicomp intercept:cat_1_3, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
+%     [pVal] = coefTest(mdl_one, [0,0,0,1]); fprintf(fid,'multicomp intercept:cat_1_4, F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
+%     [pVal] = coefTest(mdl_one, [0,1,2,0]); fprintf(fid,'multicomp cat_1_2:cat_1_3,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
+%     [pVal] = coefTest(mdl_one, [0,1,0,2]); fprintf(fid,'multicomp cat_1_2:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
+%     [pVal] = coefTest(mdl_one, [0,0,1,2]); fprintf(fid,'multicomp cat_1_3:cat_1_4,   F(%i, %i)=%0.2f,\t p=%0.7f\n', df1, df2, F, pVal); p_mcomp = [p_mcomp pVal];
+    
+    [h,crit_p,adj_ci_cvrg,adj_p_speed] = fdr_bh(p_mcomp,0.05,'pdep','no');
+    fprintf(fid,'False Discovery Corrected:\n');
+    fprintf(fid,'%0.4f\n',adj_p_speed); fprintf(fid,'%i\n',h); fprintf(fid,'critical fdr_p: %0.4f\n',crit_p);
+    %- cohens f2 test
+    R21 = mdl_comp.SSR/mdl_comp.SST;
+    R22 = mdl_one.SSR/mdl_one.SST; 
+    cohens_f2 = (R22-R21)/(1-R22);
+    fprintf(fid,'cohens f2: %0.4f\n',cohens_f2);
+    fprintf('Cohens f2: %0.4f\n',cohens_f2);
+    fclose(fid);
+end
 %% PERMUTATE SUBJECTS
 %Permuting subset of subjects to test the min, average, and max samples per connection.
 %This helps estimate how increases in subject sample size affect the sample size at each connection.
-
-% subjectInds=[1:7 9:13 15:17 19:20 22:33];
-% numConns_boot=cell(16,16);
-% cond='allSVZ'; group = 'all';
-% RootData='/usr/local/VR_connectivity/Data/';
-goodClusts=3:12;
-sub_cl_inds=3:12;
-% load('/usr/local/VR_connectivity/Data/STUDYtopo.mat');
-% load('/usr/local/VR_connectivity/Data/cluster_1222018.mat'); %_pruned.mat');
+goodClusts=valid_cls;
+sub_cl_inds=sub_ints;
 cl_struct = MAIN_STUDY.cluster;
 allSubjs = 1:length(MAIN_ALLEEG);
 subj_cl_ics = cell(length(cl_struct),length(cl_struct));
@@ -490,7 +843,6 @@ for subj_i=1:length(MAIN_ALLEEG)
             icNums=[icNums j];
         end
     end
-    
     icNums=[icNums 9:16]; %add in muscles
     for j=icNums
         for k=icNums

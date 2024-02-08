@@ -5,6 +5,7 @@ STEPS:
 4) ants_norm.bash (note: only needs to be ran once)
 4) ants_write_dip_csv.m
 5) ants_norm_apply_trans.bash
+6) ants_norm_dips.m (run_ants_norm_dips.sh)
 
 NOTES:
 Email from Sumire:

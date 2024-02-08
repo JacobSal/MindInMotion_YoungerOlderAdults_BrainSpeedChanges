@@ -54,6 +54,25 @@ parse(p,STUDY,ALLEEG,save_dir,varargin{:});
 %- PARAMETER
 CLUSTERS_TO_PLOT = p.Results.CLUSTERS_TO_PLOT;
 SPEC_PARAMS = p.Results.SPEC_PARAMS;
+colors{1}  = [1 1 1];            % White
+colors{2}  = [1 1 0];            % Yellow
+colors{3}  = [221,52,151]/255;            % Pink
+colors{4}  = [1 0 0];            % Red
+colors{5}  = [250 140 0]/255;    % oragne
+colors{6}  = [210 173 255]/255;   % purple
+colors{7}  = [0.5 0.5 0];        % Olive
+colors{8}  = [0.5 0 0.5];        % Purple
+colors{9}  = [0.5 0 0];          % Maroon
+colors{10} = [0 1 1];            % Aqua
+colors{11} = [0 1 0];            % Lime
+colors{12} = [0 0.5 0.5];        % Teal
+colors{13} = [0 0.5 0];          % Green
+colors{14} = [0 0 1];            % Blue
+colors{15} = [0 0 0.5];          % Navy
+colors{16} = [0.8 0.8 0.8];            % Gray
+% Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+% Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
 %% ===================================================================== %%
 c_names = {STUDY.cluster(CLUSTERS_TO_PLOT).name};
 fprintf('Plotting cluster numbers:'); fprintf('%i,',CLUSTERS_TO_PLOT(1:end-1)); fprintf('%i',CLUSTERS_TO_PLOT(end)); fprintf('\n');
@@ -100,17 +119,20 @@ set(fig_i,'position',DIP_SING_POS,'color','w')
 camzoom(1.2^2);
 % camzoom(1.2^2);
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.jpg')],'Resolution',300);
-% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.pdf')],'ContentType','vector','Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.eps')],'ContentType','vector','Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.eps')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.svg')],'ContentType','vector','Resolution',300);
 saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.fig')]);
 view([45,0,0])
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.jpg')],'Resolution',300);
-% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.eps')],'ContentType','vector','Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.eps')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.svg')],'ContentType','vector','Resolution',300);
 view([0,-45,0])
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.jpg')],'Resolution',300);
-% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.eps')],'ContentType','vector','Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.eps')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.svg')],'ContentType','vector','Resolution',300);
 %{
 saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.jpg')]);
 saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.pdf')]);
@@ -133,15 +155,18 @@ camzoom(1);
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.jpg')],'Resolution',300);
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.pdf')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.eps')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.svg')],'ContentType','vector','Resolution',300);
 saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.fig')]);
 view([45,0,0])
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.jpg')],'Resolution',300);
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.eps')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.svg')],'ContentType','vector','Resolution',300);
 view([0,-45,0])
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.jpg')],'Resolution',300);
 exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.eps')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.svg')],'ContentType','vector','Resolution',300);
 %{
 saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.jpg')]);
 saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.fig')]);
@@ -179,7 +204,7 @@ saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.jpg')]);
 %% (SINGLE CLUSTSER PLOTS)
 if DO_SINGLE_CLUSTER_PLOTS
     
-    COLOR_OPTS = linspecer(length(CLUSTERS_TO_PLOT)+1);
+    COLOR_OPTS = colors; %linspecer(length(CLUSTERS_TO_PLOT)+1);
     colors = cell(1,size(COLOR_OPTS,1));
     for i = 1:size(COLOR_OPTS,1)
         colors{i} = COLOR_OPTS(i,:);
@@ -197,23 +222,26 @@ if DO_SINGLE_CLUSTER_PLOTS
                 fprintf('Can''t change the color of this child\n')
             end
         end
-    %     camzoom(1);
+        camzoom(1.2^2);
         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.jpg',cluster_i)],'Resolution',300);
         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+%         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.svg',cluster_i)],'ContentType','vector','Resolution',300);
     %     saveas(fig_i,[save_dir filesep sprintf('new_dipplot_alldipspc_top.fig')]);
         view([45,0,0])
         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.jpg',cluster_i)],'Resolution',300);
         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+%         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.svg',cluster_i)],'ContentType','vector','Resolution',300);
         view([0,-45,0])
         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.jpg',cluster_i)],'Resolution',300);
         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+%         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.svg',cluster_i)],'ContentType','vector','Resolution',300);
         %- 
         %## TOPO PLOTS
         if ~isfield(STUDY.cluster,'topo') 
             STUDY.cluster(1).topo = [];
         end
-        for i = 1:length(CLUSTERS_TO_PLOT) % For each cluster requested
-            clust_i = CLUSTERS_TO_PLOT(i);
+        for j = 1:length(CLUSTERS_TO_PLOT) % For each cluster requested
+            clust_i = CLUSTERS_TO_PLOT(j);
             disp(clust_i)
             if isempty(STUDY.cluster(clust_i).topo)
                 % Using this custom modified code to allow taking average within participant for each cluster
@@ -231,6 +259,7 @@ if DO_SINGLE_CLUSTER_PLOTS
         end
         exportgraphics(fig_i,[save_dir filesep sprintf('%i_cluster_topo_avg.jpg',cluster_i)],'Resolution',300);
         exportgraphics(fig_i,[save_dir filesep sprintf('%i_cluster_topo_avg.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+%         exportgraphics(fig_i,[save_dir filesep sprintf('%i_cluster_topo_avg.svg',cluster_i)],'ContentType','vector','Resolution',300);
     end
     %     saveas(fig_i,fullfile(save_dir,sprintf('%i_cluster_topo_avg.fig',cluster_i)));
     %{

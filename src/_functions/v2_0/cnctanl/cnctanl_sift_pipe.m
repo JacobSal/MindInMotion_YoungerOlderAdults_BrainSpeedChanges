@@ -256,6 +256,10 @@ if length(conn_components) ~= size(ALLEEG(1).icaweights,1)
     end
 end
 
+%## ONE MODEL
+% TMP = ALLEEG;
+% ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
+
 %% (MAIN CONNECTIVITY PIPELINE) ======================================== %%
 %## STEP 3: Pre-process the data
 fprintf('===================================================\n');
@@ -317,7 +321,7 @@ end
 %## (PLOT)
 tmp_morder = zeros(1,length(ALLEEG));
 for cond_i = 1:length(ALLEEG)
-    fprintf('%s) Plotting Validations',ALLEEG(cond_i).subject);
+    fprintf('%s) Plotting Validations\n',ALLEEG(cond_i).subject);
     handles = vis_plotOrderCriteria(ALLEEG(cond_i).CAT.IC,'conditions', [],    ...
                                             'icselector', ESTSELMOD_CFG.icselector,  ...
                                             'minimizer', 'min', ...
@@ -362,18 +366,17 @@ end
 % Note that EEG.CAT.MODEL now contains the model structure with
 % coefficients (in MODEL.AR), prediction errors (MODEL.PE) and other
 % self-evident information. 
-% [ALLEEG] = pop_est_fitMVAR(ALLEEG,GUI_MODE,...
-%         ALLEEG(1).CAT.configs.est_selModelOrder.modelingApproach,...
-%         'ModelOrder',model_order);
-%##
-TMP = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
-[TMP, cfg] = pop_est_fitMVAR(TMP,GUI_MODE,...
+[ALLEEG] = pop_est_fitMVAR(ALLEEG,GUI_MODE,...
         ALLEEG(1).CAT.configs.est_selModelOrder.modelingApproach,...
         'ModelOrder',model_order);
-for cond_i = 1:length(ALLEEG)
-    ALLEEG(cond_i).CAT.MODEL = TMP.CAT.MODEL;
-    ALLEEG(cond_i).CAT.configs.('est_fitMVAR') = cfg;
-end
+%##
+% [ALLEEG, cfg] = pop_est_fitMVAR(ALLEEG,GUI_MODE,...
+%         ALLEEG(1).CAT.configs.est_selModelOrder.modelingApproach,...
+%         'ModelOrder',model_order);
+% for cond_i = 1:length(TMP)
+%     TMP(cond_i).CAT.MODEL = ALLEEG.CAT.MODEL;
+%     TMP(cond_i).CAT.configs.('est_fitMVAR') = cfg;
+% end
 
 %- Alternately, we can fit the VAR parameters using a Kalman filter (see
 % doc est_fitMVARKalman for more info on arguments)

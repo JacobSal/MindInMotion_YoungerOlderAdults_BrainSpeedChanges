@@ -83,7 +83,8 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
+% [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
@@ -92,7 +93,8 @@ DATA_SET = 'MIM_dataset';
 colormap(linspecer);
 % dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
 % dt = '10252023_MIM_OAN70_noslowwalkers_gait_powpow0p20';
-dt = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
+% dt = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
+dt = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 %- Subject Directory information
 % OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 %## soft define

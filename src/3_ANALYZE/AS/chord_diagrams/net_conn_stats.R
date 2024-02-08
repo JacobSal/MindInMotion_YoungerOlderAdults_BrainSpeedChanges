@@ -10,7 +10,10 @@ library(tidyverse)
 # mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5\\_figs\\conn\\dDTF08\\R_data\\";
 # mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5\\_figs\\conn\\dDTF08\\R_data\\";
 # mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01292023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75\\_figs\\conn\\dDTF08\\R_data\\";
-mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01312023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75\\_figs\\conn\\dDTF08\\R_data\\";
+# mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01312023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75\\_figs\\conn\\dDTF08\\R_data\\";
+# mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\01312023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75\\_figs\\conn\\subj_no_prune\\dDTF08\\R_data\\";
+mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\02012023_subjrec_2bounces_rally_serve_human_epochfix_JS_n1p5-1p5\\_figs\\conn\\dDTF08\\R_data\\";
+# mat_dir <- "M:\\jsalminen\\GitHub\\par_EEGProcessing\\src\\_data\\AS_dataset\\_studies\\02012023_subjrec_2bounces_rally_serve_human_epochfixfix_JS_n1p5-1p5\\_figs\\conn\\dDTF08\\R_data\\";
 
 
 # CLUSTER ASSIGNMENTS
@@ -35,14 +38,14 @@ sub_ints = c(7,1,5,6,9,4)
 # CONDITIONS = c("Human_Subject_hit","BM_Subject_hit");
 # CONDITIONS = c("2Bounce_BM_Subject_receive","2Bounce_Human_Subject_receive");
 # CONDITIONS = c("1Bounce_Human_Subject_hit","Serve_Human_Subject_hit");
-CONDITIONS = c("2Bounce_Human_Subject_hit","1Bounce_Human_Subject_hit","Serve_Human_Subject_hit");
-
+CONDITIONS = c("2Bounce_Human_Subject_hit","1Bounce_Human_Subject_hit","Serve_Human_Subject_hit","StandingBaseline");
+# CONDITIONS = c("Serve_Human_Subject_hit")
 #%% PLOT PARAMS
 # CIRC_XLIM = c(0,20)
 # MULTI_FACTOR = 10^2
-CIRC_XLIM = c(0,5)
+CIRC_XLIM = c(0,10)
 MULTI_FACTOR = 10^4
-CIRC_MAJOR_TICKS = c(0,1,2,3,4,5); #c(0,2.5,5,7.5,10,15,20);
+CIRC_MAJOR_TICKS = c(0,5,10); #c(0,2.5,5,7.5,10,15,20);
 CIRC_MINOR_TICK = 2
 ALPHA = 0.05;
 
@@ -97,12 +100,12 @@ for(cond in CONDITIONS){
     
     
     #FDR correction
-    for(i in cli){
-      pvals_theta_box[,i]=p.adjust(pvals_theta_box[,i],method='fdr')
-      pvals_alpha_box[,i]=p.adjust(pvals_alpha_box[,i],method='fdr')
-      pvals_beta_box[,i]=p.adjust(pvals_beta_box[,i],method='fdr')
-      pvals_all_box[,i]=p.adjust(pvals_all_box[,i],method='fdr')
-    }
+    # for(i in cli){
+    #   pvals_theta_box[,i]=p.adjust(pvals_theta_box[,i],method='fdr')
+    #   pvals_alpha_box[,i]=p.adjust(pvals_alpha_box[,i],method='fdr')
+    #   pvals_beta_box[,i]=p.adjust(pvals_beta_box[,i],method='fdr')
+    #   pvals_all_box[,i]=p.adjust(pvals_all_box[,i],method='fdr')
+    # }
     
     #Check for significance
     isSig_theta_box = matrix(0L, nrow = length(cli), ncol = length(cli))
@@ -212,46 +215,52 @@ for(cond in CONDITIONS){
                                          minor.ticks=CIRC_MINOR_TICK, lwd=9) # , labels.away.percentage = 0.15
                            }) 
     
-    # Add nonsignificant links first
-    curr_starts_gray=matrix(0L, nrow = 1, ncol = length(sub_ints))
+    # Add nonsignificant links first A[j,i], i = from, j = to
+    # curr_starts_gray=matrix(0L, nrow = 1, ncol = length(sub_ints))
+    curr_starts=matrix(0L, nrow = 1, ncol = length(sub_ints))
     for(i in 1:length(sub_ints)) {
       for(j in 1:length(sub_ints)){
         if((A[i,j]!=0 | A[j,i]!=0) & (A[j,i]>A[i,j])){
           if(sign_vals[i,j]==0){
             if(plotBand_cort=='theta'){
               data_temp = abs(netData_ave$SAVEVAR[[1]])*MULTI_FACTOR
-              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.8)) 
+              # circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.8)) 
             }else if(plotBand_cort=='alpha'){
               data_temp = abs(netData_ave$SAVEVAR[[2]])*MULTI_FACTOR
-              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.8)) 
+              # circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.8)) 
             }else if(plotBand_cort=='all'){
               data_temp = abs(netData_ave$SAVEVAR[[4]])*MULTI_FACTOR
-              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.8)) 
+              # circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.8)) 
             }else if(plotBand_cort=='beta'){
               data_temp = abs(netData_ave$SAVEVAR[[3]])*MULTI_FACTOR
-              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), col = adjustcolor('gray', alpha.f = 0.8)) 
             }
-            curr_starts_gray[i] = curr_starts_gray[i]+data_temp[i,j]
-            curr_starts_gray[j] = curr_starts_gray[j]+data_temp[j,i]
+            if(sign_vals[j,i]>0){
+              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), arr.type = "big.arrow", directional = -1, arr.col = "gray", arr.length=0.2, lty = "dotted", col = adjustcolor('#c9716d', alpha.f = 0.5)) 
+              
+            }else if(sign_vals[j,i]<0){
+              circos.link(cluster_names[i], c(curr_starts_gray[i],curr_starts_gray[i]+data_temp[i,j]), cluster_names[j], c(curr_starts_gray[j],curr_starts_gray[j]+data_temp[j,i]), arr.type = "big.arrow", directional = -1,  arr.col = "gray",  arr.width=0.1, lty = "dotted", col = adjustcolor('#7b92c9', alpha.f = 0.5)) 
+            }
+            curr_starts[i] = curr_starts[i]+data_temp[i,j]
+            curr_starts[j] = curr_starts[j]+data_temp[j,i]
           }
         }
       }
     }
     
-    curr_starts=matrix(0L, nrow = 1, ncol = length(sub_ints))
+    # curr_starts=matrix(0L, nrow = 1, ncol = length(sub_ints))
     for(i in 1:length(sub_ints)) {
       for(j in 1:length(sub_ints)){
         if((A[i,j]!=0 | A[j,i]!=0) & (A[j,i]>A[i,j])){
           if(sign_vals[i,j]>0 & sign_vals[j,i]>0){
-            circos.link(cluster_names[i], c(curr_starts[i],curr_starts[i]+A[i,j]), cluster_names[j], c(curr_starts[j],curr_starts[j]+A[j,i]), col = adjustcolor('red', alpha.f = 0.7))#color_vals_links[8]) 
+            circos.link(cluster_names[i], c(curr_starts[i],curr_starts[i]+A[i,j]), cluster_names[j], c(curr_starts[j],curr_starts[j]+A[j,i]),col = adjustcolor('red', alpha.f = 0.8))#color_vals_links[8]) 
             curr_starts[i] = curr_starts[i]+A[i,j]
             curr_starts[j] = curr_starts[j]+A[j,i]
           }else if(sign_vals[i,j]<0 & sign_vals[j,i]<0){
-            circos.link(cluster_names[i], c(curr_starts[i],curr_starts[i]+A[i,j]), cluster_names[j], c(curr_starts[j],curr_starts[j]+A[j,i]), col = adjustcolor('blue', alpha.f = 0.7)) 
+            circos.link(cluster_names[i], c(curr_starts[i],curr_starts[i]+A[i,j]), cluster_names[j], c(curr_starts[j],curr_starts[j]+A[j,i]),  col = adjustcolor('blue', alpha.f = 0.8)) 
             curr_starts[i] = curr_starts[i]+A[i,j]
             curr_starts[j] = curr_starts[j]+A[j,i]
           }else if(sign_vals[i,j]!=0 & sign_vals[j,i]!=0){
-            circos.link(cluster_names[i], c(curr_starts[i],curr_starts[i]+A[i,j]), cluster_names[j], c(curr_starts[j],curr_starts[j]+A[j,i]), col = adjustcolor('magenta', alpha.f = 0.7)) 
+            circos.link(cluster_names[i], c(curr_starts[i],curr_starts[i]+A[i,j]), cluster_names[j], c(curr_starts[j],curr_starts[j]+A[j,i]), col = adjustcolor('magenta', alpha.f = 0.8)) 
             curr_starts[i] = curr_starts[i]+A[i,j]
             curr_starts[j] = curr_starts[j]+A[j,i]
           }

@@ -94,12 +94,12 @@ STUDY.cluster = tmp_cluster;
 % STUDY.etc.rmvd_subj.inds = tmp_rmv_subjs;
 %## SAVE
 % parfor (subj_i = 1:length(ALLEEG),POOL_SIZE)
-parfor subj_i = 1:length(ALLEEG)
-    ALLEEG(subj_i).etc.full_setfile.filename = ALLEEG(subj_i).filename;
-    ALLEEG(subj_i).etc.full_setfile.filepath = ALLEEG(subj_i).filepath;
-    ALLEEG(subj_i).filename = sprintf('%s_%s_ICA_TMPEEG',ALLEEG(subj_i).subject,'reducedcomps');
-    ALLEEG(subj_i) = pop_saveset(ALLEEG(subj_i),'filename',ALLEEG(subj_i).filename,'filepath',ALLEEG(subj_i).filepath);
-end
+% parfor subj_i = 1:length(ALLEEG)
+%     ALLEEG(subj_i).etc.full_setfile.filename = ALLEEG(subj_i).filename;
+%     ALLEEG(subj_i).etc.full_setfile.filepath = ALLEEG(subj_i).filepath;
+%     ALLEEG(subj_i).filename = sprintf('%s_%s_ICA_TMPEEG',ALLEEG(subj_i).subject,'reducedcomps');
+%     ALLEEG(subj_i) = pop_saveset(ALLEEG(subj_i),'filename',ALLEEG(subj_i).filename,'filepath',ALLEEG(subj_i).filepath);
+% end
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
 end
 %% SUBFUNCTIONS

@@ -142,7 +142,8 @@ ERSP_PARAMS = struct('subbaseline','off',...
 % (08/03/2023) JS, turning subbaseline to off to align with methods set
 % inside CL's PlotAndSaveERSP_CL_V3.m...
 %- datetime override
-dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
+% dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
+dt = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 %## Soft Define
 study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 DATA_DIR = [source_dir filesep '_data'];
@@ -160,28 +161,14 @@ ATLAS_PATH = [PATH_ROOT filesep 'par_EEGProcessing' filesep 'submodules',...
 % see. https://www.fieldtriptoolbox.org/template/atlas/
 ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI atalst
     [ATLAS_PATH filesep 'afni' filesep 'TTatlas+tlrc.HEAD'],... % tailarch atlas
-    [ATLAS_PATH filesep 'brainnetome' filesep 'BNA_MPM_thr25_1.25mm.nii'],...
-    [ATLAS_PATH filesep 'spm_anatomy' filesep 'AllAreas_v18_MPM.mat'],...
-    [ATLAS_PATH filesep 'vtpm' filesep 'vtpm.mat'],...
-    [ATLAS_PATH filesep 'yeo' filesep 'Yeo2011_17Networks_MNI152_FreeSurferConformed1mm_LiberalMask_colin27.nii'],...
-    [ATLAS_PATH filesep 'brainweb' filesep 'brainweb_discrete.mat']}; % also a discrete version of this
-% SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\07222023_MIM_OAN79_subset_prep_verified_gait_conn\cluster\dipole_1_scalp_0_ersp_0_spec_0';
-SUB_DIR = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\10252023_MIM_OAN70_noslowwalkers_gait_powpow0p25\cluster';
-%- convert SUB_DIR
+    [ATLAS_PATH filesep 'spm_anatomy' filesep 'AllAreas_v18_MPM.mat']}; % also a discrete version of this
+SUB_DIR = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
 if ~ispc
     SUB_DIR = convertPath2UNIX(SUB_DIR);
 else
     SUB_DIR = convertPath2Drive(SUB_DIR);
 end
 %## USER SET
-% LOAD_DIFFERENT_STUDY = {true,true};
-% CLUSTER_K_PICKS = [14,14];
-% CLUSTER_STUDY_FNAMES = {'temp_study_rejics6','temp_study_rejics5'};
-% CLUSTER_DIRS = {[SUB_DIR filesep 'subjrejs_minics6' filesep '14'],...
-%     [SUB_DIR filesep 'subjrejs_minics5' filesep '14']};
-% CLUSTER_FILES = {'cluster_update_14.mat','cluster_update_14.mat'};
-% CLUSTER_STUDY_DIRS = {[SUB_DIR filesep 'subjrejs_minics6'],...
-%     [SUB_DIR filesep 'subjrejs_minics5']};
 LOAD_DIFFERENT_STUDY = {true};
 CLUSTER_K_PICKS = [12];
 CLUSTER_STUDY_FNAMES = {'temp_study_rejics5'};
@@ -214,25 +201,6 @@ for k_i = 1:length(CLUSTER_K_PICKS)
     if ~exist(spec_data_dir,'dir')
         error('error. path %s doesn''t exist',spec_data_dir);
     end
-    %## Load Study
-    % (08/03/2023) JS, this can be optimized in the future by only loding
-    % in the file strucutre and maintaining a STUDY file with needed info
-%     if LOAD_DIFFERENT_STUDY{k_i}
-%         %- Create STUDY & ALLEEG structs
-%         if ~exist([spec_data_dir filesep CLUSTER_STUDY_FNAMES{k_i} '.study'],'file')
-%             error('error. study file does not exist');
-%         else
-%             if ~ispc
-%                 tmp = load('-mat',[spec_data_dir filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_FNAMES{k_i})]);
-%                 STUDY = tmp.STUDY;
-%             else
-%                 tmp = load('-mat',[spec_data_dir filesep sprintf('%s.study',CLUSTER_STUDY_FNAMES{k_i})]);
-%                 STUDY = tmp.STUDY;
-%             end
-%         end
-%     else
-%         error('error. Define a valid study path...');
-%     end
     if ~exist([spec_data_dir filesep CLUSTER_STUDY_FNAMES{k_i} '.study'],'file')
         error('ERROR. study file does not exist');
     else
@@ -249,6 +217,78 @@ for k_i = 1:length(CLUSTER_K_PICKS)
     %## PLOT cluster based information
     mim_gen_cluster_figs(STUDY,ALLEEG,cluster_dir,...
         'CLUSTERS_TO_PLOT',main_cl_inds);
+    %- get inds
+    [~,main_cl_inds,~,valid_clusters,~,nonzero_clusters] = eeglab_get_cluster_comps(STUDY);
+    main_cl_inds = main_cl_inds(2:end);
+    parfor (k = 1:length(main_cl_inds),length(main_cl_inds))
+        %## PARAMS
+        clust_i = main_cl_inds(k);
+        subj_save_dir = [cluster_dir filesep sprintf('%i',clust_i)];
+        subj_inds = STUDY.cluster(clust_i).sets;
+        cl_comps = STUDY.cluster(clust_i).comps;
+        %- loop through subjects
+        for s_i = 1:length(subj_inds)
+            %## PARAMS
+            subj_char = ALLEEG(subj_inds(s_i)).subject;
+            labels = cell(length(ATLAS_FPATHS),3);
+            cluster_centroid = cell(length(ATLAS_FPATHS),1);
+            atlas = cell(length(ATLAS_FPATHS),1);
+            subject_dipole = cell(length(ATLAS_FPATHS),1);
+            %##
+            dip1 = STUDY.cluster(clust_i).dipole;
+            tmp = ALLEEG(subj_inds(s_i)).dipfit.model(cl_comps(s_i));
+            dip2 = [];
+            dip2.posxyz = tmp.posxyz;
+            dip2.momxyz = tmp.momxyz;
+            dip2.rv = tmp.rv;
+            %- loop through atlases
+            for atlas_i = 1:length(ATLAS_FPATHS)
+                atlas_in = ft_read_atlas(ATLAS_FPATHS{atlas_i});
+                tmp = strsplit(ATLAS_FPATHS{atlas_i},filesep);
+                atlas{atlas_i} = tmp{end};
+                cfg              = [];
+                cfg.roi        = dip1.posxyz;
+                cfg.output     = 'multiple';
+                cfg.atlas      = atlas_in;
+                cfg.inputcoord = 'mni';
+                %- (01/19/2023), JS: Changing cfg.sphere from 1 to 3 (1mm vs 3mm)
+                cfg.sphere = 3;
+                label_i = ft_volumelookup(cfg, atlas_in);
+                if ~isempty(label_i)
+                    [val, indx] = max(label_i.count);
+                    if strcmp(label_i.name(indx),'no_label_found')
+                        sub_indx = find(label_i.count ~= 0 & label_i.count < val);
+                        if isempty(sub_indx)
+                            cluster_centroid{atlas_i} = label_i.name{indx};
+                        end
+                    else
+                        cluster_centroid{atlas_i} = label_i.name{indx};
+                    end
+                else
+                    cluster_centroid{atlas_i} = 'error';
+                end
+                cfg.roi        = dip2.posxyz;
+                label_i = ft_volumelookup(cfg, atlas_in);
+                if ~isempty(label_i)
+                    % disp(labels.count(labels.count ~= 0))
+                    [val, indx] = max(label_i.count);
+                    if strcmp(label_i.name(indx),'no_label_found')
+                        sub_indx = find(label_i.count ~= 0 & label_i.count < val);
+                        if isempty(sub_indx)
+                            subject_dipole{atlas_i} = label_i.name{indx};
+                        end
+                    else
+                        subject_dipole{atlas_i} = label_i.name{indx};
+                    end
+                else
+                    subject_dipole{atlas_i} = 'error';
+                end
+            end
+            T = table(cluster_centroid,subject_dipole,atlas);
+            % Write the table to a CSV file
+            writetable(T,[subj_save_dir filesep sprintf('%s_atlasinf_ic%i.csv',subj_char,cl_comps(s_i))])
+        end
+    end
 end
 %% Version History
 %{

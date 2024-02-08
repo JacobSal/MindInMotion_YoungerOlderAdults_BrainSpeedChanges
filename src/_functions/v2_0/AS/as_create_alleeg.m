@@ -9,7 +9,7 @@ function [ALLEEG] = as_create_alleeg(fNames,fPaths,subjectNames,save_dir,varargi
 tic
 %## DEFINE DEFAULTS
 %- developer params
-DO_BEM_DIPFIT = true;
+DO_BEM_DIPFIT = false;
 FORCE_RELOAD = true;
 ICA_FNAME_REGEXP = '%s_allcond_ICA_TMPEEG.set';
 %- find eeglab on path
@@ -158,23 +158,48 @@ parfor (subj_i=1:length(fNames),POOL_SIZE)
     end
     ALLEEG{subj_i} = EEG;
 end
-%## BOOKKEEPING (i.e., delete fields not similar across EEG structures)
-fsPrev = {};
+% %## BOOKKEEPING (i.e., delete fields not similar across EEG structures)
+% fsPrev = {};
+% for subj_i = 1:length(ALLEEG)
+%     EEG = ALLEEG{subj_i};
+%     fs = fields(EEG);
+%     % delete fields not present in other structs.
+%     out = cellfun(@(x) any(strcmp(x,fsPrev)),fs,'UniformOutput',false); 
+%     out = [out{:}];
+%     delFs = fs(~out);
+%     if ~isempty(fsPrev) && any(~out)
+%         for j = 1:length(delFs)
+%             EEG = rmfield(EEG,delFs{j});
+%             fprintf("%s) Removing fields %s",EEG.subject,delFs{j})
+%         end
+%     else
+%         fsPrev = fs;
+%     end
+%     ALLEEG{subj_i} = EEG;
+% end
+% %- CONCATENATE ALLEEG
+% ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
+
+%## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
+fss = cell(1,length(ALLEEG));
+for subj_i = 1:length(ALLEEG)
+    fss{subj_i} = fields(ALLEEG{subj_i});
+end
+fss = unique([fss{:}]);
+fsPrev = fss;
 for subj_i = 1:length(ALLEEG)
     EEG = ALLEEG{subj_i};
     fs = fields(EEG);
     % delete fields not present in other structs.
     out = cellfun(@(x) any(strcmp(x,fsPrev)),fs,'UniformOutput',false); 
     out = [out{:}];
-    delFs = fs(~out);
-    if ~isempty(fsPrev) && any(~out)
-        for j = 1:length(delFs)
-            EEG = rmfield(EEG,delFs{j});
-            fprintf("%s) Removing fields %s",EEG.subject,delFs{j})
+    addFs = fs(~out);
+    if any(~out)
+        for j = 1:length(addFs)
+            EEG.(addFs{j}) = [];
+            fprintf('%s) Adding %s %s\n',EEG.subject,addFs{j})
         end
-    else
-        fsPrev = fs;
-    end
+    end 
     ALLEEG{subj_i} = EEG;
 end
 %- CONCATENATE ALLEEG

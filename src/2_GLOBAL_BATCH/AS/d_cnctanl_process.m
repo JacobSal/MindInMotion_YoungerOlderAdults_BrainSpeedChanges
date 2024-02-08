@@ -104,7 +104,7 @@ WINDOW_STEP_SIZE = 0.02;
 % (01/19/2024) JS, trying 0.02 from 0.025 (see. Steven Peterson 2019 NeuroImage)
 DO_BOOTSTRAP = true;
 % (01/19/2024) JS, unsure to turn to false for quicker estimates?
-DO_PHASE_RND = false;
+DO_PHASE_RND = true;
 MORDER = 32; 
 % (01/04/2024) JS, setting model order to 17. mean of the estimated model
 % orders across all subjects for study: '12282023_bounces_1h_2bm_JS_n1-0p5'
@@ -121,7 +121,9 @@ MORDER = 32;
 % dt = '01182023_subjrec_2bounces_1h_2bm_JS_n5-1p5';
 % dt = '01252023_subjrec_2bounces_rally_serve_human_JS_n5-1p5';
 % dt = '01292023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
-dt = '01312023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
+% dt = '01312023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
+% dt = '02012023_subjrec_2bounces_rally_serve_human_epochfix_JS_n1p5-1p5';
+dt = '02012023_subjrec_2bounces_rally_serve_human_epochfixfix_JS_n1p5-1p5';
 %## Soft Define
 %- combinations of events and conditions
 % EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -239,13 +241,15 @@ parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
     fprintf('%s) Processing componets:\n',EEG.subject)
     fprintf('%i,',components'); fprintf('\n');
     %- re-epoch
-    ALLEEG = cell(1,length(EVENT_COND_COMBOS));
+%     ALLEEG = cell(1,length(EVENT_COND_COMBOS));
+    ALLEEG = cell(1,length(EVENT_COND_COMBOS)+1);
     for i = 1:length(EEG.etc.cond_files)
         if ~ispc
             ALLEEG{i} = pop_loadset('filepath',convertPath2UNIX(EEG.etc.cond_files(i).fPath),'filename',EEG.etc.cond_files(i).fName);
         else
             ALLEEG{i} = pop_loadset('filepath',convertPath2Drive(EEG.etc.cond_files(i).fPath),'filename',EEG.etc.cond_files(i).fName);
         end
+        
 %         if contains(EEG.etc.cond_files(i).fName,{'1Bounce','2Bounce'})
 %             %#
 % %             inds = randi(length(EEG.epoch),AVG_SERVE_TRIALS,1)
@@ -301,9 +305,18 @@ pop_editoptions('option_computeica',0);
 %% SAVE BIG STUDY
 fprintf('==== Reformatting Study ====\n');
 %- remove bugged out subjects
-fprintf('Bugged Subjects:\n');
-fprintf('%s\n',MAIN_ALLEEG(cellfun(@isempty,tmp)).subject);
-tmp = tmp(~cellfun(@isempty,tmp));
+try
+    fprintf('Bugged Subjects:\n');
+    fprintf('%s\n',MAIN_ALLEEG(cellfun(@isempty,tmp)).subject);
+    bugged_subjs = MAIN_ALLEEG(cellfun(@isempty,tmp)).subject;
+    subj_keep = find(~cellfun(@isempty,tmp));
+    tmp = tmp(~cellfun(@isempty,tmp));
+catch
+    bugged_subjs = [];
+    subj_keep = find(~cellfun(@isempty,tmp));
+    tmp = tmp(~cellfun(@isempty,tmp));
+    fprintf('No Bugged Subjects.\n');
+end
 %## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
 fss = cell(1,length(tmp));
 for subj_i = 1:length(tmp)
@@ -339,54 +352,9 @@ tmp = eeg_checkset(tmp,'eventconsistency');
 STUDY.cluster = MAIN_STUDY.cluster;
 STUDY.urcluster = MAIN_STUDY.urcluster;
 %## ASSIGN PARAMETERS
-[STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
-                                            study_fname_1,study_save_dir,...
-                                            'STUDY_COND',[]);
-%%
-% SUBJ_PICS = {{'02','03','04','05','09','11','15','16','18','19','21','22',...
-%             '23','24','25','27','28','29','30','31','32','33','35','36','38'}};
-SUBJ_PICS = {{MAIN_STUDY.datasetinfo.subject}};
-SUBJ_ITERS = {(1:length(SUBJ_PICS{1}))};
-cluster_struct = STUDY.urcluster;
-cluster_struct_orig = STUDY.urcluster;
-% subj_chars_orig = SUBJ_PICS{1};
-% subj_chars_orig = cellfun(@(x) [{} sprintf('Pilot%s',x)],subj_chars_orig);
-subj_chars_orig = SUBJ_PICS{1};
-subj_chars = {STUDY.datasetinfo.subject};
-subj_keep = zeros(length(subj_chars),1);
-for subj_i = 1:length(subj_chars_orig)
-    disp(any(strcmp(subj_chars_orig{subj_i},subj_chars)));
-    if any(strcmp(subj_chars_orig{subj_i},subj_chars))
-        subj_keep(subj_i) = 1;
-    end
-end
-subjs_rmv = find(~subj_keep);
-subj_keep = find(subj_keep);
-[val,ord] = sort(subj_keep);
-for cli = 2:length(cluster_struct)
-    si = cluster_struct(cli).sets;
-    ci = cluster_struct(cli).comps;
-    keep_si = setdiff(si,subjs_rmv);
-    tmp = cluster_struct(cli).preclust.preclustdata;
-    tmp_preclust = [];
-    tmp_si = [];
-    tmp_ci = [];
-    for i = 1:length(keep_si)
-        tmp_si = [tmp_si, repmat(ord(keep_si(i) == val),1,sum(keep_si(i) == si))];
-        tmp_ci = [tmp_ci, ci(keep_si(i) == si)];
-        
-        tmp_preclust = [tmp_preclust; tmp(keep_si(i) == si,:)];
-    end
-    cluster_struct(cli).sets = tmp_si;
-    cluster_struct(cli).comps = tmp_ci;
-    cluster_struct(cli).preclust.preclustdata = tmp_preclust;
-end
-cluster_struct(1).sets = [cluster_struct(2:end).sets];
-cluster_struct(1).comps = [cluster_struct(2:end).comps];
-%-
-STUDY.cluster = cluster_struct;
 STUDY.etc.a_epoch_process = MAIN_STUDY.etc.a_epoch_process;
 STUDY.etc.d_cnctanl_process.params = comps_out(:,subj_keep);
+STUDY.etc.d_cnctanl_process.bugged_subjs = bugged_subjs;
 STUDY.etc.d_cnctanl_process.params = struct('CONN_METHODS',{CONN_METHODS},...
             'MORDER',MORDER,...
             'DO_PHASE_RND',DO_PHASE_RND,...
@@ -397,10 +365,70 @@ STUDY.etc.d_cnctanl_process.params = struct('CONN_METHODS',{CONN_METHODS},...
             'GUI_MODE','nogui',...
             'VERBOSITY_LEVEL',1,...
             'ESTSELMOD_CFG',[]);
-
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
-                        STUDY.filename,STUDY.filepath,...
-                        'RESAVE_DATASETS','off');
+                                            study_fname_1,study_save_dir,...
+                                            'STUDY_COND',[]);
+%%
+% SUBJ_PICS = {{'02','03','04','05','09','11','15','16','18','19','21','22',...
+%             '23','24','25','27','28','29','30','31','32','33','35','36','38'}};
+% 
+% SUBJ_PICS = {{MAIN_STUDY.datasetinfo.subject}};
+% % SUBJ_ITERS = {(1:length(SUBJ_PICS{1}))};
+% cluster_struct = STUDY.urcluster;
+% cluster_struct_orig = STUDY.urcluster;
+% % subj_chars_orig = SUBJ_PICS{1};
+% % subj_chars_orig = cellfun(@(x) [{} sprintf('Pilot%s',x)],subj_chars_orig);
+% subj_chars_orig = SUBJ_PICS{1};
+% subj_chars = {STUDY.datasetinfo.subject};
+% subj_keep = zeros(length(subj_chars),1);
+% for subj_i = 1:length(subj_chars_orig)
+%     disp(any(strcmp(subj_chars_orig{subj_i},subj_chars)));
+%     if any(strcmp(subj_chars_orig{subj_i},subj_chars))
+%         subj_keep(subj_i) = 1;
+%     end
+% end
+% subjs_rmv = find(~subj_keep);
+% subj_keep = find(subj_keep);
+% [val,ord] = sort(subj_keep);
+% for cli = 2:length(cluster_struct)
+%     si = cluster_struct(cli).sets;
+%     ci = cluster_struct(cli).comps;
+%     keep_si = setdiff(si,subjs_rmv);
+%     tmp = cluster_struct(cli).preclust.preclustdata;
+%     tmp_preclust = [];
+%     tmp_si = [];
+%     tmp_ci = [];
+%     for i = 1:length(keep_si)
+%         tmp_si = [tmp_si, repmat(ord(keep_si(i) == val),1,sum(keep_si(i) == si))];
+%         tmp_ci = [tmp_ci, ci(keep_si(i) == si)];
+%         
+%         tmp_preclust = [tmp_preclust; tmp(keep_si(i) == si,:)];
+%     end
+%     cluster_struct(cli).sets = tmp_si;
+%     cluster_struct(cli).comps = tmp_ci;
+%     cluster_struct(cli).preclust.preclustdata = tmp_preclust;
+% end
+% cluster_struct(1).sets = [cluster_struct(2:end).sets];
+% cluster_struct(1).comps = [cluster_struct(2:end).comps];
+% %-
+% STUDY.cluster = cluster_struct;
+% STUDY.etc.a_epoch_process = MAIN_STUDY.etc.a_epoch_process;
+% STUDY.etc.d_cnctanl_process.params = comps_out(:,subj_keep);
+% STUDY.etc.d_cnctanl_process.bugged_subjs = bugged_subjs;
+% STUDY.etc.d_cnctanl_process.params = struct('CONN_METHODS',{CONN_METHODS},...
+%             'MORDER',MORDER,...
+%             'DO_PHASE_RND',DO_PHASE_RND,...
+%             'DO_BOOTSTRAP',DO_BOOTSTRAP,...
+%             'FREQS',CONN_FREQS,...
+%             'WINDOW_LENGTH',WINDOW_LENGTH,... 
+%             'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE,...
+%             'GUI_MODE','nogui',...
+%             'VERBOSITY_LEVEL',1,...
+%             'ESTSELMOD_CFG',[]);
+% 
+% [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
+%                         STUDY.filename,STUDY.filepath,...
+%                         'RESAVE_DATASETS','off');
 %% Version History
 %{
 v1.0; (11/11/2022), JS: really need to consider updating bootstrap

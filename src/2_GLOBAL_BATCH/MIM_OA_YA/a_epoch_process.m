@@ -127,7 +127,8 @@ end
 % PAD_RATIO = 2;
 %- datetime override
 % dt = '12182023_OAYA104_icc0p65-0p4_changparams';
-dt = '01232024_OAYA104_icc0p65-0p4_spca';
+% dt = '01232024_OAYA104_icc0p65-0p4_spca';
+dt = '02042024_YAOAN104_iccRX0p65_iccREMG0p4_powpow0p3';
 %- Subject Directory information
 % OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 % OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)

@@ -86,14 +86,15 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
 % subject_chars = [SUBJ_PICS{:}];
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name & 
 DATA_SET = 'MIM_dataset';
 OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
-study_dir = '01122024_spca_analysis';
+% study_dir = '01122024_spca_analysis';
+study_dir = '02082024_spca_analysis_fix';
 study_fname_rest = 'rest_epoch_study';
 study_fname_gait = 'epoch_study';
 %- study group and saving
@@ -103,7 +104,7 @@ DO_SLIDING_WINDOW = false;
 %* sliding window
 WINDOW_LENGTH = 6; % sliding window length in seconds
 PERCENT_OVERLAP = 0.0; % percent overlap between epochs
-%* gait
+%* gai
 EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 STD_TIMEWARP = 3;
 EPOCH_TIME_LIMITS = [-0.5,4.5];
@@ -168,7 +169,7 @@ if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
 %% GRAB SUBJECT .SET & DIPFIT FILES ==================================== %%
-%{
+
 subjectNames    = cell(1,length([SUBJ_ITERS{:}]));
 fNames          = cell(1,length([SUBJ_ITERS{:}]));
 fPaths          = cell(1,length([SUBJ_ITERS{:}]));
@@ -235,8 +236,8 @@ parfor (subj_i = 1:length(fPaths),floor(length(fPaths)/3))
     EEG = iclabel(EEG);
     clssts = EEG.etc.ic_classification.ICLabel.classifications;
     bad_eye_ics = find(clssts(:,3) > ICLABEL_EYE_CUTOFF);
-    EEG = eeglab_pop_subcomp(EEG,bad_eye_ics,true);
-%     EEG = pop_subcomp(EEG,bad_eye_ics,0,0);
+%     EEG = eeglab_pop_subcomp(EEG,bad_eye_ics,true);
+    EEG = pop_subcomp(EEG,bad_eye_ics,0,0);
     EEG = eeg_checkset(EEG,'loaddata');
     EEG.etc.spca.eye_ic_rej = bad_eye_ics;
     ics_orig = 1:size(EEG.icaweights,2);
@@ -442,7 +443,7 @@ tmp = cellfun(@(x) [[]; x], tmp);
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                         STUDY.filename,STUDY.filepath,...
                                         'RESAVE_DATASETS','off');
-%}
+
 %% ===================================================================== %%
 if ~ispc
     [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fname_gait '_UNIX.study'],'filepath',save_dir);
@@ -518,7 +519,6 @@ for subj_i = 1:length(ALLEEG)
         EEG.icaact = reshape(EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     end
     %##
-    
     if DO_RECREATE_SPCA || ~all(cellfun(@(x) exist([EEG.filepath filesep sprintf('cond%s_spca_ersp.mat',x)],'file'),TRIAL_TYPES))
         %## GENERATE ERSPS
         icatimef_f = [EEG.filepath filesep sprintf('%s.icatimef',EEG.subject)];
@@ -608,6 +608,8 @@ for subj_i = 1:length(ALLEEG)
             %- reshape data [pnts x chans x freq]
             fn = fieldnames(tmp);
             inds = find(contains(fieldnames(tmp),'comp'));
+            inds_not = find(~contains(fieldnames(tmp),'comp'));
+            tmp_out = {tmp.(fn{inds_not})};
             test = tmp.(fn{inds(1)});
     %         rest_txf = zeros(size(test,3),size(test,2),size(test,1),length(inds),'single');
             rest_txf = zeros(size(test,1),size(test,2),size(test,3),length(inds),'double');
@@ -636,7 +638,7 @@ for subj_i = 1:length(ALLEEG)
             %- sPCA Algorithm
             [ERSP,GPM,gait_avg,output_struct] = apply_spca_cond_timewarp(tmp,base_txf_mean);
             [ERSP_corr,GPM_corr,PSC1,~,COEFFS] = specPCAdenoising(ERSP);
-
+            
             %## SAVE PCA INFORMATION
             gait_ersp_struct = [];
             gait_ersp_struct.ID         = EEG.subject;
@@ -649,7 +651,7 @@ for subj_i = 1:length(ALLEEG)
             gait_ersp_struct.GPM        = GPM_corr;
             gait_ersp_struct.PSC1       = PSC1;
             gait_ersp_struct.chanlocs   = EEG.chanlocs;
-            
+            gait_ersp_struct.icatimefopts = tmp_out;
             gait_ersp_struct.warptimes  = averaged_warpto_events;
             gait_ersp_struct.ntimes     = TIMEWARP_NTIMES;
             par_save(gait_ersp_struct,fpath,'gait_ersp_spca.mat');
@@ -663,23 +665,24 @@ for subj_i = 1:length(ALLEEG)
             title('Baseline ERSP (rest)');
             exportgraphics(fig,[fpath filesep 'allcond_baseline_avgs.jpg']);
 
-            %##
+            %## VALIDATION PLOTS
+            %{
             CHAN_INT = randi(size(ERSP,2),1);
             fig = plot_txf(squeeze(ERSP_corr(:,CHAN_INT,:)),[],tmp.freqs);
             exportgraphics(fig,[fpath filesep sprintf('chan%i_allcond_ersp_corr.jpg',CHAN_INT)]);
-            %##
+            %-
             fig = plot_txf(squeeze(GPM_corr(:,CHAN_INT,:)),[],tmp.freqs);
             exportgraphics(fig,[fpath filesep sprintf('chan%i_allcond_gpm_corr.jpg',CHAN_INT)]);
-            %##
+            %-
             fig = plot_txf(squeeze(ERSP(:,CHAN_INT,:)),[],tmp.freqs);
             exportgraphics(fig,[fpath filesep sprintf('chan%i_allcond_ersp_orig.jpg',CHAN_INT)]);
-            %##
+            %-
             fig = plot_txf(squeeze(GPM(:,CHAN_INT,:)),[],tmp.freqs);
             exportgraphics(fig,[fpath filesep sprintf('chan%i_allcond_gpm_orig.jpg',CHAN_INT)]);
-            %##
+            %-
             fig = plot_txf(squeeze(PSC1(:,CHAN_INT,:)),[],tmp.freqs);
             exportgraphics(fig,[fpath filesep sprintf('chan%i_allcond_psc1_orig.jpg',CHAN_INT)]);
-
+            %}
             %% DENOISE
             fprintf('\nRunning Denoising with sPCA\n');
             conds = unique({tmp.trialinfo.cond});
@@ -697,25 +700,26 @@ for subj_i = 1:length(ALLEEG)
                     'apply_spca_cond',output_struct);
                 par_save(struct_out,fpath,sprintf('cond%s_spca_ersp.mat',conds{cond_i}));
 
-                %##
+                %## VALIDATION PLOTS
+                %{
                 fig = plot_txf(squeeze(ERSP_corr(:,CHAN_INT,:)),[],tmp.freqs);
                 title(sprintf('%s) ERSP corrected',conds{cond_i}));
                 if ~isempty(fpath)
                     exportgraphics(fig,[fpath filesep sprintf('chan%i_cond%s_ersp_corr.jpg',CHAN_INT,conds{cond_i})]);
                 end
-                %##
+                %-
                 fig = plot_txf(squeeze(GPM_corr(:,CHAN_INT,:)),[],tmp.freqs);
                 title(sprintf('%s) GPM corrected',conds{cond_i}));
                 if ~isempty(fpath)
                     exportgraphics(fig,[fpath filesep sprintf('chan%i_cond%s_gpm_corr.jpg',CHAN_INT,conds{cond_i})]);
                 end
-                %##
+                %-
                 fig = plot_txf(squeeze(output_struct.erds_orig(:,CHAN_INT,:)),[],tmp.freqs);
                 title(sprintf('%s) ERSP original',conds{cond_i}));
                 if ~isempty(fpath)
                     exportgraphics(fig,[fpath filesep sprintf('chan%i_cond%s_ersp_orig.jpg',CHAN_INT,conds{cond_i})]);
                 end
-                %##
+                %-
                 fig = plot_txf(squeeze(output_struct.gpm_orig(:,CHAN_INT,:)),[],tmp.freqs);
                 title(sprintf('%s) GPM original',conds{cond_i}));
                 if ~isempty(fpath)
@@ -725,6 +729,7 @@ for subj_i = 1:length(ALLEEG)
                 % fig = plot_txf(squeeze(PSC1(:,CHAN_INT,:)),[],tmp.freqs);
                 % title(sprintf('%s) PSC1 original',SPCA_PARAMS.condition_gait{cond_i}));
                 % exportgraphics(fig,[fpath filesep sprintf('chan%i_cond%s_psc1_orig.jpg',CHAN_INT,SPCA_PARAMS.condition_gait{cond_i})]);
+                %}
             end
             %## CLEANUP AND FREE UP DRIVE SPACE
             fpath = [epoched_fPath filesep [TRIAL_TYPES{:}]];
