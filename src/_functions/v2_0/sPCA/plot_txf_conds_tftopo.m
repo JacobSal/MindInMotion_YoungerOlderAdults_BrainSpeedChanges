@@ -4,6 +4,8 @@ function [fig] = plot_txf_conds_tftopo(allersp,alltimes,allfreqs,...
 %-
 SUBPLOT_BOTTOM = 0.2;
 SUBPLOT_INIT_SHIFT = 0.05;
+COLOR_LIM_INTERVALS = [0.6,1.2,1.5,2];
+COLOR_LIM_ERR = 0.05;
 %-
 allpcond = [];
 %-
@@ -11,14 +13,15 @@ alltitles = cell(length(allersp),1);
 for i = 1:length(allersp)
     alltitles{i} = sprintf('cond%i',i);
 end
-PLOT_STRUCT = struct('figure_position_inch',[3,3,14,6],...
+PLOT_STRUCT = struct('figure_position_inch',[3,3,9,6.5],...
     'alltitles',{alltitles},...
     'xlabel','Gait Cycle Time (ms)',...
     'ylabel','Frequency (Hz)',...
     'xticklabel_times',[],...
     'xticklabel_chars',{{}},...
-    'clim',[-2,2],...
+    'clim',[],...
     'font_size',12,...
+    'font_name','Arial',...
     'freq_lims',[],...
     'time_lims',[],...
     'subplot_width',0.15,...
@@ -45,7 +48,24 @@ if isempty(PLOT_STRUCT.freq_lims)
 end
 if isempty(PLOT_STRUCT.time_lims)
     PLOT_STRUCT.time_lims = [alltimes(1),alltimes(end)];
-end  
+end
+%% COLORLIMITS ALG
+%## set color limits
+if isempty(PLOT_STRUCT.clim)
+    climMat = [min(allersp{1}(1:60,:),[],'all') max(allersp{1}(1:60,:),[],'all')];
+    clim_max = [];
+    for i = 1:length(COLOR_LIM_INTERVALS)
+        chk = (climMat(1) > -(COLOR_LIM_INTERVALS(i)+COLOR_LIM_ERR)) && (climMat(2) < (COLOR_LIM_INTERVALS(i)+COLOR_LIM_ERR));
+        if chk
+            clim_max = COLOR_LIM_INTERVALS(i);
+            break
+        end
+    end
+    if isempty(clim_max)
+        clim_max = 2.5;
+    end
+    PLOT_STRUCT.clim = [-clim_max-0.05,clim_max+0.05];
+end
 %%
 fig = figure('color','white','renderer','Painters');
 set(fig,'Units','inches','Position',PLOT_STRUCT.figure_position_inch)
@@ -67,21 +87,29 @@ for j = 1:length(allersp)
     colormap(linspecer);
     %-
     set(ax,'LineWidth',1)
-    set(ax,'FontName','Arial','FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
+    set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
     set(ax,'OuterPosition',[0 0 1 1]);
     set(ax,'Position',[SUBPLOT_INIT_SHIFT+horiz_shift,SUBPLOT_BOTTOM,PLOT_STRUCT.subplot_width,PLOT_STRUCT.subplot_height]);  %[left bottom width height]
 
     %- adjust subplot position and height
     set(ax,'LineWidth',1)
-    set(ax,'FontName','Arial','FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
+    set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
     %- set ylims
     ylim(log(PLOT_STRUCT.freq_lims))
     if PLOT_STRUCT.freq_lims(2) <= 50
-        set(ax,'YTick',log([4.01,8,13,30,50])); 
+        freqs = log([4.01,8,13,30,50]);
+        set(ax,'YTick',freqs); 
         set(ax,'YTickLabel',{'4','8','13','30','50'},'Fontsize',PLOT_STRUCT.font_size);
+        for i = 1:length(freqs)
+            yline(ax,freqs(i),'k:');
+        end
     elseif PLOT_STRUCT.freq_lims(2) <= 100
-        set(ax,'YTick',log([4.01,8,13,30,50,99.4843])); 
+        freqs = log([4.01,8,13,30,50,99.4843]);
+        set(ax,'YTick',freqs); 
         set(ax,'YTickLabel',{'4','8','13','30','50','100'},'Fontsize',PLOT_STRUCT.font_size);
+        for i = 1:length(freqs)
+            yline(ax,freqs(i),'k:');
+        end
     end  
     %- set color lims
     set(ax,'clim',PLOT_STRUCT.clim);
@@ -107,7 +135,7 @@ for j = 1:length(allersp)
             set(ax,'XTickLabel',PLOT_STRUCT.xticklabel_chars);
         end
         for i = 1:length(PLOT_STRUCT.xticklabel_times)
-            xline(ax,PLOT_STRUCT.xticklabel_times(i),'k:')
+            xline(ax,PLOT_STRUCT.xticklabel_times(i),'k--')
         end
         xtickangle(45);
     end
@@ -129,7 +157,7 @@ if ~isempty(allpcond)
     colormap(linspecer);
     %-
     set(ax,'LineWidth',1)
-    set(ax,'FontName','Arial','FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
+    set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
     set(ax,'OuterPosition',[0 0 1 1]);
     set(ax,'Position',[SUBPLOT_INIT_SHIFT+horiz_shift,SUBPLOT_BOTTOM,PLOT_STRUCT.subplot_width,PLOT_STRUCT.subplot_height]);  %[left bottom width height]
     
@@ -139,7 +167,7 @@ if ~isempty(allpcond)
     c.Limits = PLOT_STRUCT.clim;
     %- color bar label
     hL = ylabel(c,[{'\Delta Power'};{'(dB)'}],'fontweight',...
-        'bold','FontName','Arial','FontSize',PLOT_STRUCT.font_size);
+        'bold','FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size);
     set(hL,'Rotation',0);
     hL.Position(1) = hL.Position(1)+1.7;
     hL.Position(2) = hL.Position(2)+0.025;
@@ -151,11 +179,19 @@ if ~isempty(allpcond)
     %- set ylims
     ylim(log(PLOT_STRUCT.freq_lims))
     if PLOT_STRUCT.freq_lims(2) <= 50
-        set(ax,'YTick',log([4.01,8,13,30,50])); 
+        freqs = log([4.01,8,13,30,50]);
+        set(ax,'YTick',freqs); 
         set(ax,'YTickLabel',{'4','8','13','30','50'},'Fontsize',PLOT_STRUCT.font_size);
+        for i = 1:length(freqs)
+            yline(ax,freqs(i),'k:');
+        end
     elseif PLOT_STRUCT.freq_lims(2) <= 100
-        set(ax,'YTick',log([4.01,8,13,30,50,99.4843])); 
+        freqs = log([4.01,8,13,30,50,99.4843]);
+        set(ax,'YTick',freqs); 
         set(ax,'YTickLabel',{'4','8','13','30','50','100'},'Fontsize',PLOT_STRUCT.font_size);
+        for i = 1:length(freqs)
+            yline(ax,freqs(i),'k:');
+        end
     end  
     %- set color lims
     set(ax,'clim',PLOT_STRUCT.clim);
@@ -179,7 +215,7 @@ if ~isempty(allpcond)
         end
         set(ax,'XTick',PLOT_STRUCT.xticklabel_times);
         for i = 1:length(PLOT_STRUCT.xticklabel_times)
-            xline(ax,PLOT_STRUCT.xticklabel_times(i),'k:')
+            xline(ax,PLOT_STRUCT.xticklabel_times(i),'k--')
         end
         if ~isempty(PLOT_STRUCT.xticklabel_chars)
             set(ax,'XTickLabel',PLOT_STRUCT.xticklabel_chars);

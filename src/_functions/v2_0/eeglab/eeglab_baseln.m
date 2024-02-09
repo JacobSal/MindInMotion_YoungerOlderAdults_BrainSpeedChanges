@@ -17,7 +17,7 @@ function [allersp_full,allersp_crop,baseln_com,baseln_trial] = eeglab_baseln(all
 %           baselining outcome.
 %-
 DO_COMMON_BASE = false;
-DO_TRIAL_BASE = true;
+DO_SUBJ_BASE = true;
 %## Define Parser
 p = inputParser;
 %## REQUIRED
@@ -30,11 +30,11 @@ addRequired(p,'base_flims',@isnumeric);
 %## PARAMETER
 % addParameter(p,'PLOT_STRUCT',PLOT_STRUCT,@(x) validate_struct(x,PLOT_STRUCT));
 addParameter(p,'DO_COMMON_BASE',DO_COMMON_BASE,@islogical);
-addParameter(p,'DO_TRIAL_BASE',DO_TRIAL_BASE,@islogical);
+addParameter(p,'DO_SUBJ_BASE',DO_SUBJ_BASE,@islogical);
 parse(p,allersp,alltimes,allfreqs,base_tlims,base_flims,varargin{:});
 %## SET DEFAULTS
 DO_COMMON_BASE = p.Results.DO_COMMON_BASE;
-DO_TRIAL_BASE = p.Results.DO_TRIAL_BASE;
+DO_SUBJ_BASE = p.Results.DO_SUBJ_BASE;
 %%
 baseln_com = zeros(size(allersp{1},1),size(allersp{1},3));
 baseln_trial = cell(size(allersp));
@@ -47,7 +47,7 @@ allersp_bcom2 = cell(size(allersp));
 allersp_btrial = cell(size(allersp));
 tmp_allersp = allersp;
 %## WITHIN CONDITION & ?GROUP BASELINE
-if DO_TRIAL_BASE
+if DO_SUBJ_BASE
     for j = 1: length(tmp_allersp)
         erspdata = tmp_allersp{j}(:,:,:);
         %- mean power for each person

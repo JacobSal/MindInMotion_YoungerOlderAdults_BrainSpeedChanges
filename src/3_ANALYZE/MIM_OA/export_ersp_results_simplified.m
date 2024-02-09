@@ -203,7 +203,8 @@ for k_i = 1:length(CLUSTER_DIRS)
    %%
     for k = flip(main_cl_inds,2) %length(cl_names):-1:1 %1:length(cl_names)
         %## atlas calc
-        if ~exist(ahist_fpath,'file') || true
+        ahist_fpath = [cluster_dir filesep sprintf('cluster%i_histogram_atlas_counts.jpg',k)];
+        if ~exist(ahist_fpath,'file') %|| true
             SUBJ_ATLAS_INT = 1;
             subj_inds = TMP_STUDY.cluster(k).sets;
             atlas_dir = dir([cluster_dir filesep sprintf('%i',k) filesep '*atlasinf*']);
@@ -234,7 +235,7 @@ for k_i = 1:length(CLUSTER_DIRS)
             atlas_table = table(at_subj_char,at_dip_char,at_atlas_char);
             par_save(atlas_table,cluster_dir,sprintf('cluster%i_atlas_table.mat',k));
             %- histo setup
-            ahist_fpath = [cluster_dir filesep sprintf('cluster%i_histogram_atlas_counts.jpg',k)];
+%             ahist_fpath = [cluster_dir filesep sprintf('cluster%i_histogram_atlas_counts.jpg',k)];
             %## HISTOGRAM
             at_chars = unique(atlas_table.at_atlas_char);
             colors = linspecer(length(at_chars));
@@ -312,8 +313,8 @@ for k_i = 1:length(CLUSTER_DIRS)
         chk2 = exist(ersp_fpath,'dir');
         if chk2
             %## (SLIDE 3f_spca) Cluster Level GPM (common base)
-            vertical_move = 1311*im_scale+10-20;
             im_scale = 0.19;
+            vertical_move = 1311*im_scale+10-20;
             TOP_DIST = 30;
             LEFT_DIST = 50;
             %-
@@ -328,8 +329,8 @@ for k_i = 1:length(CLUSTER_DIRS)
                 vertical_move = vertical_move - 1311*im_scale+10; 
             end
             %## (SLIDE 3e_spca) Cluster Level ERSPs (common base)
-            vertical_move = 1311*im_scale+10-20;
             im_scale = 0.19;
+            vertical_move = 1311*im_scale+10-20;
             TOP_DIST = 30;
             LEFT_DIST = 50;
             %-
@@ -344,8 +345,8 @@ for k_i = 1:length(CLUSTER_DIRS)
                 vertical_move = vertical_move - 1311*im_scale+10; 
             end
             %## (SLIDE 3d_spca) Cluster Level GPM (clean)
-            vertical_move = 1311*im_scale+10-20;
             im_scale = 0.19;
+            vertical_move = 1311*im_scale+10-20;
             TOP_DIST = 30;
             LEFT_DIST = 50;
             %-
@@ -360,8 +361,8 @@ for k_i = 1:length(CLUSTER_DIRS)
                 vertical_move = vertical_move- 1311*im_scale+10; 
             end
             %## (SLIDE 3c_spca) Cluster Level ERSPs (clean)
-            vertical_move = 1311*im_scale+10-20;
             im_scale = 0.19;
+            vertical_move = 1311*im_scale+10-20;
             TOP_DIST = 30;
             LEFT_DIST = 50;
             %-
@@ -376,8 +377,8 @@ for k_i = 1:length(CLUSTER_DIRS)
                 vertical_move = vertical_move - 1311*im_scale+10; 
             end
             %## (SLIDE 3b_spca) Cluster Level GPM (original)
-            vertical_move = 1311*im_scale+10-20;
             im_scale = 0.19;
+            vertical_move = 1311*im_scale+10-20;
             TOP_DIST = 30;
             LEFT_DIST = 50;
             %-
@@ -392,8 +393,8 @@ for k_i = 1:length(CLUSTER_DIRS)
                 vertical_move = vertical_move - 1311*im_scale+10; 
             end
             %## (SLIDE 3a_spca) Cluster Level ERSPs (original)
-            vertical_move = 1311*im_scale+10-20;
             im_scale = 0.19;
+            vertical_move = 1311*im_scale+10-20;
             TOP_DIST = 30;
             LEFT_DIST = 50;
             %-
