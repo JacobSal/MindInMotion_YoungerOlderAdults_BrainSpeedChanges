@@ -98,7 +98,8 @@ end
 % dt = '10302023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
 % dt = '11302023_MIM_OAN70_antsnormalize_iccREMG0p3_powpow0p1';
 % dt = '12012023_OAYA104_icc0p65-0p4_changparams';
-dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+% dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+dt = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
@@ -184,7 +185,6 @@ for k_i = 1:length(CLUSTER_DIRS)
     %## Create PowerPoint
     %- start powerpoint
     ppt = actxserver('powerpoint.application');
-%         ppt.Visible = 1;% Open PowerPoint and make it visible
     ppt.Presentation.invoke;
     ppt.Presentation.Add();
     layout = ppt.ActivePresentation.SlideMaster.CustomLayouts.Item(1);
@@ -196,84 +196,219 @@ for k_i = 1:length(CLUSTER_DIRS)
     CLUSTER_PICKS = nonzero_cluster; %valid_cluster; %main_cl_inds(2:end);
     fprintf('Clusters with more than 50%% of subjects:'); fprintf('%i,',valid_cluster(1:end-1)); fprintf('%i',valid_cluster(end)); fprintf('\n');
     fprintf('Main cluster numbers:'); fprintf('%i,',main_cl_inds(1:end-1)); fprintf('%i',main_cl_inds(end)); fprintf('\n');
-    %## CLUSTER SPECIFIC FIGURES
-%     cl_dir = dir([cluster_dir filesep '*.jpg']);
-%     inds = cellfun(@(x) contains(x,'Cluster_topo_avg'),{cl_dir.name});
-%     topo_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
-%     inds = cellfun(@(x) contains(x,'dipplot_alldipspc_top'),{cl_dir.name});
-%     diptop_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
-%     inds = cellfun(@(x) contains(x,'dipplot_alldipspc_sagittal'),{cl_dir.name});
-%     dipsag_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
-%     inds = cellfun(@(x) contains(x,'dipplot_alldipspc_coronal'),{cl_dir.name});
-%     dipcor_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
-%     inds = cellfun(@(x) contains(x,'allSpecPlot_des1'),{cl_dir.name});
-%     psd_des1_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
-%     inds = cellfun(@(x) contains(x,'allSpecPlot_des2'),{cl_dir.name});
-%     psd_des2_files = cl_dir(inds); %{cluster_dir(inds).folder filesep cluster_dir(inds).name};
-%     inds = cellfun(@(x) contains(x,'avgdips_per_clust_top'),{cluster_dir.name});
-%     avg_diptop_files = cluster_dir(inds);
-%     inds = cellfun(@(x) contains(x,'avgdips_per_clust_sagittal'),{cluster_dir.name});
-%     avg_dipsag_files = cluster_dir(inds);
-%     inds = cellfun(@(x) contains(x,'avgdips_per_clust_coronal'),{cluster_dir.name});
-%     avg_dipcor_files = cluster_dir(inds);%- variables
-    %## SUBJECT SPECIFIC IC REJECTION FIGURES
-    %- assign subject specific IC rejection directory
-%     sub_icrej_dir = dir([load_dir filesep '*' filesep 'ICA' filesep '*.jpg']);
-%     %*
-%     inds = cellfun(@(x) contains(x,'IC_score'),{sub_icrej_dir.name});
-%     icscore_files = sub_icrej_dir(inds);
-%     inds = cellfun(@(x) contains(x,'KEEP_IC_PSD'),{sub_icrej_dir.name});
-%     ickeeppsd_files = sub_icrej_dir(inds);
-%     inds = cellfun(@(x) contains(x,'powpowcat'),{sub_icrej_dir.name});
-%     powpow_files = sub_icrej_dir(inds);
-%     inds = cellfun(@(x) contains(x,'potential_brain_components_allcritera_customElectrode'),{sub_icrej_dir.name});
-%     ickeeptopo_files = sub_icrej_dir(inds);
     %## PPT MAKE
     Image = [];
-%         cnt = 1;
     cl_names = {TMP_STUDY.cluster.name};
-   
-    for k = main_cl_inds %length(cl_names):-1:1 %1:length(cl_names)
-%         ind1 = cellfun(@(x) strcmp(x,sprintf('Cluster_topo_avg%i.jpg',k)),{topo_files.name});
-%         ind2 = cellfun(@(x) strcmp(x,sprintf('dipplot_alldipspc_top%i.jpg',k)),{diptop_files.name});
-%         ind3 = cellfun(@(x) strcmp(x,sprintf('dipplot_alldipspc_sagittal%i.jpg',k)),{dipsag_files.name});
-%         ind4 = cellfun(@(x) strcmp(x,sprintf('dipplot_alldipspc_coronal%i.jpg',k)),{dipcor_files.name});
-% %         ind5 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des1_cl%i.jpg',k)),{psd_des1_files.name});
-% %         ind6 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des2_cl%i.jpg',k)),{psd_des2_files.name});
-%         ind5 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des1_cl%i.pdf',k)),{psd_des1_files.name});
-%         ind6 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des2_cl%i.pdf',k)),{psd_des2_files.name});
+    main_cl_inds = main_cl_inds(2:end);
+   %%
+    for k = flip(main_cl_inds,2) %length(cl_names):-1:1 %1:length(cl_names)
+        %## atlas calc
+        ahist_fpath = [cluster_dir filesep sprintf('cluster%i_histogram_atlas_counts.jpg',k)];
+        if ~exist(ahist_fpath,'file') %|| true
+            SUBJ_ATLAS_INT = 1;
+            subj_inds = TMP_STUDY.cluster(k).sets;
+            atlas_dir = dir([cluster_dir filesep sprintf('%i',k) filesep '*atlasinf*']);
+            atlas_fPath = [atlas_dir(SUBJ_ATLAS_INT).folder filesep atlas_dir(SUBJ_ATLAS_INT).name];
+            atlas_inf = readtable(atlas_fPath,'Delimiter',',');
+            %- get atlas counts
+            at_subj_char = cell(length(subj_inds)*size(atlas_inf,1),1);
+            at_dip_char = cell(length(subj_inds)*size(atlas_inf,1),1);
+            at_atlas_char = cell(length(subj_inds)*size(atlas_inf,1),1);
+            cnta = 1;
+            for i = 1:length(subj_inds)
+                atlas_fPath = [atlas_dir(i).folder filesep atlas_dir(i).name];
+                tmp = readtable(atlas_fPath,'Delimiter',','); %readtable(atlas_fPath);
+                if size(tmp,2)==3
+                    for a_i = 1:size(tmp,1)
+    %                         atlas_inf(i,a_i,1) = tmp.subject_dipole(a_i);
+    %                         atlas_inf(i,a_i,2) = tmp.atlas(a_i);
+                        at_subj_char{cnta} = TMP_STUDY.datasetinfo(subj_inds(i)).subject;
+                        at_dip_char(cnta) = tmp.subject_dipole(a_i);
+                        at_atlas_char(cnta) = tmp.atlas(a_i);
+                        cnta = cnta + 1;
+                    end
+                end
+            end
+            at_subj_char = categorical(at_subj_char(~cellfun(@isempty,at_subj_char)));
+            at_dip_char = categorical(at_dip_char(~cellfun(@isempty,at_dip_char)));
+            at_atlas_char = categorical(at_atlas_char(~cellfun(@isempty,at_atlas_char)));
+            atlas_table = table(at_subj_char,at_dip_char,at_atlas_char);
+            par_save(atlas_table,cluster_dir,sprintf('cluster%i_atlas_table.mat',k));
+            %- histo setup
+%             ahist_fpath = [cluster_dir filesep sprintf('cluster%i_histogram_atlas_counts.jpg',k)];
+            %## HISTOGRAM
+            at_chars = unique(atlas_table.at_atlas_char);
+            colors = linspecer(length(at_chars));
+            fig = figure('Position',[10,100,1620,720]);
+            hold on;
+            bx_iter = [];
+            bx_hold = [];
+            bin_hold = {};
+            h1_hold = [];
+            for i = 1:length(at_chars)
+                at_ind = at_chars(i)==atlas_table.at_atlas_char;
+                tmp_in = atlas_table.at_dip_char(at_ind);
+                if i == 1
+                    [h1,bin] = histcounts(tmp_in);
+                    chk = h1~=0;
+                    h1 = h1(chk);
+                    bin = bin(chk);
+                    bx = 1:length(h1);
+                    bb = bar(bx,h1);
+                    ax = gca;cfname_path
+                    set(gca,'TickLabelInterpreter','none')
+                    ylabel('Counts of Atlas Labels');
+                    xlabel('Atlas Determination')
+                    bb.CData = repmat(colors(i,:),[length(h1),1]);
+                    bx_iter = length(h1);
+                    bin_hold = [bin_hold, bin];
+                    bx_hold = [bx_hold, bx];
+                    h1_hold = [h1_hold, h1];
+                else
+                    [h1,bin] = histcounts(tmp_in);
+                    chk = h1~=0;
+                    h1 = h1(chk);
+                    bin = bin(chk);
+                    bx = (1:length(h1))+bx_iter;
+                    bb = bar(ax,bx,h1);
+                    bb.CData = repmat(colors(i,:),[length(h1),1]);
+                    bx_iter = bx_iter + length(h1);
+                    bin_hold = [bin_hold, bin];
+                    bx_hold = [bx_hold, bx];
+                    h1_hold = [h1_hold, h1];
+                end
+            end
+            set(gca,'xtick',bx_hold,'xticklabel',bin_hold);
+            xtickangle(60);
+            legend(at_chars,'location', 'bestoutside','interpreter','none')
+            hold off;
+            %## ADD HISTOGRAM
+            saveas(fig,ahist_fpath);
+            close(fig);
+            chk = ~strcmp('no_label_found',bin_hold);
+            bin_hold = bin_hold(chk);
+            h1_hold = h1_hold(chk);
+            [val] = max(h1_hold);
+            ind = find(h1_hold == val);
+            if length(ind) > 1
+                analabel_new = [sprintf('%s',bin_hold{ind(1)}),sprintf('-%s',bin_hold{ind(2:end)}),sprintf('-counts%i',val)];
+            else
+                analabel_new = sprintf('%s-N%i',bin_hold{ind},val);
+            end
+        else
+            analabel_new = TMP_STUDY.cluster(k).analabel;
+        end
+        
+        %##
         topo = [cluster_dir filesep sprintf('%i_Cluster_topo_avg.jpg',k)];
         D1 = [cluster_dir filesep sprintf('%i_dipplot_alldipspc_top.jpg',k)];
         D2 = [cluster_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.jpg',k)];
         D3 = [cluster_dir filesep sprintf('%i_dipplot_alldipspc_coronal.jpg',k)];
-%         ind5 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des1_cl%i.jpg',k)),{psd_des1_files.name});
-%         ind6 = cellfun(@(x) strcmp(x,sprintf('allSpecPlot_des2_cl%i.jpg',k)),{psd_des2_files.name});
-%         psd1 = [cluster_dir filesep sprintf('allSpecPlot_des1_cl%i.jpg',k)];
-%         psd2 = [cluster_dir filesep sprintf('allSpecPlot_des2_cl%i.jpg',k)];
 
         %*
-        % opts: (design 1, cluster 3) erspplot1_des1_cl3_stats_lim60,
-        % erspplottype2_notfull_stats_compare-flat_des1_cl3,
-        % erspplottype2_stats_compare-flat_des1_cl3,
-        % erspplottype2_stats_des1_cl3,
-        % erspplottype2_stats_notfull_des1_cl3,
-        % erspplottype3_orig_des1_cl3_lim60, && subject specific e.g., H2008_within_des1_cl3_stats
+        spca_fpath = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'spca'];
         ersp_fpath = [cluster_dir filesep 'plots_out' filesep sprintf('%i',k)];
         ersp_f = [];
         %- checks
-%         chk1 = sum(ind1)>=1 && sum(ind2)>=1 && sum(ind3)>=1 && sum(ind4)>=1 && sum(ind5)>=1 && sum(ind6)>=1;
         chk2 = exist(ersp_fpath,'dir');
-%         disp(chk1 && chk2)
-        if chk2 %chk1 %&& chk2
+        if chk2
+            %## (SLIDE 3f_spca) Cluster Level GPM (common base)
+            im_scale = 0.19;
+            vertical_move = 1311*im_scale+10-20;
+            TOP_DIST = 30;
+            LEFT_DIST = 50;
             %-
-%             D1 = [diptop_files(ind2).folder filesep diptop_files(ind2).name];
-%             D2 = [dipsag_files(ind3).folder filesep dipsag_files(ind3).name];
-%             D3 = [dipcor_files(ind4).folder filesep dipcor_files(ind4).name];
-%             topo = [topo_files(ind1).folder filesep topo_files(ind1).name];
-%             psd1 = [psd_des1_files(ind5).folder filesep psd_des1_files(ind5).name];
-%             psd2 = [psd_des2_files(ind6).folder filesep psd_des2_files(ind6).name];
-            
-            %## (SLIDE 3b) Cluster Level ERSPs
+            newSlide = slides.AddSlide(1,layout);
+            Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
+            for des_i = 1:length(TMP_STUDY.design)
+                ersp_f = [spca_fpath filesep sprintf('cl%i_des%i_spca_gpm_com.jpg',k,des_i)];
+                if exist(ersp_f,'file')
+                    newSlide.Shapes.AddPicture(ersp_f, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,3365*im_scale,1311*im_scale); %Left, top, width, height
+                end
+                vertical_move = vertical_move - 1311*im_scale+10; 
+            end
+            %## (SLIDE 3e_spca) Cluster Level ERSPs (common base)
+            im_scale = 0.19;
+            vertical_move = 1311*im_scale+10-20;
+            TOP_DIST = 30;
+            LEFT_DIST = 50;
+            %-
+            newSlide = slides.AddSlide(1,layout);
+            Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
+            for des_i = 1:length(TMP_STUDY.design)
+                ersp_f = [spca_fpath filesep sprintf('cl%i_des%i_spca_ersp_com.jpg',k,des_i)];
+                if exist(ersp_f,'file')
+                    newSlide.Shapes.AddPicture(ersp_f, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,3365*im_scale,1311*im_scale); %Left, top, width, height
+                end
+                vertical_move = vertical_move - 1311*im_scale+10; 
+            end
+            %## (SLIDE 3d_spca) Cluster Level GPM (clean)
+            im_scale = 0.19;
+            vertical_move = 1311*im_scale+10-20;
+            TOP_DIST = 30;
+            LEFT_DIST = 50;
+            %-
+            newSlide = slides.AddSlide(1,layout);
+            Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
+            for des_i = 1:length(TMP_STUDY.design)
+                ersp_f = [spca_fpath filesep sprintf('cl%i_des%i_spca_gpm.jpg',k,des_i)];
+                if exist(ersp_f,'file')
+                    newSlide.Shapes.AddPicture(ersp_f, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,3365*im_scale,1311*im_scale); %Left, top, width, height
+                end
+                vertical_move = vertical_move- 1311*im_scale+10; 
+            end
+            %## (SLIDE 3c_spca) Cluster Level ERSPs (clean)
+            im_scale = 0.19;
+            vertical_move = 1311*im_scale+10-20;
+            TOP_DIST = 30;
+            LEFT_DIST = 50;
+            %-
+            newSlide = slides.AddSlide(1,layout);
+            Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
+            for des_i = 1:length(TMP_STUDY.design)
+                ersp_f = [spca_fpath filesep sprintf('cl%i_des%i_spca_ersp.jpg',k,des_i)];
+                if exist(ersp_f,'file')
+                    newSlide.Shapes.AddPicture(ersp_f, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,3365*im_scale,1311*im_scale); %Left, top, width, height
+                end
+                vertical_move = vertical_move - 1311*im_scale+10; 
+            end
+            %## (SLIDE 3b_spca) Cluster Level GPM (original)
+            im_scale = 0.19;
+            vertical_move = 1311*im_scale+10-20;
+            TOP_DIST = 30;
+            LEFT_DIST = 50;
+            %-
+            newSlide = slides.AddSlide(1,layout);
+            Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
+            for des_i = 1:length(TMP_STUDY.design)
+                ersp_f = [spca_fpath filesep sprintf('cl%i_des%i_spca_gpmorig.jpg',k,des_i)];
+                if exist(ersp_f,'file')
+                    newSlide.Shapes.AddPicture(ersp_f, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,3365*im_scale,1311*im_scale); %Left, top, width, height
+                end
+                vertical_move = vertical_move - 1311*im_scale+10; 
+            end
+            %## (SLIDE 3a_spca) Cluster Level ERSPs (original)
+            im_scale = 0.19;
+            vertical_move = 1311*im_scale+10-20;
+            TOP_DIST = 30;
+            LEFT_DIST = 50;
+            %-
+            newSlide = slides.AddSlide(1,layout);
+            Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
+            for des_i = 1:length(TMP_STUDY.design)
+                ersp_f = [spca_fpath filesep sprintf('cl%i_des%i_spca_ersporig.jpg',k,des_i)];
+                if exist(ersp_f,'file')
+                    newSlide.Shapes.AddPicture(ersp_f, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,3365*im_scale,1311*im_scale); %Left, top, width, height
+                end
+                vertical_move = vertical_move - 1311*im_scale+10; 
+            end
+            %## (SLIDE 3e) Cluster Level ERSPs
             vertical_move = 0;
             im_scale = 0.19;
             TOP_DIST = 30;
@@ -281,29 +416,16 @@ for k_i = 1:length(CLUSTER_DIRS)
             %-
             newSlide = slides.AddSlide(1,layout);
             Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
-            Title1.TextFrame.TextRange.Text = sprintf('(K=%i) Cluster %i, %s',clust_i,k,TMP_STUDY.cluster(k).analabel);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
             for des_i = 1:length(TMP_STUDY.design)
-%                 if des_i == 1
-%                     LEFT_DIST = -200;
-%                 else
-%                     LEFT_DIST = 0;
-%                 end
-%                 ersp1 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplot1_des%i_cl%i_stats_lim60.jpg',des_i,k)];
-%                 ersp2 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_notfull_stats_compare-flat_des%i_cl%i.jpg',des_i,k)];
-%                 ersp3 = dir([ersp_fpath filesep sprintf('%i',des_i) filesep 'erspplottype2_stats_compare*.jpg']);
-%                 ersp3 = [ersp3.folder filesep ersp3.name];
-%                 ersp4 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_des%i_cl%i.jpg',des_i,k)];
-%                 ersp5 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_notfull_des%i_cl%i.jpg',des_i,k)];
-%                 ersp6 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype3_orig_des%i_cl%i_lim60.jpg',des_i,k)];
                 ersp_f = dir([ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype3_stats_notfull_des%i_cl%i*.jpg',des_i,k)]);
-%                 ersp_f = dir([ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype3_stats_notfull_des%i_cl%i.pdf',des_i,k)]);
                 ersp_f = [ersp_f(1).folder filesep ersp_f(1).name];
                 if exist(ersp_f,'file')
                     newSlide.Shapes.AddPicture(ersp_f, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,4075*im_scale,1312*im_scale); %Left, top, width, height
                 end
                 vertical_move = vertical_move + 1312*im_scale+10; 
             end
-            %## (SLIDE 3b) Cluster Level ERSPs
+            %## (SLIDE 3d) Cluster Level ERSPs
             vertical_move = 0;
             im_scale = 0.19;
             TOP_DIST = 30;
@@ -311,26 +433,15 @@ for k_i = 1:length(CLUSTER_DIRS)
             %-
             newSlide = slides.AddSlide(1,layout);
             Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
-            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,TMP_STUDY.cluster(k).analabel);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
             for des_i = 1:length(TMP_STUDY.design)
-%                 ersp1 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplot1_des%i_cl%i_stats_lim60.jpg',des_i,k)];
-%                 ersp2 = dir([ersp_fpath filesep sprintf('%i',des_i) filesep 'erspplottype2_notfull_stats_compare*.jpg']);
-%                 ersp2 = [ersp2.folder filesep ersp2.name];
-%                 ersp3 = dir([ersp_fpath filesep sprintf('%i',des_i) filesep 'erspplottype2_stats_compare*.jpg']);
-%                 ersp3 = [ersp3.folder filesep ersp3.name];
-%                 ersp4 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_des%i_cl%i.jpg',des_i,k)];
                 ersp_f = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_notfull_des%i_cl%i.jpg',des_i,k)];
-%                 ersp_f = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_notfull_des%i_cl%i.pdf',des_i,k)];
-%                 ersp6 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype3_orig_des%i_cl%i_lim60.jpg',des_i,k)];
                 if exist(ersp_f,'file')
                     newSlide.Shapes.AddPicture(ersp_f, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,4075*im_scale,1312*im_scale); %Left, top, width, height
                 end
-%                 if exist(ersp3,'file')
-%                     newSlide.Shapes.AddPicture(ersp3, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,3083*im_scale,729*im_scale); %Left, top, width, height
-%                 end
                 vertical_move = vertical_move + 1312*im_scale+10; 
             end
-            %## (SLIDE 3b) Cluster Level ERSPs
+            %## (SLIDE 3c) Cluster Level ERSPs
             vertical_move = 0;
             im_scale = 0.19;
             TOP_DIST = 30;
@@ -338,28 +449,14 @@ for k_i = 1:length(CLUSTER_DIRS)
             %-
             newSlide = slides.AddSlide(1,layout);
             Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
-            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,TMP_STUDY.cluster(k).analabel);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
             for des_i = 1:length(TMP_STUDY.design)
-%                 if des_i == 1
-%                     LEFT_DIST = -220;
-%                 else
-%                     LEFT_DIST = 0;
-%                 end
-%                 ersp1 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplot1_des%i_cl%i_stats_lim60.jpg',des_i,k)];
                 ersp_f = dir([ersp_fpath filesep sprintf('%i',des_i) filesep 'erspplottype2_notfull_stats_compare*.jpg']);
                 [val,ind] = max([ersp_f.datenum]);
                 ersp_f = [ersp_f(ind).folder filesep ersp_f(ind).name];
-%                 ersp3 = dir([ersp_fpath filesep sprintf('%i',des_i) filesep 'erspplottype2_stats_compare*.jpg']);
-%                 ersp3 = [ersp3.folder filesep ersp3.name];
-%                 ersp4 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_des%i_cl%i.jpg',des_i,k)];
-%                 ersp5 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_notfull_des%i_cl%i.jpg',des_i,k)];
-%                 ersp6 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype3_orig_des%i_cl%i_lim60.jpg',des_i,k)];
                 if exist(ersp_f,'file')
                     newSlide.Shapes.AddPicture(ersp_f, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,2631*im_scale,1311*im_scale); %Left, top, width, height
                 end
-%                 if exist(ersp3,'file')
-%                     newSlide.Shapes.AddPicture(ersp3, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,3083*im_scale,729*im_scale); %Left, top, width, height
-%                 end
                 vertical_move = vertical_move + 1311*im_scale+10; 
             end
             %## (SLIDE 3b) Cluster Level ERSPs
@@ -370,20 +467,8 @@ for k_i = 1:length(CLUSTER_DIRS)
             %-
             newSlide = slides.AddSlide(1,layout);
             Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
-            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,TMP_STUDY.cluster(k).analabel);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
             for des_i = 1:length(TMP_STUDY.design)
-%                 if des_i == 1
-%                     LEFT_DIST = -200;
-%                 else
-%                     LEFT_DIST = 0;
-%                 end
-%                 ersp1 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplot1_des%i_cl%i_stats_lim60.jpg',des_i,k)];
-%                 ersp2 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_notfull_stats_compare-flat_des%i_cl%i.jpg',des_i,k)];
-%                 ersp3 = dir([ersp_fpath filesep sprintf('%i',des_i) filesep 'erspplottype2_stats_compare*.jpg']);
-%                 ersp3 = [ersp3.folder filesep ersp3.name];
-%                 ersp4 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_des%i_cl%i.jpg',des_i,k)];
-%                 ersp5 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_notfull_des%i_cl%i.jpg',des_i,k)];
-%                 ersp6 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype3_orig_des%i_cl%i_lim60.jpg',des_i,k)];
                 ersp_f = dir([ersp_fpath filesep sprintf('%i',des_i) filesep 'erspplottype3_notfull_stats_compare*.jpg']);
                 [val,ind] = max([ersp_f.datenum]);
                 ersp_f = [ersp_f(ind).folder filesep ersp_f(ind).name];
@@ -400,14 +485,9 @@ for k_i = 1:length(CLUSTER_DIRS)
             %-
             newSlide = slides.AddSlide(1,layout);
             Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
-            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,TMP_STUDY.cluster(k).analabel);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
             for des_i = 1:length(TMP_STUDY.design)
                 ersp_f = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplot_des%i_cl%i_bootstats.jpg',des_i,k)];
-%                 ersp2 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_notfull_stats_compare-flat_des%i_cl%i.jpg',des_i,k)];
-%                 ersp3 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_compare-flat_des%i_cl%i.jpg',des_i,k)];
-%                 ersp4 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_des%i_cl%i.jpg',des_i,k)];
-%                 ersp5 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype2_stats_notfull_des%i_cl%i.jpg',des_i,k)];
-%                 ersp6 = [ersp_fpath filesep sprintf('%i',des_i) filesep sprintf('erspplottype3_orig_des%i_cl%i_lim60.jpg',des_i,k)];
                 if exist(ersp_f,'file')
                     newSlide.Shapes.AddPicture(ersp_f, 'msoFalse', 'msoTrue',0+LEFT_DIST,0+TOP_DIST+vertical_move,3365*im_scale,1311*im_scale); %Left, top, width, height
                 end
@@ -421,7 +501,7 @@ for k_i = 1:length(CLUSTER_DIRS)
             newSlide = slides.AddSlide(1,layout);
             fooof_fpath = [spec_data_dir filesep 'psd_calcs'];
             Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',50,10,400,70);
-            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,TMP_STUDY.cluster(k).analabel);
+            Title1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
             for des_i = 1:length(TMP_STUDY.design)
                 psd_plot = dir([fooof_fpath filesep sprintf('TopoPSD_Violins_cl%i_des%i.jpg',k,des_i)]);
                 psd_plot = [psd_plot.folder filesep psd_plot.name];
@@ -430,11 +510,18 @@ for k_i = 1:length(CLUSTER_DIRS)
                 end
                 vertical_move = vertical_move + 768*im_scale+10; 
             end
+            %## (SLIDE 2) ATLAS INFORMATION
+            im_scale = 0.28;
+            newSlide = slides.AddSlide(1,layout);
+            if exist(ahist_fpath,'file')
+                newSlide.Shapes.AddPicture(ahist_fpath, 'msoFalse', 'msoTrue',0,100,2531*im_scale*1.2,1125*im_scale*1.2); %Left, top, width, height
+            end
+            %## (SLIDE TITLE)
             %## (SLIDE 1) Add topo plots and dips to slide
             im_scale = 0.225;
             newSlide = slides.AddSlide(1,layout);
-            Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',1200*im_scale*2,30,400,70);
-            Title1.TextFrame.TextRange.Text = sprintf('(K=%i) Cluster %i, %s',clust_i,k,TMP_STUDY.cluster(k).analabel);
+            Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',1200*im_scale*2+50,30,400,70);
+            Title1.TextFrame.TextRange.Text = sprintf('(K=%i) Cluster %i, %s',clust_i,k,analabel_new);
             if exist(D1,'file')
                 newSlide.Shapes.AddPicture(D1, 'msoFalse', 'msoTrue',0,0+20,812*im_scale,974*im_scale); %Left, top, width, height
             end
@@ -447,81 +534,37 @@ for k_i = 1:length(CLUSTER_DIRS)
             if exist(topo,'file')
                 newSlide.Shapes.AddPicture(topo, 'msoFalse', 'msoTrue',0,813*im_scale+30,834*im_scale,946*im_scale); %Left, top, width, height
             end
-            %## (SLIDE TITLE)
             %- title slide
-            newSlide = slides.AddSlide(1,layout);
-            Txt1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
-            Txt1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,TMP_STUDY.cluster(k).analabel);
-%             set(newSlide.Shapes.Title.Textframe.Textrange, 'Text', sprintf('(K=%i) Cluster %i, %s',clust_i,k,TMP_STUDY.cluster(k).analabel));
+%             newSlide = slides.AddSlide(1,layout);
+%             Txt1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',400,200,400,70);
+%             Txt1.TextFrame.TextRange.Text = sprintf('(N=%i) Cluster %i, %s',length(TMP_STUDY.cluster(k).sets),k,analabel_new);
+%             set(newSlide.Shapes.Title.Textframe.Textrange, 'Text', sprintf('(K=%i) Cluster %i, %s',clust_i,k,analabel_new));
             subj_inds = TMP_STUDY.cluster(k).sets;
             subj_char = {TMP_STUDY.datasetinfo(subj_inds).subject};
             subj_char = strjoin(subj_char,', ');
-            Txt2 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,80,400,70);
+            Txt2 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',400,270,400,70);
             Txt2.TextFrame.TextRange.Text = sprintf('Cluster Label: %s\nSubjects in cluster: %s\n',TMP_STUDY.cluster(k).name,subj_char);
-            %## ATLAS INFORMATION
-            %{
-            SUBJ_ATLAS_INT = 1;
-            atlas_dir = dir([cluster_dir filesep sprintf('%i',k) filesep '*atlasinf*']);
-            atlas_fPath = [atlas_dir(SUBJ_ATLAS_INT).folder filesep atlas_dir(SUBJ_ATLAS_INT).name];
-            atlas_inf = readtable(atlas_fPath);
-            while size(atlas_inf,2)~=3 && SUBJ_ATLAS_INT<length(atlas_dir)
-                SUBJ_ATLAS_INT = SUBJ_ATLAS_INT+1;
-                atlas_fPath = [atlas_dir(SUBJ_ATLAS_INT).folder filesep atlas_dir(SUBJ_ATLAS_INT).name];
-                tmp = readtable(atlas_fPath);
-                atlas_inf = tmp;
-                atlases = tmp(:,3);
-            end
-            %- get atlas counts
-            atlas_inf = cell(length(subj_inds),1);
-            for i = 1:length(subj_inds)
-                atlas_fPath = [atlas_dir(i).folder filesep atlas_dir(i).name];
-                tmp = readtable(atlas_fPath);
-                if size(tmp,2)==3
-                    atlas_inf{i} = {tmp.subject_dipole{:}};
-                 	atlases = tmp;
-                end
-            end
-            atlas_inf = atlas_inf(~cellfun(@isempty,atlas_inf));
-            word_vec = cat(2,atlas_inf{:});
-            words = unique(word_vec);
-            ahist_fpath = [cluster_dir filesep sprintf('cluster%i_histogram_atlas_counts.jpg',k)];
-            if ~exist(ahist_fpath,'file')
-                %## HISTOGRAM
-                fig = figure('Position',[10,100,1200,900]);
-                histogram(categorical(word_vec),words)
-                ax = gca;
-                set(gca,'TickLabelInterpreter','none')
-                ylabel('Counts of Atlas Labels');
-                xlabel('Atlas Determination')
-                %## ADD HISTOGRAM
-                im_scale = 0.25;
-                saveas(fig,ahist_fpath);
-            end
-            if exist(ahist_fpath,'file')
-                newSlide.Shapes.AddPicture(ahist_fpath, 'msoFalse', 'msoTrue',400,100,1875*im_scale*1.2,1406*im_scale*1.2); %Left, top, width, height
-            end
             %- add label
-            Txt2 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',300,00,650,100);
-            Txt2.TextFrame.TextRange.Text = sprintf('Atlases Used: %s',strjoin({atlases.atlas{:}},', '));
-            %}
+%             Txt2 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',300,00,650,100);
+%             Txt2.TextFrame.TextRange.Text = sprintf('Atlases Used: %s',strjoin({atlases.atlas{:}},', '));
+            
             %- table
-            %{
-            table = invoke(newSlide.Shapes, 'AddTable', size(atlas_inf,1)+1, size(atlas_inf,2), 400, 0, 400, 70);    % create Table
-            table.Table.Cell(1,1).Shape.TextFrame.TextRange.Text = 'Centroid'; 
-            table.Table.Cell(1,2).Shape.TextFrame.TextRange.Text = sprintf('Subject %s',TMP_STUDY.datasetinfo(subj_inds(SUBJ_ATLAS_INT)).subject);
-            table.Table.Cell(1,3).Shape.TextFrame.TextRange.Text = 'Atlas';
-            for i = 1:size(atlas_inf,1)
-                centr = string(atlas_inf{i,1});
-                subj =  string(atlas_inf{i,2});
-                atlas = string(atlas_inf{i,3});
-                table.Table.Cell(i+1,1).Shape.TextFrame.TextRange.Text = centr;
-                table.Table.Cell(i+1,2).Shape.TextFrame.TextRange.Text = subj;
-                table.Table.Cell(i+1,3).Shape.TextFrame.TextRange.Text = atlas;
-            end
-            for i = 1:size(atlas_inf,2)
-                table.Table.Columns.Item(i).Width = 180;
-            end
-            %}
+%             table = invoke(newSlide.Shapes, 'AddTable', size(atlas_inf,1)+1, size(atlas_inf,2), 400, 0, 400, 70);    % create Table
+%             table.Table.Cell(1,1).Shape.TextFrame.TextRange.Text = 'Centroid'; 
+%             table.Table.Cell(1,2).Shape.TextFrame.TextRange.Text = sprintf('Subject %s',TMP_STUDY.datasetinfo(subj_inds(SUBJ_ATLAS_INT)).subject);
+%             table.Table.Cell(1,3).Shape.TextFrame.TextRange.Text = 'Atlas';
+%             for i = 1:size(atlas_inf,1)
+%                 centr = string(atlas_inf{i,1});
+%                 subj =  string(atlas_inf{i,2});
+%                 atlas = string(atlas_inf{i,3});
+%                 table.Table.Cell(i+1,1).Shape.TextFrame.TextRange.Text = centr;
+%                 table.Table.Cell(i+1,2).Shape.TextFrame.TextRange.Text = subj;
+%                 table.Table.Cell(i+1,3).Shape.TextFrame.TextRange.Text = atlas;
+%             end
+%             for i = 1:size(atlas_inf,2)
+%                 table.Table.Columns.Item(i).Width = 180;
+%             end
+            
         end
     end
     

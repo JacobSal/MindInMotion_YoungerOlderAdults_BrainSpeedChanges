@@ -1,3 +1,13 @@
+STEPS:
+1) batch_preprocess.m
+2) run_singlenode_amica_run.sh
+3) source_mim_mcc_dipfit_exe.sh
+4) ants_norm.bash (note: only needs to be ran once)
+4) ants_write_dip_csv.m
+5) ants_norm_apply_trans.bash
+6) ants_norm_dips.m (run_ants_norm_dips.sh)
+
+NOTES:
 Email from Sumire:
 """
 ml gcc/5.2.0 

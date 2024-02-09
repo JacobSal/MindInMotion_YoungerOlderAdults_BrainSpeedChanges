@@ -205,7 +205,8 @@ STD_PRECLUST_COMMAND = {'dipoles','weight',clustering_weights.dipoles};
 % dt = '10302023_MIM_OAN70_newnormalize_iccREMG0p4_powpow0p1';
 % dt = '10302023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
 % dt = '11302023_MIM_OAN70_antsnormalize_iccREMG0p3_powpow0p1';
-dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+% dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+dt = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];

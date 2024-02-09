@@ -139,8 +139,9 @@ end
 
 CLUSTER_PICKS = main_cl_inds(2:end); %valid_clusters; %main_cl_inds(2:end); %valid_clusters
 %## PLOT cluster based information
+valid_cls = [3,4,5,6,7,8,9,11,12];
 mim_gen_cluster_figs(STUDY,ALLEEG,save_dir,...
-    'CLUSTERS_TO_PLOT',main_cl_inds);
+    'CLUSTERS_TO_PLOT',valid_cls);
 %% Version History
 %{
 v1.0.01132023.0 : Initializing versioning for future iterations. Previous

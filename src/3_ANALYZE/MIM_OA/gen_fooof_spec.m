@@ -148,7 +148,9 @@ ERSP_PARAMS = struct('subbaseline','off',...
 % dt = '10302023_MIM_OAN70_newnormalize_iccREMG0p4_powpow0p1';
 % dt = '10302023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
 % dt = '11302023_MIM_OAN70_antsnormalize_iccREMG0p3_powpow0p1';
-dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+% dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+% dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+dt = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 %## Soft Define
 study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 DATA_DIR = [source_dir filesep '_data'];
@@ -832,13 +834,15 @@ pcond = tmp.pcond;
 tmp = load([save_dir filesep 'org_pcond.mat']);
 pcond_org = tmp.pcond_org;
 %% Sanity check - time series plots from aperiodic subtraction
-figure('color','white');
+
 data_min = [min(fooof_diff_store{g}{k}{1});min(fooof_diff_store{g}{k}{2});min(fooof_diff_store{g}{k}{3});...
 min(fooof_diff_store{g}{k}{4});];
 data_max = [max(fooof_diff_store{g}{k}{1});min(fooof_diff_store{g}{k}{2});max(fooof_diff_store{g}{k}{3});...
 max(fooof_diff_store{g}{k}{4});];
 for g = DESIGN_I
     for k = CLUSTER_PICKS
+        figure('color','white');
+        hold on;
         for i = 1:4
             subplot(4,1,i)
             data = fooof_diff_store{g}{k}{i};
@@ -848,6 +852,7 @@ for g = DESIGN_I
         end
         xlabel('Frequency(Hz)');
         title(['Cluster ',num2str(k)]);
+        hold off;
     end
 end
 %% Sanity check: Plot distribution of aperiodic params (exp), central frequency, and goodness of fit
@@ -883,7 +888,8 @@ VIOLIN_YLIM_APERIODIC_OFFSET = [-6,6];
 % CINGULATE_I = {11};
 % CINGULATE_I = {14};
 % CINGULATE_I = {9};
-CINGULATE_I = {10};
+% CINGULATE_I = {10};
+CINGULATE_I = {11,13};
 theta_3=[-1,6];
 alpha_3=[-1,6];
 beta_3=[-1,9];
@@ -897,7 +903,8 @@ psd_ylim_orig_3 = [];
 % SENSORIMOTOR_I = {5,14};
 % SENSORIMOTOR_I = {13,8};
 % SENSORIMOTOR_I = {6,13};
-SENSORIMOTOR_I = {5,6};
+% SENSORIMOTOR_I = {5,6};
+SENSORIMOTOR_I = {4,14};
 theta_1=[-1,6.5];
 alpha_1=[-1.5,16];
 beta_1=[-1,10];
@@ -911,7 +918,8 @@ psd_ylim_orig_1 = [];
 % POSTERIORP_I = {3,12};
 % POSTERIORP_I = {12,7};
 % POSTERIORP_I = {11,4};
-POSTERIORP_I = {14,12};
+% POSTERIORP_I = {14,12};
+POSTERIORP_I = {10,9};
 theta_2=[-1,6];
 alpha_2=[-1,19];
 beta_2=[-1,9];
@@ -924,7 +932,8 @@ psd_ylim_orig_2 = [];
 % SUPPMOTOR_I = {6};
 % SUPPMOTOR_I = {};
 % SUPPMOTOR_I = {3,12};
-SUPPMOTOR_I = {};
+% SUPPMOTOR_I = {};
+SUPPMOTOR_I = {5};
 theta_4=[-1,6];
 alpha_4=[-1,11];
 beta_4=[-1,10];
@@ -936,7 +945,8 @@ beta_4=[-1,10];
 % OCCIPITAL_I = {7,13};
 % OCCIPITAL_I = {4,6};
 % OCCIPITAL_I = {5};
-OCCIPITAL_I = {7,8};
+% OCCIPITAL_I = {7,8};
+OCCIPITAL_I = {8};
 theta_6=[-1,8];
 alpha_6=[-1,15];
 beta_6=[-1,7];
@@ -950,7 +960,8 @@ psd_ylim_orig_6 = [];
 % CAUDATE_I = 9;
 % CAUDATE_I = {9};
 % CAUDATE_I = {8};
-CAUDATE_I = {13};
+% CAUDATE_I = {13};
+CAUDATE_I = {3};
 theta_7=[-1,5];
 alpha_7=[-1.5,7];
 beta_7=[-1,7];
@@ -964,7 +975,7 @@ psd_ylim_orig_7 = [];
 % CUNEUS_I = 10;
 % CUNEUS_I = {5};
 % CUNEUS_I = {14};
-CUNEUS_I = {11};
+CUNEUS_I = {};
 theta_5=[-1,8];
 alpha_5=[-1.5,12];
 beta_5=[-1,8];
@@ -976,7 +987,7 @@ psd_ylim_orig_5 = [];
 % TEMPORAL_I = {4,8};
 % TEMPORAL_I = {3,11};
 % TEMPORAL_I = {7,10};
-TEMPORAL_I = {3,4};
+TEMPORAL_I = {6,12};
 theta_8=[-1,5];
 alpha_8=[-1.5,12];
 beta_8=[-1,7];

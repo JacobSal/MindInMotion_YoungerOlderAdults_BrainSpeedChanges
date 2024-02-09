@@ -569,7 +569,7 @@ function [fig] = plot_contourf(ersp_raw,ersp_pcond,ersp_masked,alltimes,allfreqs
         xtickangle(45)
         ax = gca;
         ax.XAxis.FontSize = FONT_SIZE;
-        title(alltitles{j});  
+        title(alltitles{j});
         horiz_shift = horiz_shift + SHIFT_AMNT;
     end
     hold off;

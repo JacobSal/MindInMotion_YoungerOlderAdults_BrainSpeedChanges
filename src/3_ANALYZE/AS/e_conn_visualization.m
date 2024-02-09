@@ -92,7 +92,9 @@ EVENT_CHARS = {'Subject_hit'}; %, 'Subject_receive'};
 % dt = '06122023_bounces_1h2h2bm_JS';
 % dt = '06152023_bounces_1h2h2bm_JS';
 % dt = '07272023_bounces_1h_2h_2bm_JS';
-dt = '08182023_bounces_1h_2h_2bm_JS';
+% dt = '08182023_bounces_1h_2h_2bm_JS';
+% dt = '12182023_bounces_1h_2h_2bm_JS_0p25-1';
+dt = '12282023_bounces_1h_2bm_JS_n1-0p5';
 %## soft define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -135,7 +137,6 @@ end
 % CLUSTER_ASSIGNMENTS = {'RPPa-Oc','LPPa-Oc','Precuneus','Cuneus'}; % (06/27/2023) JS, unsure on these as of yet.
 CLUSTER_ITERS = [3,4,5,6,7,8,9,10,11,12];
 CLUSTER_ASSIGNMENTS = {'RPPa-Oc','Cuneus','Precuneus','RSuppMotor','LPPa-Oc','LSM','RSM','LTemp','Cing','LSuppMotor'}; % (06/27/2023) JS, unsure on these as of yet.
-
 %% 
 %- plotting vars
 FREQ_BANDS = [];
@@ -143,6 +144,9 @@ FREQ_BANDS.theta = (4:8);
 FREQ_BANDS.alpha = (8:14);
 FREQ_BANDS.beta = (14:30);
 FREQ_BANDS.gamma = (30:50);
+FREQ_BANDS.broad_4to100 = (4:100);
+% fThetaInds=find(EEG.CAT.Conn.freqs>=4 & EEG.CAT.Conn.freqs<=8);
+% fAlphaInds=find(EEG.CAT.Conn.freqs>=8 & EEG.CAT.Conn.freqs<=13);
 %-
 DO_PLOT = true;
 CLIM = [0,0.005];
@@ -151,6 +155,8 @@ ALPHA = 0.05;
 PLOT_CI = true;
 FREQSCALE = 'log';
 CONN_MEAS = 'dDTF08';
+% CONN_MEAS = 'S';
+
 %- initiate vars
 fPaths = {MAIN_ALLEEG.filepath};
 fNames = {MAIN_ALLEEG.filename};
@@ -176,11 +182,31 @@ T_DIM = size(tmp_cat.Conn.(CONN_MEAS),4);
 F_DIM = size(tmp_cat.Conn.(CONN_MEAS),3);
 FREQS_VEC = tmp_cat.Conn.freqs;
 CLUSTER_PICKS = main_cl_inds(2:end);
-COND_NAMES = unique(EEG.etc.conn_table.t_fNames);
+tmp = unique(EEG.etc.conn_table.t_fNames);
+COND_NAMES = cell(length(tmp),1);
+for i = 1:length(tmp)
+    out = strsplit(tmp{i},'.');
+    out = strsplit(out{1},'_');
+    out = strjoin(out(3:end),' ');
+    COND_NAMES{i} = out;
+end
+%% MODEL ORDER & VALIDATION DATA
+[tbl_out,tbl_summary_out] = cnctanl_valfigs_to_table(save_dir,COND_CHARS);
+fprintf('HQ minimum information crit model order: %0.2f\n',mean(tbl_summary_out.min_modorder_info_crit_hq_line));
+fprintf('AIC minimum information crit model order: %0.2f\n',mean(tbl_summary_out.min_modorder_info_crit_aic_line));
+fprintf('HQ mean histogram model order: %0.2f\n',mean(tbl_summary_out.mean_hist_hq_amnts));
+fprintf('AIC mean histogram model order: %0.2f\n',mean(tbl_summary_out.mean_hist_aic_amnts));
+
 %% ===================================================================== %%
 %## LOAD BOOSTRAP & PHASE RANDOMIZED INFORMATION
+% save_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\AS_dataset\_studies\12282023_bounces_1h_2bm_JS_n1-0p5\_figs\_save\01042024_indv_morder';
+% save_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\AS_dataset\_studies\12282023_bounces_1h_2bm_JS_n1-0p5\_figs\conn\01082024_dDTF08';
+% save_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\AS_dataset\_studies\12282023_bounces_1h_2bm_JS_n1-0p5\_figs\conn\S';
+save_dir = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\AS_dataset\_studies\12282023_bounces_1h_2bm_JS_n1-0p5\_figs\conn\dDTF08';
+
 save_dir_nonzmats =  [save_dir filesep 'nonzero_mat_files'];
-save_dir_bootmats =  [save_dir filesep 'bootstrap_mat_files'];
+% save_dir_bootmats =  [save_dir filesep 'bootstrap_mat_files'];
+save_dir_bootmats =  [save_dir filesep 'bootstrap_baseline_mat_files'];
 BOOTSTRAP_STRUCT = cell(length(MAIN_ALLEEG),1);
 PHASERND_STRUCT = cell(length(MAIN_ALLEEG),1);
 for subj_i = 1:length(MAIN_ALLEEG)
@@ -191,553 +217,815 @@ end
 %-
 BOOTSTRAP_STRUCT = cat(1,BOOTSTRAP_STRUCT{:});
 PHASERND_STRUCT = cat(1,PHASERND_STRUCT{:});
-%% ===================================================================== %%
-%## BOOTSTRAP EXTRACTION
 CONN_MEAS = BOOTSTRAP_STRUCT(1).conn_meas;
 FREQ_BANDS = BOOTSTRAP_STRUCT(1).FREQ_BAND_INF.FREQ_BANDS;
-cond_1 = 1;
-cond_2 = 2;
-extract_mat_1 = zeros(F_DIM,T_DIM,length(BOOTSTRAP_STRUCT));
-extract_mat_2 = zeros(F_DIM,T_DIM,length(BOOTSTRAP_STRUCT));
-BOOT_CONN_STORE = nan(length(MAIN_STUDY.cluster),length(MAIN_STUDY.cluster),F_DIM,T_DIM,length(BOOTSTRAP_STRUCT));
-BOOT_CONN_AVG_STORE = nan(length(MAIN_STUDY.cluster),length(MAIN_STUDY.cluster),F_DIM,T_DIM,length(BOOTSTRAP_STRUCT));
-BOOT_CONN_MASK_STORE = nan(length(MAIN_STUDY.cluster),length(MAIN_STUDY.cluster),COND_N,F_DIM,T_DIM,length(BOOTSTRAP_STRUCT));
-BOOT_CONN_FREQ_STORE = nan(length(MAIN_STUDY.cluster),length(MAIN_STUDY.cluster),T_DIM,length(fieldnames(FREQ_BANDS)),length(BOOTSTRAP_STRUCT));
-for subj_i = 1:length(BOOTSTRAP_STRUCT)
-    fprintf('assigning subject data %s...\n',BOOTSTRAP_STRUCT.subject);
-    %- get components and cluster assignments
-    comps = squeeze(comps_out(:,subj_i));
-    [tmpcl,idxcl] = sort(comps);
-    idxcl = idxcl(tmpcl~=0);
-    tmpcl = tmpcl(tmpcl~=0);
-    %- time x frequency information
-
-    for cond_i = 1:COND_N
-%         orig = MAIN_ALLEEG(subj_i).etc.COND_CAT.Conn.(CONN_MEAS);
-        orig = BOOTSTRAP_STRUCT(subj_i).averages{cond_i};
-        mask = BOOTSTRAP_STRUCT(subj_i).masked_conn{cond_1,cond_2};
-        BOOT_CONN_MASK_STORE(idxcl,idxcl,cond_i,:,:,subj_i) = orig.*mask;
-    end
-    
-    BOOT_CONN_STORE(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).masked_conn{cond_1,cond_2};
-end
 %% ===================================================================== %%
-%## CONNECTIVITY MATRICIES
-% freq_1 = 3;
-% cl_1 = 1;
-% cl_2 = 2;
-cond_1 = 1;
-cond_2 = 2;
-%-
-freq_conn_1 = BOOT_CONN_FREQ_STORE;
-freq_conn_2 = BOOT_CONN_FREQ_STORE;
-for subj_i = 1:length(BOOTSTRAP_STRUCT)
-    %- get components and cluster assignments
-    comps = squeeze(comps_out(:,subj_i));
-    [tmpcl,idxcl] = sort(comps);
-    idxcl = idxcl(tmpcl~=0);
-    tmpcl = tmpcl(tmpcl~=0);
-    %-
-    freq_conn_1(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).FREQ_BAND_INF.sumed_cause{cond_1,cond_2};
-    freq_conn_2(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).FREQ_BAND_INF.sumed_cause{cond_2,cond_1};
-    %-
-%     freq_conn_1(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).FREQ_BAND_INF.integrated_cause{cond_1,cond_2};
-%     freq_conn_2(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).FREQ_BAND_INF.integrated_cause{cond_2,cond_1};
-    for cond_i = 1:COND_N
-%         orig = MAIN_ALLEEG(subj_i).etc.COND_CAT.Conn.(CONN_MEAS);
-%         orig = BOOTSTRAP_STRUCT(subj_i).averages{cond_i};
-%         mask = BOOTSTRAP_STRUCT(subj_i).masked_conn{cond_1,cond_2};
-%         BOOT_CONN_MASK_STORE(idxcl,idxcl,cond_i,:,:,subj_i) = orig.*mask;
-%         BOOT_CONN_MASK_STORE(idxcl,idxcl,cond_i,:,:,subj_i) = orig;
-        %-
-        orig = BOOTSTRAP_STRUCT(subj_i).averages{cond_i,1};
-        mask = BOOTSTRAP_STRUCT(subj_i).masked_conn{cond_2,cond_1};
-        BOOT_CONN_MASK_STORE(idxcl,idxcl,cond_i,:,:,subj_i) = orig.*mask;
-    end
-end
-
-%%
-freq_names = fieldnames(FREQ_BANDS);
-freq_bands = FREQ_BANDS;
-COLOR_LIMITS=[-0.0001,0.0001];
-% boot_mat = freq_conn_1;
-% cond_i = 1;
-% boot_mat = freq_conn_2;
-% cond_i = 2;
-cond_i = 1;
-boot_mat = squeeze(BOOT_CONN_MASK_STORE(:,:,cond_i,:,:,:));
+%## BOOTSTRAP EXTRACTION
+BOOT_CONN_AVG_STORE = nan(length(MAIN_STUDY.cluster),length(MAIN_STUDY.cluster),F_DIM,T_DIM,length(BOOTSTRAP_STRUCT));
+BOOT_CONN_FREQ_STORE = nan(length(MAIN_STUDY.cluster),length(MAIN_STUDY.cluster),T_DIM,length(fieldnames(FREQ_BANDS)),length(BOOTSTRAP_STRUCT));
+%% ===================================================================== %%
+%## NONZERO EXTRACTION
+NON_CONN_AVG_STORE = nan(length(MAIN_STUDY.cluster),length(MAIN_STUDY.cluster),F_DIM,T_DIM,length(PHASERND_STRUCT));
+NON_CONN_FREQ_STORE = nan(length(MAIN_STUDY.cluster),length(MAIN_STUDY.cluster),T_DIM,length(fieldnames(FREQ_BANDS)),length(PHASERND_STRUCT));
+%% CREATE CONNECTION SUMMARY STATISTICS
+% CONNECT_TABLE = table;
+% cluster_ints = [3,4,5,6,7,8,9,10,11,12];
+% cluster_names = {'RPPa-Oc','Cuneus','Precuneus','RSuppMotor','LPPa-Oc','LSM','RSM','LTemp','Cing','LSuppMotor'}; % (06/27/2023) JS, unsure on these as of yet.
 cluster_ints = [3,7,5,4];
 cluster_names = {'RPPa-Oc','LPPa-Oc','Precuneus','Cuneus'}; % (06/27/2023) JS, unsure on these as of yet.
+ALPHA = 0.1;
+COND_PAIR_ORDER = [1,2];
+CONN_MEAS = PHASERND_STRUCT(1).conn_meas;
+FREQ_NAMES = fieldnames(FREQ_BANDS);
+allfreqs = MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.freqs;
+alltimes = MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes;
+rej_subj = zeros(size(comps_out,2),1); 
+%## REJECT SUBJECTS
+%- method 1 (not so good)
+% bools = zeros(length(cluster_ints),length(cluster_ints),size(NON_CONN_MASK_STORE,5));
+% rej_subj = zeros(size(NON_CONN_MASK_STORE,5),1);
+% for subj_i = 1:size(NON_CONN_MASK_STORE,5)
+%     tmp = squeeze(NON_CONN_MASK_STORE(cluster_ints,cluster_ints,:,:,subj_i,:));
+%     tmp(tmp>0) = 1;
+% %             tmp = ~tmp;
+%     bools(:,:,subj_i) = any(tmp,[3,4,5]);
+% %     disp(subj_i);
+%     disp(bools(:,:,subj_i));
+%     if ~all(bools(:,:,subj_i),[1,2])
+%         fprintf('Reject: %i\n',subj_i);
+%         rej_subj(subj_i) = 1;
+%     end
+% end
+%- method 2
+% rej_subj = zeros(size(comps_out,2),1); 
+% for subj_i = 1:size(comps_out,2)
+%     tmp = comps_out(cluster_ints,subj_i)>0;
+%     if ~all(tmp)
+%         fprintf('Reject: %i\n',subj_i);
+%         rej_subj(subj_i) = 1;
+%     end
+% end
 
-for freq_i = 1:size(freq_conn_1,4)
-    FREQS_SUBPATH = sprintf('%s',freq_names{freq_i});
-    save_sub_figs = [save_dir filesep 'cluster_mats' filesep FREQS_SUBPATH];
-    if ~exist(save_sub_figs,'dir')
-        mkdir(save_sub_figs);
-    end
-    %- plot
-    cnt = 1;
-    clusterNames = {};
-    for i = 1:length(MAIN_STUDY.cluster)
-        N = length(MAIN_STUDY.cluster(i).sets);
-        if any(i == cluster_ints)
-            %- assign name if available
-            idx = find(i == cluster_ints);
-            clusterNames{idx} = sprintf('(N=%i) %s',N,cluster_names{(i == cluster_ints)});
-            cnt = cnt + 1;            
-        end
-    end
-    %## PLOT
-    %- average acroos time
-%     tmp = squeeze(nanmean(squeeze(boot_mat(:,:,:,freq_i,:)),3));
-    %-
-    tmp = squeeze(boot_mat(:,:,freq_bands.(freq_names{freq_i}),:,:));
-    outv = zeros(size(tmp,1),size(tmp,2),size(tmp,4),size(tmp,5));
-    for subj_i = 1:size(tmp,4)
-        for i = 1:size(tmp,1)
-            for j = 1:size(tmp,2)
-                y_in = squeeze(tmp(i,j,:,:,subj_i));
-                x_in = 1:size(y_in,1);
-                outv(i,j,:,subj_i) = trapz(x_in,y_in,1);
+%## NONZERO STATS
+subj_chars = {PHASERND_STRUCT(~rej_subj).subject};
+NON_CONN_MASK_STORE = nan(length(MAIN_STUDY.cluster),length(MAIN_STUDY.cluster),F_DIM,T_DIM,length(PHASERND_STRUCT),length(COND_NAMES));
+for subj_i = 1:length(PHASERND_STRUCT)
+    for cond_i = 1:length(COND_NAMES)
+        comps = squeeze(comps_out(:,subj_i));
+        [tmpcl,idxcl] = sort(comps);
+        idxcl = idxcl(tmpcl~=0);
+        nonz_in = (PHASERND_STRUCT(subj_i).stats{cond_i}.(CONN_MEAS).pval<ALPHA);
+        boot_in = BOOTSTRAP_STRUCT(subj_i).averages{cond_i,1};
+        %- assign
+        for i = 1:length(idxcl)
+            for j = 1:length(idxcl)
+                %- method 1
+                %- method 2
+        %         tmp = PHASERND_STRUCT(subj_i).masked_conn{cond_i};
+                NON_CONN_MASK_STORE(idxcl(i),idxcl(j),:,:,subj_i,cond_i) = squeeze(nonz_in(i,j,:,:)).*squeeze(boot_in(i,j,:,:));
             end
         end
     end
-    tmp = squeeze(nanmean(squeeze(tmp(:,:,:,:)),3));
-    %- average across subject
-    tmp = nanmean(tmp,3);
-    I = eye(size(tmp));
-    I = (I == 0);
-    tmp = tmp.*I;
-    tmp(tmp == 0) = nan();
-%     tmp = log(tmp);
-    %- delte unused clusters
-    in_mat = tmp(cluster_ints,:);
-    in_mat = in_mat(:,cluster_ints);
-    names_in = clusterNames;
-%     in_mat = in_mat';
-   
-    %- plot
-    figure;
-    hnd = heatmap(in_mat,'Colormap',linspecer); %,'CellLabelColor', 'None');
-    %- create title
-    out1 = strsplit(COND_NAMES{cond_i},'.');
-    out1 = strsplit(out1{1},'_');
-    out1 = strjoin(out1(3:end),' ');
-    title(sprintf('(%s) ''%s'' Connectivity Mean Across Clusters',FREQS_SUBPATH,out1));
-    hnd.YDisplayLabels = names_in;
-    hnd.XDisplayLabels = names_in;
-    hnd.ColorLimits = COLOR_LIMITS;
-    hnd.GridVisible = 'off';
-    hnd.CellLabelFormat = '%0.3g';
-    hnd.NodeChildren(3).Title.Interpreter = 'none';
-    fig_i = get(groot,'CurrentFigure');
-    set(fig_i,'Position',[10,100,720,620])
-    exportgraphics(fig_i,[save_sub_figs filesep sprintf('%s_mean_mat_nobase_%s.jpg','clusters',out1)],'Resolution',300);
-%         exportgraphics(fig_i,[save_sub_figs filesep sprintf('%s_meanMatbased_%s.pdf','clusters',conn_conds{cond_i})],'Resolution',300);
-
-
 end
-%% ===================================================================== %%
-%## SIGNAL COMPARISONS
-% freq_1 = 1;
-cond_1 = 1;
-cond_2 = 2;
-%-
-freq_conn_1 = BOOT_CONN_FREQ_STORE;
-freq_conn_2 = BOOT_CONN_FREQ_STORE;
+% NON_CONN_MASK_STORE = NON_CONN_MASK_STORE(cluster_ints,cluster_ints,:,:,:,:);
+NON_CONN_MASK_STORE = NON_CONN_MASK_STORE(cluster_ints,cluster_ints,:,:,~rej_subj,:);
+NON_CONN_MASK_STORE(isnan(NON_CONN_MASK_STORE)) = 0;
+
+%## BOOTSTRAP STATS (VERY CONSERVATIVE)
+BOOT_CONN_MASK_STORE = zeros(length(MAIN_STUDY.cluster),length(MAIN_STUDY.cluster),F_DIM,T_DIM,length(BOOTSTRAP_STRUCT),length(COND_NAMES));
 for subj_i = 1:length(BOOTSTRAP_STRUCT)
-    %- get components and cluster assignments
-    comps = squeeze(comps_out(:,subj_i));
-    [tmpcl,idxcl] = sort(comps);
-    idxcl = idxcl(tmpcl~=0);
-    tmpcl = tmpcl(tmpcl~=0);
-    %-
-    freq_conn_1(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).FREQ_BAND_INF.integrated_cause{cond_1,cond_2};
-    freq_conn_2(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).FREQ_BAND_INF.integrated_cause{cond_2,cond_1};
-%     freq_conn_1(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).FREQ_BAND_INF.sumed_cause{cond_1,cond_2};
-%     freq_conn_2(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).FREQ_BAND_INF.sumed_cause{cond_2,cond_1};
-end
-COLORS_MEAN = linspecer(size(freq_conn_1,4))-0.15;
-COLORS_STD = COLORS_MEAN+0.15;
-%%
-%- mean of frequency band across time
-cl_1 = 3;
-cl_2 = 7;
-%{
-temp_mean_avg = squeeze(BOOT_CONN_FREQ_STORE(CLUSTER_ITERS(cl_1),CLUSTER_ITERS(cl_2),:,freq_1,:));
-temp_mean_avg = nanmean(temp_mean_avg,2);
-figure;
-plot(temp_mean_avg);
-fig_i = figure();
-hold on;
-%}
-%- create title
-COLOR_LIMITS = [-12e-4,12e-4];
-in1 = CLUSTER_ASSIGNMENTS{CLUSTER_ITERS==cl_1}; %CLUSTER_ITERS(i)};
-in2 =CLUSTER_ASSIGNMENTS{CLUSTER_ITERS==cl_2}; %CLUSTER_ITERS(j)};
-% in1 =CLUSTER_ASSIGNMENTS{cl_1}; %CLUSTER_ITERS(i)};
-% in2 =CLUSTER_ASSIGNMENTS{cl_2}; %CLUSTER_ITERS(j)};
-freq_names = fieldnames(FREQ_BANDS);
-figure();
-hold on;
-title(sprintf('Connectivity Across Time between %s & %s',in1,in2));
-for freq_i = 1:size(freq_conn_1,4)
-    subplot(2,2,freq_i);
-    hold on;
-%     fprintf('here\n');
-%     tmp = squeeze(freq_conn_1(cl_1,cl_2,:,freq_i,:));
-    tmp = squeeze(freq_conn_2(cl_1,cl_2,:,freq_i,:));
-%     tmp = squeeze(freq_conn_2(CLUSTER_ITERS(cl_1),CLUSTER_ITERS(cl_2),:,freq_i,:));
-%     tmp = squeeze(freq_conn_2(CLUSTER_ITERS(cl_1),CLUSTER_ITERS(cl_2),:,freq_i,:));
-%     tmp = cat(1,tmp{:});
-    y_mean = nanmean(tmp,2); %rand(1,10); % your mean vector;
-    y_med = nanmedian(tmp);
-    x = (1:size(tmp,1)); %1:numel(y);
-    xx = (1:size(tmp,1)); %1:numel(y);
-    std_dev = nanstd(tmp,[],2);
-    curve1 = y_mean + std_dev;
-    curve2 = y_mean - std_dev;
-    x2 = [x; fliplr(x)];
-    inBetween = [curve1, fliplr(curve2)];
-%     fill(x2', inBetween, COLORS_STD(freq_i,:));
-    plot(x,curve1,'Color',[COLORS_MEAN(freq_i,:),0.5],'DisplayName','+1std');
-    plot(x,curve2,'Color',[COLORS_MEAN(freq_i,:),0.5],'DisplayName','-1std');
-    pp = plot(x,y_mean,'LineWidth',2,'Color',[COLORS_MEAN(freq_i,:),0.5],...
-        'DisplayName',sprintf('%s',freq_names{freq_i}));
-    legend();
-    ylim(COLOR_LIMITS);
-    hold off;
-end
-
-
-% hold off;
-% legend(tmp_leg{:})
-% exportgraphics(fig_i,[save_sub_figs filesep sprintf('across_time_plot_%s_%s.jpg',in1,in2)],'Resolution',300);
-
-%% ===================================================================== %%
-%## time-frequency statistics?
-cond_1 = 1;
-cond_2 = 2;
-cl_1 = 3;
-cl_2 = 7;
-STUDY = MAIN_STUDY;
-boot_conn_1 = BOOT_CONN_AVG_STORE;
-boot_conn_2 = BOOT_CONN_AVG_STORE;
-for subj_i = 1:length(BOOTSTRAP_STRUCT)
-    comps = squeeze(comps_out(:,subj_i));
-    [tmpcl,idxcl] = sort(comps);
-    idxcl = idxcl(tmpcl~=0);
-    tmpcl = tmpcl(tmpcl~=0);
-    boot_conn_1(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).averages{cond_1,1}; %.(CONN_MEAS);
-    boot_conn_2(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).averages{cond_2,1}; %.(CONN_MEAS
-end
-allersp = {squeeze(boot_conn_1(cl_1,cl_2,:,:,:));squeeze(boot_conn_2(cl_1,cl_2,:,:,:))};
-% allfreqs = BOOTSTRAP_STRUCT(1).averages{1,1}.freqs;
-allfreqs = FREQS_VEC;
-alltimes = MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes; %BOOTSTRAP_STRUCT(1).averages{1,1}.erWinCenterTimes;
-%## ERSP PARAMS
-ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
-    'groupstats','off',... %['on'|'off']
-    'method','perm',... % ['param'|'perm'|'bootstrap']
-    'singletrials','off',... % ['on'|'off'] load single trials spectral data (if available). Default is 'off'.
-    'mode','fieldtrip',... % ['eeglab'|'fieldtrip']
-    'fieldtripalpha',0.05,... % [NaN|alpha], Significance threshold (0<alpha<<1)
-    'fieldtripmethod','montecarlo',... %[('montecarlo'/'permutation')|'parametric']
-    'fieldtripmcorrect','cluster',...  % ['cluster'|'fdr']
-    'fieldtripnaccu',2000);
-ERSP_PARAMS = struct('subbaseline','off',...
-    'timerange',[],...
-    'ersplim',[-2,2],...
-    'freqfac',4,...
-    'cycles',[3,0.8],...
-    'freqrange',[1,100]);
-%## POP PARAMS
-STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_PARAMS.subbaseline,...
-      'ersplim',ERSP_PARAMS.ersplim,'freqrange',ERSP_PARAMS.freqrange);
-STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
-    'groupstats',ERSP_STAT_PARAMS.groupstats,...
-    'method',ERSP_STAT_PARAMS.method,...
-    'singletrials',ERSP_STAT_PARAMS.singletrials,'mode',ERSP_STAT_PARAMS.mode,...
-    'fieldtripalpha',ERSP_STAT_PARAMS.fieldtripalpha,...
-    'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
-    'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
-%- get stats parameters
-stats = STUDY.etc.statistics;
-stats.fieldtrip.channelneighbor = struct([]); % assumes one channel or 1 component
-% if isempty(STUDY.design(STUDY.currentdesign).variable)
-%     stats.paired = { };
-% else
-%     stats.paired = { STUDY.design(STUDY.currentdesign).variable(:).pairing };
-% end
-stats.paired = {'on'}; %{'BM','Human'};
-[pcond, pgroup, pinter] = std_stat(allersp, stats);
-%{
-%- get ersp params
-params = STUDY.etc.erspparams;
-params.plottf = [];
-% select specific time and freq
-% -----------------------------
-if ~isempty(params.plottf)
-    if length(params.plottf) < 3
-        params.plottf(3:4) = params.plottf(2);
-        params.plottf(2)   = params.plottf(1);
+    for cond_i = 1:length(COND_NAMES)
+        comps = squeeze(comps_out(:,subj_i));
+        [tmpcl,idxcl] = sort(comps);
+        idxcl = idxcl(tmpcl~=0);
+        %- for Hab (between condition) bootstraps
+%         tmp = (PHASERND_STRUCT(subj_i).stats{cond_i}.(CONN_MEAS).pval<ALPHA).*(BOOTSTRAP_STRUCT(subj_i).stats{COND_PAIR_ORDER(1),COND_PAIR_ORDER(2)}.(CONN_MEAS).pval<ALPHA).*BOOTSTRAP_STRUCT(subj_i).averages{cond_i,1};
+%         tmp = BOOTSTRAP_STRUCT(subj_i).masked_conn{COND_PAIR_ORDER(1),COND_PAIR_ORDER(2)};
+        %- for baseline bootstraps
+        tmp = BOOTSTRAP_STRUCT(subj_i).masked_conn{cond_i};
+        for i = 1:length(idxcl)
+            for j = 1:length(idxcl)
+                BOOT_CONN_MASK_STORE(idxcl(i),idxcl(j),:,:,subj_i,cond_i) = tmp(i,j,:,:);
+            end
+        end
     end
-    [~, fi1] = min(abs(allfreqs-params.plottf(1)));
-    [~, fi2] = min(abs(allfreqs-params.plottf(2)));
-    [~, ti1] = min(abs(alltimes-params.plottf(3)));
-    [~, ti2] = min(abs(alltimes-params.plottf(4)));
-    for index = 1:length(allersp(:))
-        allersp{index} = mean(mean(allersp{index}(fi1:fi2,ti1:ti2,:,:),1),2);
-        allersp{index} = reshape(allersp{index}, [1 size(allersp{index},3) size(allersp{index},4) ]);
-    end
-
-    % prepare channel neighbor matrix for Fieldtrip
-    statstruct = std_prepare_neighbors(STUDY, ALLEEG);
-    stats.fieldtrip.channelneighbor = statstruct.etc.statistics.fieldtrip.channelneighbor;
-
-    params.plottf = { params.plottf(1:2) params.plottf(3:4) };
-    [pcond, pgroup, pinter] = std_stat(allersp, stats);
-    if (~isempty(pcond) && length(pcond{1}) == 1) || (~isempty(pgroup) && length(pgroup{1}) == 1), pcond = {}; pgroup = {}; pinter = {}; end % single subject STUDY
-else
-    [pcond, pgroup, pinter] = std_stat(allersp, stats);
-    if (~isempty(pcond ) && (size( pcond{1},1) == 1 || size( pcond{1},2) == 1)) || ...
-            (~isempty(pgroup) && (size(pgroup{1},1) == 1 || size(pgroup{1},2) == 1))
-        pcond = {}; pgroup = {}; pinter = {};
-        disp('No statistics possible for single subject STUDY');
-    end % single subject STUDY
 end
-%}
-%% ===================================================================== %%
-% cl_1 = 3;
-% cl_2 = 4;
-%- mean of bootstrap comparison 
-% temp_mean_tval = squeeze(BOOT_CONN_STORE(cl_1,cl_2,:,:,:));
-% temp_mean_tval(temp_mean_tval==0) = nan();
-% temp_mean_tval = nanmean(temp_mean_tval,3);
-% temp_mean_tval(isnan(temp_mean_tval)) = 0;
-%- mean of boostraps mean
-% temp_mean_avg = BOOT_CONN_AVG_STORE(cl_1,cl_2,:,:,:);
-% temp_mean_avg(temp_mean_avg==0) = nan();
-% temp_mean_avg = nanmean(temp_mean_avg,3);
-% temp_mean_avg(isnan(temp_mean_avg)) = 0;
-%- masking consolidation?
-% temp_mean_avg = BOOT_CONN_AVG_STORE(cl_1,cl_2,:,:,:);
-% temp_mean_avg(temp_mean_avg==0) = nan();
-% temp_mean_avg = nanmean(temp_mean_avg,3);
-% temp_mean_avg(isnan(temp_mean_avg)) = 0;
-%- pvalue from paired cluster based stats
-allpcond = pcond{1};
-allersp_mean = cellfun(@(x) nanmean(x,3),allersp,'UniformOutput',false);
-%-
-FIGURE_POSITION = [10,100,620,480];
-clim_max = [0,0.0005]; %[-0.001,0.001];
-SUB_FREQ_LIMS = [3,60];
-alltitles = {'HUMAN','BALL MACHINE'};
-XTICK_LABEL = 'time (s)';
-YTICK_LABEL = 'Frequency (Hz)';
-FONT_SIZE = 12;
-SUBPLOT_WIDTH = 0.15;
-SUBPLOT_HEIGHT = 0.7;
-SHIFT_AMNT = 0.175;
-STATS_TITLE = 'CUSTOM STATS';
-if length(clim_max) == 2
-    clim_ersp = clim_max;
-else
-    clim_ersp = [-clim_max,clim_max];
-end
+% BOOT_CONN_MASK_STORE = BOOT_CONN_MASK_STORE(cluster_ints,cluster_ints,:,:,:,:);
+BOOT_CONN_MASK_STORE = BOOT_CONN_MASK_STORE(cluster_ints,cluster_ints,:,:,~rej_subj,:);
+BOOT_CONN_MASK_STORE(isnan(BOOT_CONN_MASK_STORE)) = 0;
 %##
-fig = figure('color','white','position',FIGURE_POSITION,'renderer','Painters');
-set(fig,'Units','inches','Position',[3 3 14 5])
-set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
-horiz_shift = 0;
-hold on;
-for j = 1:length(allersp_mean)
-    subplot(1,length(allersp_mean)+1,j); %,'position',[0.01+horiz_shift,0.1,0.5,0.5])
-    ax = gca;
-    tftopo(allersp_mean{j},alltimes,allfreqs,'limits',... 
-        [nan nan nan nan clim_ersp],...
-        'logfreq','native');
-    hold on;
-    colormap(colormap_ersp);
-    %- adjust subplot position and height
-    %fig_i.CurrentAxes;
-    set(ax,'LineWidth',1)
-    set(ax,'FontName','Arial','FontSize',FONT_SIZE,'FontWeight','bold')
-    set(ax,'OuterPosition',[0 0 1 1]);
-    set(ax,'Position',[0.05+horiz_shift,0.2,SUBPLOT_WIDTH,SUBPLOT_HEIGHT]);  %[left bottom width height]
-%         disp(get(ax,'Position'));
-    %- add vertical line
-%     for i = 1:length(warping_times)
-%         xline(ax,warping_times(i),'k--');
-%     end
-    %- set ylims
-    ylim(log(SUB_FREQ_LIMS))
-    if SUB_FREQ_LIMS(2) <= 50
-        set(ax,'YTick',log([4.01,8,13,30,50])); 
-        set(ax,'YTickLabel',{'4','8','13','30','50'},'Fontsize',FONT_SIZE);
-    elseif SUB_FREQ_LIMS(2) <= 100
-        set(ax,'YTick',log([4.01,8,13,30,50,99.4843])); 
-        set(ax,'YTickLabel',{'4','8','13','30','50','100'},'Fontsize',FONT_SIZE);
-    end  
-    %- set color lims
-    set(ax,'clim',clim_ersp);
-    %- set x-axis & y-axis labels
-    if j == 1
-        ylabel(YTICK_LABEL,'FontSize',FONT_SIZE,'fontweight','bold');
-        xlabel(XTICK_LABEL,'FontSize',FONT_SIZE);
-    else
-        xlabel('','FontSize',FONT_SIZE);
-        ylabel('','fontsize',FONT_SIZE,'fontweight','bold');
-    end
-    %- set x-axis ticks
-%     xrng = get(ax,'XLim');
-%     if warping_times(1) < xrng(1)
-%         warping_times(1) = xrng(1);
-%     end
-%     if warping_times(end) > xrng(end)
-%         warping_times(end) = xrng(end);
-%     end
-%     set(ax,'XTick',warping_times,'XTickLabel',EVENT_CHARS);
-%     xtickangle(45)
-%     ax.XAxis.FontSize = FONT_SIZE;
-%         ylim()
-    %- title
-    title(alltitles{j});  
-    horiz_shift = horiz_shift + SHIFT_AMNT;
-end
-%## Add Stats To Plot
-if ~isempty(allpcond)
-    subplot(1,length(allersp_mean)+1,length(allersp_mean)+1) % add one subplot for stats
-    tftopo(double(allpcond),alltimes,allfreqs,'limits',... 
-        [nan nan nan nan  clim_ersp],...
-        'logfreq','native')
-    colormap(colormap_ersp);
-    ax = gca;
-    %-
-    %fig_i.CurrentAxes;
-    set(ax,'LineWidth',1)
-    set(ax,'FontName','Arial','FontSize',FONT_SIZE,'FontWeight','bold')
-    set(ax,'OuterPosition',[0 0 1 1]);
-    set(ax,'Position',[0.05+horiz_shift,0.2,SUBPLOT_WIDTH,SUBPLOT_HEIGHT]);  %[left bottom width height]
-    disp(get(ax,'Position'));
-    %- set color bar
-    c = colorbar();
-    c.Position(1) = c.Position(1)+0.04;
-    c.Limits = clim_ersp;
-    %- color bar label
-    hL = ylabel(c,[{'\Delta Power'};{'(dB)'}],'fontweight',...
-        'bold','FontName','Arial','FontSize',FONT_SIZE);
-    set(hL,'Rotation',0);
-    hL.Position(1) = hL.Position(1)+1.7;
-    hL.Position(2) = hL.Position(2)+0.025;
-    hL.Position(2) = .13;
-    set(hL,'Rotation',0);
-    %- add vertical line
-%     for i = 1:length(warping_times)
-%         xline(ax,warping_times(i),'k--');
-%     end
-    %- set ylims
-    ylim(log(SUB_FREQ_LIMS))
-    if SUB_FREQ_LIMS(2) <= 50
-        set(ax,'YTick',log([4.01,8,13,30,50])); 
-        set(ax,'YTickLabel',{'4','8','13','30','50'},'Fontsize',FONT_SIZE);
-    elseif SUB_FREQ_LIMS(2) <= 100
-        set(ax,'YTick',log([4.01,8,13,30,50,99.4843])); 
-        set(ax,'YTickLabel',{'4','8','13','30','50','100'},'Fontsize',FONT_SIZE);
-    end  
-    %- set color lims
-    set(ax,'clim',clim_ersp);
-    %- set y-axis labels
-    xlabel('','FontSize',FONT_SIZE);
-    ylabel(sprintf(''),'fontsize',FONT_SIZE,'fontweight','bold');
-    %- set x-axis labels
-%     xrng = get(ax,'XLim');
-%     if warping_times(1) < xrng(1)
-%         warping_times(1) = xrng(1);
-%     end
-%     if warping_times(end) > xrng(end)
-%         warping_times(end) = xrng(end);
-%     end
-%     set(ax,'XTick',warping_times,'XTickLabel',EVENT_CHARS);
-%     xtickangle(45)
-%     ax.XAxis.FontSize = FONT_SIZE;
-    %- title
-    title(STATS_TITLE)
-else
-    %- set color bar
-    c = colorbar();
-    c.Position(1) = c.Position(1)+0.05;
-    c.Limits = clim_ersp;
-end
-hold off;
-fig = get(groot,'CurrentFigure');
-%% ===================================================================== %%
-if ~ispc
-    addpath(convertPath2UNIX('M:\jsalminen\GitHub\par_EEGProcessing\submodules\groupSIFT'));
-else
-    addpath(convertPath2Drive('M:\jsalminen\GitHub\par_EEGProcessing\submodules\groupSIFT'));
-end
-%% ===================================================================== %%
-% input1 = squeeze(bootstrapped_out.matrix{1}(1,:,:,:));
-% input2 = squeeze(bootstrapped_out.matrix{1}(2,:,:,:));
-ind_1 = 1;
-ind_2 = 3;
-ind_3 = 4;
-ind_4 = 5;
-cl_1 = 3; %CLUSTER_ITERS(ind_1);
-cl_2 = 7; %CLUSTER_ITERS(ind_2);
-cl_3 = 3; %CLUSTER_ITERS(ind_3);
-cl_4 = 7; %CLUSTER_ITERS(ind_4);
-input_1 = BOOT_CONN_STORE(cl_1,cl_2,:,:,:);
-input_2 = BOOT_CONN_STORE(cl_3,cl_4,:,:,:);
-t_test_type = 1;
-pval_preselc = 100; %0.05;
-n_iters = 2000;
-[mask,tscore,pValue] = clusterLevelPermutationTest(input1,input2,t_test_type,pval_preselc,n_iters);
 
-mask_in = pValue<0.05;
-mean_mat = mean(input1,3);
-contour_in = mean_mat.*mask_in;
-%##
-figure();
-colormap(linspecer)
-contourf(contour_in)
-colorbar();
-%% CLUSTER_LEVEL_PERMUTATION =========================================== %%
+%## average across subjects before averaging across time and summing
+%frequency***
+NON_CONN_SUBJAVG = zeros(length(cluster_ints),length(cluster_ints),F_DIM,T_DIM,length(COND_NAMES));
+BOOT_CONN_SUBJAVG = zeros(length(cluster_ints),length(cluster_ints),F_DIM,T_DIM,length(COND_NAMES));
+NON_FREQBAND_TAVG = zeros(length(cluster_ints),length(cluster_ints),length(FREQ_NAMES),size(NON_CONN_MASK_STORE,5),length(COND_NAMES));
+BOOT_FREQBAND_TAVG = zeros(length(cluster_ints),length(cluster_ints),length(FREQ_NAMES),size(NON_CONN_MASK_STORE,5),length(COND_NAMES));
+for cond_i = 1:size(NON_CONN_MASK_STORE,6)
+    %- median
+    NON_CONN_SUBJAVG(:,:,:,:,cond_i) = squeeze(median(squeeze(NON_CONN_MASK_STORE(:,:,:,:,:,cond_i)),5));
+    BOOT_CONN_SUBJAVG(:,:,:,:,cond_i) = squeeze(median(squeeze(BOOT_CONN_MASK_STORE(:,:,:,:,:,cond_i)),5));
+    %- mean
+%     NON_CONN_MASK_STORE(:,:,:,:,:,cond_i) = mean(NON_CONN_MASK_STORE(:,:,:,:,:,cond_i),5);
+%     BOOT_CONN_MASK_STORE(:,:,:,:,:,cond_i) = mean(BOOT_CONN_MASK_STORE(:,:,:,:,:,cond_i),5);
+    for freq_i = 1:length(FREQ_NAMES)
+        %- time-before subj method 1
+        NON_FREQBAND_TAVG(:,:,freq_i,:,cond_i) = squeeze(mean(squeeze(trapz(NON_CONN_MASK_STORE(:,:,FREQ_BANDS.(FREQ_NAMES{freq_i}),:,:,cond_i),3)),3));
+        BOOT_FREQBAND_TAVG(:,:,freq_i,:,cond_i) = squeeze(mean(squeeze(trapz(BOOT_CONN_MASK_STORE(:,:,FREQ_BANDS.(FREQ_NAMES{freq_i}),:,:,cond_i),3)),3));
+        
+    end
+end
+%## FREQ-TIME AVERAGES
+NON_FREQBAND_SUBJAVG = zeros(length(cluster_ints),length(cluster_ints),length(FREQ_NAMES),T_DIM,length(COND_NAMES));
+BOOT_FREQBAND_SUBJAVG = zeros(length(cluster_ints),length(cluster_ints),length(FREQ_NAMES),T_DIM,length(COND_NAMES));
+NON_FREQBAND_TAVG_SUBJAVG = zeros(length(cluster_ints),length(cluster_ints),length(FREQ_NAMES),length(COND_NAMES));
+BOOT_FREQBAND_TAVG_SUBJAVG = zeros(length(cluster_ints),length(cluster_ints),length(FREQ_NAMES),length(COND_NAMES));
+
+for freq_i = 1:length(FREQ_NAMES)
+    for cond_i = 1:size(NON_CONN_SUBJAVG,5)
+        for i = 1:size(NON_CONN_SUBJAVG,1)
+            for j = 1:size(NON_CONN_SUBJAVG,2)
+                %- freq method 1
+                NON_FREQBAND_SUBJAVG(i,j,freq_i,:,cond_i) = squeeze(trapz(NON_CONN_SUBJAVG(i,j,FREQ_BANDS.(FREQ_NAMES{freq_i}),:,cond_i),3));
+                BOOT_FREQBAND_SUBJAVG(i,j,freq_i,:,cond_i) = squeeze(trapz(BOOT_CONN_SUBJAVG(i,j,FREQ_BANDS.(FREQ_NAMES{freq_i}),:,cond_i),3));
+                %- freq method 2
+        %         NON_FREQBAND_SUBJAVG(:,:,freq_i,:,cond_i) = sum(NON_CONN_SUBJAVG(:,:,FREQ_BANDS.(FREQ_NAMES{freq_i}),:,cond_i),3);
+        %         BOOT_FREQBAND_SUBJAVG(:,:,freq_i,:,cond_i) = sum(BOOT_CONN_SUBJAVG(:,:,FREQ_BANDS.(FREQ_NAMES{freq_i}),:,cond_i),3);
+                %- time method 1
+                NON_FREQBAND_TAVG_SUBJAVG(i,j,freq_i,cond_i) = squeeze(mean(NON_FREQBAND_SUBJAVG(i,j,freq_i,:,cond_i),4));
+                BOOT_FREQBAND_TAVG_SUBJAVG(i,j,freq_i,cond_i) = squeeze(mean(BOOT_FREQBAND_SUBJAVG(i,j,freq_i,:,cond_i),4));
+                %- time method 2
+        %         NON_FREQBAND_TAVG_SUBJAVG(:,:,freq_i,cond_i) = squeeze(median(NON_FREQBAND_SUBJAVG(:,:,freq_i,:,cond_i),4));
+        %         BOOT_FREQBAND_TAVG_SUBJAVG(:,:,freq_i,cond_i) = squeeze(median(BOOT_FREQBAND_SUBJAVG(:,:,freq_i,:,cond_i),4));
+                %- freq-time method 3
+%                 tmp1 = squeeze(NON_CONN_SUBJAVG(i,j,FREQ_BANDS.(FREQ_NAMES{freq_i}),:,cond_i));
+%                 tmp2 = squeeze(BOOT_CONN_SUBJAVG(i,j,FREQ_BANDS.(FREQ_NAMES{freq_i}),:,cond_i));
+%                 NON_FREQBAND_TAVG_SUBJAVG(i,j,freq_i,cond_i) = mean(tmp1(:));
+%                 BOOT_FREQBAND_TAVG_SUBJAVG(i,j,freq_i,cond_i) = mean(tmp2(:));
+            end
+        end
+        %- freq method 1
+%         NON_FREQBAND_SUBJAVG(:,:,freq_i,:,cond_i) = squeeze(trapz(NON_CONN_SUBJAVG(:,:,FREQ_BANDS.(FREQ_NAMES{freq_i}),:,cond_i),3));
+%         BOOT_FREQBAND_SUBJAVG(:,:,freq_i,:,cond_i) = squeeze(trapz(BOOT_CONN_SUBJAVG(:,:,FREQ_BANDS.(FREQ_NAMES{freq_i}),:,cond_i),3));
+%         %- freq method 2
+% %         NON_FREQBAND_SUBJAVG(:,:,freq_i,:,cond_i) = sum(NON_CONN_SUBJAVG(:,:,FREQ_BANDS.(FREQ_NAMES{freq_i}),:,cond_i),3);
+% %         BOOT_FREQBAND_SUBJAVG(:,:,freq_i,:,cond_i) = sum(BOOT_CONN_SUBJAVG(:,:,FREQ_BANDS.(FREQ_NAMES{freq_i}),:,cond_i),3);
+%         %- time method 1
+%         NON_FREQBAND_TAVG_SUBJAVG(:,:,freq_i,cond_i) = squeeze(mean(NON_FREQBAND_SUBJAVG(:,:,freq_i,:,cond_i),4));
+%         BOOT_FREQBAND_TAVG_SUBJAVG(:,:,freq_i,cond_i) = squeeze(mean(BOOT_FREQBAND_SUBJAVG(:,:,freq_i,:,cond_i),4));
+    end
+end
 cl_pairs = [];
-for cl_i = main_cl_inds(2:end)
-    for cl_j = main_cl_inds(2:end)
+for cl_i = 1:length(cluster_ints)
+    for cl_j = 1:length(cluster_ints)
         if any(all(ismember(cl_pairs,[cl_i,cl_j]),2)) || cl_i==cl_j
             continue;
         end
         cl_pairs = [cl_pairs; cl_i,cl_j];
     end
 end
-PERMUTE_STATS_OUT = zeros(length(STUDY.cluster),length(STUDY.cluster),length(FREQ_BANDS));
-for ind_1 = 1:length(CLUSTER_ITERS)
-    for ind_2 = 1:length(CLUSTER_ITERS)
-        for ind_3 = 1:length(CLUSTER_ITERS)
-            for ind_4 = 1:length(CLUSTER_ITERS)
-                cl_1 = CLUSTER_ITERS(ind_1);
-                cl_2 = CLUSTER_ITERS(ind_2);
-                cl_3 = CLUSTER_ITERS(ind_3);
-                cl_4 = CLUSTER_ITERS(ind_4);
-                input_1 = BOOT_CONN_STORE(cl_1,cl_2);
-                input_2 = BOOT_CONN_STORE(cl_3,cl_4);
-                t_test_type = 1;
-                pval_preselc = 100; %0.05;
-                n_iters = 2000;
-                [mask,tscore,pValue] = clusterLevelPermutationTest(input1,input2,t_test_type,pval_preselc,n_iters);
+VALS_OUT = struct('cluster_inds',cluster_ints,...
+    'cluster_chars',{cluster_names},...
+    'subjs_rejected',rej_subj,...
+    'freq_bands',FREQ_BANDS,...
+    'freq_names',{fieldnames(FREQ_BANDS)},...
+    'conn_freqs',allfreqs,...
+    'conn_times',alltimes,...
+    'subjects',{subj_chars},...
+    'cond_names',{COND_NAMES},...
+    'cluster_pairs',cl_pairs,...
+    'nonz_conn_cli_clj_f_t_s_c',NON_CONN_MASK_STORE,...
+    'boot_conn_cli_clj_f_t_s_c',BOOT_CONN_MASK_STORE,...
+    'nonz_conn_cli_clj_fi_s_c',NON_FREQBAND_TAVG,...
+    'boot_conn_cli_clj_fi_s_c',BOOT_FREQBAND_TAVG,...
+    'nonz_conn_cli_clj_f_t_c',NON_CONN_SUBJAVG,...
+    'boot_conn_cli_clj_f_t_c',BOOT_CONN_SUBJAVG,...
+    'nonz_conn_cli_clj_fi_t_c',NON_FREQBAND_SUBJAVG,...
+    'boot_conn_cli_clj_fi_t_c',BOOT_FREQBAND_SUBJAVG,...
+    'nonz_conn_cli_clj_fi_c',NON_FREQBAND_TAVG_SUBJAVG,...
+    'boot_conn_cli_clj_fi_c',BOOT_FREQBAND_TAVG_SUBJAVG);
+% clear BOOT_FREQBAND_SUBJAVG NON_FREQBAND_TAVG_SUBJAVG BOOT_FREQBAND_TAVG_SUBJAVG NON_CONN_MASK_STORE BOOT_CONN_MASK_STORE NON_CONN_SUBJAVG BOOT_CONN_SUBJAVG NON_FREQBAND_SUBJAVG
 
-                mask_in = pValue<0.05;
-                mean_mat = mean(input1,3);
-                contour_in = mean_mat.*mask_in;
+%##
+%{
+par_save(VALS_OUT.nonz_conn_cli_clj_fi_s_c,destination_folder,'nonz_cli_clj_fi_s_c.mat');
+par_save(VALS_OUT.boot_conn_cli_clj_fi_s_c,destination_folder,'boot_cli_clj_fi_s_c.mat');
+par_save(VALS_OUT.nonz_conn_cli_clj_fi_c,destination_folder,'nonz_cli_clj_fi_c.mat');
+par_save(VALS_OUT.boot_conn_cli_clj_fi_c,destination_folder,'boot_cli_clj_fi_c.mat');
+%}
+%% ===================================================================== %%
+%## NONZERO CONNECTIVITY MATRICIES
+COLOR_LIMITS=[0,20e-4];
+net_vals_freq_chars = {'theta','alpha','beta','all'};
+for cond_i = 1:length(COND_NAMES)
+    for freq_i = 1:length(VALS_OUT.freq_names)
+        FREQS_SUBPATH = sprintf('%s',VALS_OUT.freq_names{freq_i});
+        save_sub_figs = [save_dir filesep 'cluster_mats' filesep FREQS_SUBPATH];
+        if ~exist(save_sub_figs,'dir')
+            mkdir(save_sub_figs);
+        end
+        %- plot
+        cl_chars = cell(length(VALS_OUT.cluster_chars),1);
+        for i = 1:length(VALS_OUT.cluster_chars)
+            cl_chars{i} = sprintf('(N=%i) %s',length(VALS_OUT.subjects),VALS_OUT.cluster_chars{i});
+        end
+        %## PLOT
+%         tmp = squeeze(VALS_OUT.nonz_conn_cli_clj_fi_c(:,:,freq_i,cond_i));
+        tmp = zeros(length(cluster_ints),length(cluster_ints));
+        for i = 1:length(cluster_ints)
+            for j = 1:length(cluster_ints)
+                tt = squeeze(NON_CONN_MASK_STORE(i,j,:,:,:,cond_i));
+                tt = mean(tt,3);
+                tt = tt(VALS_OUT.freq_bands.(VALS_OUT.freq_names{freq_i}),:);
+                tt = mean(tt(:));
+                disp(tt)
+                tmp(i,j) = tt;
             end
         end
+        disp(tmp)
+%         tmp = net_vals_ave.(net_vals_freq_chars{freq_i})*10^4;
+        %- nan out diagnol & zeros
+        I = eye(size(tmp));
+        I = (I == 0);
+        tmp = tmp.*I;
+        tmp(tmp == 0) = nan();
+        %- plot
+        figure;
+        hnd = heatmap(tmp,'Colormap',linspecer); %,'CellLabelColor', 'None');
+        %- create title
+        title(sprintf('(%s) ''%s'' Connectivity Mean Across Clusters',FREQS_SUBPATH,VALS_OUT.cond_names{cond_i}));
+        hnd.YDisplayLabels = cl_chars;
+        hnd.XDisplayLabels = cl_chars;
+        hnd.ColorLimits = COLOR_LIMITS;
+        hnd.GridVisible = 'off';
+        hnd.FontName = 'Times New Roman';
+        hnd.CellLabelFormat = '%0.1g';
+        hnd.NodeChildren(3).Title.Interpreter = 'none';
+        fig_i = get(groot,'CurrentFigure');
+        set(fig_i,'Position',[10,100,720,620])
+        exportgraphics(fig_i,[save_sub_figs filesep sprintf('%s_cond_nonz_mat.jpg',strjoin(strsplit(VALS_OUT.cond_names{cond_i},' '),'_'))],'Resolution',300);
     end
 end
+%% ===================================================================== %%
+%## DIFFERENCE NONZERO CONNECTIVITY MATRICIES
+cond_1 = 1;
+cond_2 = 2;
+COLOR_LIMITS=[0,20e-4];
+for freq_i = 1:length(VALS_OUT.freq_names)
+    FREQS_SUBPATH = sprintf('%s',VALS_OUT.freq_names{freq_i});
+    save_sub_figs = [save_dir filesep 'cluster_mats' filesep FREQS_SUBPATH];
+    if ~exist(save_sub_figs,'dir')
+        mkdir(save_sub_figs);
+    end
+    %- plot
+    cl_chars = cell(length(VALS_OUT.cluster_chars),1);
+    for i = 1:length(VALS_OUT.cluster_chars)
+        cl_chars{i} = sprintf('(N=%i) %s',length(VALS_OUT.subjects),VALS_OUT.cluster_chars{i});
+    end
+    %## PLOT
+    tmp = squeeze(VALS_OUT.nonz_conn_cli_clj_fi_c(:,:,freq_i,cond_1))-squeeze(VALS_OUT.nonz_conn_cli_clj_fi_c(:,:,freq_i,cond_2));
+    %- nan out diagnol & zeros
+    I = eye(size(tmp));
+    I = (I == 0);
+    tmp = tmp.*I;
+    tmp(tmp == 0) = nan();
+    %- plot
+    figure;
+    hnd = heatmap(tmp,'Colormap',linspecer); %,'CellLabelColor', 'None');
+    %- create title
+    title(sprintf('(%s) ''%s-%s'' Connectivity Mean Across Clusters',FREQS_SUBPATH,VALS_OUT.cond_names{cond_1},VALS_OUT.cond_names{cond_2}));
+    hnd.YDisplayLabels = cl_chars;
+    hnd.XDisplayLabels = cl_chars;
+    hnd.ColorLimits = COLOR_LIMITS;
+    hnd.GridVisible = 'off';
+    hnd.CellLabelFormat = '%0.1g';
+    hnd.NodeChildren(3).Title.Interpreter = 'none';
+    fig_i = get(groot,'CurrentFigure');
+    set(fig_i,'Position',[10,100,720,620])
+    exportgraphics(fig_i,[save_sub_figs filesep sprintf('%s-%s_nonz_diff_mat.jpg',strjoin(strsplit(VALS_OUT.cond_names{cond_1},' '),'_'),strjoin(strsplit(VALS_OUT.cond_names{cond_2},' '),'_'))],'Resolution',300);
+end
+%% ===================================================================== %%
+%## BOOTSTAT CONSERVATIVE CONNECTIVITY MATRICIES
+COLOR_LIMITS=[0,20e-4];
+for cond_i = 1:length(COND_NAMES)
+    for freq_i = 1:length(VALS_OUT.freq_names)
+        FREQS_SUBPATH = sprintf('%s',VALS_OUT.freq_names{freq_i});
+        save_sub_figs = [save_dir filesep 'cluster_mats' filesep FREQS_SUBPATH];
+        if ~exist(save_sub_figs,'dir')
+            mkdir(save_sub_figs);
+        end
+        %- plot
+        cl_chars = cell(length(VALS_OUT.cluster_chars),1);
+        for i = 1:length(VALS_OUT.cluster_chars)
+            cl_chars{i} = sprintf('(N=%i) %s',length(VALS_OUT.subjects),VALS_OUT.cluster_chars{i});
+        end
+        %## PLOT
+        tmp = squeeze(VALS_OUT.boot_conn_cli_clj_fi_c(:,:,freq_i,cond_i));
+        %- nan out diagnol & zeros
+        I = eye(size(tmp));
+        I = (I == 0);
+        tmp = tmp.*I;
+        tmp(tmp == 0) = nan();
+        %- plot
+        figure;
+        hnd = heatmap(tmp,'Colormap',linspecer); %,'CellLabelColor', 'None');
+        %- create title
+        title(sprintf('(%s) ''%s'' Connectivity Mean Across Clusters',FREQS_SUBPATH,VALS_OUT.cond_names{cond_i}));
+        hnd.YDisplayLabels = cl_chars;
+        hnd.XDisplayLabels = cl_chars;
+        hnd.ColorLimits = COLOR_LIMITS;
+        hnd.GridVisible = 'off';
+        hnd.CellLabelFormat = '%0.1g';
+        hnd.NodeChildren(3).Title.Interpreter = 'none';
+        fig_i = get(groot,'CurrentFigure');
+        set(fig_i,'Position',[10,100,720,620])
+        exportgraphics(fig_i,[save_sub_figs filesep sprintf('%s_bootconserv_bootavg_mat.jpg',strjoin(strsplit(VALS_OUT.cond_names{cond_i},' '),'_'))],'Resolution',300);
+    end
+end
+%% ===================================================================== %%
+%## DIFFERENCE BOOTSTAT CONSERVATIVE CONNECTIVITY MATRICIES
+COLOR_LIMITS=[-20e-4,20e-4];
+cond_1 = 1;
+cond_2 = 2;
+for freq_i = 1:length(VALS_OUT.freq_names)
+    FREQS_SUBPATH = sprintf('%s',VALS_OUT.freq_names{freq_i});
+    save_sub_figs = [save_dir filesep 'cluster_mats' filesep FREQS_SUBPATH];
+    if ~exist(save_sub_figs,'dir')
+        mkdir(save_sub_figs);
+    end
+    %- plot
+    cl_chars = cell(length(VALS_OUT.cluster_chars),1);
+    for i = 1:length(VALS_OUT.cluster_chars)
+        cl_chars{i} = sprintf('(N=%i) %s',length(VALS_OUT.subjects),VALS_OUT.cluster_chars{i});
+    end
+    %## PLOT
+    tmp = squeeze(VALS_OUT.boot_conn_cli_clj_fi_c(:,:,freq_i,cond_1))-squeeze(VALS_OUT.boot_conn_cli_clj_fi_c(:,:,freq_i,cond_2));
+    %- nan out diagnol & zeros
+    I = eye(size(tmp));
+    I = (I == 0);
+    tmp = tmp.*I;
+    tmp(tmp == 0) = nan();
+    %- plot
+    figure;
+    hnd = heatmap(tmp,'Colormap',linspecer); %,'CellLabelColor', 'None');
+    %- create title
+    title(sprintf('(%s) ''%s-%s'' Connectivity Mean Across Clusters',FREQS_SUBPATH,VALS_OUT.cond_names{cond_1},VALS_OUT.cond_names{cond_2}));
+    hnd.YDisplayLabels = cl_chars;
+    hnd.XDisplayLabels = cl_chars;
+    hnd.ColorLimits = COLOR_LIMITS;
+    hnd.GridVisible = 'off';
+    hnd.CellLabelFormat = '%0.1g';
+    hnd.NodeChildren(3).Title.Interpreter = 'none';
+    fig_i = get(groot,'CurrentFigure');
+    set(fig_i,'Position',[10,100,720,620])
+    exportgraphics(fig_i,[save_sub_figs filesep sprintf('%s-%s_diff_bootconserv_mat.jpg',strjoin(strsplit(VALS_OUT.cond_names{cond_1},' '),'_'),strjoin(strsplit(VALS_OUT.cond_names{cond_2},' '),'_'))],'Resolution',300);
+end
+%% ===================================================================== %%
+%## (LOWER TRIANGLE) BOOTSTAT CONSERVATIVE CONNECTIVITY MATRICIES
+COLOR_LIMITS=[-20e-4,20e-4];
+cond_1 = 1;
+cond_2 = 2;
+for freq_i = 1:length(VALS_OUT.freq_names)
+    FREQS_SUBPATH = sprintf('%s',VALS_OUT.freq_names{freq_i});
+    save_sub_figs = [save_dir filesep 'cluster_mats' filesep FREQS_SUBPATH];
+    if ~exist(save_sub_figs,'dir')
+        mkdir(save_sub_figs);
+    end
+    %- plot
+    cl_chars = cell(length(VALS_OUT.cluster_chars),1);
+    for i = 1:length(VALS_OUT.cluster_chars)
+        cl_chars{i} = sprintf('(N=%i) %s',length(VALS_OUT.subjects),VALS_OUT.cluster_chars{i});
+    end
+    %## PLOT
+    tmp1 = zeros(size(VALS_OUT.boot_conn_cli_clj_fi_c(:,:,freq_i,cond_1)));
+    tmp2 = zeros(size(VALS_OUT.boot_conn_cli_clj_fi_c(:,:,freq_i,cond_1)));
+    for i = 1:size(VALS_OUT.cluster_pairs)
+        pair = VALS_OUT.cluster_pairs(i,:);
+        tmp11 = VALS_OUT.boot_conn_cli_clj_fi_c(pair(1),pair(2),freq_i,cond_1);
+        tmp12 = VALS_OUT.boot_conn_cli_clj_fi_c(pair(2),pair(1),freq_i,cond_1);
+        tmp1(pair(2),pair(1)) = tmp11-tmp12;
+        tmp21 = VALS_OUT.boot_conn_cli_clj_fi_c(pair(1),pair(2),freq_i,cond_2);
+        tmp22 = VALS_OUT.boot_conn_cli_clj_fi_c(pair(2),pair(1),freq_i,cond_2);
+        tmp2(pair(2),pair(1)) = tmp21-tmp22;
+    end
+%     tmp = squeeze(VALS_OUT.boot_conn_cli_clj_fi_c(:,:,freq_i,cond_1))-squeeze(VALS_OUT.boot_conn_cli_clj_fi_c(:,:,freq_i,cond_2));
+    tmp = tmp1 - tmp2;
+    %- nan out diagnol & zeros
+    I = eye(size(tmp));
+    I = (I == 0);
+    tmp = tmp.*I;
+    tmp(tmp == 0) = nan();
+    %- plot
+    figure;
+    hnd = heatmap(tmp,'Colormap',linspecer); %,'CellLabelColor', 'None');
+    %- create title
+    title(sprintf('(%s) ''%s-%s'' Connectivity Mean Across Clusters',FREQS_SUBPATH,VALS_OUT.cond_names{cond_1},VALS_OUT.cond_names{cond_2}));
+    hnd.YDisplayLabels = cl_chars;
+    hnd.XDisplayLabels = cl_chars;
+    hnd.ColorLimits = COLOR_LIMITS;
+    hnd.GridVisible = 'off';
+    hnd.CellLabelFormat = '%0.1g';
+    hnd.NodeChildren(3).Title.Interpreter = 'none';
+    fig_i = get(groot,'CurrentFigure');
+    set(fig_i,'Position',[10,100,720,620])
+    exportgraphics(fig_i,[save_sub_figs filesep sprintf('%s-%s_lowertri_bootavg_mat.jpg',strjoin(strsplit(VALS_OUT.cond_names{cond_1},' '),'_'),strjoin(strsplit(VALS_OUT.cond_names{cond_2},' '),'_'))],'Resolution',300);
+end
+%% ===================================================================== %%
+%## TXF COMPARISONS
+if ~ispc
+    addpath(convertPath2UNIX('M:\jsalminen\GitHub\par_EEGProcessing\submodules\groupSIFT'));
+else
+    addpath(convertPath2Drive('M:\jsalminen\GitHub\par_EEGProcessing\submodules\groupSIFT'));
+end
+
+%-
+save_sub_figs = [save_dir filesep 'cluster_level_permutation'];
+if ~exist(save_sub_figs,'dir')
+    mkdir(save_sub_figs);
+end
 %##
-figure();
-colormap(linspecer)
-contourf(contour_in)
-colorbar();
+%-
+cond_1 = 1;
+cond_2 = 2;
+REPEATED_MEAS = 0.05;
+ALPHA = 0.05;
+NUM_ITERS = 200;
+%-
+allfreqs = VALS_OUT.conn_freqs; %MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.freqs;
+alltimes = VALS_OUT.conn_times; %MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes;
+PLOT_STRUCT = struct('figure_position',[100,100,350,350],...
+    'xtick_label','Time (s)',...
+    'ytick_label','Frequency (Hz)',...
+    'clim',[-5e-3,5e-3],...
+    'font_size',12,...
+    'freq_lims',[4,60],...
+    'time_lims',[alltimes(1),alltimes(end)],...
+    'subplot_width',0.20,...
+    'subplot_height',0.7,...
+    'subplot_shift',0.24,...
+    'colorbar_shift',0.1,...
+    'plot_inchs',[3,3,10,5],...
+    'colormap',linspecer,...
+    'event_times',[0],...
+    'event_chars',{{'subject hit'}},...
+    'title','',...
+    'subplot_titles',{{'HUMAN','BM','STATS'}},...
+    'cbar_intv',1e-3,...
+    'cbar_label','Connectivity');
+for i = 1:length(VALS_OUT.cluster_inds)
+    for j = 1:length(VALS_OUT.cluster_inds)
+        %-
+        sig1_in = squeeze(VALS_OUT.nonz_conn_cli_clj_f_t_s_c(i,j,:,:,:,cond_1));
+        sig1_in(isnan(sig1_in)) = 0;
+        %-
+        sig2_in = squeeze(VALS_OUT.nonz_conn_cli_clj_f_t_s_c(i,j,:,:,:,cond_2));
+        sig2_in(isnan(sig2_in)) = 0;
+        combase = cat(3,sig1_in,sig2_in);
+        combase = median(combase,3);
+%         combase = mean(combase,3);
+        tmp1 = [];
+        tmp2 = [];
+        for subj_i = 1:size(sig1_in,3)
+            tmp1 = cat(3,tmp1,sig1_in(:,:,subj_i)-combase);
+            tmp2 = cat(3,tmp2,sig2_in(:,:,subj_i)-combase);
+        end
+        %-
+        [mask,tscore,pval] = clusterLevelPermutationTest(sig1_in,sig2_in,...
+            REPEATED_MEAS,ALPHA,NUM_ITERS);
+%         [mask,tscore,pval] = clusterLevelPermutationTest(tmp1,tmp2,...
+%             REPEATED_MEAS,ALPHA,NUM_ITERS);
+%         allersp = {median(tmp1,3),median(tmp2,3),mask};
+        allersp = {median(sig1_in,3),median(sig2_in,3),mask};
+        fig = plot_multipane_txf(allersp,alltimes,allfreqs,...
+            'PLOT_STRUCT',PLOT_STRUCT);
+        exportgraphics(fig,[save_sub_figs filesep sprintf('%sto%s_txf_comboplot.jpg',VALS_OUT.cluster_chars{i},VALS_OUT.cluster_chars{j})]);
+    end
+end
+%% ===================================================================== %%
+%## SIGNAL COMPARISONS
+% freq_1 = 1;
+cond_1 = 1;
+cond_2 = 2;
+% COLOR_LIMITS = [-20e-4,20e-4];
+% COLOR_LIMITS = [0,1];
+COLOR_LIMITS = [0,5e-3];
+REPEATED_MEAS = 0.05;
+ALPHA = 0.05;
+NUM_ITERS = 200;
+alltimes = VALS_OUT.conn_times; %MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes;
+%##
+% for freq_i = 1:length(VALS_OUT.freq_names)
+    for i = 1:length(VALS_OUT.cluster_inds)
+        for j = 1:length(VALS_OUT.cluster_inds)
+%             dat_in1 = VALS_OUT.nonz_conn_cli_clj_fi_t_c(i,j,freq_i,:,cond_1);
+%             dat_in2 = VALS_OUT.nonz_conn_cli_clj_fi_t_c(i,j,freq_i,:,cond_2);
+%             dat_in1 = squeeze(VALS_OUT.nonz_conn_cli_clj_f_t_s_c(i,j,VALS_OUT.freq_bands.(VALS_OUT.freq_names{freq_i}),:,:,cond_1));
+%             dat_in2 = squeeze(VALS_OUT.nonz_conn_cli_clj_f_t_s_c(i,j,VALS_OUT.freq_bands.(VALS_OUT.freq_names{freq_i}),:,:,cond_2));
+            dat_in1 = squeeze(VALS_OUT.nonz_conn_cli_clj_f_t_s_c(i,j,:,:,:,cond_1));
+            dat_in2 = squeeze(VALS_OUT.nonz_conn_cli_clj_f_t_s_c(i,j,:,:,:,cond_2));
+            %- method 1
+%             dat_in1 = squeeze(sum(dat_in1,1));
+%             dat_in2 = squeeze(sum(dat_in1,1));
+            %- method 2
+            dat_in1 = squeeze(trapz(dat_in1,1));
+            dat_in2 = squeeze(trapz(dat_in2,1));
+%             y1_mean = mean(dat_in1,2); %rand(1,10); % your mean vector;
+            y2_mean = median(dat_in2,2);
+            y1_mean = median(dat_in1,2);
+            %- stats method
+%             dat_in1 = (trapz(dat_in1,1));
+%             dat_in2 = (trapz(dat_in2,1));
+%             dat_in1 = reshape(dat_in1,size(dat_in1,2),size(dat_in1,1),size(dat_in1,3));
+%             dat_in2 = reshape(dat_in2,size(dat_in2,2),size(dat_in2,1),size(dat_in2,3));
+%             y1_mean = squeeze(mean(dat_in1,3)); %rand(1,10); % your mean vector;
+%             y2_mean = squeeze(mean(dat_in2,3)); %rand(1,10); % your mean vector;
+%             [mask,tscore,pval] = clusterLevelPermutationTest(dat_in1,dat_in2,...
+%                 REPEATED_MEAS,ALPHA,NUM_ITERS);
+            
+            fig = figure();
+            hold on;
+%             curve1 = quantile(tmp,0.95,2);
+%             curve2 = quantile(tmp,0.25,2);
+            %-
+%             plot(alltimes,curve1,'Color',[COLORS_MEAN(freq_i,:),0.5],'DisplayName','95 percentile');
+%             plot(alltimes,y_med,'Color',[COLORS_MEAN(freq_i,:),0.5],'DisplayName','median');
+            plot(alltimes,y1_mean,'LineWidth',2,'Color','r',...
+                'DisplayName',sprintf('%s',VALS_OUT.cond_names{cond_1}));
+            plot(alltimes,y2_mean,'LineWidth',2,'Color','g',...
+                'DisplayName',sprintf('%s',VALS_OUT.cond_names{cond_2}));
+            if ~isempty(mask)
+                plot(alltimes,mask,'LineWidth',2,'Color','k',...
+                    'DisplayName',sprintf('%s',VALS_OUT.cond_names{cond_2}));
+            end
+            legend('Location','southeast');
+            ylim(COLOR_LIMITS);
+            title(sprintf('%s-%s',VALS_OUT.cluster_chars{i},VALS_OUT.cluster_chars{j}));
+            hold off;
+
+        end
+    end
+% end
+%% ===================================================================== %%
+%## time-frequency statistics?
+cond_1 = 1;
+cond_2 = 2;
+ALPHA = 0.05;
+% cl_1 = 3;
+% cl_2 = 1;
+save_sub_figs = [save_dir filesep 'txf_plots'];
+if ~exist(save_sub_figs,'dir')
+    mkdir(save_sub_figs);
+end
+for cl_i = 1:size(cl_pairs,1)
+% for cl_i = 1
+    cl_1 = cl_pairs(cl_i,1)==CLUSTER_ITERS;
+    cl_2 = cl_pairs(cl_i,2)==CLUSTER_ITERS;
+    nonz_conn_1 = NON_CONN_AVG_STORE;
+    nonz_conn_2 = NON_CONN_AVG_STORE;
+    nonz_stat_1 = NON_CONN_AVG_STORE;
+    nonz_stat_2 = NON_CONN_AVG_STORE;
+    for subj_i = 1:length(PHASERND_STRUCT)
+        comps = squeeze(comps_out(:,subj_i));
+        [tmpcl,idxcl] = sort(comps);
+        idxcl = idxcl(tmpcl~=0);
+        tmpcl = tmpcl(tmpcl~=0);
+        nonz_conn_1(idxcl,idxcl,:,:,subj_i) = PHASERND_STRUCT(subj_i).masked_conn{cond_1}; %.(CONN_MEAS); %human
+        nonz_conn_2(idxcl,idxcl,:,:,subj_i) = PHASERND_STRUCT(subj_i).masked_conn{cond_2}; %.(CONN_MEAS %ball machine
+        nonz_stat_1(idxcl,idxcl,:,:,subj_i) = PHASERND_STRUCT(subj_i).stats{cond_1}.(CONN_MEAS).pval; %.(CONN_MEAS); %human
+        nonz_stat_2(idxcl,idxcl,:,:,subj_i) = PHASERND_STRUCT(subj_i).stats{cond_2}.(CONN_MEAS).pval; %.(CONN_MEAS %ball machine
+    end
+    tmp1_o = [];
+    tmp2_o = [];
+    for subj_i = 1:length(PHASERND_STRUCT)
+        tmp1 = squeeze(nonz_conn_1(CLUSTER_ITERS(cl_1),CLUSTER_ITERS(cl_2),:,:,subj_i));
+        tmp2 = squeeze(nonz_conn_2(CLUSTER_ITERS(cl_1),CLUSTER_ITERS(cl_2),:,:,subj_i));
+        
+        if ~all(isnan(tmp1),[1,2])
+            tmp1_o = cat(3,tmp1_o,tmp1);
+        end
+        if ~all(isnan(tmp2),[1,2])
+            tmp2_o = cat(3,tmp2_o,tmp2);
+        end
+    end
+    tmp1 = tmp1_o;
+    tmp2 = tmp2_o;
+    disp_nonz_stat1 = {nanmean(squeeze(nonz_stat_1(CLUSTER_ITERS(cl_1),CLUSTER_ITERS(cl_2),:,:,:))<ALPHA,3)};
+    disp_nonz_stat2 = {nanmean(squeeze(nonz_stat_2(CLUSTER_ITERS(cl_1),CLUSTER_ITERS(cl_2),:,:,:))<ALPHA,3)};
+
+    % tmp11 = zeros(size(tmp1,2),size(tmp1,1),size(tmp1,3));
+    % tmp22 = zeros(size(tmp1,2),size(tmp1,1),size(tmp1,3));
+    % for subj_i = 1:size(tmp1,3)
+    %     for t_i = 1:size(tmp1,2)
+    %         tmp11(t_i,:,subj_i) = tmp1(:,t_i,subj_i);
+    %         tmp22(t_i,:,subj_i) = tmp2(:,t_i,subj_i);
+    %     end
+    %     
+    % end
+    % allersp = {tmp11;tmp22};
+    allersp = {tmp1;tmp2};
+    %## time-frequency statistics?
+    boot_conn_1 = BOOT_CONN_AVG_STORE;
+    boot_conn_2 = BOOT_CONN_AVG_STORE;
+    boot_stat_1 = BOOT_CONN_AVG_STORE;
+    boot_stat_2 = BOOT_CONN_AVG_STORE;
+    boot_ci_up = BOOT_CONN_AVG_STORE;
+    boot_ci_low = BOOT_CONN_AVG_STORE;
+    
+    for subj_i = 1:length(BOOTSTRAP_STRUCT)
+        comps = squeeze(comps_out(:,subj_i));
+        [tmpcl,idxcl] = sort(comps);
+        idxcl = idxcl(tmpcl~=0);
+        tmpcl = tmpcl(tmpcl~=0);
+    %     boot_conn_1(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).averages{cond_1,1}; %.(CONN_MEAS);
+    %     boot_conn_2(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).averages{cond_2,1}; %.(CONN_MEAS
+        boot_conn_1(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).masked_conn{cond_1,cond_2}; %.(CONN_MEAS);
+%             boot_conn_2(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).masked_conn{cond_2,cond_1}; %.(CONN_MEAS
+        boot_stat_1(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).stats{cond_1,cond_2}.(CONN_MEAS).pval; %.(CONN_MEAS);
+%             boot_stat_2(idxcl,idxcl,:,:,subj_i) = BOOTSTRAP_STRUCT(subj_i).stats{cond_2,cond_1}.(CONN_MEAS).pval; %.(CONN_MEAS
+        boot_ci_up(idxcl,idxcl,:,:,subj_i) = squeeze(BOOTSTRAP_STRUCT(subj_i).stats{cond_1,cond_2}.(CONN_MEAS).ci(1,:,:,:,:));
+        boot_ci_low(idxcl,idxcl,:,:,subj_i) = squeeze(BOOTSTRAP_STRUCT(subj_i).stats{cond_1,cond_2}.(CONN_MEAS).ci(2,:,:,:,:));
+    end
+    %##
+    
+    %##
+    % allersp_boot = {squeeze(boot_conn_1(cl_1,cl_2,:,:,:));squeeze(boot_conn_2(cl_1,cl_2,:,:,:))};
+    allersp_boot = {squeeze(boot_conn_1(CLUSTER_ITERS(cl_1),CLUSTER_ITERS(cl_2),:,:,:))};
+    tmp = squeeze(boot_stat_1(CLUSTER_ITERS(cl_1),CLUSTER_ITERS(cl_2),:,:,:))<ALPHA;
+    disp_boot_stat = {nanmean(tmp,3)};
+    boot_ci_up = nanmean(squeeze(boot_ci_up(CLUSTER_ITERS(cl_1),CLUSTER_ITERS(cl_2),:,:,:)),3);
+    boot_ci_low = nanmean(squeeze(boot_ci_low(CLUSTER_ITERS(cl_1),CLUSTER_ITERS(cl_2),:,:,:)),3);
+    %##
+    %## ERSP PARAMS
+    ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
+        'groupstats','off',... %['on'|'off']
+        'method','perm',... % ['param'|'perm'|'bootstrap']
+        'singletrials','off',... % ['on'|'off'] load single trials spectral data (if available). Default is 'off'.
+        'mode','fieldtrip',... % ['eeglab'|'fieldtrip']
+        'fieldtripalpha',0.05,... % [NaN|alpha], Significance threshold (0<alpha<<1)
+        'fieldtripmethod','montecarlo',... %[('montecarlo'/'permutation')|'parametric']
+        'fieldtripmcorrect','cluster',...  % ['cluster'|'fdr']
+        'fieldtripnaccu',2000);
+    ERSP_PARAMS = struct('subbaseline','off',...
+        'timerange',[],...
+        'ersplim',[-2,2],...
+        'freqfac',4,...
+        'cycles',[3,0.8],...
+        'freqrange',[1,100]);
+    %## POP PARAMS
+    MAIN_STUDY = pop_erspparams(MAIN_STUDY,'subbaseline',ERSP_PARAMS.subbaseline,...
+          'ersplim',ERSP_PARAMS.ersplim,'freqrange',ERSP_PARAMS.freqrange);
+    MAIN_STUDY = pop_statparams(MAIN_STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
+        'groupstats',ERSP_STAT_PARAMS.groupstats,...
+        'method',ERSP_STAT_PARAMS.method,...
+        'singletrials',ERSP_STAT_PARAMS.singletrials,'mode',ERSP_STAT_PARAMS.mode,...
+        'fieldtripalpha',ERSP_STAT_PARAMS.fieldtripalpha,...
+        'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
+        'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
+    %- get stats parameters
+    MAIN_STUDY = std_makedesign(MAIN_STUDY,MAIN_ALLEEG,1,'variable1','bounces','values1',{'2Bounce_Human','2Bounce_BM'});
+    stats = MAIN_STUDY.etc.statistics;
+    stats.paired = {'off'}; 
+    [pcond, pgroup, pinter] = std_stat(allersp, stats);
+
+    %##
+    allfreqs = FREQS_VEC;
+    alltimes = MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes; %BOOTSTRAP_STRUCT(1).averages{1,1}.erWinCenterTimes;
+    end_time = MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.winCenterTimes(end); %BOOTSTRAP_STRUCT(1).averages{1,1}.erWinCenterTimes;
+   
+    allpcond = pcond{1};
+    allersp_mean = cellfun(@(x) nanmean(x,3),allersp,'UniformOutput',false);
+    allersp_boot = cellfun(@(x) nanmean(x,3),allersp_boot,'UniformOutput',false);
+    allersp_diff = {allersp_mean{1}-allersp_mean{2}};
+%     allersp_mean = [allersp_mean; disp_nonz_stat1; disp_nonz_stat2; allersp_diff; allersp_boot; disp_boot_stat ];
+    allersp_mean = [allersp_mean; boot_ci_up; boot_ci_low; allersp_diff; allersp_boot; disp_boot_stat ];
+    %%
+    FIGURE_POSITION = [10,10,1020,480];
+    clim_max = [-0.0005,0.0005]; %[-0.001,0.001];
+    colormap_ersp = linspecer;
+    SUB_FREQ_LIMS = [3,100];
+    TIME_0_CHAR = 'subject hit';
+%     alltitles = {'HUMAN','BALL MACHINE','NZ STAT HUMAN','NZ STAT BM','HUMAN - BM','BOOTSTRAP MASK','BOOTSTRAP STATS',};
+    alltitles = {'HUMAN','BALL MACHINE','BOOT CI UPPER','BOOT CI LOWER','HUMAN - BM','BOOTSTRAP MASK','BOOTSTRAP STATS',};
+    
+    XTICK_LABEL = 'time (s)';
+    YTICK_LABEL = 'Frequency (Hz)';
+    FONT_SIZE = 12;
+    SUBPLOT_WIDTH = 0.08;
+    SUBPLOT_HEIGHT = 0.7;
+    SHIFT_AMNT = 0.10;
+    STATS_TITLE = 'CLUSTER STATS';
+    if length(clim_max) == 2
+        clim_ersp = clim_max;
+    else
+        clim_ersp = [-clim_max,clim_max];d
+    end
+    %##
+    fig = figure('color','white','position',FIGURE_POSITION,'renderer','Painters');
+    set(fig,'Units','inches','Position',[3 3 18 5])
+    set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+    horiz_shift = 0;
+    hold on;
+    for j = 1:length(allersp_mean)
+        subplot(1,length(allersp_mean)+1,j); %,'position',[0.01+horiz_shift,0.1,0.5,0.5])
+        ax = gca;
+        tftopo(allersp_mean{j},alltimes,allfreqs,'limits',... 
+            [nan nan nan nan clim_ersp],...
+            'logfreq','native');
+        hold on;
+        colormap(colormap_ersp);
+        %- adjust subplot position and height
+        %fig_i.CurrentAxes;
+        set(ax,'LineWidth',1)
+        set(ax,'FontName','Arial','FontSize',FONT_SIZE,'FontWeight','bold')
+        set(ax,'OuterPosition',[0 0 1 1]);
+        set(ax,'Position',[0.05+horiz_shift,0.2,SUBPLOT_WIDTH,SUBPLOT_HEIGHT]);  %[left bottom width height]
+    %         disp(get(ax,'Position'));
+        %- add vertical line
+        xline(ax,0,'k--');
+        %- set ylims
+        ylim(log(SUB_FREQ_LIMS))
+        if SUB_FREQ_LIMS(2) <= 50
+            set(ax,'YTick',log([4.01,8,13,30,50])); 
+            set(ax,'YTickLabel',{'4','8','13','30','50'},'Fontsize',FONT_SIZE);
+        elseif SUB_FREQ_LIMS(2) <= 100
+            set(ax,'YTick',log([4.01,8,13,30,50,99.4843])); 
+            set(ax,'YTickLabel',{'4','8','13','30','50','100'},'Fontsize',FONT_SIZE);
+        end  
+        %- set color lims
+        set(ax,'clim',clim_ersp);
+        %- set x-axis & y-axis labels
+        if j == 1
+            ylabel(YTICK_LABEL,'FontSize',FONT_SIZE,'fontweight','bold');
+            xlabel(XTICK_LABEL,'FontSize',FONT_SIZE);
+        else
+            xlabel('','FontSize',FONT_SIZE);
+            ylabel('','fontsize',FONT_SIZE,'fontweight','bold');
+        end
+        %- set x-axis ticks
+        set(ax,'XTick',0,'XTickLabel',TIME_0_CHAR);
+        xtickangle(45)
+        ax.XAxis.FontSize = FONT_SIZE;
+        %- title
+        title(alltitles{j});  
+        horiz_shift = horiz_shift + SHIFT_AMNT;
+    end
+    %## Add Stats To Plot
+    if ~isempty(allpcond)
+        subplot(1,length(allersp_mean)+1,length(allersp_mean)+1) % add one subplot for stats
+        tftopo(double(allpcond),alltimes,allfreqs,'limits',... 
+            [nan nan nan nan  clim_ersp],...
+            'logfreq','native')
+        colormap(colormap_ersp);
+        ax = gca;
+        %-
+        %fig_i.CurrentAxes;
+        set(ax,'LineWidth',1)
+        set(ax,'FontName','Arial','FontSize',FONT_SIZE,'FontWeight','bold')
+        set(ax,'OuterPosition',[0 0 1 1]);
+        set(ax,'Position',[0.05+horiz_shift,0.2,SUBPLOT_WIDTH,SUBPLOT_HEIGHT]);  %[left bottom width height]
+        disp(get(ax,'Position'));
+        %- set color bar
+        c = colorbar();
+        c.Position(1) = c.Position(1)+0.04;
+        c.Limits = clim_ersp;
+        %- color bar label
+        hL = ylabel(c,[{'\Delta Power'};{'(dB)'}],'fontweight',...
+            'bold','FontName','Arial','FontSize',FONT_SIZE);
+        set(hL,'Rotation',0);
+        hL.Position(1) = hL.Position(1)+1.7;
+        hL.Position(2) = hL.Position(2)+0.025;
+        hL.Position(2) = .13;
+        set(hL,'Rotation',0);
+        %- add vertical line
+        xline(ax,0,'k--');
+        %- set ylims
+        ylim(log(SUB_FREQ_LIMS))
+        if SUB_FREQ_LIMS(2) <= 50
+            set(ax,'YTick',log([4.01,8,13,30,50])); 
+            set(ax,'YTickLabel',{'4','8','13','30','50'},'Fontsize',FONT_SIZE);
+        elseif SUB_FREQ_LIMS(2) <= 100
+            set(ax,'YTick',log([4.01,8,13,30,50,99.4843])); 
+            set(ax,'YTickLabel',{'4','8','13','30','50','100'},'Fontsize',FONT_SIZE);
+        end  
+        %- set color lims
+        set(ax,'clim',clim_ersp);
+        %- set y-axis labels
+        xlabel('','FontSize',FONT_SIZE);
+        ylabel(sprintf(''),'fontsize',FONT_SIZE,'fontweight','bold');
+        %- set x-axis ticks
+        set(ax,'XTick',0,'XTickLabel',TIME_0_CHAR);
+        set(ax,'XTick',end_time(end))
+        xtickangle(45)
+        ax.XAxis.FontSize = FONT_SIZE;
+        %- title
+        title(STATS_TITLE)
+    else
+        %- set color bar
+        c = colorbar();
+        c.Position(1) = c.Position(1)+0.05;
+        c.Limits = clim_ersp;
+    end
+    hold off;
+    fig = get(groot,'CurrentFigure');
+    exportgraphics(fig,[save_sub_figs filesep sprintf('%sto%s_txf_comboplot.jpg',CLUSTER_ASSIGNMENTS{cl_1},CLUSTER_ASSIGNMENTS{cl_2})]);
+end

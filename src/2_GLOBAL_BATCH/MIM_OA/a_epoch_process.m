@@ -86,88 +86,14 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (DATASET INFORMATION) =============================================== %%
-%## (MIND IN MOTION) DATASET SPECIFIC PARAMS (05/24/2023)
-SUBJ_1YA = {'H1002','H1004','H1007','H1009',...
-    'H1010','H1011','H1012','H1013','H1017',...
-    'H1018','H1019','H1020','H1022','H1024',...
-    'H1025','H1026','H1027','H1029','H1030','H1031',...
-    'H1032','H1033','H1034','H1036',...
-    'H1037','H1038','H1039','H1041','H1042',...
-    'H1044','H1045','H1046','H1047','H1048'}; % JACOB,SAL (04/18/2023)
-SUBJ_2MA = {'H2007','H2008',...
-    'H2013','H2015','H2017','H2020','H2021',...
-    'H2022','H2023','H2025','H2026','H2027',...
-    'H2033','H2034','H2037','H2038','H2039',...
-    'H2042','H2052','H2059','H2062','H2082',...
-    'H2090','H2095','H2111','H2117'};
-SUBJ_3MA = {'H3029','H3034','H3039','H3053',...
-    'H3063','H3072','H3077','H3103',...
-    'H3107',...
-    'NH3006','NH3007','NH3008','NH3010','NH3021',...
-    'NH3026','NH3030','NH3036','NH3040',...
-    'NH3041','NH3043','NH3054',...
-    'NH3055','NH3058','NH3059','NH3066',...
-    'NH3068','NH3069','NH3070','NH3074',...
-    'NH3076','NH3086','NH3090','NH3102',...
-    'NH3104','NH3105','NH3106','NH3108','NH3110',...
-    'NH3112','NH3113','NH3114','NH3123','NH3128',...
-    };
-SUBJ_ERROR = {'H2002'}; % (11/22/2023) 08202023_OAN82_iccRX0p65_iccREMG0p4_changparams
-SUBJ_SLOW_WALKERS = {'H3042','H3046','H3047','H3073',...
-    'H3092','NH3025','NH3051','NH3056','NH3071','NH3082'};
-SUBJ_NO_MRI = {'H2010','H2012','H2018','H2036','H2041',...
-    'H2072','H3018','H3120','NH3002','NH3009','NH3027','NH3129'};
-SUBJ_MISSING_COND = {'H3024','NH3028'};
-% SUBJ_UNKNOWN_ERR = {'NH3108','NH3030','NH3040','NH3025'};
-% (08/21/2023) JS, 
-% NH3108 seems to bug out do to an indexing error during
-% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
-% NH3030 seems to bug out do to an indexing error during
-% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
-% NH3040 seems to bug out do to an indexing error during
-% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
-% NH3025 seems to bug out do to an indexing error during
-% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
-% (08/22/2023) JS, NH3108 bug seems to be related to entry errors in the
-% Trial_Cropping_V2_test.xlsx sheet used to remove bad time ranges
-% identified during collection. (fixed)
-% NH3030 bug was due to how the CropTrialCheckFunc_checkLoadsol.m
-% interpreted subject characters. It would consider 'NH3030_FU' as
-% 'NH3030'. Changed from 'contains' to 'strcmp' func. (fixed)
-% NH3040 bug was due to an entry error in Trial_Cropping_V2_test.xlsx (fixed)
-SUBJ_DONT_INC = {'NH3004','NH3023'};
-% (08/20/2023) JS, NH3004 has no headscan; NH3023 has no headscan clicks;
-% fprintf('Total subjects processing: %i\n',sum([length(SUBJ_2MA),length(SUBJ_3MA)]));
-% fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
-%- (OY) Subject Picks 
-% SUBJ_PICS = {SUBJ_1YA}; 
-% GROUP_NAMES = {'H1000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
-%- (OA&YA) Subject Picks 
-% SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%- (OA) Subject Picks
-SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-GROUP_NAMES = {'H2000''s','H3000''s'}; 
-SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%- (0A) DEBUG SUBSET (06/17/2023)
-% SUBJ_PICS = {SUBJ_DEBUG};
-% GROUP_NAMES = {'debug'}; 
-% SUBJ_ITERS = {1:length(SUBJ_DEBUG)};
-%- test
-% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {[1,2],[5,6]};
-fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
-fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC),length(SUBJ_SLOW_WALKERS)]));
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- study group and saving
 SESSION_NUMBER = '1';
-SAVE_ALLEEG = false;
+SAVE_ALLEEG = true;
 SAVE_EEG = true; %true;
 OVERRIDE_DIPFIT = true;
 %- epoching params
@@ -178,11 +104,12 @@ PERCENT_OVERLAP = 0.0; % percent overlap between epochs
 %* gait
 EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 STD_TIMEWARP = 3;
-EPOCH_TIME_LIMITS = [-1,4.25]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
-% (10/13/20223) changing from [-1,4.25] to [-0.5,4.5] to match chang's
-% (10/25/20223) changing from [-0.5,4.5] to [-1,4.25] as it seems to help
+EPOCH_TIME_LIMITS = [-0.5,4.5]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
+% (10/13/2023) changing from [-1,4.25] to [-0.5,4.5] to match chang's
+% (10/25/2023) changing from [-0.5,4.5] to [-1,4.25] as it seems to help
 % with frequency decomposition artifact during ERSP creation
 % paper
+% (01/23/2024) changing from [-1,4.25] to [-0.5,4.5] to match chang
 TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 if DO_SLIDING_WINDOW
     SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
@@ -215,7 +142,8 @@ end
 % dt = '10302023_MIM_OAN70_newnormalize_iccREMG0p4_powpow0p1';
 % dt = '10302023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
 % dt = '11302023_MIM_OAN70_antsnormalize_iccREMG0p3_powpow0p1';
-dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+% dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+dt = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 %- Subject Directory information
 % OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 % OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
@@ -330,6 +258,7 @@ else
 end
 %}
 %%
+%## Create STUDY & ALLEEG structs
 try
     [MAIN_ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
                         conditions,groups,sessions);
@@ -339,21 +268,17 @@ catch e
     exit();
 end
 %% INITIALIZE PARFOR LOOP VARS
-if exist('SLURM_POOL_SIZE','var')
-    POOL_SIZE = min([SLURM_POOL_SIZE,length(MAIN_ALLEEG)]);
-else
-    POOL_SIZE = 1;
-end
 fPaths = {MAIN_ALLEEG.filepath};
 fNames = {MAIN_ALLEEG.filename};
 LOOP_VAR = 1:length(MAIN_ALLEEG);
 tmp = cell(1,length(MAIN_ALLEEG));
 rmv_subj = zeros(1,length(MAIN_ALLEEG));
+alleeg_fpaths = cell(length(MAIN_ALLEEG),1);
 %- clear vars for memory
 % clear MAIN_ALLEEG
 %% GENERATE EPOCH MAIN FUNC
 %## PARFOR LOOP
-parfor (subj_i = LOOP_VAR,POOL_SIZE)
+parfor (subj_i = LOOP_VAR,SLURM_POOL_SIZE)
     %## LOAD EEG DATA
     EEG = MAIN_ALLEEG(subj_i);
 %     EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
@@ -417,6 +342,7 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
                 cond_files(i).fPath = tmp_fPath;
                 cond_files(i).fName = sprintf([REGEX_FNAME '.set'],ALLEEG(i).condition);
             end
+            alleeg_fpaths{subj_i} = cond_files;
         end
         ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
         ALLEEG.etc.cond_files = cond_files;
@@ -504,6 +430,8 @@ tmp = cellfun(@(x) [[]; x], tmp);
                                 'filename',study_fName_2,...
                                 'filepath',save_dir);
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
+STUDY.etc.a_epoch_process.epoch_chars = TRIAL_TYPES;
+STUDY.etc.a_epoch_process.epoch_alleeg_fpaths = alleeg_fpaths;
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                         STUDY.filename,STUDY.filepath,...
                                         'RESAVE_DATASETS','on');

@@ -161,7 +161,8 @@ ERSP_PARAMS = struct('subbaseline','off',...
 % dt = '10302023_MIM_OAN70_newnormalize_iccREMG0p4_powpow0p1';
 % dt = '10302023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
 % dt = '11302023_MIM_OAN70_antsnormalize_iccREMG0p3_powpow0p1';
-dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+% dt = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
+dt = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 %## Soft Define
 % study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 study_fName_1 = 'epoch_study';
@@ -492,6 +493,7 @@ for k_i = 1:length(CLUSTER_K_PICKS)
                                     STUDY.filename,spec_data_dir,...
                                     'RESAVE_DATASETS','off');
     %% CLUSTER DIAGNOSTIC PLOTS && SUBJECT SPECIFIC PER CLUSTER
+    
     %- get inds
     [~,main_cl_inds,~,valid_clusters,~,nonzero_clusters] = eeglab_get_cluster_comps(STUDY);
     STUDY.etc.dipparams.centrline = 'off';
@@ -599,7 +601,7 @@ for k_i = 1:length(CLUSTER_K_PICKS)
             % Write the table to a CSV file
             writetable(T,[subj_save_dir filesep sprintf('%s_atlasinf_ic%i.csv',subj_char,comp_i)])
             %- (SPEC) Spec plot conds for des_i and all groups
-            close all            
+            close all           
         end
     end
     %-

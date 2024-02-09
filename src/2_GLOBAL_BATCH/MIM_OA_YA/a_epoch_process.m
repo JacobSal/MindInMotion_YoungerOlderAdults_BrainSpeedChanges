@@ -86,81 +86,8 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (DATASET INFORMATION) =============================================== %%
-%## (MIND IN MOTION) DATASET SPECIFIC PARAMS (05/24/2023)
-SUBJ_1YA = {'H1002','H1004','H1007','H1009',...
-    'H1010','H1011','H1012','H1013','H1017',...
-    'H1018','H1019','H1020','H1022','H1024',...
-    'H1025','H1026','H1027','H1029','H1030','H1031',...
-    'H1032','H1033','H1034','H1036',...
-    'H1037','H1038','H1039','H1041','H1042',...
-    'H1044','H1045','H1046','H1047','H1048'}; % JACOB,SAL (04/18/2023)
-SUBJ_2MA = {'H2007','H2008',...
-    'H2013','H2015','H2017','H2020','H2021',...
-    'H2022','H2023','H2025','H2026','H2027',...
-    'H2033','H2034','H2037','H2038','H2039',...
-    'H2042','H2052','H2059','H2062','H2082',...
-    'H2090','H2095','H2111','H2117'};
-SUBJ_3MA = {'H3029','H3034','H3039','H3053',...
-    'H3063','H3072','H3077','H3103',...
-    'H3107',...
-    'NH3006','NH3007','NH3008','NH3010','NH3021',...
-    'NH3026','NH3030','NH3036','NH3040',...
-    'NH3041','NH3043','NH3054',...
-    'NH3055','NH3058','NH3059','NH3066',...
-    'NH3068','NH3069','NH3070','NH3074',...
-    'NH3076','NH3086','NH3090','NH3102',...
-    'NH3104','NH3105','NH3106','NH3108','NH3110',...
-    'NH3112','NH3113','NH3114','NH3123','NH3128',...
-    };
-SUBJ_ERROR = {'H2002'}; % (11/22/2023) 08202023_OAN82_iccRX0p65_iccREMG0p4_changparams
-SUBJ_SLOW_WALKERS = {'H3042','H3046','H3047','H3073',...
-    'H3092','NH3025','NH3051','NH3056','NH3071','NH3082'};
-SUBJ_NO_MRI = {'H2010','H2012','H2018','H2036','H2041',...
-    'H2072','H3018','H3120','NH3002','NH3009','NH3027','NH3129'};
-SUBJ_MISSING_COND = {'H3024','NH3028'};
-% SUBJ_UNKNOWN_ERR = {'NH3108','NH3030','NH3040','NH3025'};
-% (08/21/2023) JS, 
-% NH3108 seems to bug out do to an indexing error during
-% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
-% NH3030 seems to bug out do to an indexing error during
-% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
-% NH3040 seems to bug out do to an indexing error during
-% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
-% NH3025 seems to bug out do to an indexing error during
-% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
-% (08/22/2023) JS, NH3108 bug seems to be related to entry errors in the
-% Trial_Cropping_V2_test.xlsx sheet used to remove bad time ranges
-% identified during collection. (fixed)
-% NH3030 bug was due to how the CropTrialCheckFunc_checkLoadsol.m
-% interpreted subject characters. It would consider 'NH3030_FU' as
-% 'NH3030'. Changed from 'contains' to 'strcmp' func. (fixed)
-% NH3040 bug was due to an entry error in Trial_Cropping_V2_test.xlsx (fixed)
-SUBJ_DONT_INC = {'NH3004','NH3023'};
-% (08/20/2023) JS, NH3004 has no headscan; NH3023 has no headscan clicks;
-% fprintf('Total subjects processing: %i\n',sum([length(SUBJ_2MA),length(SUBJ_3MA)]));
-% fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
-%- (OY) Subject Picks 
-% SUBJ_PICS = {SUBJ_1YA}; 
-% GROUP_NAMES = {'H1000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
-%- (OA&YA) Subject Picks 
-SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
-GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
-SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%- (OA) Subject Picks
-% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%- (0A) DEBUG SUBSET (06/17/2023)
-% SUBJ_PICS = {SUBJ_DEBUG};
-% GROUP_NAMES = {'debug'}; 
-% SUBJ_ITERS = {1:length(SUBJ_DEBUG)};
-%- test
-% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {[1,2],[5,6]};
-fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
-fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC),length(SUBJ_SLOW_WALKERS)]));
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
+
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
@@ -178,11 +105,12 @@ PERCENT_OVERLAP = 0.0; % percent overlap between epochs
 %* gait
 EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 STD_TIMEWARP = 3;
-EPOCH_TIME_LIMITS = [-1,4.25]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
+EPOCH_TIME_LIMITS = [-0.5,4.5]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
 % (10/13/20223) changing from [-1,4.25] to [-0.5,4.5] to match chang's
 % (10/25/20223) changing from [-0.5,4.5] to [-1,4.25] as it seems to help
 % with frequency decomposition artifact during ERSP creation
 % paper
+% (01/23/2024) changing from [-1,4.25] to [-0.5,4.5] to match chang
 TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 if DO_SLIDING_WINDOW
     SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
@@ -198,20 +126,22 @@ end
 % FREQ_FAC = 4;
 % PAD_RATIO = 2;
 %- datetime override
-dt = '12012023_OAYA104_icc0p65-0p4_changparams';
+% dt = '12182023_OAYA104_icc0p65-0p4_changparams';
+% dt = '01232024_OAYA104_icc0p65-0p4_spca';
+dt = '02042024_YAOAN104_iccRX0p65_iccREMG0p4_powpow0p3';
 %- Subject Directory information
 % OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 % OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
 % OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p3_newparams'; % JACOB,SAL(09/26/2023)
-OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams'; 
+OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
 % study_fName_1 = sprintf('%s_all_comps_study',[TRIAL_TYPES{:}]);
 % study_fName_2 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
-study_fName_1 = 'all_comps_study';
-study_fName_2 = 'epoch_study';
+study_fName_allcomp = 'all_comps_study';
+study_fname_gait = 'epoch_study';
 % TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
@@ -315,30 +245,24 @@ end
 try
     [MAIN_ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
                         conditions,groups,sessions);
-    [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,study_fName_1,save_dir);
+    [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,study_fName_allcomp,save_dir);
 catch e
     fprintf('\n%s\n',getReport(e));
     exit();
 end
 %% INITIALIZE PARFOR LOOP VARS
-if exist('SLURM_POOL_SIZE','var')
-    POOL_SIZE = min([SLURM_POOL_SIZE,length(MAIN_ALLEEG)]);
-else
-    POOL_SIZE = 1;
-end
 fPaths = {MAIN_ALLEEG.filepath};
 fNames = {MAIN_ALLEEG.filename};
 LOOP_VAR = 1:length(MAIN_ALLEEG);
 tmp = cell(1,length(MAIN_ALLEEG));
 rmv_subj = zeros(1,length(MAIN_ALLEEG));
 %- clear vars for memory
-% clear MAIN_ALLEEG
-%% GENERATE EPOCH MAIN FUNC
 %## PARFOR LOOP
-parfor (subj_i = LOOP_VAR,POOL_SIZE)
+parfor (subj_i = 1:length(fPaths),SLURM_POOL_SIZE)
+% for subj_i = 1:length(subjectNames)
     %## LOAD EEG DATA
-    EEG = MAIN_ALLEEG(subj_i);
-%     EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
+    EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
+%     [~,EEG,~] = eeglab_loadICA(fNames{subj_i},fPaths{subj_i});
     fprintf('Running subject %s\n',EEG.subject)
     %- Recalculate ICA Matrices && Book Keeping
     EEG = eeg_checkset(EEG,'loaddata');
@@ -347,7 +271,6 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
         EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
         EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     end
-    
     %## PARSE TRIALS
     epoched_fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED];
     fPath = [epoched_fPath filesep [TRIAL_TYPES{:}]];
@@ -357,32 +280,30 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
     end
     %- parse
     try
+        %## REMOVE USELESS EVENT FIELDS (Improve Load Time)
+        if isfield(EEG.event,'trialName')
+            EEG.event = rmfield(EEG.event,'trialName');
+        end
+        if isfield(EEG.event,'channel')
+            EEG.event = rmfield(EEG.event,'channel');
+        end
+        if isfield(EEG.event,'code')
+            EEG.event = rmfield(EEG.event,'code');
+        end
+        if isfield(EEG.event,'bvtime')
+            EEG.event = rmfield(EEG.event,'bvtime');
+        end
+        if isfield(EEG.event,'bvmknum')
+            EEG.event = rmfield(EEG.event,'bvmknum');
+        end
+        if isfield(EEG.event,'datetime')
+            EEG.event = rmfield(EEG.event,'datetime');
+        end
         %## EPOCH
-        [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,DO_SLIDING_WINDOW,...
+        [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,false,...
             'EPOCH_TIME_LIMITS',EPOCH_TIME_LIMITS,...
             'STD_TIMEWARP',STD_TIMEWARP,...
             'COND_CHARS',TRIAL_TYPES);
-        %## REMOVE USELESS EVENT FIELDS (Improve Load Time)
-        for i = 1:length(ALLEEG)
-            if isfield(ALLEEG(i).event,'trialName')
-                ALLEEG(i).event = rmfield(ALLEEG(i).event,'trialName');
-            end
-            if isfield(ALLEEG(i).event,'channel')
-                ALLEEG(i).event = rmfield(ALLEEG(i).event,'channel');
-            end
-            if isfield(ALLEEG(i).event,'code')
-                ALLEEG(i).event = rmfield(ALLEEG(i).event,'code');
-            end
-            if isfield(ALLEEG(i).event,'bvtime')
-                ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvtime');
-            end
-            if isfield(ALLEEG(i).event,'bvmknum')
-                ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvmknum');
-            end
-            if isfield(ALLEEG(i).event,'datetime')
-                ALLEEG(i).event = rmfield(ALLEEG(i).event,'datetime');
-            end
-        end
         %## SAVE EEG's AS INDIVIDUAL FILES (CONNECTIVITY)
         cond_files = struct('fPath',[],'fName',[]);
         if SAVE_ALLEEG
@@ -430,6 +351,7 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
         ALLEEG = eeg_checkset(ALLEEG,'eventconsistency');
         ALLEEG = eeg_checkset(ALLEEG);
         ALLEEG = eeg_checkamica(ALLEEG);
+        
         %- save
         [ALLEEG] = pop_saveset(ALLEEG,'savemode','twofiles',...
                 'filename',fName,...
@@ -441,16 +363,19 @@ parfor (subj_i = LOOP_VAR,POOL_SIZE)
         EEG.timewarp = struct([]);
         EEG.urevent = [];
         tmp{subj_i} = []; %EEG;
+        tmp_rest{subj_i} = [];
         fprintf(['error. identifier: %s\n',...
                  'error. %s\n',...
                  'error. on subject %s\n',...
                  'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
     end
 end
-%% SAVE BIG STUDY
+fprintf('Bugged subjects:\n');
+fprintf('%s\n',subjectNames{find(rmv_subj)});
+%% ===================================================================== %%
+%## SAVE BIG STUDY
 fprintf('==== Reformatting Study ====\n');
 %- remove bugged out subjects
-fprintf('Bugged Subjects: %s',MAIN_ALLEEG(cellfun(@isempty,tmp)).subject);
 tmp = tmp(~cellfun(@isempty,tmp));
 %## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
 fss = cell(1,length(tmp));
@@ -470,7 +395,7 @@ for subj_i = 1:length(tmp)
     if any(~out)
         for j = 1:length(addFs)
             EEG.(addFs{j}) = [];
-            fprintf('%s) Adding fields %s\n',EEG.subject,addFs{j})
+%             fprintf('%s) Adding fields %s\n',EEG.subject,addFs{j})
         end
     end 
 %     tmp{subj_i} = EEG;
@@ -482,14 +407,13 @@ tmp = cellfun(@(x) [[]; x], tmp);
 [STUDY, ALLEEG] = std_editset([],tmp,...
                                 'updatedat','off',...
                                 'savedat','off',...
-                                'name',study_fName_2,...
-                                'filename',study_fName_2,...
+                                'name',study_fname_gait,...
+                                'filename',study_fname_gait,...
                                 'filepath',save_dir);
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                         STUDY.filename,STUDY.filepath,...
-                                        'RESAVE_DATASETS','on');
-                                        
+                                        'RESAVE_DATASETS','off');                  
 %% Version History
 %{
 v2.0; (04/28/2023) JS: Splitting up the epoching, plotting, and

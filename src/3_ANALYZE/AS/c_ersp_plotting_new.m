@@ -133,7 +133,8 @@ ERSP_PARAMS = struct('subbaseline','off',...
 % dt = '06122023_bounces_1h2h2bm_JS';
 % dt = '06152023_bounces_1h2h2bm_JS';
 % dt = '07272023_bounces_1h_2h_2bm_JS';
-dt = '08182023_bounces_1h_2h_2bm_JS';
+% dt = '12282023_bounces_1h_2bm_JS_n1-0p5';
+dt = '01292023_subjrec_2bounces_rally_serve_human_JS_n0p75-0p75';
 %## Soft Define
 %- combinations of events and conditions
 EVENT_COND_COMBOS = cell(length(COND_CHARS)*length(EVENT_CHARS),1);
@@ -144,9 +145,10 @@ for cond_i = 1:length(COND_CHARS)
         cnt = cnt + 1;
     end
 end
-study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
+% study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
+stdy_fName_1 = 'epoch_study';
 DATA_DIR = [source_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];ghhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhZ&}{++++++++AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep '_figs'];
 study_load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
 %- create new study directory
@@ -170,6 +172,7 @@ else
         [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
     end
     [comps_out,main_cl_inds,outlier_cl_inds,valid_cluster] = eeglab_get_cluster_comps(STUDY);
+    valid_cls = [3,4,5,6,7,8,9,11,12];
 end
 %% CALCULATE GRANDAVERAGE WARPTO
 %{
@@ -257,75 +260,99 @@ if ~exist(spec_f,'file') || ~exist(topo_f,'file') || FORCE_RECALC_SPEC
     end
 end
 %% (PRECOMPUTE MEASURES) COMPUTE ERSPs
-icatimf_f = [ALLEEG(1).filepath filesep sprintf('%s.icatimef',ALLEEG(1).subject)];
-if ~exist(icatimf_f,'file') || FORCE_RECALC_ERSP
-    TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. making this too big can cause overlap between gait cyles
-%     disp(['Grand average (across all subj) warp to: ',num2str(averaged_warpto_events)]);
-%     parfor (subj_i = 1:length(ALLEEG),ceil(length(ALLEEG)/3))
-    for subj_i = 1:length(ALLEEG)
-        EEG = ALLEEG(subj_i);
-        TMP_STUDY = STUDY;
-        EEG = eeg_checkset(EEG,'loaddata');
-        if isempty(EEG.icaact)
-            fprintf('%s) Recalculating ICA activations\n',EEG.subject);
-            EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
-        end
-        EEG.icaact = reshape(EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
-        %- overrride datasetinfo to trick std_precomp to run.
-        TMP_STUDY.datasetinfo = STUDY.datasetinfo(subj_i);
-        TMP_STUDY.datasetinfo(1).index = 1;
-        %- determine timewarping parameters
-         if DO_TIMEWARP
-            timewarp_param = EEG.timewarp.latencies;
-            timewarpms_param = averaged_warpto_events;
-         else
-             timewarp_param = [];
-             timewarpms_param = [];
-        end
-        %-
-        if DO_BASELINE_CORRECTION
-            % Baseline correction
-            [~, ~] = std_precomp(TMP_STUDY,EEG,'components','savetrials','on',...
-                    'recompute','on','ersp','on','itc','off',...
-                    'erspparams',{'parallel','off','cycles',ERSP_PARAMS.cycles,...
-                    'nfreqs',length((ERSP_PARAMS.freqrange(1):ERSP_PARAMS.freqrange(2))),...
-                    'ntimesout',TIMEWARP_NTIMES,'timewarp',timewarp_param,...
-                    'timewarpms',timewarpms_param,'baseline',[averaged_warpto_events(1),averaged_warpto_events(end)],...
-                    'trialbase','off','basenorm','on'}); %ERSP
-        else
-            % No baseline correction
-            [~, ~] = std_precomp(TMP_STUDY,EEG,'components','savetrials','on',...
-                    'recompute','on','ersp','on','itc','off',...
-                    'erspparams',{'parallel','off','cycles',ERSP_PARAMS.cycles,...
-                    'nfreqs',length((ERSP_PARAMS.freqrange(1):ERSP_PARAMS.freqrange(2))),'ntimesout',TIMEWARP_NTIMES,...
-                    'baseline',nan(),'timewarp',timewarp_param,...
-                    'timewarpms',timewarpms_param}); %ERSP
-        end
-    end
-end
-%% (ERSP PLOT 1) EEGLAB IMPLEMENT: ACROSS CONDITIONS
-% group_names = unique({ALLEEG.group});
-% ersp_event_names = ALLEEG(1).timewarp.eventSequence;
-% for des_i = 1:length(COND_DESIGNS)
-%     fprintf('==== Making Study Design ====\n');
-%     [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
-%         'subjselect', {ALLEEG.subject},...
-%         'variable1','cond',...
-%         'values1', COND_DESIGNS{des_i});
-%     for cluster_i = 2:length(STUDY.cluster)
-%         fprintf('\n==== Loading Cluster %i from STUDY %s ====\n',cluster_i, STUDY.name)
-%         fprintf('Cluster %i has subjects: ',cluster_i); fprintf('%i,',STUDY.cluster(cluster_i).sets); fprintf('\n');
-%         fprintf('with components: '); fprintf('%i,',STUDY.cluster(cluster_i).comps); fprintf('\n');
-%         %- load data into matrix using std_readdata (can load by
-%         %components or clusters (using clusters here).
-%         [~] = std_erspplot(STUDY, ALLEEG,...
-%                             'clusters',cluster_i);
-%         fig_i = get(groot,'CurrentFigure');
-%         fig_i.Name = sprintf('Cluster %i) condition %s',cluster_i,[COND_DESIGNS{des_i}{:}]);
-%         saveas(fig_i,[save_dir filesep sprintf('cond_%s_ersp_%i.fig',[COND_DESIGNS{des_i}{:}],cluster_i)]);
-%         saveas(fig_i,[save_dir filesep sprintf('cond_%s_ersp_%i.jpg',[COND_DESIGNS{des_i}{:}],cluster_i)]);
+% icatimf_f = [ALLEEG(1).filepath filesep sprintf('%s.icatimef',ALLEEG(1).subject)];
+% if ~exist(icatimf_f,'file') || FORCE_RECALC_ERSP
+%     TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. making this too big can cause overlap between gait cyles
+% %     disp(['Grand average (across all subj) warp to: ',num2str(averaged_warpto_events)]);
+% %     parfor (subj_i = 1:length(ALLEEG),ceil(length(ALLEEG)/3))
+%     for subj_i = 1:length(ALLEEG)
+%         EEG = ALLEEG(subj_i);
+%         TMP_STUDY = STUDY;
+%         EEG = eeg_checkset(EEG,'loaddata');
+%         if isempty(EEG.icaact)
+%             fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+%             EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+%         end
+%         EEG.icaact = reshape(EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
+%         %- overrride datasetinfo to trick std_precomp to run.
+%         TMP_STUDY.datasetinfo = STUDY.datasetinfo(subj_i);
+%         TMP_STUDY.datasetinfo(1).index = 1;
+%         %- determine timewarping parameters
+%          if DO_TIMEWARP
+%             timewarp_param = EEG.timewarp.latencies;
+%             timewarpms_param = averaged_warpto_events;
+%          else
+%              timewarp_param = [];
+%              timewarpms_param = [];
+%         end
+%         %-
+%         if DO_BASELINE_CORRECTION
+%             % Baseline correction
+%             [~, ~] = std_precomp(TMP_STUDY,EEG,'components','savetrials','on',...
+%                     'recompute','on','ersp','on','itc','off',...
+%                     'erspparams',{'parallel','off','cycles',ERSP_PARAMS.cycles,...
+%                     'nfreqs',length((ERSP_PARAMS.freqrange(1):ERSP_PARAMS.freqrange(2))),...
+%                     'ntimesout',TIMEWARP_NTIMES,'timewarp',timewarp_param,...
+%                     'timewarpms',timewarpms_param,'baseline',[averaged_warpto_events(1),averaged_warpto_events(end)],...
+%                     'trialbase','off','basenorm','on'}); %ERSP
+%         else
+%             % No baseline correction
+%             [~, ~] = std_precomp(TMP_STUDY,EEG,'components','savetrials','on',...
+%                     'recompute','on','ersp','on','itc','off',...
+%                     'erspparams',{'parallel','off','cycles',ERSP_PARAMS.cycles,...
+%                     'nfreqs',length((ERSP_PARAMS.freqrange(1):ERSP_PARAMS.freqrange(2))),'ntimesout',TIMEWARP_NTIMES,...
+%                     'baseline',nan(),'timewarp',timewarp_param,...
+%                     'timewarpms',timewarpms_param}); %ERSP
+%         end
 %     end
 % end
+%% (PRECOMPUTE MEASURES) COMPUTE ERSPs
+BASELINE_TIMES = nan(); %[-1,0.45]*1000; %nan(); %[-0.5,0.5]*1000;
+for subj_i = 1:length(ALLEEG)
+% for subj_i = 14
+    EEG = ALLEEG(subj_i);
+    TMP_STUDY = STUDY;
+    EEG = eeg_checkset(EEG,'loaddata');
+    if isempty(EEG.icaact)
+        fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+        EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+    end
+    EEG.icaact = reshape(EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
+    %- overrride datasetinfo to trick std_precomp to run.
+    TMP_STUDY.datasetinfo = STUDY.datasetinfo(subj_i);
+    TMP_STUDY.datasetinfo(1).index = 1;
+    %-
+    % No baseline correction
+    [~, ~] = std_precomp(TMP_STUDY,EEG,'components','savetrials','on',...
+            'recompute','on','ersp','on','itc','off',...
+            'erspparams',{'parallel','off','cycles',ERSP_PARAMS.cycles,...
+            'nfreqs',length((ERSP_PARAMS.freqrange(1):ERSP_PARAMS.freqrange(2))),...
+            'baseline',BASELINE_TIMES}); %ERSP
+
+end
+%% (ERSP PLOT 1) EEGLAB IMPLEMENT: ACROSS CONDITIONS
+group_names = unique({ALLEEG.group});
+ersp_event_names = ALLEEG(1).timewarp.eventSequence;
+for des_i = 1:length(COND_DESIGNS)
+    fprintf('==== Making Study Design ====\n');
+    [STUDY] = std_makedesign(STUDY, ALLEEG, des_i,...
+        'subjselect', {ALLEEG.subject},...
+        'variable1','bounces',...
+        'values1', COND_DESIGNS{des_i});
+    for cluster_i = 3:length(STUDY.cluster)
+        fprintf('\n==== Loading Cluster %i from STUDY %s ====\n',cluster_i, STUDY.name)
+        fprintf('Cluster %i has subjects: ',cluster_i); fprintf('%i,',STUDY.cluster(cluster_i).sets); fprintf('\n');
+        fprintf('with components: '); fprintf('%i,',STUDY.cluster(cluster_i).comps); fprintf('\n');
+        %- load data into matrix using std_readdata (can load by
+        %components or clusters (using clusters here).
+        [~] = std_erspplot(STUDY, ALLEEG,...
+                            'clusters',cluster_i);
+        fig_i = get(groot,'CurrentFigure');
+        fig_i.Name = sprintf('Cluster %i) condition %s',cluster_i,[COND_DESIGNS{des_i}{:}]);
+%         saveas(fig_i,[save_dir filesep sprintf('cond_%s_ersp_%i.fig',[COND_DESIGNS{des_i}{:}],cluster_i)]);
+        saveas(fig_i,[save_dir filesep sprintf('cond_%s_ersp_%i.jpg',[COND_DESIGNS{des_i}{:}],cluster_i)]);
+    end
+end
 %% (CUSTOM) COMPARE ERSP ACROSS CONDITION
 %{
 group_names = unique({ALLEEG.group});

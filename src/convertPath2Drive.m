@@ -102,18 +102,18 @@ elseif ~isempty(unix_sep) && ~any(unix_sep==1)
     path_out = join(path_out,FILESEP_DOS);
     path_out = [DRIVE_LETTER ':' FILESEP_DOS path_out{1}];
 %## if UNIX path got inputted without an initiation sep
-elseif ~isempty(dos_sep) && ~any(dos_sep==1)
-    %- split path using UNIX filesep
-    path_out = strsplit(fPath,FILESEP_DOS);
-    %- find indices where the
-    hdn_idx = cellfun(@(x) strcmp(x,HPC_DRIVE_NAME), path_out);
-    hqn_idx = cellfun(@(x) strcmp(x,HPC_QOS_NAME), path_out);
-    dl_idx = cellfun(@(x) strcmp(x,[DRIVE_LETTER ':']), path_out);
-    %- create new path
-    idx2keep = ~(hdn_idx+hqn_idx+dl_idx);
-    path_out = path_out(idx2keep);
-    path_out = join(path_out,FILESEP_DOS);
-    path_out = [DRIVE_LETTER ':' FILESEP_DOS path_out{1}];
+% elseif ~isempty(dos_sep) && ~any(dos_sep==1) 
+%     %- split path using UNIX filesep
+%     path_out = strsplit(fPath,FILESEP_DOS);
+%     %- find indices where the
+%     hdn_idx = cellfun(@(x) strcmp(x,HPC_DRIVE_NAME), path_out);
+%     hqn_idx = cellfun(@(x) strcmp(x,HPC_QOS_NAME), path_out);
+%     dl_idx = cellfun(@(x) strcmp(x,[DRIVE_LETTER ':']), path_out);
+%     %- create new path
+%     idx2keep = ~(hdn_idx+hqn_idx+dl_idx);
+%     path_out = path_out(idx2keep);
+%     path_out = join(path_out,FILESEP_DOS);
+%     path_out = [DRIVE_LETTER ':' FILESEP_DOS path_out{1}];
 else
     path_out = fPath;
 end

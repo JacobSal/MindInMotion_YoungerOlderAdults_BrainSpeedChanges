@@ -83,96 +83,8 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (DATASET INFORMATION) =============================================== %%
-%## (MIND IN MOTION) DATASET SPECIFIC PARAMS (05/24/2023)
-SUBJ_1YA = {'H1002','H1004','H1007','H1009',...
-    'H1010','H1011','H1012','H1013','H1017',...
-    'H1018','H1019','H1020','H1022','H1024',...
-    'H1025','H1026','H1027','H1029','H1030','H1031',...
-    'H1032','H1033','H1034','H1035','H1036',...
-    'H1037','H1038','H1039','H1041','H1042',...
-    'H1044','H1045','H1046','H1047','H1048'}; % JACOB,SAL (04/18/2023)
-%## SUBJCT INPUTTED THROUGH PREPROCESSING & DIPOLE SELECTION
-% SUBJ_2MA = {'H2002','H2007','H2008',...
-%     'H2013','H2015','H2017','H2020','H2021',...
-%     'H2022','H2023','H2025','H2026','H2027',...
-%     'H2033','H2034','H2037','H2038','H2039',...
-%     'H2042','H2052','H2059','H2062','H2082',...
-%     'H2090','H2095','H2111','H2117'};
-% SUBJ_3MA = {'H3029','H3034','H3039','H3053',...
-%     'H3063','H3072','H3077','H3103',...
-%     'H3107',...
-%     'NH3006','NH3007','NH3008','NH3010','NH3021',...
-%     'NH3026','NH3030','NH3036','NH3040',...
-%     'NH3041','NH3043','NH3054',...
-%     'NH3055','NH3058','NH3059','NH3066',...
-%     'NH3068','NH3069','NH3070','NH3074',...
-%     'NH3076','NH3086','NH3090','NH3102',...
-%     'NH3104','NH3105','NH3106','NH3108','NH3110',...
-%     'NH3112','NH3113','NH3114','NH3123','NH3128',...
-%     };
-%## SUBJECTS THAT MAKE IT THROUGH DIPOLE REJECTION
-SUBJ_2MA = {'H2002','H2008','H2013','H2015','H2017',...
-    'H2020','H2021','H2022','H2023','H2025','H2026',...
-    'H2027','H2033','H2034','H2037','H2038','H2039',...
-    'H2042','H2052','H2059','H2062','H2082','H2090',...
-    'H2095','H2111','H2117'};
-SUBJ_3MA = {'H3029','H3039','H3072','H3103','H3107',...
-    'NH3008','NH3010','NH3021','NH3026','NH3030',...
-    'NH3041','NH3043','NH3058','NH3059','NH3066',...
-    'NH3068','NH3069','NH3070','NH3076','NH3086',...
-    'NH3090','NH3102','NH3105','NH3106','NH3108',...
-    'NH3110','NH3112','NH3113','NH3128'};
-SUBJ_SLOW_WALKERS = {'H3042','H3046','H3047','H3073',...
-    'H3092','NH3025','NH3051','NH3056','NH3071','NH3082'};
-SUBJ_NO_MRI = {'H2010','H2012','H2018','H2036','H2041',...
-    'H2072','H3018','H3120','NH3002','NH3009','NH3027','NH3129'};
-SUBJ_MISSING_COND = {'H3024','NH3028'};
-% SUBJ_UNKNOWN_ERR = {'NH3108','NH3030','NH3040','NH3025'};
-% (08/21/2023) JS, 
-% NH3108 seems to bug out do to an indexing error during
-% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
-% NH3030 seems to bug out do to an indexing error during
-% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
-% NH3040 seems to bug out do to an indexing error during
-% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
-% NH3025 seems to bug out do to an indexing error during
-% cropping (endTime = EEG.times( round(ExactCropLatencies))/1000;)
-% (08/22/2023) JS, NH3108 bug seems to be related to entry errors in the
-% Trial_Cropping_V2_test.xlsx sheet used to remove bad time ranges
-% identified during collection. (fixed)
-% NH3030 bug was due to how the CropTrialCheckFunc_checkLoadsol.m
-% interpreted subject characters. It would consider 'NH3030_FU' as
-% 'NH3030'. Changed from 'contains' to 'strcmp' func. (fixed)
-% NH3040 bug was due to an entry error in Trial_Cropping_V2_test.xlsx (fixed)
-SUBJ_DONT_INC = {'NH3004','NH3023'};
-% (08/20/2023) JS, NH3004 has no headscan; NH3023 has no headscan clicks;
-SUBJ_NORUN = {'H2012_FU', 'H2013_FU', 'H2018_FU', 'H2020_FU', 'H2021_FU',...
-            'H3024_Case','H3029_FU','H3039_FU','H3063_FU','NH3021_Case', 'NH3023_Case','NH3025_Case', 'NH3030_FU',...
-            'NH3068_FU', 'NH3036_FU', 'NH3058_FU'};
-SUBJ_MISSING_TRIAL_DATA = {'H1008','H2012','H2018','H3024','NH3002', 'NH3004','NH3009',...
-    'NH3023','NH3027', 'NH3028', 'NH3129', 'NH3040'};
-%- (OY) Subject Picks 
-% SUBJ_PICS = {SUBJ_1YA}; 
-% GROUP_NAMES = {'H1000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_1YA)}; 
-%- (OA&YA) Subject Picks 
-% SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%- (OA) Subject Picks 
-SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-GROUP_NAMES = {'H2000''s','H3000''s'}; 
-SUBJ_ITERS = {1:length(SUBJ_2MA),1:length(SUBJ_3MA)};
-%- (0A) DEBUG SUBSET (06/17/2023)
-% SUBJ_PICS = {SUBJ_DEBUG};
-% GROUP_NAMES = {'debug'}; 
-% SUBJ_ITERS = {1:length(SUBJ_DEBUG)};
-%- test
-% SUBJ_PICS = {SUBJ_2MA,SUBJ_3MA};
-% GROUP_NAMES = {'H2000''s','H3000''s'}; 
-% SUBJ_ITERS = {[1,2],[5,6]};
-fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
-fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
+% [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
@@ -180,7 +92,9 @@ DATA_SET = 'MIM_dataset';
 %- datetime override
 colormap(linspecer);
 % dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
-dt = '10252023_MIM_OAN70_noslowwalkers_gait_powpow0p20';
+% dt = '10252023_MIM_OAN70_noslowwalkers_gait_powpow0p20';
+% dt = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
+dt = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 %- Subject Directory information
 % OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 %## soft define
@@ -204,32 +118,45 @@ table_trial_vec = cell(length([SUBJ_PICS{:}])*N_TRIALS,1);
 table_subj_vec = cell(length([SUBJ_PICS{:}])*N_TRIALS,1);
 table_header_names = cell(length([SUBJ_PICS{:}]),1);
 table_subj_cat_vec = cell(length([SUBJ_PICS{:}])*N_TRIALS,1);
-
 table_ls_meas = zeros(length([SUBJ_PICS{:}])*N_TRIALS,64); % 64 measures
 table_trial_ls = cell(length([SUBJ_PICS{:}])*N_TRIALS,1);
 table_subj_ls = cell(length([SUBJ_PICS{:}])*N_TRIALS,1);
 table_header_names_ls = cell(length([SUBJ_PICS{:}]),1);
 table_subj_cat_ls = cell(length([SUBJ_PICS{:}])*N_TRIALS,1);
+%- Loop through directory
+table_imu_meas_conds = zeros(length([SUBJ_PICS{:}])*N_TRIALS,12); % 12 measures
+table_trial_vec_conds = cell(length([SUBJ_PICS{:}])*N_TRIALS,1);
+table_subj_vec_conds = cell(length([SUBJ_PICS{:}])*N_TRIALS,1);
+table_header_names_conds = cell(length([SUBJ_PICS{:}]),1);
+table_subj_cat_vec_conds = cell(length([SUBJ_PICS{:}])*N_TRIALS,1);
+table_ls_meas_conds = zeros(length([SUBJ_PICS{:}])*N_TRIALS,64); % 64 measures
+table_trial_ls_conds = cell(length([SUBJ_PICS{:}])*N_TRIALS,1);
+table_subj_ls_conds = cell(length([SUBJ_PICS{:}])*N_TRIALS,1);
+table_header_names_ls_conds = cell(length([SUBJ_PICS{:}]),1);
+table_subj_cat_ls_conds = cell(length([SUBJ_PICS{:}])*N_TRIALS,1);
 subj_stack = [];
 cnt_ga = 1;
 cnt_ls = 1;
 %%
+fid = fopen([save_dir filesep 'load_in.txt'],'w');
 for group_i = 1:size(SUBJ_PICS,2)
     for subj_i = 1:length(SUBJ_PICS{group_i})
         %## LOAD CONDITION WISE BEHAVIORS
-        %{
-        folder_imu = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'IMU' filesep 'Processed_Conditions'];
-        folder_ls = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'Loadsol' filesep 'Processed_Conditions'];
-        dir_imu = dir([folder_imu filesep '*.mat']);
-        dir_ls = dir([folder_ls filesep '*.mat']);
-        %}
+        folder_imu_conds = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'IMU' filesep 'Processed_Conditions'];
+        folder_ls_conds = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'Loadsol' filesep 'Processed_Conditions'];
+        dir_imu_conds = dir([folder_imu_conds filesep '*.mat']);
+        dir_ls_conds = dir([folder_ls_conds filesep '*.mat']);
         %## LOAD TRIAL WISE BEHAVIORS
         folder_imu = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'IMU' filesep 'Processed_Trials'];
         folder_ls = [R_MIND_IN_MOTION_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'Loadsol' filesep 'Processed_Trials'];
         dir_imu = dir([folder_imu filesep 'Outcome_Measures' filesep '*.mat']);
         dir_ls = dir([folder_ls filesep 'Outcome_Measures' filesep '*.mat']);
-        fprintf('Loading subject %s...\n',SUBJ_PICS{group_i}{subj_i});
+        fprintf(fid,'Loading subject %s...\n',SUBJ_PICS{group_i}{subj_i});
         vals = zeros(length(dir_imu),2);
+        %## PRINTS
+        fprintf(fid,'\n');
+        fprintf(fid,'%s) has %i GRF files...\n',SUBJ_PICS{group_i}{subj_i},length(dir_ls));
+        fprintf(fid,'%s) has %i IMU files...\n',SUBJ_PICS{group_i}{subj_i},length(dir_imu));
         %## IMU (SACRAL MEASURES ONLY) 
         for f_i = 1:length(dir_imu)
             tmp = load([dir_imu(f_i).folder filesep dir_imu(f_i).name]);
@@ -238,6 +165,7 @@ for group_i = 1:size(SUBJ_PICS,2)
             table_header_names{cnt_ls} = fieldnames(tmp);
             table_imu_meas(cnt_ls,1:length(values)) = values;
             tmp = strsplit(dir_imu(f_i).name,'.');
+            fprintf(fid,'IMU Assigning %s.\n',dir_imu(f_i).name);
             if any(strcmp(tmp{1},{'TM_med_2','TM_med_1'}))
                 trial_i = 'med';
             elseif any(strcmp(tmp{1},{'TM_low_2','TM_low_1'}))
@@ -279,6 +207,7 @@ for group_i = 1:size(SUBJ_PICS,2)
             table_header_names_ls{cnt_ga} = fieldnames(tmp);
             table_ls_meas(cnt_ga,1:length(values)) = values;
             tmp = strsplit(dir_ls(f_i).name,'.');
+            fprintf(fid,'GRF Assigning %s.\n',dir_ls(f_i).name);
             if any(strcmp(tmp{1},{'TM_med_2','TM_med_1'}))
                 trial_i = 'med';
             elseif any(strcmp(tmp{1},{'TM_low_2','TM_low_1'}))
@@ -314,18 +243,108 @@ for group_i = 1:size(SUBJ_PICS,2)
             table_subj_cat_ls{cnt_ga} = cat_i;
             cnt_ga = cnt_ga + 1;
         end
+        
+        %## IMU (SACRAL MEASURES ONLY) CONDITIONS
+        for f_i = 1:length(dir_imu_conds)
+            tmp = load([dir_imu_conds(f_i).folder filesep dir_imu_conds(f_i).name]);
+            tmp = tmp.mergedOutputStruct;
+            values = cellfun(@(x)(tmp.(x)),fieldnames(tmp));
+            table_header_names_conds{cnt_ls} = fieldnames(tmp);
+            table_imu_meas_conds(cnt_ls,1:length(values)) = values;
+            tmp = strsplit(dir_imu_conds(f_i).name,'.');
+            fprintf(fid,'IMU Assigning %s.\n',dir_imu_conds(f_i).name);
+            if any(strcmp(tmp{1},{'TM_med'}))
+                trial_i = 'med';
+            elseif any(strcmp(tmp{1},{'TM_low'}))
+                trial_i = 'low';
+            elseif any(strcmp(tmp{1},{'TM_flat'}))
+                trial_i = 'flat';
+            elseif any(strcmp(tmp{1},{'TM_high'}))
+                trial_i = 'high';
+            elseif any(strcmp(tmp{1},{'SP_0p25'}))
+                trial_i = '0p25';
+            elseif any(strcmp(tmp{1},{'SP_0p5'}))
+                trial_i = '0p5';
+            elseif any(strcmp(tmp{1},{'SP_0p75'}))
+                trial_i = '0p75';
+            elseif any(strcmp(tmp{1},{'SP_1p0'}))
+                trial_i = '1p0';
+            else
+                trial_i = tmp{1};
+            end
+            table_trial_vec_conds{cnt_ls} = trial_i; %tmp{1};
+            table_subj_vec_conds{cnt_ls} = SUBJ_PICS{group_i}{subj_i};
+            if contains(SUBJ_PICS{group_i}{subj_i},'H1')
+                cat_i = 'YoungAdult';
+            elseif contains(SUBJ_PICS{group_i}{subj_i},'H2')
+                cat_i = 'HF_OlderAdult';
+            elseif contains(SUBJ_PICS{group_i}{subj_i},'H3')
+                cat_i = 'LF_OlderAdult';
+            elseif contains(SUBJ_PICS{group_i}{subj_i},'NH3')
+                cat_i = 'LF_OlderAdult';
+            end
+            table_subj_cat_vec_conds{cnt_ls} = cat_i;
+            cnt_ls = cnt_ls + 1;
+        end
+        %## LOADSOL (GAIT) CONDITIONS
+        for f_i = 1:length(dir_ls_conds)
+            tmp = load([dir_ls_conds(f_i).folder filesep dir_ls_conds(f_i).name]);
+            tmp = tmp.mergedOutputStruct;
+            values = cellfun(@(x)(tmp.(x)),fieldnames(tmp));
+            table_header_names_ls_conds{cnt_ga} = fieldnames(tmp);
+            table_ls_meas_conds(cnt_ga,1:length(values)) = values;
+            tmp = strsplit(dir_ls_conds(f_i).name,'.');
+            fprintf(fid,'GRF Assigning %s.\n',dir_ls_conds(f_i).name);
+            if any(strcmp(tmp{1},{'TM_med'}))
+                trial_i = 'med';
+            elseif any(strcmp(tmp{1},{'TM_low'}))
+                trial_i = 'low';
+            elseif any(strcmp(tmp{1},{'TM_flat'}))
+                trial_i = 'flat';
+            elseif any(strcmp(tmp{1},{'TM_high'}))
+                trial_i = 'high';
+            elseif any(strcmp(tmp{1},{'SP_0p25'}))
+                trial_i = '0p25';
+            elseif any(strcmp(tmp{1},{'SP_0p5'}))
+                trial_i = '0p5';
+            elseif any(strcmp(tmp{1},{'SP_0p75'}))
+                trial_i = '0p75';
+            elseif any(strcmp(tmp{1},{'SP_1p0'}))
+                trial_i = '1p0';
+            else
+                trial_i = tmp{1};
+            end
+            table_trial_ls_conds{cnt_ga} = trial_i; %tmp{1};
+            table_subj_ls_conds{cnt_ga} = SUBJ_PICS{group_i}{subj_i};
+            if contains(SUBJ_PICS{group_i}{subj_i},'H1')
+                cat_i = 'YoungAdult';
+            elseif contains(SUBJ_PICS{group_i}{subj_i},'H2')
+                cat_i = 'HF_OlderAdult';
+            elseif contains(SUBJ_PICS{group_i}{subj_i},'H3')
+                cat_i = 'LF_OlderAdult';
+            elseif contains(SUBJ_PICS{group_i}{subj_i},'NH3')
+                cat_i = 'LF_OlderAdult';
+            else
+                cat_i = 'NaN';
+            end
+            table_subj_cat_ls_conds{cnt_ga} = cat_i;
+            cnt_ga = cnt_ga + 1;
+        end
    
     end
 end
+fclose(fid);
 %% IMU TABLE
-table_imu_meas = table_imu_meas(~any(table_imu_meas == 0,2),:);
-table_subj_vec = table_subj_vec(~any(table_imu_meas == 0,2));
-table_trial_vec = table_trial_vec(~any(table_imu_meas == 0,2));
-table_subj_cat_vec = table_subj_cat_vec(~any(table_imu_meas == 0,2));
+rej = ~any(table_imu_meas == 0,2);
+table_imu_meas = table_imu_meas(rej,:);
+table_subj_vec = table_subj_vec(rej);
+table_trial_vec = table_trial_vec(rej);
+table_subj_cat_vec = table_subj_cat_vec(rej);
 table_imu_out = array2table(table_imu_meas,'VariableNames',table_header_names{1});
 table_imu_out.SubjectName = categorical(table_subj_vec);
 table_imu_out.TrialName = categorical(table_trial_vec);
 table_imu_out.SubjectCategory = categorical(table_subj_cat_vec);
+writetable(table_imu_out,[save_dir filesep 'imu_table_out.xlsx']);
 %- rearrange headers
 % table_imu_out = [table_ls_out(:,end-1), table_ls_out(:,end), table_ls_out(:,1:end-2)];
 % table_imu_out = table(categorical(table_subj_vec),categorical(table_trial_vec),table_imu_meas(:,1),table_imu_meas(:,2),...
@@ -333,14 +352,46 @@ table_imu_out.SubjectCategory = categorical(table_subj_cat_vec);
 %     table_imu_meas(:,7),table_imu_meas(:,8),table_imu_meas(:,9),table_imu_meas(:,10),...
 %     table_imu_meas(:,11),table_imu_meas(:,12),'VariableNames',[{'Subject'},{'TrialName'},table_header_names{1}']);
 %% LOADSOL TABLE
-table_ls_meas = table_ls_meas(~any(table_ls_meas == 0,2),:);
-table_subj_ls = table_subj_ls(~any(table_ls_meas == 0,2));
-table_trial_ls = table_trial_ls(~any(table_ls_meas == 0,2));
-table_subj_cat_ls = table_subj_cat_ls(~any(table_ls_meas == 0,2));
+rej = ~any(table_ls_meas == 0,2);
+table_ls_meas = table_ls_meas(rej,:);
+table_subj_ls = table_subj_ls(rej);
+table_trial_ls = table_trial_ls(rej);
+table_subj_cat_ls = table_subj_cat_ls(rej);
 table_ls_out = array2table(table_ls_meas,'VariableNames',table_header_names_ls{1});
 table_ls_out.SubjectName = categorical(table_subj_ls);
 table_ls_out.TrialName = categorical(table_trial_ls);
 table_ls_out.SubjectCategory = categorical(table_subj_cat_ls);
+writetable(table_ls_out,[save_dir filesep 'ls_table_out.xlsx']);
+%- rearrange headers
+% table_ls_out = [table_ls_out(:,end-1), table_ls_out(:,end), table_ls_out(:,1:end-2)];
+%% IMU TABLE CONDITIONS (PRECALCULATED)
+rej = ~any(table_imu_meas_conds == 0,2);
+table_imu_meas_conds = table_imu_meas_conds(rej,:);
+table_subj_vec_conds = table_subj_vec_conds(rej);
+table_trial_vec_conds = table_trial_vec_conds(rej);
+table_subj_cat_vec_conds = table_subj_cat_vec_conds(rej);
+table_imu_out_conds = array2table(table_imu_meas,'VariableNames',table_header_names_conds{1});
+table_imu_out_conds.SubjectName = categorical(table_subj_vec_conds);
+table_imu_out_conds.TrialName = categorical(table_trial_vec_conds);
+table_imu_out_conds.SubjectCategory = categorical(table_subj_cat_vec_conds);
+writetable(table_imu_out_conds,[save_dir filesep 'imu_table_out.xlsx']);
+%- rearrange headers
+% table_imu_out = [table_ls_out(:,end-1), table_ls_out(:,end), table_ls_out(:,1:end-2)];
+% table_imu_out = table(categorical(table_subj_vec),categorical(table_trial_vec),table_imu_meas(:,1),table_imu_meas(:,2),...
+%     table_imu_meas(:,3),table_imu_meas(:,4),table_imu_meas(:,5),table_imu_meas(:,6),...
+%     table_imu_meas(:,7),table_imu_meas(:,8),table_imu_meas(:,9),table_imu_meas(:,10),...
+%     table_imu_meas(:,11),table_imu_meas(:,12),'VariableNames',[{'Subject'},{'TrialName'},table_header_names{1}']);
+%% LOADSOL TABLE CONDITIONS (PRECALCULATED)
+rej = ~any(table_ls_meas_conds == 0,2);
+table_ls_meas_conds = table_ls_meas_conds(rej,:);
+table_subj_ls_conds = table_subj_ls_conds(rej);
+table_trial_ls_conds = table_trial_ls_conds(rej);
+table_subj_cat_ls_conds = table_subj_cat_ls_conds(rej);
+table_ls_out_conds = array2table(table_ls_meas_conds,'VariableNames',table_header_names_ls_conds{1});
+table_ls_out_conds.SubjectName = categorical(table_subj_ls_conds);
+table_ls_out_conds.TrialName = categorical(table_trial_ls_conds);
+table_ls_out_conds.SubjectCategory = categorical(table_subj_cat_ls_conds);
+writetable(table_ls_out_conds,[save_dir filesep 'ls_table_out.xlsx']);
 %- rearrange headers
 % table_ls_out = [table_ls_out(:,end-1), table_ls_out(:,end), table_ls_out(:,1:end-2)];
 %% average across trials
@@ -352,7 +403,8 @@ for i = 1:length(subjs)
     subj_cat = unique(table_imu_out(table_imu_out.SubjectName == subjs(i),:).SubjectCategory);
     for j = 1:length(trials)
         tmp = tmpvals(tmpvals.TrialName == trials(j),:);
-        tmp = varfun(@nanmean, tmp, 'InputVariables', @isnumeric);
+%         tmp = varfun(@nanmean, tmp, 'InputVariables', @isnumeric);
+        tmp = varfun(@mean, tmp, 'InputVariables', @isnumeric);
         tmp.SubjectName = subjs(i);
         tmp.TrialName = trials(j);
         tmp.SubjectCategory = subj_cat;
@@ -360,6 +412,7 @@ for i = 1:length(subjs)
     end
 end
 table_new_imu = table_new;
+
 %% average across trials
 subjs = unique(table_ls_out.SubjectName);
 trials = unique(table_ls_out.TrialName);
@@ -369,7 +422,8 @@ for i = 1:length(subjs)
     subj_cat = unique(table_ls_out(table_ls_out.SubjectName == subjs(i),:).SubjectCategory);
     for j = 1:length(trials)
         tmp = tmpvals(tmpvals.TrialName == trials(j),:);
-        tmp = varfun(@nanmean, tmp, 'InputVariables', @isnumeric);
+%         tmp = varfun(@nanmean, tmp, 'InputVariables', @isnumeric);
+        tmp = varfun(@mean, tmp, 'InputVariables', @isnumeric);
         tmp.SubjectName = subjs(i);
         tmp.TrialName = trials(j);
         tmp.SubjectCategory = subj_cat;
@@ -377,6 +431,7 @@ for i = 1:length(subjs)
     end
 end
 table_new_ls = table_new;
+
 %% READ IN SUBJECT SPECIFIC SPEEDS FOR TERRAIN
 SPEED_CUTOFF = 0.1;
 MasterTable = mim_read_master_sheet();
@@ -398,6 +453,8 @@ for i = 1:size(speed_table,1)
         table_new_ls.terrain_speed(ind) = ss_speed;
     end
 end
+writetable(table_new_imu,[save_dir filesep 'imu_table_meantrial.xlsx']);
+writetable(table_new_ls,[save_dir filesep 'ls_table_meantrial.xlsx']);
 %% VIOLIN PLOT IMU
 % FIG_POSITION = [100,100,1480,520];
 FIG_POSITION = [100,100,420,420];
@@ -410,7 +467,8 @@ VIOLIN_WIDTH_GROUP = 0.1;
 % meas_titles = {'Anteriorposterior Excursion Mean','Mediolateral Excursion Mean','Anteroposterior Excursion Coefficient of Variation','Mediolateral Excursion Coefficient of Variation'};
 % meas_ylabel = {'Distance','Distance','Coefficient of Variation','Coefficient of Variation'};
 % YLIMS = {[0,0.15],[0,0.3],[0,70],[0,47.5]};
-meas_names = {'nanmean_APexc_COV','nanmean_MLexc_COV'}; %{'APexc_COV','MLexc_COV'};
+% meas_names = {'nanmean_APexc_COV','nanmean_MLexc_COV'}; %{'APexc_COV','MLexc_COV'};
+meas_names = {'mean_APexc_COV','mean_MLexc_COV'}; %{'APexc_COV','MLexc_COV'};
 meas_units = {'%','%'};
 meas_titles = {{'Anteroposterior Excursion';'Coefficient of Variation'},{'Mediolateral Excursion';'Coefficient of Variation'}};
 meas_ylabel = {'Coefficient of Variation','Coefficient of Variation'};
@@ -597,7 +655,8 @@ for meas_i = 1:length(meas_names)
 %     mdl_terrain_mixc = fitglme(tmp_t,modelspec);
     mdl_terrain_mixc = fitlme(tmp_t,modelspec);
     %-
-    modelspec = 'meas_in~1+(1|coev)';
+%     modelspec = 'meas_in~1+(1|coev_1)';
+    modelspec = 'meas_in~1';
     mdl_comp = fitlme(tmp_t,modelspec);
 %     [p,T,stats,terms] = anovan(tmp_t.meas_in,{tmp_t.cat_1},'alpha',0.05,'sstype',2,'model','linear');
     [stats] = anova(mdl_terrain_mixc);
@@ -893,7 +952,7 @@ for meas_i = 1:length(meas_names)
 %     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
 %     saveas(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.hdf',save_lab,meas_names{meas_i})]);
     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'ContentType','vector','Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'ContentType','vector','Resolution',300);
     %% (PLOT) Trial & Subject Category Plot for High vs Low function OA
     vals = cat(1,cond_2{1,:});
     bandwidth = range(vals)*0.1;
@@ -1004,7 +1063,8 @@ VIOLIN_WIDTH_GROUP = 0.1;
 % meas_titles = {'Step Duration','Step Duration Coefficient of Variation','Gait Cycle Duration Coefficient of Variation','Gait Cycle Duration'};
 % meas_ylabel = {'Duration','Coefficient of Variation','Coefficient of Variation','Duration'};
 % YLIMS = {[0,2],[0,27.5],[0,30],[0,4]};
-meas_names = {'nanmean_StepDur','nanmean_StepDur_cov'};
+% meas_names = {'nanmean_StepDur','nanmean_StepDur_cov'};
+meas_names = {'mean_StepDur','mean_StepDur_cov'};
 meas_units = {'s','%'};
 meas_titles = {'Step Duration',{'Step Duration';'Coefficient of Variation'}};
 meas_ylabel = {'Duration','Coefficient of Variation'};
@@ -1028,6 +1088,8 @@ end
 COLORS_MAPS_TERRAIN = linspecer(size(speed_chars,2));
 custom_yellow = [254,223,0]/255;
 COLORS_MAPS_TERRAIN = [COLORS_MAPS_TERRAIN(3,:);custom_yellow;COLORS_MAPS_TERRAIN(4,:);COLORS_MAPS_TERRAIN(2,:)];
+COLOR_MAPS_SPEED = linspecer(size(speed_chars,2)*3);
+COLOR_MAPS_SPEED = [COLOR_MAPS_SPEED(1,:);COLOR_MAPS_SPEED(2,:);COLOR_MAPS_SPEED(3,:);COLOR_MAPS_SPEED(4,:)];
 %%
 for meas_i = 1:length(meas_names)
     table_in = table_new_ls; %table_ls_out;
@@ -1133,7 +1195,7 @@ for meas_i = 1:length(meas_names)
 %     out = mes1way(tmp_t.meas_in,'eta2','group',double(tmp_t.cat_1));
 %     R2 = mdl_terrain_mixc.Rsquared.Ordinary;
     R21 = mdl_comp.SSR/mdl_comp.SST;
-    R22 = mdl_terrain_mixc.SSR/mdl_terrain_mixc.SST; %mdl_terrain_mixc.Rsquared.Ordinary; %mdl_terrain_mixc.Rsquared.Adjusted;
+    R22 = mdl_speed_mixc.SSR/mdl_speed_mixc.SST; %mdl_terrain_mixc.Rsquared.Ordinary; %mdl_terrain_mixc.Rsquared.Adjusted;
 % 	R2 = mdl_terrain_mixc.Rsquared.Adjusted;
     cohens_f2 = (R22-R21)/(1-R22);
     fprintf(fid,'cohens f2: %0.4f\n',cohens_f2);
@@ -1654,32 +1716,32 @@ for meas_i = 1:length(meas_names)
 %     pos1(1,2)=pos1(1,2)-0.12;
 %     set(xlh,'Position',pos1);
     %-
-%     shift = 0;
-%     mdl_spec='Var1~1+Var2';
-%     for g_i=1:size(cond_2,2)
-%         tmp = cat(2,cond_2{:,g_i});
-%         for subj_i = 1:size(cond_2{1,1},1)
-%             if all(~isnan(tmp(subj_i,:)))
-%                 y_vals = tmp(subj_i,:);
-%                 x_vals = xticks((1:length(tmp(subj_i,:)))+shift);
-%                 tb = table(y_vals',x_vals');
-%                 out = fitlm(x_vals,y_vals); %fitlm(tb,mdl_spec);
-% %                 p = plot(ax,out.Residuals.Raw',x_vals);
-%                 p = plot(ax,out);
-%                 p(end-1,1).Visible='off';
-%                 p(end,1).Visible='off';
-%                 p(1).Visible = 'off'; %[0,0,0,0.2];
-%                 if out.Coefficients.Estimate(2) > 0
-%                     p(2).Color = [0,0,0.7,0.70];
-%                 else
-%                     p(2).Color = [0.7,0,0,0.70];
-%                 end
-%                 
-% %                 plot(ax,x_vals,y_vals);
-%             end
-%         end
-%         shift = shift + length(tmp(1,:));
-%     end
+    shift = 0;
+    mdl_spec='Var1~1+Var2';
+    for g_i=1:size(cond_2,2)
+        tmp = cat(2,cond_2{:,g_i});
+        for subj_i = 1:size(cond_2{1,1},1)
+            if all(~isnan(tmp(subj_i,:)))
+                y_vals = tmp(subj_i,:);
+                x_vals = xticks((1:length(tmp(subj_i,:)))+shift);
+                tb = table(y_vals',x_vals');
+                out = fitlm(x_vals,y_vals); %fitlm(tb,mdl_spec);
+%                 p = plot(ax,out.Residuals.Raw',x_vals);
+                p = plot(ax,out);
+                p(end-1,1).Visible='off';
+                p(end,1).Visible='off';
+                p(1).Visible = 'off'; %[0,0,0,0.2];
+                if out.Coefficients.Estimate(2) > 0
+                    p(2).Color = [0,0,0.7,0.70];
+                else
+                    p(2).Color = [0.7,0,0,0.70];
+                end
+                
+%                 plot(ax,x_vals,y_vals);
+            end
+        end
+        shift = shift + length(tmp(1,:));
+    end
     %- set group labels
     if size(cond_2,2) == 2
         shift = 0;
