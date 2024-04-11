@@ -15,7 +15,7 @@ function [error_code] = mim_mcc_dipfit(working_dir,eeg_fpath,source_out_fpath,va
 % Code Date: 04/28/2023, MATLAB 2019a
 % Copyright (C) Jacob Salminen, jsalminen@ufl.edu
 % Copyright (C) Chang Liu, liu.chang1@ufl.edu
-
+cat_logo();
 %## TIME
 startj = tic;
 %## DEFINE DEFAULTS
@@ -44,6 +44,15 @@ FORCE_RECREATE = '0';
 fr_validFcn = @(x) ischar(x) && isnumeric(str2double(x));
 %%
 %- Checks
+% fprintf(['CAT CODE\n',...
+% ' _._     _,-''""`-._     \n',...
+% '(,-.`._,''(       |\\`-/| \n',...
+% '    `-.-'' \\ )-`( , o o) \n',...
+% '          `-    \\`_`"''- \n',...
+% 'Code Designer: Chang Liu, Jacob Salminen\n',...
+% 'Code Date: 02/21/2024, MATLAB 2020a\n',...
+% 'Copyright (C) Jacob Salminen, jsalminen@ufl.edu\n',...
+% 'Copyright (C) Chang Liu, liu.chang1@ufl.edu\n']);
 fprintf('Checking working_dir (%s) for ''subject_str''_masks_contr.nii.gz & CustomElectrodeLocations.txt\n',working_dir);
 fprintf('ctf_fiducials.mat check: %i\n',exist([working_dir filesep 'ctf_fiducials.mat'],'file'));
 fprintf('mri_acpc.mat check: %i\n',exist([working_dir filesep 'mri_acpc.mat'],'file'));
@@ -59,9 +68,8 @@ p = inputParser;
 addRequired(p,'working_dir',wd_validFcn);
 addRequired(p,'eeg_fpath',ef_validFcn);
 addRequired(p,'source_out_fpath',sof_validFcn);
-%## OPTIONAL
-addOptional(p,'VOL_CONDUCTIVITIES',VOL_CONDUCTIVITIES,vc_validFcn);
 %## PARAMETER
+addParameter(p,'VOL_CONDUCTIVITIES',VOL_CONDUCTIVITIES,vc_validFcn);
 addParameter(p,'FORCE_RECREATE',FORCE_RECREATE,fr_validFcn);
 parse(p,working_dir,eeg_fpath,source_out_fpath,varargin{:});
 %## SET DEFAULTS
@@ -71,6 +79,11 @@ VOL_CONDUCTIVITIES = str2num(VOL_CONDUCTIVITIES);
 FORCE_RECREATE = p.Results.FORCE_RECREATE;
 FORCE_RECREATE = logical(str2double(FORCE_RECREATE));
 %- PARAMETER
+%% Prints
+fprintf('VOL_CONDUCTIVITIES: [csf, gray, scalp, skull, white, air]\n');
+fprintf('VOL_CONDUCTIVITIES: [');fprintf('%0.3g, ',VOL_CONDUCTIVITIES(1:end-1));fprintf('%0.3g]\n',VOL_CONDUCTIVITIES(end));
+%-
+fprintf('FORCE_RECREATE: %i\n',FORCE_RECREATE);
 %% ===================================================================== %%
 % fid = fopen([working_dir filesep 'output.txt'],'w');
 %- EEGLAB options for opening EEG data
@@ -89,7 +102,7 @@ try
     mkdir([working_dir filesep getenv('SLURM_JOB_ID')])
     pp.JobStorageLocation = strcat([working_dir filesep], getenv('SLURM_JOB_ID'));
     %- create your p-pool (NOTE: gross!!)
-    pPool = parpool(pp, POOL_SIZE, 'IdleTimeout', 1440);
+    pPool = parpool(pp, POOL_SIZE, 'IdleTimeout', inf);
     disp(pPool);
 catch e
     fprintf('Parallel processing failed to start');

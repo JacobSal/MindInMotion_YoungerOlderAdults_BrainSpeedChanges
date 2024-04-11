@@ -37,7 +37,8 @@ for cluster_i = 2:length(STUDY.cluster)
     tmpsets = unique(STUDY.cluster(cluster_i).sets);
     tmps = [];
     tmpc = [];
-    for subj_i = tmpsets
+    for i = 1:length(tmpsets)
+        subj_i = tmpsets(i);
         idx = (STUDY.cluster(cluster_i).sets == subj_i);
         comps_clust = STUDY.cluster(cluster_i).comps(idx);
         %- choosing component based on minimum dipole fit residual variance

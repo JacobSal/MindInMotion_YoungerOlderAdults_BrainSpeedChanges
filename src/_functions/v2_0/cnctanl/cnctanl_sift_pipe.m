@@ -257,8 +257,8 @@ if length(conn_components) ~= size(ALLEEG(1).icaweights,1)
 end
 
 %## ONE MODEL
-% TMP = ALLEEG;
-% ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
+TMP = ALLEEG;
+ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
 
 %% (MAIN CONNECTIVITY PIPELINE) ======================================== %%
 %## STEP 3: Pre-process the data
@@ -377,10 +377,61 @@ end
 %     TMP(cond_i).CAT.MODEL = ALLEEG.CAT.MODEL;
 %     TMP(cond_i).CAT.configs.('est_fitMVAR') = cfg;
 % end
-
-%- Alternately, we can fit the VAR parameters using a Kalman filter (see
-% doc est_fitMVARKalman for more info on arguments)
-% EEG.CAT.MODEL = est_fitMVARKalman(EEG,0,'updatecoeff',0.0005,'updatemode',2,'morder',ModelOrder,'verb',2,'downsampleFactor',50);
+store_mod = ALLEEG.CAT.MODEL;
+store_cfg = cfg;
+ALLEEG = TMP;
+%% (MAIN CONNECTIVITY PIPELINE) ======================================== %%
+%## STEP 3: Pre-process the data
+fprintf('===================================================\n');
+disp('REPRE-PROCESSISNG DATA');
+fprintf('===================================================\n');
+[ALLEEG] = pop_pre_prepData(ALLEEG,'nogui',...
+             'VerbosityLevel',VERBOSITY_LEVEL,...
+             'SignalType',PREPDATA_SIGNALTYPE,...
+             'VariableNames',comp_names,...
+             'Detrend',PREPDATA_DETRED,...
+             'NormalizeData',PREPDATA_NORMDATA,...
+             'resetConfigs',true,...
+             'badsegments',[],...
+             'newtrials',[],...
+             'equalizetrials',false);
+for cond_i=1:length(ALLEEG)
+    %* calculate the information criteria
+    [ALLEEG(cond_i).CAT.IC,cfg] = est_selModelOrder('EEG',ALLEEG(cond_i),ESTSELMOD_CFG);
+    if ~isempty(cfg)
+        %* store the configuration structure
+        ALLEEG(cond_i).CAT.configs.('est_selModelOrder') = cfg;
+    end
+end
+%## (PLOT)
+tmp_morder = zeros(1,length(ALLEEG));
+for cond_i = 1:length(ALLEEG)
+    fprintf('%s) Plotting Validations\n',ALLEEG(cond_i).subject);
+    handles = vis_plotOrderCriteria(ALLEEG(cond_i).CAT.IC,'conditions', [],    ...
+                                            'icselector', ESTSELMOD_CFG.icselector,  ...
+                                            'minimizer', 'min', ...
+                                            'prclim', 90);
+    tmp_morder(cond_i) = ceil(mean(ALLEEG(cond_i).CAT.IC.hq.popt));
+    saveas(handles,[save_dir filesep sprintf('%s_%i_orderResults.fig',ALLEEG(cond_i).subject,cond_i)]);
+    close(handles);
+end
+if isempty(MORDER)
+    model_order = ceil(mean(tmp_morder));
+else
+    model_order = MORDER;
+end
+fprintf('\n\n');
+%- Here we can check that our selected parameters make sense
+for cond_i = 1:length(ALLEEG)
+    fprintf('MVAR PARAMETER SUMMARY FOR CONDITION: %s\n\n',ALLEEG(cond_i).condition);
+    est_dispMVARParamCheck(ALLEEG(cond_i),struct('morder',model_order',...
+        'winlen',WINDOW_LENGTH,'winstep',WINDOW_STEP_SIZE,'verb',VERBOSITY_LEVEL))
+end
+%## REASSIGN MODEL
+for cond_i = 1:length(TMP)
+    TMP(cond_i).CAT.MODEL = store_mod;
+    TMP(cond_i).CAT.configs.('est_fitMVAR') = store_cfg;
+end
 fprintf('\n\n');
 %% STEP 6: Validate the fitted model
 fprintf('===================================================\n');

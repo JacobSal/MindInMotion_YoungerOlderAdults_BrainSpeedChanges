@@ -82,12 +82,34 @@ else
 %     pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
 end
 %% ===================================================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
 subj_names = {};
 for i = 1:length(SUBJ_PICS)
     subj_names = [subj_names, SUBJ_PICS{i}];
 end
-%%
+
+%% ===================================================================== %%
+%## MRI TEMPLATE FOR SOURCE DEPTH
+HIRES_TEMPLATE = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\_resources\mni_icbm152_nlin_sym_09a\mni_icbm152_t1_tal_nlin_sym_09a.nii';
+if ~ispc
+    HIRES_TEMPLATE = convertPath2UNIX(HIRES_TEMPLATE);
+else
+    HIRES_TEMPLATE = convertPath2Drive(HIRES_TEMPLATE);
+end
+%- assign hires_template default
+tmp = strsplit(HIRES_TEMPLATE,filesep);
+fpath = strjoin(tmp(1:end-1),filesep);
+fname = tmp{end};
+ext = strsplit(fname,'.');
+fname = ext{1};
+ext = ext{end};
+MNI_VOL = [fpath filesep fname '_dipplotvol.mat'];
+vol = load(MNI_VOL);
+try
+    vol = vol.vol;
+catch
+    vol = vol.mesh;
+end
 %## hard define
 %- datset name
 THRESHOLD_RV_BRAIN = 0.15;
@@ -97,7 +119,8 @@ DATA_SET = 'MIM_dataset';
 % OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
 % OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p3_newparams'; % JACOB,SAL(09/26/2023)
 % OA_PREP_FPATH = '08202023_OAN82_iccRX0p60_iccREMG0p3_newparams'; 
-OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams'; 
+OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
+% OA_PREP_FPATH = '01132024_antsnorm_iccREEG0p65_iccREMG0p4_skull0p0042';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
@@ -136,18 +159,26 @@ parfor (subj_i = 1:length(subj_names),floor(length(subj_names)/2))
         for i=1:length([dipfit_fem.component])
             %- 
             if ~isempty(dipfit_fem(i).dip)
-                EEG.dipfit_fem.model(i).posxyz = dipfit_fem(i).dip.pos;
-                EEG.dipfit_fem.model(i).momxyz = reshape(dipfit_fem(i).dip.mom, 3, length(dipfit_fem(i).dip.mom)/3)';
-                if ~isempty(dipfit_fem(i).dip.rv)
-                    EEG.dipfit_fem.model(i).rv     = dipfit_fem(i).dip.rv;
+                %- get dipole depth and reject if it isn't in brain volume
+                depth = ft_sourcedepth(dipfit_fem(i).dip.pos, vol);
+                if depth <= 0
+                    %- other
+                    EEG.dipfit_fem.model(i).posxyz = dipfit_fem(i).dip.pos;
+                    EEG.dipfit_fem.model(i).momxyz = reshape(dipfit_fem(i).dip.mom, 3, length(dipfit_fem(i).dip.mom)/3)';
+                    if ~isempty(dipfit_fem(i).dip.rv)
+                        EEG.dipfit_fem.model(i).rv     = dipfit_fem(i).dip.rv;
+                    else
+                        EEG.dipfit_fem.model(i).rv     = nan();
+                    end
+                    %- 
+                    EEG.dipfit_fem.model(i).diffmap = dipfit_fem(i).Vmodel - dipfit_fem(i).Vdata;
+                    EEG.dipfit_fem.model(i).sourcepot = dipfit_fem(i).Vmodel;
+                    EEG.dipfit_fem.model(i).datapot   = dipfit_fem(i).Vdata;
+                    dipfit_fem_pos(i,:) = dipfit_fem(i).dip.pos;
                 else
-                    EEG.dipfit_fem.model(i).rv     = nan();
+                    fprintf('%s) dip [%0.2g,%0.2g,%0.2g] outside brain volume...\n',subj_name,dipfit_fem(i).dip.pos)
+                    EEG.dipfit_fem.model(i) = empty_dip_struct;
                 end
-                %- 
-                EEG.dipfit_fem.model(i).diffmap = dipfit_fem(i).Vmodel - dipfit_fem(i).Vdata;
-                EEG.dipfit_fem.model(i).sourcepot = dipfit_fem(i).Vmodel;
-                EEG.dipfit_fem.model(i).datapot   = dipfit_fem(i).Vdata;
-                dipfit_fem_pos(i,:) = dipfit_fem(i).dip.pos;
             else
                 EEG.dipfit_fem.model(i) = empty_dip_struct;
             end

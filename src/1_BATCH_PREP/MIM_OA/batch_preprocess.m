@@ -89,7 +89,10 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
+% [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
+SUBJ_PICS = {{'H2012_FU','H2018_FU'},{'H3120','NH3129'}};
+GROUP_NAMES = {'H2000''s','H3000''s'};
+SUBJ_ITERS = {1:length(SUBJ_PICS{1}),1:length(SUBJ_PICS{2})};
 %% (PROCESSING PARAMS) ================================================= %%
 %## hard define
 %- dataset name
@@ -158,7 +161,7 @@ end
 LOOP_VAR = 1:length(fPaths);
 amica_cmd = cell(length(fPaths),1);
 params = cell(length(fPaths),1);
-subj_pick = 'NH3113';
+subj_pick = 'H3092';
 % parfor (subj_i = LOOP_VAR,POOL_SIZE)
 for subj_i = find(strcmp(subjectNames,'NH3113'))
     fprintf('Running subject %s...\n',subjectNames{subj_i})
