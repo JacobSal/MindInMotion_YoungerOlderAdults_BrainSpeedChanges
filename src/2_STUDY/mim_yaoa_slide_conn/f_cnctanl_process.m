@@ -17,71 +17,34 @@ clc;
 close all;
 clearvars
 %}
-%% Initialization
+%% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-%% (REQUIRED SETUP 4 ALL SCRIPTS) ====================================== %%
-%- DATE TIME
-study_dir_fname = datetime;
-study_dir_fname.Format = 'MMddyyyy';
-%- VARS
-USER_NAME = 'jsalminen'; %getenv('username');
-fprintf(1,'Current User: %s\n',USER_NAME);
-%- CD
-% cfname_path    = mfilename('fullpath');
-% cfpath = strsplit(cfname_path,filesep);
-% cd(cfpath);
-%% (EDIT: PATH TO YOUR GITHUB REPO) ==================================== %%
-%- GLOBAL VARS
-REPO_NAME = 'par_EEGProcessing';
-%- determine OS
-if strncmp(computer,'PC',2)
-    PATH_ROOT = ['M:' filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
-else  % isunix
-    PATH_ROOT = [filesep 'blue' filesep 'dferris',...
-        filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
-end
-%% SETWORKSPACE
-%- define the directory to the src folder
-source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'AS'];
-%- cd to source directory
-cd(source_dir)
-%- addpath for local folder
-addpath(source_dir)
-addpath(run_dir)
-%- set workspace
-global ADD_CLEANING_SUBMODS
+global ADD_CLEANING_SUBMODS %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
-setWorkspace
-%% PARPOOL SETUP
+%## Determine Working Directories
 if ~ispc
-    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
-    'option_single', 1, 'option_memmapdata', 0, ...
-    'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
-    disp(['SLURM_JOB_ID: ', getenv('SLURM_JOB_ID')]);
-    disp(['SLURM_CPUS_ON_NODE: ', getenv('SLURM_CPUS_ON_NODE')]);
-    %## allocate slurm resources to parpool in matlab
-    %- get cpu's on node and remove a few for parent script.
-    SLURM_POOL_SIZE = str2double(getenv('SLURM_CPUS_ON_NODE'));
-    %- create cluster
-    pp = parcluster('local');
-    %- Number of workers for processing (NOTE: this number should be higher
-    %then the number of iterations in your for loop)
-    fprintf('Number of workers: %i\n',pp.NumWorkers);
-    fprintf('Number of threads: %i\n',pp.NumThreads);
-    %- make meta data dire1ory for slurm
-    mkdir([run_dir filesep getenv('SLURM_JOB_ID')])
-    pp.JobStorageLocation = strcat([run_dir filesep], getenv('SLURM_JOB_ID'));
-    %- create your p-pool (NOTE: gross!!)
-    pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
+    STUDY_DIR = getenv('STUDY_DIR');
+    SCRIPT_DIR = getenv('SCRIPT_DIR');
 else
-    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
-    'option_single', 1, 'option_memmapdata', 0, ...
-    'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
-    SLURM_POOL_SIZE = 1;
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = SCRIPT_DIR;
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        SCRIPT_DIR = dir(['.' filesep]);
+        SCRIPT_DIR = SCRIPT_DIR(1).folder;
+        STUDY_DIR = SCRIPT_DIR;
+    end
 end
+%## Add Study & Script Paths
+addpath(STUDY_DIR);
+cd(SCRIPT_DIR);
+fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
+%## Set PWD_DIR, EEGLAB path, _functions path, and others...
+set_workspace
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
@@ -103,6 +66,7 @@ MORDER = 32;
 %- datetime override
 study_fName_1 = 'epoch_study';
 study_dir_fname = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
+study_dir_copy = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_conn';
 %## soft define
 DATA_DIR = [source_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
@@ -127,11 +91,6 @@ if ~exist([CLUSTER_STUDY_DIR filesep CLUSTER_STUDY_FNAME '.study'],'file')
     error('ERROR. study file does not exist');
     exit(); %#ok<UNRCH>
 else
-%     if ~ispc
-%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',study_load_dir);
-%     else
-%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
-%     end
     %## LOAD STUDY
     if ~ispc
         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAME '_UNIX.study'],'filepath',CLUSTER_STUDY_DIR);

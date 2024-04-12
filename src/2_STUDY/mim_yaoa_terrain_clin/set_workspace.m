@@ -8,9 +8,11 @@
 %   Summary: this script is an initializer and workspace variable setup for
 %   all scripts in this repository
 
+
+%% FLEXIBLE HANDLING OF SRC FOLDER
 %## TIME
 TT = tic;
-%% FLEXIBLE HANDLING OF SRC FOLDER
+%## folders
 if ~exist('ADD_CLEANING_SUBMODS','var')
     ADD_CLEANING_SUBMODS = false;
 end
@@ -44,9 +46,9 @@ end
 %## FUNCTIONS FOLDER
 FUNC_FPATH = [src_dir filesep '_functions' filesep 'v2_0'];
 %##
-addpath(src_dir)
-addpath(FUNC_FPATH);
-fprintf(1,'Using pathing:\n-WORKSPACE: %s\n-SUBMODULES: %s\n-FUNCTIONS: %s',src_dir,submodules_dir,FUNC_FPATH);
+path(path,src_dir)
+path(path,FUNC_FPATH);
+fprintf(1,'Using pathing:\n-WORKSPACE: %s\n-SUBMODULES: %s\n-FUNCTIONS: %s\n',src_dir,submodules_dir,FUNC_FPATH);
 % ----------------------------------------------------------------------- %
 %% HARDCODE PATHS STRUCT
 PATHS = [];
@@ -112,6 +114,8 @@ for ss = SUBMODULES_ITERS
     PATHS.PATHS{ss} = [submodules_dir filesep SUBMODULES{ss}];
 end
 %## special paths
+% %- current dir
+% PATHS.curr_dir = TMP_PWD;
 %- submods path
 PATHS.submods_dir = submodules_dir;
 %- src folder
@@ -159,7 +163,7 @@ if ~ispc
     fprintf('Number of threads: %i\n',pp.NumThreads);
     %- make meta data dire1ory for slurm
     mkdir([TMP_PWD filesep '_slurm_scratch' filesep getenv('SLURM_JOB_ID')])
-    pp.JobStorageLocation = strcat([TMP_PWD filesep '_slurm_scratch'], getenv('SLURM_JOB_ID'));
+    pp.JobStorageLocation = [TMP_PWD filesep '_slurm_scratch' filesep getenv('SLURM_JOB_ID')];
     %- create your p-pool (NOTE: gross!!)
     pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', Inf);
 else

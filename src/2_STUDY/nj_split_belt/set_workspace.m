@@ -8,24 +8,26 @@
 %   Summary: this script is an initializer and workspace variable setup for
 %   all scripts in this repository
 
+
+%% FLEXIBLE HANDLING OF SRC FOLDER
 %## TIME
 TT = tic;
-%% FLEXIBLE HANDLING OF SRC FOLDER
+%## folders
 if ~exist('ADD_CLEANING_SUBMODS','var')
     ADD_CLEANING_SUBMODS = false;
 end
 if ~exist('ADD_DIPFIT_COMPILE_SUBMODS','var')
     ADD_DIPFIT_COMPILE_SUBMODS = false;
 end
-PWD_DIR = dir(['.' filesep]);
-PWD_DIR = PWD_DIR(1).folder;
-fprintf(1,'Current folder: %s\n',PWD_DIR);
+TMP_PWD = dir(['.' filesep]);
+TMP_PWD = TMP_PWD(1).folder;
+fprintf(1,'Current folder: %s\n',TMP_PWD);
 %## datetime
 dt         = datetime;
 dt.Format  = 'ddMMyyyy';
 % ----------------------------------------------------------------------- %
 %% PARAMS
-tmp = strsplit(PWD_DIR,filesep);
+tmp = strsplit(TMP_PWD,filesep);
 src_ind = find(strcmp(tmp,'src'));
 if ~ispc
     %- Add source directory where setup functions are 
@@ -41,9 +43,12 @@ else
     %- Add submodules directory where packages are 
     submodules_dir = [strjoin(tmp(1:src_ind-1),filesep) filesep 'submodules'];
 end
-addpath(src_dir)
-addpath([src_dir filesep '_functions']);
-fprintf(1,'Using pathing:\n-WORKSPACE: %s\n-SUBMODULES: %s\n-FUNCTIONS: %s',src_dir,submodules_dir,[src_dir filesep '_functions']);
+%## FUNCTIONS FOLDER
+FUNC_FPATH = [src_dir filesep '_functions' filesep 'v2_0'];
+%##
+path(path,src_dir)
+path(path,FUNC_FPATH);
+fprintf(1,'Using pathing:\n-WORKSPACE: %s\n-SUBMODULES: %s\n-FUNCTIONS: %s\n',src_dir,submodules_dir,FUNC_FPATH);
 % ----------------------------------------------------------------------- %
 %% HARDCODE PATHS STRUCT
 PATHS = [];
@@ -109,6 +114,8 @@ for ss = SUBMODULES_ITERS
     PATHS.PATHS{ss} = [submodules_dir filesep SUBMODULES{ss}];
 end
 %## special paths
+% %- current dir
+% PATHS.curr_dir = TMP_PWD;
 %- submods path
 PATHS.submods_dir = submodules_dir;
 %- src folder
@@ -118,7 +125,7 @@ PATHS.data_dir = fullfile(src_dir,'_data');
 %- EEGLAB folder
 PATHS.eeglab_dir = [submodules_dir filesep 'eeglab'];
 %- _functions folder
-PATHS.functions_dir = [PATHS.src_dir filesep '_functions'];
+PATHS.functions_dir = FUNC_FPATH;
 a_ftmp = unix_genpath(PATHS.functions_dir);
 a_ftmp = split(a_ftmp,DELIM); a_ftmp = a_ftmp(~cellfun(@isempty,a_ftmp));
 cellfun(@(x) path(path,x),a_ftmp);
@@ -155,8 +162,8 @@ if ~ispc
     fprintf('Number of workers: %i\n',pp.NumWorkers);
     fprintf('Number of threads: %i\n',pp.NumThreads);
     %- make meta data dire1ory for slurm
-    mkdir([PWD_DIR filesep '_slurm_scratch' filesep getenv('SLURM_JOB_ID')])
-    pp.JobStorageLocation = strcat([PWD_DIR filesep '_slurm_scratch'], getenv('SLURM_JOB_ID'));
+    mkdir([TMP_PWD filesep '_slurm_scratch' filesep getenv('SLURM_JOB_ID')])
+    pp.JobStorageLocation = [TMP_PWD filesep '_slurm_scratch' filesep getenv('SLURM_JOB_ID')];
     %- create your p-pool (NOTE: gross!!)
     pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', Inf);
 else
