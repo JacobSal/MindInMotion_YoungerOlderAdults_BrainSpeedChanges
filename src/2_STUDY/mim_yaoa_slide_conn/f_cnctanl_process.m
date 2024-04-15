@@ -69,7 +69,7 @@ MORDER = 32;
 study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 %## soft define
 studies_dir = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
-conn_save_dir = [study_save_dir filesep 'conn_valid'];
+conn_save_dir = [studies_dir filesep sprintf('%s',study_dir_name) filesep 'conn_valid'];
 %- load study file
 STUDY_FNAME = 'all_comps_study';
 STUDY_FPATH = [studies_dir filesep sprintf('%s',study_dir_name)];
