@@ -257,8 +257,8 @@ if length(conn_components) ~= size(ALLEEG(1).icaweights,1)
 end
 
 %## ONE MODEL
-TMP = ALLEEG;
-ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
+% TMP = ALLEEG;
+% ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
 
 %% (MAIN CONNECTIVITY PIPELINE) ======================================== %%
 %## STEP 3: Pre-process the data
@@ -370,6 +370,7 @@ end
         ALLEEG(1).CAT.configs.est_selModelOrder.modelingApproach,...
         'ModelOrder',model_order);
 %##
+%{
 % [ALLEEG, cfg] = pop_est_fitMVAR(ALLEEG,GUI_MODE,...
 %         ALLEEG(1).CAT.configs.est_selModelOrder.modelingApproach,...
 %         'ModelOrder',model_order);
@@ -432,7 +433,9 @@ for cond_i = 1:length(TMP)
     TMP(cond_i).CAT.MODEL = store_mod;
     TMP(cond_i).CAT.configs.('est_fitMVAR') = store_cfg;
 end
+ALLEEG = TMP;
 fprintf('\n\n');
+%}
 %% STEP 6: Validate the fitted model
 fprintf('===================================================\n');
 disp('MODEL VALIDATION');
@@ -467,7 +470,6 @@ for cond_i = 1:length(ALLEEG)
     end
 end
 fprintf('\n\n');
-
 %% STEP 7: Compute Connectivity
 %- NOTE: Next we will compute various dynamical quantities, including connectivity,
 % from the fitted VAR model. We can compute these for a range of

@@ -43,7 +43,7 @@ echo "Number of Cores/Task Allocated = $SLURM_CPUS_PER_TASK"
 mkdir -p $STUDY_DIR/_slurm_scratch/$SLURM_JOB_ID
 
 # Kick off matlab
-matlab -nodisplay < $STUDY_DIR/c_cnctanl_process.m
+matlab -nodisplay < $STUDY_DIR/f_cnctanl_process.m
 
 # Cleanup local work directory
 rm -rf $STUDY_DIR/_slurm_scratch/$SLURM_JOB_ID

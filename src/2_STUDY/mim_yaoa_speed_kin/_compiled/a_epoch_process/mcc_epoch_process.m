@@ -121,37 +121,7 @@ if ~exist(study_dir,'dir')
     mkdir(study_dir);
 end
 %% PARPOOL SETUP ======================================================= %%
-[PATHS,SLURM_POOL_SIZE,ALLEEG,STUDY,CURRENTSTUDY,CURRENTSET] = set_workspace(ADD_CLEANING_SUBMODS,ADD_DIPFIT_COMPILE_SUBMODS);
-
-% if ~ispc
-%     %## NOTE, you will need to edit icadefs's EEGOPTION_FILE to contain the
-%     %unix and pc paths for the option file on the M drive otherwise it just
-%     %does weird stuff. 
-%     pop_editoptions('option_storedisk', 1, 'option_savetwofiles', 1, ...
-%     'option_single', 1, 'option_memmapdata', 0, ...
-%     'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
-%     disp(['SLURM_JOB_ID: ', getenv('SLURM_JOB_ID')]);
-%     disp(['SLURM_CPUS_ON_NODE: ', getenv('SLURM_CPUS_ON_NODE')]);
-%     %## allocate slurm resources to parpool in matlab
-%     %- get cpu's on node and remove a few for parent script.
-%     SLURM_POOL_SIZE = str2double(getenv('SLURM_CPUS_ON_NODE'));
-%     %- create cluster
-%     pp = parcluster('local');
-%     %- Number of workers for processing (NOTE: this number should be higher
-%     %then the number of iterations in your for loop)
-%     fprintf('Number of workers: %i\n',pp.NumWorkers);
-%     fprintf('Number of threads: %i\n',pp.NumThreads);
-%     %- make meta data dire1ory for slurm
-%     mkdir([run_dir filesep getenv('SLURM_JOB_ID')])
-%     pp.JobStorageLocation = strcat([run_dir filesep], getenv('SLURM_JOB_ID'));
-%     %- create your p-pool (NOTE: gross!!)
-%     pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
-% else
-%     pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
-%     'option_single', 1, 'option_memmapdata', 0, ...
-%     'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
-%     SLURM_POOL_SIZE = 1;
-% end
+[PATHS,SLURM_POOL_SIZE,ALLEEG,STUDY,CURRENTSTUDY,CURRENTSET] = set_workspace();
 %% (GRAB SUBJECT .SET & DIPFIT FILES) ==================================== %%
 fnames        = cell(1,length(SUBJ_CHARS));
 fpaths        = cell(1,length(SUBJ_CHARS));
@@ -167,7 +137,7 @@ for subj_i = 1:length(SUBJ_CHARS)
     val = regexp(SUBJ_CHARS{subj_i},'\d*');
     gi = contains(GROUP_NAMES,SUBJ_CHARS{subj_i}(val));
     groups{subj_i} = GROUP_NAMES{gi};
-    sessions{subj_i} = 1; %- (04/12/2024) default session number 
+    sessions{subj_i} = '1'; %- (04/12/2024) default session number 
     try
         fnames{subj_i} = tmp.name;
         %- Prints
@@ -367,16 +337,9 @@ STUDY.etc.a_epoch_process.epoch_alleeg_fpaths = alleeg_fpaths;
                                         'RESAVE_DATASETS','off');
 end
 %% (SUBFUNCTIONS) ====================================================== %%
-function [PATHS,SLURM_POOL_SIZE,ALLEEG,STUDY,CURRENTSTUDY,CURRENTSET] = set_workspace(ADD_CLEANING_SUBMODS,ADD_DIPFIT_COMPILE_SUBMODS)
+function [PATHS,SLURM_POOL_SIZE,ALLEEG,STUDY,CURRENTSTUDY,CURRENTSET] = set_workspace()
     %## TIME
     TT = tic;
-    %## INITIATE PARSER
-    p = inputParser;
-    %## REQUIRED
-    addRequired(p,'ADD_CLEANING_SUBMODS',@islogical);
-    addRequired(p,'ADD_DIPFIT_COMPILE_SUBMODS',@islogical);
-    %## OPTIONAL
-    parse(p,ADD_CLEANING_SUBMODS,ADD_DIPFIT_COMPILE_SUBMODS);
     %## ================================================================= %%
     TMP_PWD = dir(['.' filesep]);
     TMP_PWD = TMP_PWD(1).folder;
@@ -404,54 +367,9 @@ function [PATHS,SLURM_POOL_SIZE,ALLEEG,STUDY,CURRENTSTUDY,CURRENTSET] = set_work
     %## FUNCTIONS FOLDER
     FUNC_FPATH = [src_dir filesep '_functions' filesep 'v2_0'];
     %##
-    path(path,src_dir)
-    path(path,FUNC_FPATH);
     fprintf(1,'Using pathing:\n-WORKSPACE: %s\n-SUBMODULES: %s\n-FUNCTIONS: %s\n',src_dir,submodules_dir,FUNC_FPATH);
     %## HARDCODE PATHS STRUCT =========================================== %%
     PATHS = [];
-    %- Cleaning SUBMODS
-    %#ok<*UNRCH>
-    if ADD_CLEANING_SUBMODS
-        SUBMODULES = {'eeglab','SIFT','fieldtrip','spm12','postAmicaUtility',...
-                        'Granger_Geweke_Causality','MindInMotion','bemobil-pipeline-master','bids-matlab-tools5.3.1',...
-                        'Cleanline2.00','firfilt','ICLabel','LIMO3.2','PowPowCAT3.0','bva-io1.7',...
-                        'EEGLAB-specparam-master','iCanClean','Viewprops1.5.4',...
-                        'trimOutlier-master'};
-        SUBMODULES_GENPATH = {'Cleanline2.00'};
-        SUBMODULES_ITERS = (1:length(SUBMODULES));
-    elseif ADD_DIPFIT_COMPILE_SUBMODS
-        SUBMODULES = {'fieldtrip','eeglab','postAmicaUtility'};
-        SUBMODULES_GENPATH = {};
-        SUBMODULES_ITERS = (1:length(SUBMODULES));
-    else
-        %- Conn SUBMODS
-        SUBMODULES = {'fieldtrip','eeglab','SIFT','postAmicaUtility',...
-            'Granger_Geweke_Causality',...
-            'ICLabel','Viewprops1.5.4','PowPowCAT3.0'};
-        SUBMODULES_GENPATH = {};
-        SUBMODULES_ITERS = (1:length(SUBMODULES));
-    end
-    %## add submodules
-    if ispc
-        DELIM = ';';
-    else
-        DELIM = ':';
-    end
-    PATHS.PATHS = cell(length(SUBMODULES),1);
-    for ss = SUBMODULES_ITERS
-        if any(strcmp(SUBMODULES{ss},SUBMODULES_GENPATH))
-            fprintf('Adding submodule using genpath(): %s...\n',[submodules_dir filesep SUBMODULES{ss}]);
-            a_ftmp = unix_genpath([submodules_dir filesep SUBMODULES{ss}]);
-            a_ftmp = split(a_ftmp,DELIM); a_ftmp = a_ftmp(~cellfun(@isempty,a_ftmp));
-            cellfun(@(x) path(path,x),a_ftmp);
-            cellfun(@(x) fprintf('Adding functions in: %s...\n',x),a_ftmp);
-        else
-            fprintf('Adding submodule: %s...\n',[submodules_dir filesep SUBMODULES{ss}]);
-            path(path,[submodules_dir filesep SUBMODULES{ss}]);
-        end
-        PATHS.PATHS{ss} = [submodules_dir filesep SUBMODULES{ss}];
-    end
-    %## special paths
     %- submods path
     PATHS.submods_dir = submodules_dir;
     %- src folder
@@ -462,20 +380,8 @@ function [PATHS,SLURM_POOL_SIZE,ALLEEG,STUDY,CURRENTSTUDY,CURRENTSET] = set_work
     PATHS.eeglab_dir = [submodules_dir filesep 'eeglab'];
     %- _functions folder
     PATHS.functions_dir = FUNC_FPATH;
-    a_ftmp = unix_genpath(PATHS.functions_dir);
-    a_ftmp = split(a_ftmp,DELIM); a_ftmp = a_ftmp(~cellfun(@isempty,a_ftmp));
-    cellfun(@(x) path(path,x),a_ftmp);
-    cellfun(@(x) fprintf('Adding functions in: %s...\n',x),a_ftmp);
-    a_ftmp = char.empty;
     %## ADDPATH for FIELDTRIP =========================================== %%
-    if contains('fieldtrip',SUBMODULES)
-        ft_defaults;
-    end
-    %## INITIALIZE MIM & EEGLAB
-    %start EEGLAB if necessary
-    if contains('SIFT',SUBMODULES)
-        StartSIFT;
-    end
+    ft_defaults;
     %- always start eeglab last.
     ALLEEG=[]; STUDY=[]; CURRENTSET=0; CURRENTSTUDY=0;
     eeglab;
@@ -497,7 +403,7 @@ function [PATHS,SLURM_POOL_SIZE,ALLEEG,STUDY,CURRENTSTUDY,CURRENTSET] = set_work
         fprintf('Number of threads: %i\n',pp.NumThreads);
         %- make meta data dire1ory for slurm
         mkdir([TMP_PWD filesep '_slurm_scratch' filesep getenv('SLURM_JOB_ID')])
-        pp.JobStorageLocation = strcat([TMP_PWD filesep '_slurm_scratch'], getenv('SLURM_JOB_ID'));
+        pp.JobStorageLocation = [TMP_PWD filesep '_slurm_scratch' filesep getenv('SLURM_JOB_ID')];
         %- create your p-pool (NOTE: gross!!)
         pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', Inf);
     else

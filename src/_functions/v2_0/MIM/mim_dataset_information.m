@@ -119,9 +119,13 @@ switch study_case
         GROUP_NAMES = {'H2000''s','H3000''s'}; 
         SUBJ_ITERS = {1:length(SUBJ_FU{1}),1:length(SUBJ_FU{2})};
     case 'yaoa_spca'
-        SUBJ_PICS = {SUBJ_1YA,SUBJ_OA_SPCA{1},SUBJ_OA_SPCA{2}};
+        SUBJ_PICS = {SUBJ_YA_SPCA,SUBJ_OA_SPCA{1},SUBJ_OA_SPCA{2}};
         GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
-        SUBJ_ITERS = {1:length(SUBJ_1YA),1:length(SUBJ_OA_SPCA{1}),1:length(SUBJ_OA_SPCA{2})};
+        SUBJ_ITERS = {1:length(SUBJ_YA_SPCA),1:length(SUBJ_OA_SPCA{1}),1:length(SUBJ_OA_SPCA{2})};
+    case 'ya_spca'
+        SUBJ_PICS = {SUBJ_YA_SPCA};
+        GROUP_NAMES = {'H1000''s'}; 
+        SUBJ_ITERS = {1:length(SUBJ_YA_SPCA)};
 end
 %- (0A) DEBUG SUBSET (06/17/2023)
 % SUBJ_PICS = {SUBJ_DEBUG};

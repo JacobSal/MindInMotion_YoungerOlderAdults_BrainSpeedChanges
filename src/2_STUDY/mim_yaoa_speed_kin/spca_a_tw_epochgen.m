@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_spca_a_tw_epochgen.sh
 
 %{
 %## RESTORE MATLAB
@@ -12,38 +12,36 @@ clc;
 close all;
 clearvars
 %}
-%% Initialization
+%% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-%% REQUIRED SETUP 4 ALL SCRIPTS ======================================== %%
-%- VARS
-USER_NAME = 'jsalminen'; %getenv('username');
-fprintf(1,'Current user: %s\n',USER_NAME);
-PWD_DIR = mfilename('fullpath');
-if contains(PWD_DIR,'LiveEditorEvaluationHelper')
-    PWD_DIR = matlab.desktop.editor.getActiveFilename;
-    PWD_DIR = fileparts(PWD_DIR);
-else
-    try
-        PWD_DIR = matlab.desktop.editor.getActiveFilename;
-        PWD_DIR = fileparts(PWD_DIR);
-    catch e
-        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
-        PWD_DIR = dir(['.' filesep]);
-        PWD_DIR = PWD_DIR(1).folder;
-    end
-end
-addpath(PWD_DIR);
-cd(PWD_DIR)
-fprintf(1,'Current folder: %s\n',PWD_DIR);
-%% SET WORKSPACE ======================================================= %%
 global ADD_CLEANING_SUBMODS %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
-%- set PWD_DIR, EEGLAB path, _functions path, and others...
+%## Determine Working Directories
+if ~ispc
+    STUDY_DIR = getenv('STUDY_DIR');
+    SCRIPT_DIR = getenv('SCRIPT_DIR');
+else
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = SCRIPT_DIR;
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        SCRIPT_DIR = dir(['.' filesep]);
+        SCRIPT_DIR = SCRIPT_DIR(1).folder;
+        STUDY_DIR = SCRIPT_DIR;
+    end
+end
+%## Add Study & Script Paths
+addpath(STUDY_DIR);
+cd(SCRIPT_DIR);
+fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
+%## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('ya_spca');
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name & 
@@ -52,8 +50,8 @@ OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 % OA_PREP_FPATH = '01132024_antsnorm_iccREEG0p65_iccREMG0p4_skull0p0042';
 % study_dir = '01122024_spca_analysis';
 study_dir = '03232024_spca_analysis_OA';
-study_fname_rest = 'rest_epoch_study';
-study_fname_gait = 'epoch_study';
+study_fname_rest = 'rest_epoch_study_ya';
+study_fname_gait = 'epoch_study_ya';
 %- study group and saving
 SAVE_ALLEEG = false;
 %- epoching params
@@ -117,7 +115,7 @@ SPCA_PARAMS = struct('analysis_type','component',...
     'condition_base','rest',...
     'condition_gait',{{'flat','low','med','high','0p25','0p5','0p75','1p0'}});
 %% (PATHS)
-DATA_DIR = [source_dir filesep '_data'];
+DATA_DIR = [PATHS.src_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 OUTSIDE_DATA_DIR = [STUDIES_DIR filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
 save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir)];
@@ -126,7 +124,6 @@ if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
 %% GRAB SUBJECT .SET & DIPFIT FILES ==================================== %%
-%{
 subjectNames    = cell(1,length([SUBJ_ITERS{:}]));
 fNames          = cell(1,length([SUBJ_ITERS{:}]));
 fPaths          = cell(1,length([SUBJ_ITERS{:}]));
@@ -400,7 +397,7 @@ tmp = cellfun(@(x) [[]; x], tmp);
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                         STUDY.filename,STUDY.filepath,...
                                         'RESAVE_DATASETS','off');
-%}
+
 %% ===================================================================== %%
 if ~ispc
     [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fname_gait '_UNIX.study'],'filepath',save_dir);

@@ -21,12 +21,14 @@ module load matlab/2023b
 # `if [ -n $SLURM_JOB_ID ]` checks if $SLURM_JOB_ID is not an empty string
 if [ -n $SLURM_JOB_ID ];  then
     # check the original location through scontrol and $SLURM_JOB_ID
-    SCRIPT_PATH=$(scontrol show job $SLURM_JOBID | awk -F= '/Command=/{print $2}')
+    TMP_PATH=$(scontrol show job $SLURM_JOBID | awk -F= '/Command=/{print $2}')
 else
     # otherwise: started with bash. Get the real location.
-    SCRIPT_PATH=$(realpath $0)
+    TMP_PATH=$(realpath $0)
 fi
-STUDY_DIR=$(dirname $SCRIPT_PATH)
+export SCRIPT_DIR=$(dirname $TMP_PATH)
+export STUDY_DIR=$SCRIPT_DIR
+export SRC_DIR=$(dirname $(dirname $STUDY_DIR))
 cd $STUDY_DIR
 
 echo "Date              = $(date)"

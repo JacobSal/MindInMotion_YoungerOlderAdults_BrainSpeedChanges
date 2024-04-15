@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_spca_b_tw_timefreq.sh
 
 %{
 %## RESTORE MATLAB
@@ -12,35 +12,33 @@ clc;
 close all;
 clearvars
 %}
-%% Initialization
+%% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-%% REQUIRED SETUP 4 ALL SCRIPTS ======================================== %%
-%- VARS
-USER_NAME = 'jsalminen'; %getenv('username');
-fprintf(1,'Current user: %s\n',USER_NAME);
-PWD_DIR = mfilename('fullpath');
-if contains(PWD_DIR,'LiveEditorEvaluationHelper')
-    PWD_DIR = matlab.desktop.editor.getActiveFilename;
-    PWD_DIR = fileparts(PWD_DIR);
-else
-    try
-        PWD_DIR = matlab.desktop.editor.getActiveFilename;
-        PWD_DIR = fileparts(PWD_DIR);
-    catch e
-        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
-        PWD_DIR = dir(['.' filesep]);
-        PWD_DIR = PWD_DIR(1).folder;
-    end
-end
-addpath(PWD_DIR);
-cd(PWD_DIR)
-fprintf(1,'Current folder: %s\n',PWD_DIR);
-%% SET WORKSPACE ======================================================= %%
 global ADD_CLEANING_SUBMODS %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
-%- set PWD_DIR, EEGLAB path, _functions path, and others...
+%## Determine Working Directories
+if ~ispc
+    STUDY_DIR = getenv('STUDY_DIR');
+    SCRIPT_DIR = getenv('SCRIPT_DIR');
+else
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = SCRIPT_DIR;
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        SCRIPT_DIR = dir(['.' filesep]);
+        SCRIPT_DIR = SCRIPT_DIR(1).folder;
+        STUDY_DIR = SCRIPT_DIR;
+    end
+end
+%## Add Study & Script Paths
+addpath(STUDY_DIR);
+cd(SCRIPT_DIR);
+fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
+%## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
 [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
@@ -52,8 +50,10 @@ OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 % OA_PREP_FPATH = '01132024_antsnorm_iccREEG0p65_iccREMG0p4_skull0p0042';
 % study_dir = '01122024_spca_analysis';
 study_dir = '03232024_spca_analysis_OA';
-study_fname_rest = 'rest_epoch_study';
-study_fname_gait = 'epoch_study';
+% study_fname_rest = 'rest_epoch_study';
+% study_fname_gait = 'epoch_study';
+study_fname_rest = 'rest_epoch_study_ya';
+study_fname_gait = 'epoch_study_ya';
 %- study group and saving
 SAVE_ALLEEG = false;
 %- epoching params
@@ -117,7 +117,7 @@ SPCA_PARAMS = struct('analysis_type','component',...
     'condition_base','rest',...
     'condition_gait',{{'flat','low','med','high','0p25','0p5','0p75','1p0'}});
 %% (PATHS)
-DATA_DIR = [source_dir filesep '_data'];
+DATA_DIR = [PATHS.src_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 OUTSIDE_DATA_DIR = [STUDIES_DIR filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
 save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir)];
@@ -125,282 +125,6 @@ save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir)];
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
-%% GRAB SUBJECT .SET & DIPFIT FILES ==================================== %%
-%{
-subjectNames    = cell(1,length([SUBJ_ITERS{:}]));
-fNames          = cell(1,length([SUBJ_ITERS{:}]));
-fPaths          = cell(1,length([SUBJ_ITERS{:}]));
-dipfit_norm_fPaths = zeros(1,length([SUBJ_ITERS{:}]));
-stack_iter = 0;
-for group_i = 1:length(SUBJ_ITERS)
-    sub_idx = SUBJ_ITERS{group_i}; %1:2; %1:length(SUBJ_PICS{GROUP_INT}); %1:2;
-    %- set cnt
-    cnt = stack_iter + 1;
-    %## Assigning paths for .set, headmodel,& channel file
-    for subj_i = sub_idx
-        %- ICA fPaths
-        fPaths{cnt} = [OUTSIDE_DATA_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'clean'];
-%         fPaths{cnt} = [load_dir filesep SUBJ_PICS{group_i}{subj_i} filesep 'ICA'];
-        tmp = dir([fPaths{cnt} filesep '*.set']);
-        try
-            fNames{cnt} = tmp.name;
-            %- Chanlocs fPaths
-            %- Prints
-            fprintf('==== Subject %s Paths ====\n',SUBJ_PICS{group_i}{subj_i})
-            dipfit_norm_fPaths(cnt) = 1;
-        catch e
-            fprintf('==== Subject %s Paths ====\n',SUBJ_PICS{group_i}{subj_i})
-            fprintf('%s\n',getReport(e))
-        end
-        cnt = cnt + 1;
-    end
-    %- reset cnt
-    cnt = stack_iter + 1;
-    %## Assigning paths for eeglab study
-    for subj_i = sub_idx
-%         disp(cnt)
-%         disp(SUBJ_PICS{group_i}{subj_i})
-        subjectNames{cnt} = SUBJ_PICS{group_i}{subj_i};
-        cnt = cnt + 1;
-    end
-    stack_iter = stack_iter + length(SUBJ_ITERS{group_i});
-end
-%- remove subjects without a dipole fit
-inds = logical(dipfit_norm_fPaths);
-fPaths = fPaths(inds);
-fNames = fNames(inds);
-subjectNames = subjectNames(inds);
-
-%% ===================================================================== %%
-%## GENERATE EPOCH MAIN FUNC
-tmp = cell(1,length(fPaths));
-tmp_rest = cell(1,length(fPaths));
-rmv_subj = zeros(1,length(fPaths));
-%## PARFOR LOOP
-parfor (subj_i = 1:length(fPaths),floor(length(fPaths)/3))
-% for subj_i = 1:length(subjectNames)
-    %## LOAD EEG DATA
-%     EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
-    [~,EEG,~] = eeglab_loadICA(fNames{subj_i},fPaths{subj_i});
-    fprintf('Running subject %s\n',EEG.subject)
-    %- Recalculate ICA Matrices && Book Keeping
-    EEG = eeg_checkset(EEG,'loaddata');
-    if isempty(EEG.icaact)
-        fprintf('%s) Recalculating ICA activations\n',EEG.subject);
-        EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
-        EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
-    end
-    EEG = iclabel(EEG);
-    clssts = EEG.etc.ic_classification.ICLabel.classifications;
-    bad_eye_ics = find(clssts(:,3) > ICLABEL_EYE_CUTOFF);
-%     EEG = eeglab_pop_subcomp(EEG,bad_eye_ics,true);
-    EEG = pop_subcomp(EEG,bad_eye_ics,0,0);
-    EEG = eeg_checkset(EEG,'loaddata');
-    EEG.etc.spca.eye_ic_rej = bad_eye_ics;
-    ics_orig = 1:size(EEG.icaweights,2);
-    tmp_cut = ics_orig;
-    tmp_cut(bad_eye_ics) = [];
-    [valc,ordc] = sort(tmp_cut);
-    unmix = [valc; ordc];
-    EEG.etc.spca.unmix_mat = unmix;
-    if isempty(EEG.icaact)
-        fprintf('%s) Recalculating ICA activations\n',EEG.subject);
-        EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
-        EEG.icaact = reshape(EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
-    end
-    %## PARSE TRIALS
-    epoched_fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED];
-    fPath = [epoched_fPath filesep [TRIAL_TYPES{:}]];
-    fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[TRIAL_TYPES{:}]);
-    if ~exist(fPath,'dir')
-        mkdir(fPath)
-    end
-    %- parse
-    try
-        %## REMOVE USELESS EVENT FIELDS (Improve Load Time)
-        if isfield(EEG.event,'trialName')
-            EEG.event = rmfield(EEG.event,'trialName');
-        end
-        if isfield(EEG.event,'channel')
-            EEG.event = rmfield(EEG.event,'channel');
-        end
-        if isfield(EEG.event,'code')
-            EEG.event = rmfield(EEG.event,'code');
-        end
-        if isfield(EEG.event,'bvtime')
-            EEG.event = rmfield(EEG.event,'bvtime');
-        end
-        if isfield(EEG.event,'bvmknum')
-            EEG.event = rmfield(EEG.event,'bvmknum');
-        end
-        if isfield(EEG.event,'datetime')
-            EEG.event = rmfield(EEG.event,'datetime');
-        end
-        %## EPOCH
-        [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,false,...
-            'EPOCH_TIME_LIMITS',EPOCH_TIME_LIMITS,...
-            'STD_TIMEWARP',STD_TIMEWARP,...
-            'COND_CHARS',TRIAL_TYPES);
-        
-        %## SAVE EEG's AS INDIVIDUAL FILES (CONNECTIVITY)
-        fprintf('\nConcatenating datasets...\n');
-        cond_files = struct('fPath',[],'fName',[]);
-        ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
-        ALLEEG.etc.cond_files = cond_files;
-        %## timewarp for across condition
-        if ~DO_SLIDING_WINDOW
-            timewarp = make_timewarp(ALLEEG,TIMEWARP_EVENTS,'baselineLatency',0, ...
-                    'maxSTDForAbsolute',inf,...
-                    'maxSTDForRelative',inf);
-            %- subject specific warpto (later use to help calc grand avg warpto across subjects)
-            timewarp.warpto = nanmedian(timewarp.latencies);        
-            goodepochs  = sort([timewarp.epochs]);
-            %- probably not needed? 
-            sedi = setdiff(1:length(ALLEEG.epoch),goodepochs);
-            %- reject outlier strides
-            ALLEEG = pop_select(ALLEEG,'notrial',sedi);
-            %- store timewarp structure in EEG
-            ALLEEG.timewarp = timewarp;
-    %         disp(EEG.subject); disp(allWarpTo); disp(grandAvgWarpTo);
-            %- store condition-by-conditino timewarpings
-            ALLEEG.etc.timewarp_by_cond = timewarp_struct;
-            %## STRUCT EDITS
-            ALLEEG.urevent = []; % might be needed
-            ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
-        end
-        %## STRUCT EDITS
-        ALLEEG.urevent = []; % might be needed
-        ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
-        %- checks
-        ALLEEG = eeg_checkset(ALLEEG,'eventconsistency');
-        ALLEEG = eeg_checkset(ALLEEG);
-        ALLEEG = eeg_checkamica(ALLEEG);
-        
-        %- save
-        [ALLEEG] = pop_saveset(ALLEEG,'savemode','twofiles',...
-                'filename',fName,...
-                'filepath',fPath,...
-                'version','6');
-        tmp{subj_i} = ALLEEG;
-        %## RESTING STATE
-        fPath = [epoched_fPath filesep 'rest'];
-        fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,'rest');
-        if ~exist(fPath,'dir')
-            mkdir(fPath)
-        end
-        tmp_eeg = {};
-        [tmp_eeg,timewarp_struct] = mim_parse_trials(EEG,true,...
-            'WINDOW_LENGTH',(EPOCH_TIME_LIMITS(2)-EPOCH_TIME_LIMITS(1)),...
-            'PERCENT_OVERLAP',0,...
-            'COND_CHARS',{'rest'});
-        %- save
-        [tmp_eeg] = pop_saveset(tmp_eeg,'savemode','twofiles',...
-                'filename',fName,...
-                'filepath',fPath,...
-                'version','6');
-        tmp_rest{subj_i} = tmp_eeg;
-    catch e
-        rmv_subj(subj_i) = 1;
-        EEG.timewarp = struct([]);
-        EEG.urevent = [];
-        tmp{subj_i} = []; %EEG;
-        tmp_rest{subj_i} = [];
-        fprintf(['error. identifier: %s\n',...
-                 'error. %s\n',...
-                 'error. on subject %s\n',...
-                 'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
-    end
-end
-fprintf('Bugged subjects:\n');
-fprintf('%s\n',subjectNames{find(rmv_subj)});
-%% ===================================================================== %%
-%## SAVE BIG STUDY
-fprintf('==== Reformatting Study ====\n');
-%- remove bugged out subjects
-fprintf('Bugged Subjects: %s\n',subjectNames{cellfun(@isempty,tmp_rest)});
-tmp_rest = tmp_rest(~cellfun(@isempty,tmp_rest));
-%## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
-fss = cell(1,length(tmp_rest));
-for subj_i = 1:length(tmp_rest)
-    fss{subj_i} = fields(tmp_rest{subj_i})';
-    disp(size(fields(tmp_rest{subj_i})'));
-end
-fss = unique([fss{:}]);
-fsPrev = fss;
-for subj_i = 1:length(tmp_rest)
-    EEG = tmp_rest{subj_i};
-    fs = fields(EEG);
-    % delete fields not present in other structs.
-    out = cellfun(@(x) any(strcmp(x,fs)),fsPrev,'UniformOutput',false); 
-    out = [out{:}];
-    addFs = fsPrev(~out);
-    if any(~out)
-        for j = 1:length(addFs)
-            EEG.(addFs{j}) = [];
-%             fprintf('%s) Adding fields %s\n',EEG.subject,addFs{j})
-        end
-    end 
-%     tmp_rest{subj_i} = EEG;
-    tmp_rest{subj_i} = orderfields(EEG);
-end
-%- CONCATENATE tmp_rest
-tmp_rest = cellfun(@(x) [[]; x], tmp_rest);
-%##
-[STUDY, ALLEEG] = std_editset([],tmp_rest,...
-                                'updatedat','off',...
-                                'savedat','off',...
-                                'name',study_fname_rest,...
-                                'filename',study_fname_rest,...
-                                'filepath',save_dir);
-[STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
-[STUDY_REST,ALLEEG_REST] = parfunc_save_study(STUDY,ALLEEG,...
-                                        STUDY.filename,STUDY.filepath,...
-                                        'RESAVE_DATASETS','off');
-
-%% ===================================================================== %%
-%## SAVE BIG STUDY
-fprintf('==== Reformatting Study ====\n');
-%- remove bugged out subjects
-fprintf('Bugged Subjects: %s\n',subjectNames{cellfun(@isempty,tmp)});
-tmp = tmp(~cellfun(@isempty,tmp));
-%## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
-fss = cell(1,length(tmp));
-for subj_i = 1:length(tmp)
-    fss{subj_i} = fields(tmp{subj_i})';
-    disp(size(fields(tmp{subj_i})'));
-end
-fss = unique([fss{:}]);
-fsPrev = fss;
-for subj_i = 1:length(tmp)
-    EEG = tmp{subj_i};
-    fs = fields(EEG);
-    % delete fields not present in other structs.
-    out = cellfun(@(x) any(strcmp(x,fs)),fsPrev,'UniformOutput',false); 
-    out = [out{:}];
-    addFs = fsPrev(~out);
-    if any(~out)
-        for j = 1:length(addFs)
-            EEG.(addFs{j}) = [];
-%             fprintf('%s) Adding fields %s\n',EEG.subject,addFs{j})
-        end
-    end 
-%     tmp{subj_i} = EEG;
-    tmp{subj_i} = orderfields(EEG);
-end
-%- CONCATENATE tmp
-tmp = cellfun(@(x) [[]; x], tmp);
-%##
-[STUDY, ALLEEG] = std_editset([],tmp,...
-                                'updatedat','off',...
-                                'savedat','off',...
-                                'name',study_fname_gait,...
-                                'filename',study_fname_gait,...
-                                'filepath',save_dir);
-[STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
-[STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
-                                        STUDY.filename,STUDY.filepath,...
-                                        'RESAVE_DATASETS','off');
-%}
 %% ===================================================================== %%
 if ~ispc
     [STUDY,ALLEEG] = pop_loadstudy('filename',[study_fname_gait '_UNIX.study'],'filepath',save_dir);

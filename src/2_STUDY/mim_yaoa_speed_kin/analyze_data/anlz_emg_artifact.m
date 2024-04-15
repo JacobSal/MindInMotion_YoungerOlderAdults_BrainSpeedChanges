@@ -1,13 +1,9 @@
-%   Project Title: Run a graph analysis for multiple subjects
+%   Project Title: MIM YOUNGER AND OLDER ADULTS KINEMATICS-EEG ANALYSIS
 %
 %   Code Designer: Jacob salminen
-%
-%   Version History --> See details at the end of the script.
-%   Current Version:  v1.0.20220103.0
-%   Previous Version: n/a
-%   Summary: 
+%## SBATCH (SLURM KICKOFF SCRIPT)
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/.sh
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/3_ANALYZE/MIM_OA/run_anlz_emg_artifact.sh
 
 %{
 %## RESTORE MATLAB
@@ -17,78 +13,36 @@ clc;
 close all;
 clearvars
 %}
-%% Initialization
+%% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-%% (REQUIRED SETUP 4 ALL SCRIPTS) ====================================== %%
-%- DATE TIME
-dt = datetime;
-dt.Format = 'MMddyyyy';
-%- VARS
-USER_NAME = 'jsalminen'; %getenv('username');
-fprintf(1,'Current User: %s\n',USER_NAME);
-%- CD
-% cfname_path    = mfilename('fullpath');
-% cfpath = strsplit(cfname_path,filesep);
-% cd(cfpath);
-%% (EDIT: PATH TO YOUR GITHUB REPO) ==================================== %%
-%- GLOBAL VARS
-REPO_NAME = 'par_EEGProcessing';
-%- determine OS
-if strncmp(computer,'PC',2)
-    PATH_ROOT = ['M:' filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
-else  % isunix
-    PATH_ROOT = [filesep 'blue' filesep 'dferris',...
-        filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
-end
-%- define the directory to the src folderd
-source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '3_ANALYZE' filesep 'MIM_OA'];
-%% CD ================================================================== %%
-%- cd to run directory
-cd(run_dir)
-%- addpath for local folder
-addpath(source_dir)
-addpath(run_dir)
-%% SET WORKSPACE ======================================================= %%
-global ADD_CLEANING_SUBMODS 
+global ADD_CLEANING_SUBMODS %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
-setWorkspace
-%% PARPOOL SETUP ======================================================= %%
+%## Determine Working Directories
 if ~ispc
-    %## NOTE, you will need to edit icadefs's EEGOPTION_FILE to contain the
-    %unix and pc paths for the option file on the M drive otherwise it just
-    %does weird stuff. 
-    pop_editoptions('option_storedisk', 1, 'option_savetwofiles', 1, ...
-    'option_single', 1, 'option_memmapdata', 0, ...
-    'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
-    disp(['SLURM_JOB_ID: ', getenv('SLURM_JOB_ID')]);
-    disp(['SLURM_CPUS_ON_NODE: ', getenv('SLURM_CPUS_ON_NODE')]);
-    %## allocate slurm resources to parpool in matlab
-    %- get cpu's on node and remove a few for parent script.
-    SLURM_POOL_SIZE = str2double(getenv('SLURM_CPUS_ON_NODE'));
-    %- create cluster
-    pp = parcluster('local');
-    %- Number of workers for processing (NOTE: this number should be higher
-    %then the number of iterations in your for loop)
-    fprintf('Number of workers: %i\n',pp.NumWorkers);
-    fprintf('Number of threads: %i\n',pp.NumThreads);
-    %- make meta data dire1ory for slurm
-    mkdir([run_dir filesep getenv('SLURM_JOB_ID')])
-    pp.JobStorageLocation = strcat([run_dir filesep], getenv('SLURM_JOB_ID'));
-    %- create your p-pool (NOTE: gross!!)
-    pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
+    STUDY_DIR = getenv('STUDY_DIR');
+    SCRIPT_DIR = getenv('SCRIPT_DIR');
 else
-    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
-    'option_single', 1, 'option_memmapdata', 0, ...
-    'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
-    SLURM_POOL_SIZE = 1;
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = fileparts(SCRIPT_DIR);
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        SCRIPT_DIR = dir(['.' filesep]);
+        SCRIPT_DIR = SCRIPT_DIR(1).folder;
+        STUDY_DIR = fileparts(SCRIPT_DIR);
+    end
 end
+%## Add Study & Script Paths
+addpath(STUDY_DIR);
+cd(STUDY_DIR);
+fprintf(1,'Current folder: %s\n',STUDY_DIR);
+%## Set PWD_DIR, EEGLAB path, _functions path, and others...
+set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
-fprintf('Total subjects processing: %i\n',sum(cellfun(@(x) length({x{:}}),SUBJ_PICS)));
-fprintf('Total subjects unable to be processed: %i\n',sum([length(SUBJ_NO_MRI),length(SUBJ_DONT_INC)]));
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name

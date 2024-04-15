@@ -173,7 +173,7 @@ else
     SLURM_POOL_SIZE = 1;
 end
 %## TIME
-fprintf('Done with workplace setup: %0.2f',toc(TT));
+fprintf('Done with workplace setup: %0.2f\n\n',toc(TT));
 %% (SUBFUNCTIONS) ====================================================== %%
 function [p] = unix_genpath(d)
     %GENPATH Generate recursive toolbox path.

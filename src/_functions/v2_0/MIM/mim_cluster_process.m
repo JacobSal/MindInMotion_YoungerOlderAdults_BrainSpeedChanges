@@ -180,7 +180,9 @@ function [STUDY,cluster_outcome] = cluster_dips(STUDY,ALLEEG,CLUSTER_PARAMS,MAK_
                 end
                 [STUDY] = std_createclust(STUDY, ALLEEG, 'clusterind', IDX, 'algorithm', {'Kmeans', CLUSTER_PARAMS.clust_num});
             else
-                [IDX,C,sumd,D,outliers_out] = robust_kmeans(clustdata,CLUSTER_PARAMS.clust_num,CLUSTER_PARAMS.outliers,ROBUST_KMEANS_MAXITER,CLUSTER_PARAMS.algorithm);
+                % [IDX,C,sumd,D,outliers_out] = robust_kmeans(clustdata,CLUSTER_PARAMS.clust_num,CLUSTER_PARAMS.outliers,ROBUST_KMEANS_MAXITER,CLUSTER_PARAMS.algorithm);
+                [IDX,C,sumd,D,outliers_out] = robust_kmeans_CL(clustdata,CLUSTER_PARAMS.clust_num,CLUSTER_PARAMS.outliers,ROBUST_KMEANS_MAXITER,CLUSTER_PARAMS.algorithm);
+                
                 [STUDY] = std_createclust(STUDY, ALLEEG, 'clusterind', IDX, 'algorithm', {'robust_kmeans', CLUSTER_PARAMS.clust_num});
             end
         case 'neural network'

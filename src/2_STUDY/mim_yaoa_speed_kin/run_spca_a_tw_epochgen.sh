@@ -28,6 +28,7 @@ else
 fi
 export SCRIPT_DIR=$(dirname $TMP_PATH)
 export STUDY_DIR=$SCRIPT_DIR
+export SRC_DIR=$(dirname $(dirname $STUDY_DIR))
 cd $STUDY_DIR
 
 echo "Date              = $(date)"

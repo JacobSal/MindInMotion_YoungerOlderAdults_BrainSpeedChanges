@@ -8,6 +8,8 @@
 %   Summary: 
 %- compile exe
 % sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/_compiled/a_epoch_process/run_compile_mcc.sh
+%- run exe
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/_compiled/a_epoch_process/run_mcc_epoch_process.sh
 
 %{
 %## RESTORE MATLAB
@@ -17,24 +19,34 @@ clc;
 close all;
 clearvars
 %}
-%% REQUIRED SETUP 4 ALL SCRIPTS ======================================== %%
-STUDY_DIR = getenv('STUDY_DIR');
-SCRIPT_DIR = getenv('SCRIPT_DIR');
+%% SET WORKSPACE ======================================================= %%
+% opengl('dsave', 'software') % might be needed to plot dipole plots?
+%## TIME
+tic
+global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+ADD_CLEANING_SUBMODS = true;
+%## Determine Working Directories
+if ~ispc
+    STUDY_DIR = getenv('STUDY_DIR');
+    SCRIPT_DIR = getenv('SCRIPT_DIR');
+else
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = fileparts(fileparts(SCRIPT_DIR));
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        SCRIPT_DIR = dir(['.' filesep]);
+        SCRIPT_DIR = SCRIPT_DIR(1).folder;
+        STUDY_DIR = fileparts(fileparts(SCRIPT_DIR));
+    end
+end
+%## Add Study & Script Paths
 addpath(STUDY_DIR);
 cd(SCRIPT_DIR);
 fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
-%% SET WORKSPACE ======================================================= %%'
-%## 
-tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
-ADD_CLEANING_SUBMODS = false;
-%- set EEGLAB path, _functions path, and others...
+%## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
-%##
-com.mathworks.mwswing.MJUtilities.initJIDE;  % Initialize JIDE's usage within Matlab
-pop_editoptions('option_storedisk',1,'option_savetwofiles',1, ...
-    'option_single',1,'option_memmapdata',0,'option_computeica',0,...
-    'option_saveversion6',1,'option_scaleicarms',1,'option_rememberfolder',1);
 %% (HELPER CODE) DEFINE DEPENDENCIES
 fprintf('Adding necessary paths to MATLAB path\n');
 dep = {SCRIPT_DIR,...
@@ -50,21 +62,29 @@ dep = {SCRIPT_DIR,...
     [PATHS.submods_dir filesep 'fieldtrip/utilities'],...
     [PATHS.submods_dir filesep 'postAmicaUtility'],...
     [PATHS.submods_dir filesep 'fieldtrip/external/freesurfer'],...
-    [PATHS.submods_dir filesep 'fieldtrip/external/simbio']};
+    [PATHS.submods_dir filesep 'fieldtrip/external/simbio',...
+    unix_genpath([PATHS.submods_dir filesep 'eeglab/plugins']),...
+    };
 cellfun(@(x) path(path,x),dep);
 %% COMPILE
+%- these are files that you should include if the compiler has trouble
+%finding dependencies simply based on pathing. 
 files_to_compile={[SCRIPT_DIR filesep 'mcc_epoch_process.m'],...
     [PATHS.functions_dir filesep 'MIM/mim_create_alleeg.m'],...
     [PATHS.functions_dir filesep 'MIM/mim_create_study.m'],...
     [PATHS.functions_dir filesep 'MIM/mim_parse_trials.m'],...
-    };
-data_to_include={'./eeg_options.txt','./eeg_optionsbackup.txt'};
+    [PATHS.submods_dir filesep 'eeglab/eeglab.m'],...
+    [PATHS.submods_dir filesep 'eeglab/functions/popfunc/pop_reref.m']};
+%- files that need to be included for later recall (e.g., .mat and .txt files)
+data_to_include={[SCRIPT_DIR filesep 'eeg_options.txt'],...
+    [SCRIPT_DIR filesep 'eeg_optionsbackup.txt'],...
+    [PATHS.submods_dir filesep 'eeglab/plugins/ICLabel/netICL_lite.mat'],...
+    [PATHS.submods_dir filesep 'eeglab/plugins/ICLabel/netICL.mat']};
 fprintf('Compiling...\n');
 %- cd to source directory
 mkdir([SCRIPT_DIR filesep '_out']);
-% mcc('-m',files_to_compile{:},'-d','./_out','-v','-R','-singleCompThread')
-% mcc('-m',files_to_compile{:},'-d',[SCRIPT_DIR filesep '_out'],'-v','-R','-singleCompThread','-a',data_to_include{:})
-mcc('-m',files_to_compile{:},'-d',[SCRIPT_DIR filesep '_out'],'-v','-R','-singleCompThread');
+eval(['mcc -m ' strjoin(files_to_compile,' ')...
+    ' -d ' [SCRIPT_DIR filesep '_out'] ' -a ' strjoin(data_to_include,' -a ')...
+    ' -R -singleCompThread -v'])
 %## TOC
 toc
-exit();

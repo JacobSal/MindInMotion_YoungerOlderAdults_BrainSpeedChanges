@@ -41,9 +41,15 @@ module load mcr/2020a
 echo $MCRROOT
 echo $LD_LIBRARY_PATH
 # (EDIT)! SET SUBJECT DIRECTORIES
-export ICA_DIR="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams"
+export ICA_FPATH="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams"
 # export JSON_FPATH=$SCRIPT_DIR/params.json
 export JSON_FPATH=""
-export STUDY_DIR="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/test"
+export STUDY_FPATH="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/test"
 
-$SCRIPT_DIR/_out/run_mcc_epoch_process.sh $MCRROOT "$ICA_DIR" "$STUDY_DIR"  "$JSON_FPATH"
+# Create a temporary directory on scratch
+mkdir -p $STUDY_DIR/_slurm_scratch/$SLURM_JOB_ID
+
+$SCRIPT_DIR/_out/run_mcc_epoch_process.sh $MCRROOT "$ICA_FPATH" "$STUDY_FPATH"  "$JSON_FPATH"
+
+# Cleanup local work directory
+rm -rf $STUDY_DIR/_slurm_scratch/$SLURM_JOB_ID

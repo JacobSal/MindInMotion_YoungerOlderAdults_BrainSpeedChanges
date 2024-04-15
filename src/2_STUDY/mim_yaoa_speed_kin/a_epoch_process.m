@@ -1,8 +1,8 @@
-%   Project Title: MIM YOUNGER AND OLDER ADULTS KINEMATICS-EEG ANALYSIS
+%   Project Title: MIM OA & YA SPEED & KINETICS ANALYSIS
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
 
 %{
 %## RESTORE MATLAB
@@ -22,22 +22,24 @@ ADD_CLEANING_SUBMODS = false;
 if ~ispc
     STUDY_DIR = getenv('STUDY_DIR');
     SCRIPT_DIR = getenv('SCRIPT_DIR');
+    SRC_DIR = getenv('SRC_DIR');
 else
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
-        STUDY_DIR = SCRIPT_DIR;
     catch e
         fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
-        STUDY_DIR = SCRIPT_DIR;
     end
+    STUDY_DIR = SCRIPT_DIR;
+    SRC_DIR = filesep(filesep(STUDY_DIR));
 end
-%## Add Study & Script Paths
+%## Add Study, Src, & Script Paths
+addpath(SRC_DIR);
 addpath(STUDY_DIR);
-cd(SCRIPT_DIR);
-fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
+cd(SRC_DIR);
+fprintf(1,'Current folder: %s\n',SRC_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
@@ -53,6 +55,7 @@ SAVE_EEG = true; %true;
 OVERRIDE_DIPFIT = true;
 %- epoching params
 DO_SLIDING_WINDOW = false;
+RECALC_ICA_STUDY = false;
 %* sliding window
 WINDOW_LENGTH = 6; % sliding window length in seconds
 PERCENT_OVERLAP = 0.0; % percent overlap between epochs
@@ -75,7 +78,7 @@ else
 end
 %- datetime override
 % dt = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-dt = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+epoch_study_fpath = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 %- Subject Directory information
 OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 % OA_PREP_FPATH = '01132024_antsnorm_iccREEG0p65_iccREMG0p4_skull0p0042'
@@ -86,7 +89,7 @@ OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP
 study_fName_1 = 'all_comps_study';
 study_fName_2 = 'epoch_study';
 % TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
+save_dir = [STUDIES_DIR filesep sprintf('%s',epoch_study_fpath)];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
@@ -157,16 +160,28 @@ groups = groups(inds);
 conditions = conditions(inds);
 subjectNames = subjectNames(inds);
 %% Create STUDY & ALLEEG structs
-try
-    fprintf('Creating ALLEEG...\n');
-    [MAIN_ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
-                        conditions,groups,sessions);
-    fprintf('Generating STUDY...\n');
-    [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,study_fName_1,save_dir);
-catch e
-    fprintf('\n%s\n',getReport(e));
-    exit();
+if ~exist([save_dir filesep study_fName_1 '.study'],'file') || RECALC_ICA_STUDY
+    try
+        fprintf('Creating ALLEEG...\n');
+        [MAIN_ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
+                            conditions,groups,sessions);
+        fprintf('Generating STUDY...\n');
+        [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,study_fName_1,save_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = parfunc_save_study(MAIN_STUDY,MAIN_ALLEEG,...
+                                        MAIN_STUDY.filename,MAIN_STUDY.filepath,...
+                                        'RESAVE_DATASETS','on');
+    catch e
+        fprintf('\n%s\n',getReport(e));
+        exit();
+    end
+else
+    if ~ispc
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',save_dir);
+    else
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',save_dir);
+    end
 end
+
 %% INITIALIZE PARFOR LOOP VARS
 fPaths = {MAIN_ALLEEG.filepath};
 fNames = {MAIN_ALLEEG.filename};
