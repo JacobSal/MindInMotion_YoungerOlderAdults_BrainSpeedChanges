@@ -12,8 +12,8 @@
 #SBATCH --account=dferris
 #SBATCH --qos=dferris-b
 #SBATCH --partition=hpg2-compute
-# NOTE: (04/22/2023) SalminenJ, Seems to time out after ~15 subject runs (6hr time limit). Moving to a 48hr cycle ( I think this is max for hpg2-compute).
-# sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/run_singlenode_amica_run.sh
+# NOTE: (04/22/2023) SalminenJ, Seems to time out after ~15 subaject runs (6hr time limit). Moving to a 48hr cycle ( I think this is max for hpg2-compute).
+# sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_PREPROC/mim/b_run_singlenode_amica.sh
 
 echo "Date              = $(date)"
 echo "Hostname          = $(hostname -s)"

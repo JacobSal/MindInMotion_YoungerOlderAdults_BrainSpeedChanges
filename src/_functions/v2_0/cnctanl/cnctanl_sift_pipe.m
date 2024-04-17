@@ -1,4 +1,4 @@
-function [ALLEEG,conn_mat_table] = cnctanl_sift_pipe(ALLEEG,conn_components,conn_estimators,save_dir,varargin)
+function [ALLEEG,conn_mat_table] = cnctanl_sift_pipe(ALLEEG,conn_components,save_dir,varargin)
 %CNCTANL_SIFT_PIPE Summary of this function goes here
 %   Project Title: 
 %   Code Designer: Jacob salminen
@@ -34,198 +34,221 @@ function [ALLEEG,conn_mat_table] = cnctanl_sift_pipe(ALLEEG,conn_components,conn
 % Copyright (C) Jacob Salminen, jsalminen@ufl.edu
 %## TIME
 tic
-%% (DEFINE DEFAULTS) =================================================== %%
-%## HIGH LEVEL VARS
-%- connectivity statistics & surrogates params
-%* boolean for model bootstrap distribution
-DO_BOOTSTRAP = true;
-%* boolean for phase randomization generation
-DO_PHASE_RND = true;
-ASSIGN_BOOTSTRAP_MEAN = true;
-%*
-% conn_components = (1:size(ALLEEG(1).icaweights,1))';
-% conn_estimators = {'dDTF08','dDTF','GGC'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
-WINDOW_LENGTH = 0.5; % time (s)
-WINDOW_STEP_SIZE = 0.025; % time (s)
-FREQS = (1:100); % frequency (Hz) %MAX IS 120Hz
-VERBOSITY_LEVEL = 1;
-GUI_MODE = 'nogui';
-N_PERMS_PHASE_RND = 200; % number of null distribution samples to draw
-N_PERMS_BOOTSRAP = 200;
-% (01/29/2024) changing these to 200 to save on computation time, but 2000
-% iterations may be more robust.
-MORDER = [];
-conn_mat_table = [];
-%% (VALIDATION OPERATIONS) ============================================= %%
-%- figure savepath
-sd_validfunc = (@(x) exist(x,'dir'));
-dbs_validFcn = @(x) assert(islogical(x),'Value must be (true/false). Determines whether a bootstrapped distribution will be created.');
-dpr_validFcn = @(x) assert(islogical(x),'Value must be (true/false). Determines whether a phase randomized distribution will be created.');
-esmc_validate = @(x) assert(isempty(x) || isstruct(x),'Value must be EMPTY or STRUCT. See pop_est_selModOrder.m for more details.');
-evmc_validate = @(x) assert(isempty(x) || iscell(x),'Value must be EMPTY or CELL of CHARS & VALUES. See. pop_est_validateMVAR.m for more details.');
-mo_validate = @(x) assert(isempty(x) || isnumeric(x),'Value must be EMPTY or NUMERIC. Determines the model order for MVAR.');
-
-%% (PARSE) ============================================================= %%
-p = inputParser;
-%## REQUIRED
-addRequired(p,'ALLEEG',@isstruct)
-addRequired(p,'conn_components',@isnumeric)
-addRequired(p,'conn_estimators',@iscell)
-addRequired(p,'save_dir',sd_validfunc)
-%## PARAMETER
-addParameter(p,'ESTSELMOD_CFG',[],esmc_validate);
-addParameter(p,'ESTVALMVAR_CW',[],evmc_validate);
-addParameter(p,'ESTVALMVAR_CRV',[],evmc_validate);
-addParameter(p,'ESTVALMVAR_CC',[],evmc_validate);
-addParameter(p,'ESTVALMVAR_CS',[],evmc_validate);
-addParameter(p,'DO_PHASE_RND',DO_PHASE_RND,dpr_validFcn);
-addParameter(p,'DO_BOOTSTRAP',DO_BOOTSTRAP,dbs_validFcn);
-addParameter(p,'FREQS',FREQS,@isnumeric) 
-addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH,@isnumeric) % number of current set in previous load
-addParameter(p,'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE,@isnumeric) % MIM folder overwrite in special cases
-addParameter(p,'GUI_MODE',GUI_MODE,@ischar)
-addParameter(p,'VERBOSITY_LEVEL',VERBOSITY_LEVEL,@isnumeric)
-addParameter(p,'MORDER',MORDER,mo_validate);
-parse(p,ALLEEG,conn_components,conn_estimators,save_dir,varargin{:});
-
-%## SET DEFAULTS
-%- parameters
-WINDOW_LENGTH       = p.Results.WINDOW_LENGTH;               % sliding window length in seconds
-WINDOW_STEP_SIZE    = p.Results.WINDOW_STEP_SIZE;             % sliding window step size in seconds
-GUI_MODE            = p.Results.GUI_MODE;                      % whether or not to show the Graphical User Interfaces. Can be 'nogui' or anything else (to show the gui)
-VERBOSITY_LEVEL     = p.Results.VERBOSITY_LEVEL;              % Verbosity Level (0=no/minimal output, 2=graphical output)
-FREQS               = p.Results.FREQS;
-MORDER              = p.Results.MORDER;
-DO_PHASE_RND = p.Results.DO_PHASE_RND;
-DO_BOOTSTRAP = p.Results.DO_BOOTSTRAP;
-%% POP_PRE_PREPDATA
-PREPDATA_SIGNALTYPE = {'Components'};
-PREPDATA_DETRED = {'verb',VERBOSITY_LEVEL,'method',{'linear'},...
-    'piecewise',{'seglength',0.33,'stepsize',0.0825},...
-    'plot',false};
-PREPDATA_NORMDATA = {'verb',VERBOSITY_LEVEL,'method',{'time', 'ensemble'}};
-%% POP_EST_SELMODORDER
-%- structs
-ESTSELMOD_DETREN = struct('arg_direct',1,'method','constant','arg_selection',1);
-ESTSELMOD_ALGORITHM = struct('arg_direct',1,...
-    'morder',[1, ceil((ALLEEG(1).srate*WINDOW_LENGTH)/2-1)],...
-    'arg_selection',{'Vieira-Morf'});
-ESTSELMOD_MODELINGAPPROACH = struct('arg_direct',1,...
-    'algorithm',ESTSELMOD_ALGORITHM,...
-    'morder',ceil((ALLEEG(1).srate*WINDOW_LENGTH)/2-1),...
-    'winStartIdx',[],...
-    'winlen',WINDOW_LENGTH,...
-    'winstep',WINDOW_STEP_SIZE,...
-    'taperfcn','rectwin',...
-    'epochTimeLims',[],...
-    'prctWinToSample',100,...
-    'normalize',[],...
-    'detrend',ESTSELMOD_DETREN,...
-    'verb',VERBOSITY_LEVEL,...
-    'timer',0,...
-    'setArgDirectMode',1,...
-    'arg_selection','Segmentation VAR');
-ESTSELMOD_RUNPLL = struct('arg_direct',1,'arg_selection',0);
-ESTSELMOD_PLOT = struct('arg_direct',1,'arg_selection',0);
-DEF_ESTSELMOD = struct('verb',VERBOSITY_LEVEL,...
-    'modelingApproach',ESTSELMOD_MODELINGAPPROACH,...
-    'morderRange',[1, ceil((ALLEEG(1).srate*WINDOW_LENGTH)/2-1)],...
-    'downdate',1,...
-    'runPll',ESTSELMOD_RUNPLL,...
-    'icselector',{{'aic','hq'}},...
-    'winStartIdx',[],...
-    'epochTimeLims',[],...
-    'prctWinToSample',80,...
-    'plot',ESTSELMOD_PLOT);
-%% POP_EST_VALIDATE_MVAR
-%## cells
-ESTVALMVAR_CHECKWHITENESS = {'alpha',0.05 ...
+%% (HIGH LEVEL VARS) =================================================== %%
+DO_BOOTSTRAP            = true;
+DO_PHASE_RND            = true;
+ASSIGN_BOOTSTRAP_MEAN   = true;
+ABSVALSQ                = true;
+SPECTRAL_DB             = true;
+WINDOW_LENGTH           = 0.5; % time (s)
+WINDOW_STEP_SIZE        = 0.025; % time (s)
+FREQS                   = (4:50); % frequency (Hz) %MAX IS 120Hz
+VERBOSITY_LEVEL         = 1;
+GUI_MODE                = 'nogui';
+N_PERMS_PHASE_RND       = 200; % number of null distribution samples to draw
+N_PERMS_BOOTSRAP        = 200;
+conn_mat_table          = [];
+%% (PARAMS) ============================================================ %%
+%## PREPARE DATA PARAMS
+DEF_PREPDATA = struct('VerbosityLevel',VERBOSITY_LEVEL,...
+             'SignalType',{{'Components'}},...
+             'VariableNames',[],...
+             'Detrend',{{'verb',VERBOSITY_LEVEL,'method',{'linear'},...
+                    'piecewise',{'seglength',0.33,'stepsize',0.0825},...
+                    'plot',false}},...
+             'NormalizeData',{{'verb',VERBOSITY_LEVEL,'method',{'time', 'ensemble'}}},...
+             'resetConfigs',true,...
+             'badsegments',[],...
+             'newtrials',[],...
+             'equalizetrials',false);
+% DEF_PREPDATA = struct('VerbosityLevel',VERBOSITY_LEVEL,...
+%              'SignalType',{{'Components'}},...
+%              'VariableNames',[],...
+%              'Detrend',{{'verb',VERBOSITY_LEVEL,'method',{'linear'}}},...
+%              'NormalizeData',{{'verb',VERBOSITY_LEVEL,'method',{'time', 'ensemble'}}},...
+%              'resetConfigs',true,...
+%              'badsegments',[],...
+%              'newtrials',[],...
+%              'equalizetrials',false);
+%## ESTIAMTE MODEL ORDER PARAMS
+% DEF_ESTSELMOD = struct('verb',VERBOSITY_LEVEL,...
+%     'modelingApproach',struct('arg_direct',1,...
+%                             'algorithm',struct('arg_direct',1,...
+%                                             'morder',[1, ceil((ALLEEG(1).srate*WINDOW_LENGTH)/2-1)],...
+%                                             'arg_selection',{{'Vieira-Morf'}}),...
+%                             'morder',ceil((ALLEEG(1).srate*WINDOW_LENGTH)/2-1),...
+%                             'winStartIdx',[],...
+%                             'winlen',WINDOW_LENGTH,...
+%                             'winstep',WINDOW_STEP_SIZE,...
+%                             'taperfcn','rectwin',...
+%                             'epochTimeLims',[],...
+%                             'prctWinToSample',100,...
+%                             'normalize',[],...
+%                             'detrend',struct('arg_direct',1,...
+%                                             'method','constant',...
+%                                             'arg_selection',1),...
+%                             'verb',VERBOSITY_LEVEL,...
+%                             'timer',0,...
+%                             'setArgDirectMode',1,...
+%                             'arg_selection','Segmentation VAR'),...
+%     'morderRange',[1, ceil((ALLEEG(1).srate*WINDOW_LENGTH)/2-1)],...
+%     'downdate',1,...
+%     'runPll',struct('arg_direct',1,'arg_selection',0),...
+%     'icselector',{{'aic','hq'}},...
+%     'winStartIdx',[],...
+%     'epochTimeLims',[],...
+%     'prctWinToSample',80,...
+%     'plot',struct('arg_direct',1,...
+%                 'arg_selection',0));
+DEF_ESTSELMOD = struct('modelingApproach',{{'Segmentation VAR',...
+                        'algorithm',{{'Vieira-Morf'}},...
+                        'winStartIdx',[],...
+                        'winlen',WINDOW_LENGTH,...
+                        'winstep',WINDOW_STEP_SIZE,...
+                        'taperfcn','rectwin',...
+                        'epochTimeLims',[],...
+                        'prctWinToSample',100,...
+                        'normalize',[],...
+                        'detrend',{'method','linear'},...
+                        'verb',VERBOSITY_LEVEL}},...
+                'morderRange',[1, ceil((ALLEEG(1).srate*WINDOW_LENGTH)/4-1)],...
+                'downdate',true,...
+                'runPll',[],...
+                'icselector',{{'aic','hq'}},...
+                'winStartIdx',[],...
+                'epochTimeLims',[],...
+                'prctWinToSample',80,...
+                'plot',[],...
+                'verb',VERBOSITY_LEVEL);
+DEF_PLOTORDERCRIT = struct('conditions', {{}},    ...
+                            'icselector', {DEF_ESTSELMOD.icselector},  ...
+                            'minimizer',{{'min'}}, ...
+                            'prclim', 90);
+%## Display Estimates for MVAR Validations PARAMS
+DEF_ESTDISPMVAR_CHK = struct('morder',[],...
+        'winlen',WINDOW_LENGTH,'winstep',WINDOW_STEP_SIZE,'verb',VERBOSITY_LEVEL);
+%## Estimate & Validate MVAR Params
+DEF_ESTVALMVAR = struct('checkWhiteness',{{'alpha',0.05,...
                                  'statcorrection','none',...
                                  'numAcfLags',50,...
-                                 'whitenessCriteria',{'Ljung-Box' 'ACF' 'Box-Pierce' 'Li-McLeod'} ...
+                                 'whitenessCriteria',{'Ljung-Box','ACF','Box-Pierce','Li-McLeod'},...
                                  'winStartIdx',[],...
                                  'prctWinToSample',100,...
-                                 'verb',VERBOSITY_LEVEL};
-ESTVALMVAR_CHECKRESIDUALVARIANCE = {'alpha',0.05,...
+                                 'verb',VERBOSITY_LEVEL}}, ...
+                         'checkResidualVariance',{{'alpha',0.05,...
                                  'statcorrection','none',...
                                  'numAcfLags',50,...
-                                 'whitenessCriteria',{},...
+                                 'whitenessCriteria',{{}},...
                                  'winStartIdx',[],...
                                  'prctWinToSample',100,...
-                                 'verb',VERBOSITY_LEVEL};
-ESTVALMVAR_CHECKCONSISTENCY = {'winStartIdx',[],...
+                                 'verb',VERBOSITY_LEVEL}}, ...
+                         'checkConsistency',{{'winStartIdx',[],...
                                  'prctWinToSample',100,...
                                  'Nr',[],...
                                  'donorm',0,...
                                  'nlags',[],...
-                                 'verb',VERBOSITY_LEVEL};
-ESTVALMVAR_CHECKSTABILITY = {'winStartIdx',[],...
+                                 'verb',VERBOSITY_LEVEL}}, ...
+                         'checkStability',{{'winStartIdx',[],...
                                  'prctWinToSample',100,...
-                                 'verb',VERBOSITY_LEVEL};
-%% POP_EST_MVARCONNECTIVITY
-ABSVALSQ        = true;
-SPECTRAL_DB     = true;
-%% STAT_SURROGATEGEN
+                                 'verb',VERBOSITY_LEVEL}},     ...
+                         'winStartIdx',[],      ...
+                         'verb',VERBOSITY_LEVEL,...
+                         'plot',false);
+%## CONNECTIVITY ESTIMATION PARAMS
+DEF_ESTFITMVAR = struct('connmethods',{'dDTF08','S'}, ...
+            'absvalsq',ABSVALSQ,           ...
+            'spectraldecibels',SPECTRAL_DB,   ...
+            'freqs',FREQS,        ...
+            'verb',VERBOSITY_LEVEL);
+%## SURROGATE STATISTICS PARAMS
 %- BOOTSTRAP
-STAT_BOOTSTRAP_CFG = [];
-STAT_BOOTSTRAP_CFG.verb = 1;
-STAT_BOOTSTRAP_CFG.mode = {'Bootstrap','nperms',N_PERMS_BOOTSRAP,'saveTrialIdx',false};
+DEF_STAT_BS_CFG = struct('mode',struct('arg_direct',1,...
+                                        'nperms',N_PERMS_BOOTSRAP,...
+                                        'arg_selection','Bootstrap',...
+                                        'saveTrialIdx',false),...
+                           'modelingApproach',[],...
+                           'connectivityModeling',[],...
+                           'verb',1);
 %- PHASE RANDOMIZATION
-STAT_PHASERND_CFG = [];
-STAT_PHASERND_CFG.mode.arg_direct = 1;
-STAT_PHASERND_CFG.mode.nperms = N_PERMS_PHASE_RND;
-STAT_PHASERND_CFG.mode.arg_selection = 'PhaseRand';
-STAT_PHASERND_CFG.modelingApproach = [];%ALLEEG(trial_i).CAT.configs.est_fitMVAR;
-STAT_PHASERND_CFG.connectivityModeling = [];%ALLEEG(trial_i).CAT.configs.est_mvarConnectivity;
-STAT_PHASERND_CFG.verb = 1;
+DEF_STAT_PR_CFG = struct('mode',struct('arg_direct',1,...
+                                        'nperms',N_PERMS_PHASE_RND,...
+                                        'arg_selection','PhaseRand'),...
+                           'modelingApproach',[],...
+                           'connectivityModeling',[],...
+                           'verb',1);
 %% (PARSE) ============================================================= %%
+%## VALIDATION FUNCTIONS
+sd_validfunc = (@(x) exist(x,'dir'));
+dbs_validFcn = @(x) assert(islogical(x),'Value must be (true/false). Determines whether a bootstrapped distribution will be created.');
+dpr_validFcn = @(x) assert(islogical(x),'Value must be (true/false). Determines whether a phase randomized distribution will be created.');
+%##
 p = inputParser;
 %## REQUIRED
 addRequired(p,'ALLEEG',@isstruct)
 addRequired(p,'conn_components',@isnumeric)
-addRequired(p,'conn_estimators',@iscell)
 addRequired(p,'save_dir',sd_validfunc)
 %## PARAMETER
-addParameter(p,'ESTSELMOD_CFG',DEF_ESTSELMOD,esmc_validate);
-addParameter(p,'ESTVALMVAR_CW',ESTVALMVAR_CHECKWHITENESS,evmc_validate);
-addParameter(p,'ESTVALMVAR_CRV',ESTVALMVAR_CHECKRESIDUALVARIANCE,evmc_validate);
-addParameter(p,'ESTVALMVAR_CC',ESTVALMVAR_CHECKCONSISTENCY,evmc_validate);
-addParameter(p,'ESTVALMVAR_CS',ESTVALMVAR_CHECKSTABILITY,evmc_validate);
+%-PREPDATA_CFG
+addParameter(p,'PREPDATA',DEF_PREPDATA,@(x) validate_struct(x,DEF_PREPDATA));
+%-
+addParameter(p,'ESTSELMOD',DEF_ESTSELMOD,@(x) validate_struct(x,DEF_ESTSELMOD));
+addParameter(p,'PLOTORDERCRIT',DEF_PLOTORDERCRIT,@(x) validate_struct(x,DEF_PLOTORDERCRIT));
+
+%-
+% addParameter(p,'ESTVALMVAR_CW',DEF_ESTVALMVAR_CW,@(x) validate_struct(x,DEF_ESTVALMVAR_CW));
+% addParameter(p,'ESTVALMVAR_CRV',DEF_ESTVALMVAR_CRV,@(x) validate_struct(x,DEF_ESTVALMVAR_CRV));
+% addParameter(p,'ESTVALMVAR_CC',DEF_ESTVALMVAR_CC,@(x) validate_struct(x,DEF_ESTVALMVAR_CC));
+% addParameter(p,'ESTVALMVAR_CS',DEF_ESTVALMVAR_CS,@(x) validate_struct(x,DEF_ESTVALMVAR_CS));
+addParameter(p,'ESTVALMVAR',DEF_ESTVALMVAR,@(x) validate_struct(x,DEF_ESTVALMVAR));
+%-
+addParameter(p,'ESTDISPMVAR_CHK',DEF_ESTDISPMVAR_CHK,@(x) validate_struct(x,DEF_ESTDISPMVAR_CHK));
+addParameter(p,'ESTFITMVAR',DEF_ESTFITMVAR,@(x) validate_struct(x,DEF_ESTFITMVAR));
+addParameter(p,'STAT_BS_CFG',DEF_STAT_BS_CFG,@(x) validate_struct(x,DEF_STAT_BS_CFG));
+addParameter(p,'STAT_PR_CFG',DEF_STAT_PR_CFG,@(x) validate_struct(x,DEF_STAT_PR_CFG));
+%-
 addParameter(p,'DO_PHASE_RND',DO_PHASE_RND,dpr_validFcn);
 addParameter(p,'DO_BOOTSTRAP',DO_BOOTSTRAP,dbs_validFcn);
-addParameter(p,'FREQS',FREQS,@isnumeric) 
-addParameter(p,'WINDOW_LENGTH',WINDOW_LENGTH,@isnumeric) % number of current set in previous load
-addParameter(p,'WINDOW_STEP_SIZE',WINDOW_STEP_SIZE,@isnumeric) % MIM folder overwrite in special cases
-addParameter(p,'GUI_MODE',GUI_MODE,@ischar)
-addParameter(p,'VERBOSITY_LEVEL',VERBOSITY_LEVEL,@isnumeric)
-addParameter(p,'MORDER',MORDER,mo_validate);
-parse(p,ALLEEG,conn_components,conn_estimators,save_dir,varargin{:});
+parse(p,ALLEEG,conn_components,save_dir,varargin{:});
 %## SET DEFAULTS
 %- Optional
-ESTSELMOD_CFG       = p.Results.ESTSELMOD_CFG;
-ESTVALMVAR_CW       = p.Results.ESTVALMVAR_CW;
-ESTVALMVAR_CRV      = p.Results.ESTVALMVAR_CRV;
-ESTVALMVAR_CC       = p.Results.ESTVALMVAR_CC;
-ESTVALMVAR_CS       = p.Results.ESTVALMVAR_CS;
+PREPDATA       = p.Results.PREPDATA;
+ESTSELMOD       = p.Results.ESTSELMOD;
+PLOTORDERCRIT = p.Results.PLOTORDERCRIT;
+%-
+% ESTVALMVAR_CW      = p.Results.ESTVALMVAR_CW;
+% ESTVALMVAR_CRV       = p.Results.ESTVALMVAR_CRV;
+% ESTVALMVAR_CC       = p.Results.ESTVALMVAR_CC;
+% ESTVALMVAR_CS       = p.Results.ESTVALMVAR_CS;
+ESTVALMVAR = p.Results.ESTVALMVAR;
+%-
+ESTDISPMVAR_CHK       = p.Results.ESTDISPMVAR_CHK;
+ESTFITMVAR      = p.Results.ESTFITMVAR;
+STAT_BS_CFG       = p.Results.STAT_BS_CFG;
+STAT_PR_CFG       = p.Results.STAT_PR_CFG;
+DO_PHASE_RND       = p.Results.DO_PHASE_RND;
+DO_BOOTSTRAP       = p.Results.DO_BOOTSTRAP;
+%##
+PREPDATA = set_defaults_struct(PREPDATA,DEF_PREPDATA);
+ESTSELMOD = set_defaults_struct(ESTSELMOD,DEF_ESTSELMOD);
+PLOTORDERCRIT = set_defaults_struct(PLOTORDERCRIT,DEF_PLOTORDERCRIT);
+ESTVALMVAR = set_defaults_struct(ESTVALMVAR,DEF_ESTVALMVAR);
+ESTDISPMVAR_CHK = set_defaults_struct(ESTDISPMVAR_CHK,DEF_ESTDISPMVAR_CHK);
+ESTFITMVAR = set_defaults_struct(ESTFITMVAR,DEF_ESTFITMVAR);
+STAT_BS_CFG = set_defaults_struct(STAT_BS_CFG,DEF_STAT_BS_CFG);
+STAT_PR_CFG = set_defaults_struct(STAT_PR_CFG,DEF_STAT_PR_CFG);
+%##
+% if isempty(DEF_ESTSELMOD.modelingApproach.algorithm.morder)
+%     ESTSELMOD.modelingApproach.algorithm.morder = [1,ceil(ALLEEG(1).srate*WINDOW_LENGTH)/2-1];
+% end
+if isempty(ESTSELMOD.morderRange)
+    ESTSELMOD.morderRange=[1, ceil((ALLEEG(1).srate*WINDOW_LENGTH)/4-1)];
+end
+% if isempty(ESTSELMOD.modelingApproach) && ~isempty(ESTDISPMVAR_CHK.morder)
+%     ESTSELMOD.modelingApproach = ESTDISPMVAR_CHK.morder;
+% else
+%     ESTSELMOD.morder = ceil((ALLEEG(1).srate*WINDOW_LENGTH)/2-1);
+% end
 
-%- param mods
-%* 
-if isempty(ESTSELMOD_CFG)
-    ESTSELMOD_CFG = DEF_ESTSELMOD;
-end
-%*
-if isempty(ESTVALMVAR_CW)
-    ESTVALMVAR_CW = ESTVALMVAR_CHECKWHITENESS;
-end
-if isempty(ESTVALMVAR_CRV)
-    ESTVALMVAR_CRV = ESTVALMVAR_CHECKRESIDUALVARIANCE;
-end
-if isempty(ESTVALMVAR_CC)
-    ESTVALMVAR_CC = ESTVALMVAR_CHECKCONSISTENCY;
-end
-if isempty(ESTVALMVAR_CS)
-    ESTVALMVAR_CS = ESTVALMVAR_CHECKSTABILITY;
-end
 %% GENERATE CONNECTIVITY MEASURES
 fprintf(1,'\n==== GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s ====\n',ALLEEG(1).subject);
 %## ASSIGN PATH FOR SIFT
@@ -233,7 +256,6 @@ fprintf(1,'\n==== GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s ====\n',ALLEEG
 if ~exist(save_dir,'dir')
     mkdir(save_dir)
 end
-
 %## Connectivity
 fprintf('%s) Processing componets:\n',ALLEEG(1).subject)
 fprintf('%i,',conn_components'); fprintf('\n');
@@ -255,17 +277,11 @@ if length(conn_components) ~= size(ALLEEG(1).icaweights,1)
         ALLEEG(cond_i) = TMP_EEG;
     end
 end
-
-%## ONE MODEL
-% TMP = ALLEEG;
-% ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
-
 %% (MAIN CONNECTIVITY PIPELINE) ======================================== %%
 %## STEP 3: Pre-process the data
 fprintf('===================================================\n');
 disp('PRE-PROCESSISNG DATA');
 fprintf('===================================================\n');
-%- NOTE: 
 %- (NOTE FROM EXAMPLE SIFT SCRIPT) No piecewise detrending based on conversation with Andreas Widmann.
 % convert list of components to cell array of strings
 comp_names = [];
@@ -273,26 +289,10 @@ for j = 1:length(conn_components)
     comp_names = [comp_names, {num2str(conn_components(j))}];
 end
 
-%- ALTERNATIVE
-% input_cell = {'VerbosityLevel',VERBOSITY_LEVEL,...
-%              'SignalType',PREPDATA_SIGNALTYPE,...
-%              'VariableNames',comp_names,...
-%              'Detrend',PREPDATA_DETRED,...
-%              'NormalizeData',PREPDATA_NORMDATA,...
-%              'resetConfigs',true,...
-%              'badsegments',[],...
-%              'newtrials',[],...
-%              'equalizetrials',false};
-[ALLEEG] = pop_pre_prepData(ALLEEG,'nogui',...
-             'VerbosityLevel',VERBOSITY_LEVEL,...
-             'SignalType',PREPDATA_SIGNALTYPE,...
-             'VariableNames',comp_names,...
-             'Detrend',PREPDATA_DETRED,...
-             'NormalizeData',PREPDATA_NORMDATA,...
-             'resetConfigs',true,...
-             'badsegments',[],...
-             'newtrials',[],...
-             'equalizetrials',false);
+PREPDATA.VariableNames = comp_names;
+cfg = struct2args(PREPDATA);
+[ALLEEG] = pop_pre_prepData(ALLEEG,GUI_MODE,...
+             cfg{:});
 
 %% STEP 4: Identify the optimal model order
 fprintf('===================================================\n');
@@ -300,55 +300,40 @@ disp('MODEL ORDER IDENTIFICATION');
 fprintf('===================================================\n');
 %- NOTE: Here we compute various model order selection criteria for varying model
 % orders (e.g. 1 to 30) and visualize the results
-% Open the model-fitting GUI for model fitting. 
-% Once model is fit results will be return in EEG structure
+%## OPTION 1
+% cfg = struct2args(ESTSELMOD);
+% ALLEEG(cond_i) = pop_est_selModelOrder(ALLEEG(cond_i),GUI_MODE,cfg{:});
+%## OPTION 2
 for cond_i=1:length(ALLEEG)
     %* calculate the information criteria
-    [ALLEEG(cond_i).CAT.IC,cfg] = est_selModelOrder('EEG',ALLEEG(cond_i),ESTSELMOD_CFG);
+    [ALLEEG(cond_i).CAT.IC,cfg] = est_selModelOrder(ALLEEG(cond_i),ESTSELMOD);
+    if isempty(ALLEEG(cond_i).CAT.IC)
+        % use canceled
+        fprintf('ERROR. Model fittings didn''t produce a viable model\n...')
+        return;
+    end
     if ~isempty(cfg)
         %* store the configuration structure
         ALLEEG(cond_i).CAT.configs.('est_selModelOrder') = cfg;
     end
 end
-% (08/12/2023) JS, this may be buggy on HiPerGator/Hypercomputing systems due to the
-% gui initiation. buggy because of feval statement: "
-% modFuncName = ['pop_' ALLEEG(1).CAT.IC.modelFitting.modelingFuncName];
-% ALLEEG = feval(modFuncName, ALLEEG,0,ALLEEG(1).CAT.IC.modelFitting.modelingArguments);
-% (08/16/2023) JS, this function can only be ran on a single EEG dataset,
-% if using ALLEEG (i.e., a set of EEGs with all conditions for a subject)
-% this won't work.
-
-%## (PLOT)
+modFuncName = ['pop_' ALLEEG(1).CAT.IC.modelFitting.modelingFuncName];
+fprintf('Running %s for subject %s...\n',modFuncName,ALLEEG(1).subject)
+ALLEEG = feval(modFuncName, ALLEEG,0,ALLEEG(1).CAT.IC.modelFitting.modelingArguments);
+%## (PLOT) ============================================================= %%
 tmp_morder = zeros(1,length(ALLEEG));
+% cfg = struct2args(PLOTORDERCRIT);
 for cond_i = 1:length(ALLEEG)
     fprintf('%s) Plotting Validations\n',ALLEEG(cond_i).subject);
-    handles = vis_plotOrderCriteria(ALLEEG(cond_i).CAT.IC,'conditions', [],    ...
-                                            'icselector', ESTSELMOD_CFG.icselector,  ...
-                                            'minimizer', 'min', ...
-                                            'prclim', 90);
+    handles = vis_plotOrderCriteria(ALLEEG(cond_i).CAT.IC,PLOTORDERCRIT);
     tmp_morder(cond_i) = ceil(mean(ALLEEG(cond_i).CAT.IC.hq.popt));
     saveas(handles,[save_dir filesep sprintf('%s_%i_orderResults.fig',ALLEEG(cond_i).subject,cond_i)]);
     close(handles);
 end
-if isempty(MORDER)
-    model_order = ceil(mean(tmp_morder));
-else
-    model_order = MORDER;
+%##
+if isempty(ESTDISPMVAR_CHK.morder)
+    ESTDISPMVAR_CHK.morder = ceil(mean(tmp_morder));
 end
-
-% Finally, we can automatically select the model order which minimizes one
-% of the criteria (or you can set this manually based on above figure)
-% ModelOrder = ceil(mean(ModelOrder)); % (05/16/2022) Probably a better way of selecting model order
-
-% As an alternative to using the minimum of the selection criteria over 
-% model order, you can find the "elbow" in the plot of model order versus
-% selection criterion value. This is useful in cases where the selection
-% criterion does not have a clear minimum. For example, the lines below
-% plot and select the elbow location (averaged across windows) for the AIC 
-% criterion
-%
-% vis_plotOrderCriteria(EEG(1).CAT.IC,{},{},'elbow');
-% ModelOrder = ceil(mean(EEG(1).CAT.IC.aic.pelbow));
 fprintf('\n\n');
 %% STEP 5: Fit the VAR model
 fprintf('===================================================\n');
@@ -356,102 +341,30 @@ disp('MODEL FITTING');
 fprintf('===================================================\n');
 fprintf('\n');
 %- Here we can check that our selected parameters make sense
+% cfg = struct2args(ESTDISPMVAR_CHK);
 for cond_i = 1:length(ALLEEG)
     fprintf('MVAR PARAMETER SUMMARY FOR CONDITION: %s\n\n',ALLEEG(cond_i).condition);
-    est_dispMVARParamCheck(ALLEEG(cond_i),struct('morder',model_order',...
-        'winlen',WINDOW_LENGTH,'winstep',WINDOW_STEP_SIZE,'verb',VERBOSITY_LEVEL))
+    est_dispMVARParamCheck(ALLEEG(cond_i),ESTDISPMVAR_CHK)
 end
 %- Once we have identified our optimal model order, we can fit our VAR model.
-% Fit a model using the options specifed for model order selection.
 % Note that EEG.CAT.MODEL now contains the model structure with
 % coefficients (in MODEL.AR), prediction errors (MODEL.PE) and other
 % self-evident information. 
-[ALLEEG] = pop_est_fitMVAR(ALLEEG,GUI_MODE,...
-        ALLEEG(1).CAT.configs.est_selModelOrder.modelingApproach,...
-        'ModelOrder',model_order);
-%##
-%{
-% [ALLEEG, cfg] = pop_est_fitMVAR(ALLEEG,GUI_MODE,...
-%         ALLEEG(1).CAT.configs.est_selModelOrder.modelingApproach,...
-%         'ModelOrder',model_order);
-% for cond_i = 1:length(TMP)
-%     TMP(cond_i).CAT.MODEL = ALLEEG.CAT.MODEL;
-%     TMP(cond_i).CAT.configs.('est_fitMVAR') = cfg;
-% end
-store_mod = ALLEEG.CAT.MODEL;
-store_cfg = cfg;
-ALLEEG = TMP;
-%% (MAIN CONNECTIVITY PIPELINE) ======================================== %%
-%## STEP 3: Pre-process the data
-fprintf('===================================================\n');
-disp('REPRE-PROCESSISNG DATA');
-fprintf('===================================================\n');
-[ALLEEG] = pop_pre_prepData(ALLEEG,'nogui',...
-             'VerbosityLevel',VERBOSITY_LEVEL,...
-             'SignalType',PREPDATA_SIGNALTYPE,...
-             'VariableNames',comp_names,...
-             'Detrend',PREPDATA_DETRED,...
-             'NormalizeData',PREPDATA_NORMDATA,...
-             'resetConfigs',true,...
-             'badsegments',[],...
-             'newtrials',[],...
-             'equalizetrials',false);
-for cond_i=1:length(ALLEEG)
-    %* calculate the information criteria
-    [ALLEEG(cond_i).CAT.IC,cfg] = est_selModelOrder('EEG',ALLEEG(cond_i),ESTSELMOD_CFG);
-    if ~isempty(cfg)
-        %* store the configuration structure
-        ALLEEG(cond_i).CAT.configs.('est_selModelOrder') = cfg;
-    end
-end
-%## (PLOT)
-tmp_morder = zeros(1,length(ALLEEG));
 for cond_i = 1:length(ALLEEG)
-    fprintf('%s) Plotting Validations\n',ALLEEG(cond_i).subject);
-    handles = vis_plotOrderCriteria(ALLEEG(cond_i).CAT.IC,'conditions', [],    ...
-                                            'icselector', ESTSELMOD_CFG.icselector,  ...
-                                            'minimizer', 'min', ...
-                                            'prclim', 90);
-    tmp_morder(cond_i) = ceil(mean(ALLEEG(cond_i).CAT.IC.hq.popt));
-    saveas(handles,[save_dir filesep sprintf('%s_%i_orderResults.fig',ALLEEG(cond_i).subject,cond_i)]);
-    close(handles);
+    [ALLEEG(cond_i)] = pop_est_fitMVAR(ALLEEG(cond_i),GUI_MODE,...
+            ALLEEG(cond_i).CAT.configs.est_selModelOrder.modelingApproach,...
+            'ModelOrder',ESTDISPMVAR_CHK.morder);
 end
-if isempty(MORDER)
-    model_order = ceil(mean(tmp_morder));
-else
-    model_order = MORDER;
-end
-fprintf('\n\n');
-%- Here we can check that our selected parameters make sense
-for cond_i = 1:length(ALLEEG)
-    fprintf('MVAR PARAMETER SUMMARY FOR CONDITION: %s\n\n',ALLEEG(cond_i).condition);
-    est_dispMVARParamCheck(ALLEEG(cond_i),struct('morder',model_order',...
-        'winlen',WINDOW_LENGTH,'winstep',WINDOW_STEP_SIZE,'verb',VERBOSITY_LEVEL))
-end
-%## REASSIGN MODEL
-for cond_i = 1:length(TMP)
-    TMP(cond_i).CAT.MODEL = store_mod;
-    TMP(cond_i).CAT.configs.('est_fitMVAR') = store_cfg;
-end
-ALLEEG = TMP;
-fprintf('\n\n');
-%}
 %% STEP 6: Validate the fitted model
 fprintf('===================================================\n');
 disp('MODEL VALIDATION');
 fprintf('===================================================\n');
-
 % Here we assess the quality of the fit of our model w.r.t. the data. This
 % step can be slow. We can obtain statistics for residual whiteness, percent consistency, and
 % model stability...
+cfg = struct2args(ESTVALMVAR);
 [ALLEEG] = pop_est_validateMVAR(ALLEEG,GUI_MODE,...
-                            'checkWhiteness',ESTVALMVAR_CW, ...
-                             'checkResidualVariance',ESTVALMVAR_CRV, ...
-                             'checkConsistency',ESTVALMVAR_CC, ...
-                             'checkStability',ESTVALMVAR_CS,     ...
-                             'winStartIdx',[],      ...
-                             'verb',VERBOSITY_LEVEL,...
-                             'plot',false);
+                            cfg{:});
 
 for cond_i = 1:length(ALLEEG)
     % ... and then plot the results 
@@ -464,28 +377,20 @@ for cond_i = 1:length(ALLEEG)
 
     % To automatically determine whether our model accurately fits the data you
     % can write a few lines as follows (replace 'acf' with desired statistic):
-    %
     if ~all(ALLEEG(cond_i).CAT.VALIDATION.whitestats.acf.w)
-        fprintf(1,'WARNING: Residuals are not completely white!\n');
+        fprintf(1,'WARNING: Residuals are not completely white!\nModel fit may not be valid...\n');
     end
 end
 fprintf('\n\n');
 %% STEP 7: Compute Connectivity
 %- NOTE: Next we will compute various dynamical quantities, including connectivity,
-% from the fitted VAR model. We can compute these for a range of
-% frequencies (here 1-40 Hz). See 'doc est_mvarConnectivity' for a complete
-% list of available connectivity and spectral estimators.
-
+% from the fitted VAR model.
 fprintf('===================================================\n');
 fprintf('CONNECTIVITY ESTIMATION\n');
 fprintf('===================================================\n');
-
+cfg = struct2args(ESTFITMVAR);
 ALLEEG = pop_est_mvarConnectivity(ALLEEG,GUI_MODE, ...
-            'connmethods', conn_estimators, ...
-            'absvalsq',ABSVALSQ,           ...
-            'spectraldecibels',SPECTRAL_DB,   ...
-            'freqs',FREQS,        ...
-            'verb',VERBOSITY_LEVEL);
+            cfg{:});
         
 disp('===================================')
 disp('DONE.')
@@ -502,22 +407,15 @@ if DO_BOOTSTRAP
     fprintf('\n==== CALCULATING BOOTSTRAP MEASURES ====\n')
     for cond_i=1:length(ALLEEG)
         %- calculate BootStrap distribution
-%         ALLEEG(trial_i) = cnctanl_groupStats(ALLEEG(trial_i),'BootStrap');
         %- clear PConn
         ALLEEG(cond_i).CAT.PConn  = [];
-        [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(cond_i),STAT_BOOTSTRAP_CFG);
+        cfg = struct2args(STAT_BS_CFG);
+        [PConn,~] = stat_surrogateGen('ALLEEG',ALLEEG(cond_i),cfg{:});
         ALLEEG(cond_i).CAT.PConn = PConn;
         %- save BootStrap distribution 
         bootstrap_dist = ALLEEG(cond_i).CAT.PConn;
         fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
         par_save(bootstrap_dist,ALLEEG(cond_i).filepath,fName,'_BootStrap');
-        %- BootStrap corrected statistics per condition
-%         fprintf('\n==== BETWEEN CONDITION STATISTICS ====\n')
-%         [ALLEEG(trial_i),~] = cnctanl_groupStats(ALLEEG(trial_i),'BtwnCond');
-%         %- Save Nonzero Stats
-%         TMP_EEG = ALLEEG(trial_i).CAT.Stats;
-%         fName = strsplit(ALLEEG(trial_i).filename,'.'); fName = [fName{1} '.mat'];
-%         par_save(TMP_EEG,ALLEEG(trial_i).filepath,fName,'_BtwnCond');
     end
     %- assign mean of bootstrap as Conn value
     if ASSIGN_BOOTSTRAP_MEAN
@@ -541,27 +439,18 @@ if DO_PHASE_RND
     for cond_i=1:length(ALLEEG)
         %- Generate Phase Randomized Distribution
         fprintf('\n==== PHASE RANDOMIZING CONNECTIVITY MEASURES ====\n')
-%         [ALLEEG(trial_i),~] = cnctanl_groupStats(ALLEEG(trial_i),'PhaseRnd');
         %- clear PConn
         ALLEEG(cond_i).CAT.PConn  = [];
-        STAT_PHASERND_CFG.modelingApproach = ALLEEG(cond_i).CAT.configs.est_fitMVAR;
-        STAT_PHASERND_CFG.connectivityModeling = ALLEEG(cond_i).CAT.configs.est_mvarConnectivity;
+        STAT_PR_CFG.modelingApproach = ALLEEG(cond_i).CAT.configs.est_fitMVAR;
+        STAT_PR_CFG.connectivityModeling = ALLEEG(cond_i).CAT.configs.est_mvarConnectivity;
+        cfg = struct2args(STAT_PR_CFG);
         %- FEVAL
-        [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(cond_i),STAT_PHASERND_CFG);
+        [PConn,~] = stat_surrogateGen('ALLEEG',ALLEEG(cond_i),cfg{:});
         ALLEEG(cond_i).CAT.PConn = PConn;
         %- Save Phase randomized distribution
         phasernd_dist = ALLEEG(cond_i).CAT.PConn;
         fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
         par_save(phasernd_dist,ALLEEG(cond_i).filepath,fName,'_PhaseRnd');
-        fprintf('done.\n')
-        %- Conduct Nonzero Test (Need Phase Randomized Distribution)
-%         fprintf('\n==== NONZERO STATISTICS ====\n')
-%         [ALLEEG(trial_i),~] = cnctanl_groupStats(ALLEEG(trial_i),'NonZero');
-%         %- Save Nonzero Stats
-%         nonzero_stats = ALLEEG(trial_i).CAT.Stats;
-%         fName = strsplit(ALLEEG(trial_i).filename,'.'); fName = [fName{1} '.mat'];
-%         par_save(nonzero_stats,ALLEEG(trial_i).filepath,fName,'_NonZero');
-        
         fprintf('done.\n')
     end
     clear TMP_EEG
@@ -569,7 +458,6 @@ if DO_PHASE_RND
 end
 
 %% ===================================================================== %%
-
 %## STEP 6) CONNECTIVITY MATRICES & VISUALS
 %## TABLE VARS
 t_fPaths = cell(length(ALLEEG)*length(conn_estimators),1);
@@ -612,4 +500,71 @@ fprintf('DONE: %s\n',ALLEEG(1).subject);
 %## TIME
 toc
 end
+
+%% ===================================================================== %%
+function [b] = validate_struct(x,DEFAULT_STRUCT)
+    b = false;
+    struct_name = inputname(2);
+    %##
+    fs1 = fields(x);
+    fs2 = fields(DEFAULT_STRUCT);
+    vals1 = struct2cell(x);
+    vals2 = struct2cell(DEFAULT_STRUCT);
+    %- check field names
+    chk = cellfun(@(x) any(strcmp(x,fs2)),fs1);
+    if ~all(chk)
+        fprintf(2,'\nFields for struct do not match for %s\n',struct_name);
+        return
+    end
+    %- check field value's class type
+    for f = 1:length(fs2)
+        ind = strcmp(fs2{f},fs1);
+        chk = strcmp(class(vals2{f}),class(vals1{ind}));
+        if ~chk
+            fprintf(2,'\nStruct.%s must be type %s, but is type %s\n',fs2{f},class(vals2{f}),class(vals1{ind}));
+            return
+        end
+    end
+    b = true;
+end
+%% ===================================================================== %%
+function [struct_out] = set_defaults_struct(x,DEFAULT_STRUCT)
+    struct_out = x;
+    %##
+    fs1 = fields(x);
+    fs2 = fields(DEFAULT_STRUCT);
+    vals1 = struct2cell(x);
+    %- check field value's class type
+    for f = 1:length(fs2)
+        ind = strcmp(fs2{f},fs1);
+        if isempty(vals1{ind})
+            struct_out.(fs1{ind}) = DEFAULT_STRUCT.(fs2{ind});
+        end
+    end
+end
+%% ===================================================================== %%
+function [args] = struct2args(struct)
+    %EEGLAB_STRUCT2ARGS Summary of this function goes here
+    %   Detailed explanation goes here
+    %## Define Parser
+    p = inputParser;
+    %## REQUIRED
+    addRequired(p,'struct',@isstruct);
+    parse(p,struct);
+    %##
+    fn = fieldnames(struct);
+    sc = struct2cell(struct);
+    args = cell(length(fn)+length(sc),1);
+    cnt = 1;
+    for i = 1:length(fn)
+        args{cnt} = fn{i};
+        if isempty(sc{i})
+            args{cnt+1} = [];
+        else
+            args{cnt+1} = sc{i};
+        end
+        cnt = cnt + 2;
+    end
+end
+
 

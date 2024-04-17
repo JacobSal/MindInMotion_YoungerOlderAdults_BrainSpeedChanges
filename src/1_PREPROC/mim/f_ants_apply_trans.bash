@@ -7,13 +7,29 @@
 #SBATCH --cpus-per-task=8 # Number of CPU cores per task
 #SBATCH --mem-per-cpu=4000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
-#SBATCH --time=16:00:00 # Time limit hrs:min:sec
-#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/_hpg_logs/%j_ants_norm_trans.log # Standard output
+#SBATCH --time=08:00:00 # Time limit hrs:min:sec
+#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_PREPROC/mim/_slurm_logs/%j_f_ants_apply_trans.log # Standard output
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=hpg-default # cluster to run on, use slurm command 'sinfo -s'
-#%% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/ants_norm_apply_trans.bash
-cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/
+#%% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_PREPROC/mim/f_ants_apply_trans.bash
+
+# set linux workspace
+# check if script is started via SLURM or bash
+# if with SLURM: there variable '$SLURM_JOB_ID' will exist
+# `if [ -n $SLURM_JOB_ID ]` checks if $SLURM_JOB_ID is not an empty string
+if [ -n $SLURM_JOB_ID ];  then
+    # check the original location through scontrol and $SLURM_JOB_ID
+    TMP_PATH=$(scontrol show job $SLURM_JOBID | awk -F= '/Command=/{print $2}')
+else
+    # otherwise: started with bash. Get the real location.
+    TMP_PATH=$(realpath $0)
+fi
+export SCRIPT_DIR=$(dirname $TMP_PATH)
+export STUDY_DIR=$SCRIPT_DIR
+export SRC_DIR=$(dirname $(dirname $STUDY_DIR))
+cd $STUDY_DIR
+
 ml gcc/5.2.0
 ml ants
 

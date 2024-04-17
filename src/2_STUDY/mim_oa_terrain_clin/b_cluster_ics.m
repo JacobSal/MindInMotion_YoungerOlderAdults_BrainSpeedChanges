@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_b_cluster_ics.sh
 
 %{
 %## RESTORE MATLAB
@@ -12,35 +12,35 @@ clc;
 close all;
 clearvars
 %}
-%% Initialization
+%% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-%% REQUIRED SETUP 4 ALL SCRIPTS ======================================== %%
-%- VARS
-USER_NAME = 'jsalminen'; %getenv('username');
-fprintf(1,'Current user: %s\n',USER_NAME);
-PWD_DIR = mfilename('fullpath');
-if contains(PWD_DIR,'LiveEditorEvaluationHelper')
-    PWD_DIR = matlab.desktop.editor.getActiveFilename;
-    PWD_DIR = fileparts(PWD_DIR);
-else
-    try
-        PWD_DIR = matlab.desktop.editor.getActiveFilename;
-        PWD_DIR = fileparts(PWD_DIR);
-    catch e
-        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
-        PWD_DIR = dir(['.' filesep]);
-        PWD_DIR = PWD_DIR(1).folder;
-    end
-end
-addpath(PWD_DIR);
-cd(PWD_DIR)
-fprintf(1,'Current folder: %s\n',PWD_DIR);
-%% SET WORKSPACE ======================================================= %%
 global ADD_CLEANING_SUBMODS %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
-%- set PWD_DIR, EEGLAB path, _functions path, and others...
+%## Determine Working Directories
+if ~ispc
+    STUDY_DIR = getenv('STUDY_DIR');
+    SCRIPT_DIR = getenv('SCRIPT_DIR');
+    SRC_DIR = getenv('SRC_DIR');
+else
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        SCRIPT_DIR = dir(['.' filesep]);
+        SCRIPT_DIR = SCRIPT_DIR(1).folder;
+    end
+    STUDY_DIR = SCRIPT_DIR;
+    SRC_DIR = fileparts(fileparts(STUDY_DIR));
+end
+%## Add Study & Script Paths
+addpath(STUDY_DIR);
+addpath(SRC_DIR);
+cd(SRC_DIR);
+fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
+%## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
 [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
@@ -145,15 +145,17 @@ STD_PRECLUST_COMMAND = {'dipoles','weight',clustering_weights.dipoles};
 % outlier_sigma = 3;
 %- datetime override
 % dt = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-dt = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% cluster_study_dir = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+cluster_study_dir = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+
 %## soft define
-DATA_DIR = [source_dir filesep '_data'];
+DATA_DIR = [PATHS.src_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 % study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 study_fName_1 = 'epoch_study';
 % TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'cluster'];
-load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
+save_dir = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir) filesep 'cluster'];
+load_dir = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir)];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
@@ -360,49 +362,49 @@ if DO_K_ICPRUNE
             cluster_update = cluster_comp_dipole(TMP_ALLEEG, all_solutions{j}.solutions{1});
             TMP_STUDY.cluster = cluster_update;
             %## (PLOT) Looking for dipoles outside of brain.
-            % vol = load(MNI_VOL);
-            % try
-            %     vol = vol.vol;
-            % catch
-            %     vol = vol.mesh;
-            % end
-            % rmv_dip = [];
-            % fig = figure('color','w');
-            % ft_plot_mesh(vol.bnd(3));
-            % hold on;
-            % for c = 2:length(TMP_STUDY.cluster)
-            %     for d = 1:size(TMP_STUDY.cluster(c).all_diplocs,1)
-            %         depth = ft_sourcedepth(TMP_STUDY.cluster(c).all_diplocs(d,:), vol);
-            %         if depth > 0
-            %             rmv_dip = [rmv_dip;[c,d]];
-            %             plot3(TMP_STUDY.cluster(c).all_diplocs(d,1),TMP_STUDY.cluster(c).all_diplocs(d,2),TMP_STUDY.cluster(c).all_diplocs(d,3),'*-');
-            %         end
-            %     end
-            % end
-            % hold off;
-            % drawnow;
-            % saveas(fig,[cluster_dir filesep sprintf('ics_out_of_brain.fig')]);
-            % % TMP_STUDY = STUDY;
-            % sets_ob = zeros(size(rmv_dip,1),1);
-            % comps_ob = zeros(size(rmv_dip,1),1);
-            % clusts = unique(rmv_dip(:,1));
-            % cnt = 1;
-            % for c_i = 1:length(clusts)
-            %     inds = clusts(c_i)==rmv_dip(:,1);
-            %     d_i = rmv_dip(inds,2);
-            %     sets_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).sets(d_i);
-            %     comps_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).comps(d_i);
-            %     TMP_STUDY.cluster(clusts(c_i)).sets(d_i) = [];
-            %     TMP_STUDY.cluster(clusts(c_i)).comps(d_i) = [];
-            %     cnt = cnt + length(d_i);
-            % end
-            % TMP_STUDY.cluster(end+1).sets = sets_ob';
-            % TMP_STUDY.cluster(end).comps = comps_ob';
-            % TMP_STUDY.cluster(end).name = 'Outlier cluster_outside-brain';
-            % TMP_STUDY.cluster(end).parent = TMP_STUDY.cluster(2).parent;
-            % TMP_STUDY.cluster(end).algorithm = 'ft_sourcedepth < 0';
+            vol = load(MNI_VOL);
+            try
+                vol = vol.vol;
+            catch
+                vol = vol.mesh;
+            end
+            rmv_dip = [];
+            fig = figure('color','w');
+            ft_plot_mesh(vol.bnd(3));
+            hold on;
+            for c = 2:length(TMP_STUDY.cluster)
+                for d = 1:size(TMP_STUDY.cluster(c).all_diplocs,1)
+                    depth = ft_sourcedepth(TMP_STUDY.cluster(c).all_diplocs(d,:), vol);
+                    if depth > 0
+                        rmv_dip = [rmv_dip;[c,d]];
+                        plot3(TMP_STUDY.cluster(c).all_diplocs(d,1),TMP_STUDY.cluster(c).all_diplocs(d,2),TMP_STUDY.cluster(c).all_diplocs(d,3),'*-');
+                    end
+                end
+            end
+            hold off;
+            drawnow;
+            saveas(fig,[cluster_dir filesep sprintf('ics_out_of_brain.fig')]);
+            % TMP_STUDY = STUDY;
+            sets_ob = zeros(size(rmv_dip,1),1);
+            comps_ob = zeros(size(rmv_dip,1),1);
+            clusts = unique(rmv_dip(:,1));
+            cnt = 1;
+            for c_i = 1:length(clusts)
+                inds = clusts(c_i)==rmv_dip(:,1);
+                d_i = rmv_dip(inds,2);
+                sets_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).sets(d_i);
+                comps_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).comps(d_i);
+                TMP_STUDY.cluster(clusts(c_i)).sets(d_i) = [];
+                TMP_STUDY.cluster(clusts(c_i)).comps(d_i) = [];
+                cnt = cnt + length(d_i);
+            end
+            TMP_STUDY.cluster(end+1).sets = sets_ob';
+            TMP_STUDY.cluster(end).comps = comps_ob';
+            TMP_STUDY.cluster(end).name = 'Outlier cluster_outside-brain';
+            TMP_STUDY.cluster(end).parent = TMP_STUDY.cluster(2).parent;
+            TMP_STUDY.cluster(end).algorithm = 'ft_sourcedepth < 0';
             %## REMOVE BASED ON RV
-        %     [cluster_update] = evaluate_cluster(STUDY,ALLEEG,clustering_solutions,'min_rv');
+            % [cluster_update] = evaluate_cluster(STUDY,ALLEEG,clustering_solutions,'min_rv');
             [TMP_STUDY,~,~] = cluster_rv_reduce(TMP_STUDY,TMP_ALLEEG);
             cluster_update = TMP_STUDY.cluster;
             %- get cluster centroid and residual variance

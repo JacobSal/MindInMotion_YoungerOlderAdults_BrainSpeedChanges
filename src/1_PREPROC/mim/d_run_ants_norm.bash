@@ -8,11 +8,11 @@
 #SBATCH --mem-per-cpu=10000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
 #SBATCH --time=16:00:00 # Time limit hrs:min:sec
-#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/_hpg_logs/%j_ants_norm.log # Standard output
+#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_PREPROC/mim/_slurm_logs/%j_d_run_ants_norm.log # Standard output
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=hpg-default # cluster to run on, use slurm command 'sinfo -s'
-#%% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_BATCH_PREP/MIM_OA/ants_norm.bash
+#%% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_PREPROC/mim/d_run_ants_norm.bash
 ml gcc/5.2.0
 ml ants
 

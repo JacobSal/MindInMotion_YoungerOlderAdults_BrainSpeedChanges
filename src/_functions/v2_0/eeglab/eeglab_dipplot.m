@@ -42,19 +42,9 @@ cat_logo();
 %% FUNCTION SETUP
 tt = tic();
 fprintf('Setting up function...\n');
-%## GET EEGLAB PATH
-if ~ispc
-    tmp = strsplit(path,':');
-else
-    tmp = strsplit(path,';');
-end
-% tmp = strsplit(path,';');
-b1 = regexp(tmp,'eeglab','end');
-b2 = tmp(~cellfun(@isempty,b1));
-PATH_EEGLAB = b2{1}; %b2{1}(1:b1{1});
-fprintf('EEGLAB path: %s\n',PATH_EEGLAB);
+eeglab_fpath = get_eeglab_fpath();
 %- set default paths for boundary element head model
-PATH_EEGLAB_BEM  = [PATH_EEGLAB filesep 'plugins' filesep 'dipfit' filesep 'standard_BEM' filesep];
+PATH_EEGLAB_BEM  = [eeglab_fpath filesep 'plugins' filesep 'dipfit' filesep 'standard_BEM' filesep];
 MNI_MRI = [PATH_EEGLAB_BEM filesep 'standard_mri.mat'];
 MNI_VOL = [PATH_EEGLAB_BEM filesep 'standard_vol.mat'];
 % MNI_CHAN_1005 = [PATH_EEGLAB_BEM filesep 'elec' filesep 'standard_1005.elc'];
@@ -65,6 +55,7 @@ MNI_MRI = MNI_MRI.mri;
 %## INPUT
 %-
 PLOT_TYPE = 'all_nogroup';
+GROUP_MARKERS = {'o','^','diamond','pentagram','hexagram'};
 %-
 COLOR_PALETTE = {[1 1 1],...        % White
             [1 1 0]...             % Yellow
@@ -325,31 +316,69 @@ for cc = 1:length(clusters)
             DIPPLOT_STRUCT.dipolesize = 5.8376*(10)*3*1.5/10;
             grps = unique({dips.grp});
             if length(grps) > 1
-                color_chng = (1/length(grps))+0.2;
+                color_chng = (1/(length(grps)))+0.1;
             else
                 color_chng = 1;
             end
             color_hold = DIPPLOT_STRUCT.color;
+            cnt = 1;
             for ii = 1:length(dips)
+                hold on;
                 DIPPLOT_STRUCT.color = color_hold;
                 gg = find(strcmp(dips(ii).grp,grps));
                 kk = color_chng*(gg-1);
                 if kk ~= 0
                     DIPPLOT_STRUCT.color = {COLOR_PALETTE{cl_i}*(kk)};
-                end       
-                dipplot(dips,DIPPLOT_STRUCT);
+                end 
+                dipplot(dips(ii),DIPPLOT_STRUCT);
+                fig.Children(end).Children(cnt+3).Marker = GROUP_MARKERS{gg};
+                fig.Children(end).Children(cnt+3).LineStyle = '-';
+                fig.Children(end).Children(cnt+3).Color = [0,0,0];
+                if GROUP_MARKERS{gg} == 'o'
+                    fig.Children(end).Children(cnt+3).LineWidth = fig.Children(end).Children(cnt+3+1).MarkerSize*0.05;
+                else
+                    fig.Children(end).Children(cnt+3).LineWidth = fig.Children(end).Children(cnt+3+1).MarkerSize*0.05;
+                end
+                fig.Children(end).Children(cnt+3).MarkerFaceColor = fig.Children(end).Children(cnt+3+1).Color;
+                fig.Children(end).Children(cnt+3).MarkerSize = fig.Children(end).Children(cnt+3+1).MarkerSize*1.3;
+                % disp(length(fig.Children(end).Children))
+                % if kk ~= 0 && length(grps) > 1
+                %     % tmpax = findobj('Marker','.','XData',dips(ii).posxyz(1),'YData',dips(ii).posxyz(2),'ZData',dips(ii).posxyz(3));
+                %     %-
+                %     fig.Children(end).Children(cnt+3).Marker = GROUP_MARKERS{gg};
+                %     fig.Children(end).Children(cnt+3).LineStyle = '-';
+                %     fig.Children(end).Children(cnt+3).Color = [0,0,0];
+                %     fig.Children(end).Children(cnt+3).LineWidth = fig.Children(end).Children(cnt+3+1).MarkerSize*0.05;
+                %     fig.Children(end).Children(cnt+3).MarkerFaceColor = fig.Children(end).Children(cnt+3+1).Color;
+                %     fig.Children(end).Children(cnt+3).MarkerSize = fig.Children(end).Children(cnt+3+1).MarkerSize*1.2; % DIPPLOT_STRUCT.dipolesize;
+                %     % fig.Children(end).Children(cnt+3+1).LineStyle = '-';
+                %     % fig.Children(end).Children(cnt+3+1).LineWidth = fig.Children(end).Children(cnt+3+1).MarkerSize*0.1;
+                %     % fig.Children(end).Children(cnt+3+1).Color = [0,0,0];
+                %     % fig.Children(end).Children(cnt+3+1).Marker = GROUP_MARKERS{gg};
+                %     % fig.Children(end).Children(cnt+3+1).MarkerSize = 6; % DIPPLOT_STRUCT.dipolesize;
+                % else
+                %     fig.Children(end).Children(cnt+3).Marker = GROUP_MARKERS{gg};
+                %     fig.Children(end).Children(cnt+3).LineStyle = '-';
+                %     fig.Children(end).Children(cnt+3).Color = [0,0,0];
+                %     fig.Children(end).Children(cnt+3).LineWidth = fig.Children(end).Children(cnt+3+1).MarkerSize*0.05;
+                %     fig.Children(end).Children(cnt+3).MarkerFaceColor = fig.Children(end).Children(cnt+3+1).Color;
+                %     fig.Children(end).Children(cnt+3).MarkerSize = fig.Children(end).Children(cnt+3+1).MarkerSize*1.2; % DIPPLOT_STRUCT.dipolesize;
+                % 
+                % end
+                % cnt = cnt + 2;
             end
+            
         otherwise
             fprintf('Defaulting to plot all dipoles provided in clusters...\n')
             %- plot all dipoles
             DIPPLOT_STRUCT.dipolesize = 5.8376*(10)*3/10;
             dipplot(dips,DIPPLOT_STRUCT);
     end
-    fprintf('done. %0.2f\n',toc(tt));
     hold on;
 end
 hold off;
 drawnow;
+fprintf('done. %0.2f\n',toc(tt));
 end
 %% ===================================================================== %%
 function [b] = validate_struct(x,DEFAULT_STRUCT)
@@ -399,5 +428,23 @@ function [struct_out] = set_defaults_struct(x,DEFAULT_STRUCT)
         end
     end
 end
-
-
+%%
+function [eeglab_fpath] = get_eeglab_fpath()
+    %## GET EEGLAB PATH
+    if ~ispc
+        tmp = strsplit(path(),':');
+    else
+        tmp = strsplit(path(),';');
+    end
+    b1 = regexp(tmp,'eeglab','end');
+    b2 = tmp(~cellfun(@isempty,b1));
+    eeglab_fpath = b2{1};
+    tmp = strsplit(eeglab_fpath,filesep);
+    eeglab_ind = find(strcmp(tmp,'eeglab'));
+    if ~ispc
+        eeglab_fpath = [filesep strjoin(tmp(1:eeglab_ind),filesep)];
+    else
+        eeglab_fpath = strjoin(tmp(1:eeglab_ind),filesep);
+    end
+    fprintf('EEGLAB path: %s\n',eeglab_fpath);
+end

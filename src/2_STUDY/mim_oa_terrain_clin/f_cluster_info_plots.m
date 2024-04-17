@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_f_cluster_info_plots.sh
 
 %{
 %## RESTORE MATLAB
@@ -12,35 +12,35 @@ clc;
 close all;
 clearvars
 %}
-%% Initialization
+%% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-%% REQUIRED SETUP 4 ALL SCRIPTS ======================================== %%
-%- VARS
-USER_NAME = 'jsalminen'; %getenv('username');
-fprintf(1,'Current user: %s\n',USER_NAME);
-PWD_DIR = mfilename('fullpath');
-if contains(PWD_DIR,'LiveEditorEvaluationHelper')
-    PWD_DIR = matlab.desktop.editor.getActiveFilename;
-    PWD_DIR = fileparts(PWD_DIR);
-else
-    try
-        PWD_DIR = matlab.desktop.editor.getActiveFilename;
-        PWD_DIR = fileparts(PWD_DIR);
-    catch e
-        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
-        PWD_DIR = dir(['.' filesep]);
-        PWD_DIR = PWD_DIR(1).folder;
-    end
-end
-addpath(PWD_DIR);
-cd(PWD_DIR)
-fprintf(1,'Current folder: %s\n',PWD_DIR);
-%% SET WORKSPACE ======================================================= %%
 global ADD_CLEANING_SUBMODS %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
-%- set PWD_DIR, EEGLAB path, _functions path, and others...
+%## Determine Working Directories
+if ~ispc
+    STUDY_DIR = getenv('STUDY_DIR');
+    SCRIPT_DIR = getenv('SCRIPT_DIR');
+    SRC_DIR = getenv('SRC_DIR');
+else
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        SCRIPT_DIR = dir(['.' filesep]);
+        SCRIPT_DIR = SCRIPT_DIR(1).folder;
+    end
+    STUDY_DIR = SCRIPT_DIR;
+    SRC_DIR = fileparts(fileparts(STUDY_DIR));
+end
+%## Add Study & Script Paths
+addpath(STUDY_DIR);
+addpath(SRC_DIR);
+cd(SRC_DIR);
+fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
+%## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
 [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
@@ -102,31 +102,24 @@ ERSP_PARAMS = struct('subbaseline','off',...
     'freqfac',4,...
     'cycles',[3,0.8],...
     'freqrange',[1,200]);
-% (08/03/2023) JS, turning subbaseline to off to align with methods set
-% inside CL's PlotAndSaveERSP_CL_V3.m...
-%- datetime override
-% dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
-% cluster_study_dir = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
-cluster_study_dir = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 %## Soft Define
-study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
-DATA_DIR = [source_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep '_figs'];
-load_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
-%- create new study directory
-if ~exist(save_dir,'dir')
-    mkdir(save_dir);
-end
+STUDIES_DIR = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
+%- datset name
+DATA_SET = 'MIM_dataset';
+%- cluster directory for study
+study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+%- study info
+SUB_GROUP_FNAME = 'group_spec';
+%- study group and saving
+studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
-CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir) filesep 'cluster'];
-CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
-CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
 CLUSTER_K = 12;
-SUB_GROUP_FNAME = 'spec_of_oh';
+CLUSTER_STUDY_NAME = 'temp_study_rejics5';
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% ================================================================== %%
 %## LOAD STUDY
-cluster_dir = [CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)];
+cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 if ~isempty(SUB_GROUP_FNAME)
     spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
     plot_store_dir = [cluster_dir filesep 'plots_out' filesep SUB_GROUP_FNAME];
@@ -141,20 +134,14 @@ if ~exist(plot_store_dir,'dir')
     mkdir(plot_store_dir);
 end
 if ~ispc
-    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAME '_UNIX.study'],'filepath',spec_data_dir);
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',spec_data_dir);
 else
-    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAME '.study'],'filepath',spec_data_dir);
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',spec_data_dir);
 end
 cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
 [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
-condition_gait = unique({STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
-subject_chars = {STUDY.datasetinfo.subject};
-%-
-fPaths = {STUDY.datasetinfo.filepath};
-fNames = {STUDY.datasetinfo.filename};
 CLUSTER_PICKS = main_cl_inds(2:end);
-DESIGN_I = 1:length(STUDY.design);
 %% NEW DIPOLE IMPLEMENTATION
 HIRES_TEMPLATE = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\_resources\mni_icbm152_nlin_sym_09a\mni_icbm152_t1_tal_nlin_sym_09a.nii';
 if ~ispc
@@ -274,6 +261,10 @@ for i = 1:length(CLUSTER_PICKS)
     [fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_i,...
         'PLOT_TYPE','all_group',...
         'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
+    % GROUP_MARKERS = {'.','diamond','^','pentagram','hexagram'};
+    % for ii = 1:length(fig.Children(end).Children)
+    %     fig.Children(end).Children(ii+3).Marker = GROUP_MARKERS{gg};     
+    % end
     pause(2);
 %         camzoom(1.2^2);
     exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.tiff',cluster_i)],'Resolution',1000);

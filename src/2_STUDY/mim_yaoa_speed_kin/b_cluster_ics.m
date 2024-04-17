@@ -56,11 +56,7 @@ else
 end
 %- compute measures for spectrum and ersp
 FORCE_RECALC_SPEC = false;
-%- statistics & conditions
-speed_trials = {'0p25','0p5','0p75','1p0'};
-terrain_trials = {'flat','low','med','high'};
-COND_DESIGNS = {speed_trials,terrain_trials};
-%##
+%## statistics & conditions
 %* ERSP PARAMS
 ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
     'groupstats','off',... %['on'|'off']
@@ -105,13 +101,11 @@ ERSP_PARAMS = struct('subbaseline','off',...
     'freqrange',[1,200],...
     'plot_freqrange',[4,60],...
     'plot_clim',[-2,2]);
-% NOTE: see. statcondfieldtrip.m or std_stat.m
-COND_EVENT_CHAR = 'cond';
 %- clustering parameters
 MIN_ICS_SUBJ = [5]; %[2,3,4,5,6,7,8]; % iterative clustering
 % K_RANGE = [10,22];
 MAX_REPEATED_ITERATIONS = 1;
-CLUSTER_SWEEP_VALS = [12,14,19]; %[10,13,14,19,20]; %K_RANGE(1):K_RANGE(2);
+CLUSTER_SWEEP_VALS = [12,14]; %[10,13,14,19,20]; %K_RANGE(1):K_RANGE(2);
 % DO_K_DISTPRUNE = false;
 DO_K_ICPRUNE = true;
 % DO_K_SWEEPING = false;
@@ -125,35 +119,21 @@ CLUSTER_PARAMS = struct('algorithm','kmeans',...
     'filepath',[],...
     'outliers',inf(),...
     'maxiter',200);
-%- 
 %- custom params
-% colormap_ersp = othercolor('RdYlBu11');
-% colormap_ersp = colormap_ersp(end:-1:1,:);
-%NOTE: (NJacobsen); warp each subject's tw matrix to the entire group's median event
-%latencies [1=ON], or use individual subject's median event latencies [0=OFF]. TW must be ON
-%for this setting to do anything.
-clustering_weights.dipoles = 1;
-clustering_weights.scalp = 0;
-clustering_weights.ersp = 0;
-clustering_weights.spec = 0;
-clustering_method = 'dipole_1'; %['dipole_',num2str(clustering_weights.dipoles),...
-%     '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
-%     '_spec_',num2str(clustering_weights.spec)];
-STD_PRECLUST_COMMAND = {'dipoles','weight',clustering_weights.dipoles};
-%- iterative clustering parameters
-% n_iterations = 50;
-% outlier_sigma = 3;
+STD_PRECLUST_COMMAND = {'dipoles','weight',1};
 %- datetime override
 % dt = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-cluster_study_dir = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% cluster_study_dir = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+
 %## soft define
 DATA_DIR = [PATHS.src_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 % study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 study_fName_1 = 'epoch_study';
 % TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir) filesep 'cluster'];
-load_dir = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir)];
+save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+load_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name)];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
@@ -172,32 +152,7 @@ else
 end
 CLUSTER_PARAMS.filename = STUDY.filename;
 CLUSTER_PARAMS.filepath = STUDY.filepath;
-%% CALCULATE GRANDAVERAGE WARPTOs
-% for subj_i = 1:length(ALLEEG)
-%     %- assign percondition timewarping
-%     ALLEEG(subj_i).timewarp.warpto = nanmedian(cat(1,ALLEEG(subj_i).etc.timewarp_by_cond.warpto));
-% %     ALLEEG(subj_i).timewarp.warpto = nanmean(cat(1,ALLEEG(subj_i).etc.timewarp_by_cond.warpto));
-% end
-% allWarpTo = nan(length(ALLEEG),size(ALLEEG(1).timewarp.warpto,2));
-% for subj_i = 1:length(ALLEEG)
-%     allWarpTo(subj_i,:) = ALLEEG(subj_i).timewarp.warpto; %stack subject specific median event latencies
-% end
-% % grandAvgWarpTo = floor(nanmedian(allWarpTo)); % tends to be shorter? (e.g., [0,242,686,915,1357])
-% grandAvgWarpTo = floor(nanmean(allWarpTo)); % tends to be longer? (e.g., [0,262,706,982,1415])
-% %% (ERSP PLOT PREP) PREPARE STUDYFILE FOR EXTRACTION (BLACK-HAWK DOWN!)
-% TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. making this too big can cause overlap between gait cyles
-% % b_lims =[grandAvgWarpTo(1) grandAvgWarpTo(5)-1000*(1/ALLEEG(1).srate)];
-% b_lims =[grandAvgWarpTo(1) grandAvgWarpTo(5)];
-% % ERSP_CROP_TIMES=[grandAvgWarpTo(1)+abs(ALLEEG(1).etc.epoch.epoch_limits(1))*1000, grandAvgWarpTo(5)];
-% ERSP_CROP_TIMES=[grandAvgWarpTo(1), grandAvgWarpTo(5)];
-% fprintf('Using timewarp limits: [%0.4g,%0.4f]\n',b_lims(1),b_lims(2));
-% disp(grandAvgWarpTo);
 %% (SET PARAMS)
-% STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
-%         'groupstats',ERSP_STAT_PARAMS.groupstats,...
-%         'method',ERSP_STAT_PARAMS.method,...
-%         'singletrials',ERSP_STAT_PARAMS.singletrials,'mode',ERSP_STAT_PARAMS.mode,'fieldtripalpha',ERSP_STAT_PARAMS.fieldtripalpha,...
-%         'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
 STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_PARAMS.subbaseline,...
       'ersplim',ERSP_PARAMS.ersplim,'freqrange',ERSP_PARAMS.freqrange);
 STUDY = pop_specparams(STUDY,'subtractsubjectmean',SPEC_PARAMS.subtractsubjectmean,...
@@ -281,7 +236,6 @@ end
 % MNI_MRI = [PATH_EEGLAB_BEM filesep 'standard_mri.mat'];
 % MNI_VOL = [PATH_EEGLAB_BEM filesep 'standard_vol.mat'];
 %##
-
 HIRES_TEMPLATE = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\_resources\mni_icbm152_nlin_sym_09a\mni_icbm152_t1_tal_nlin_sym_09a.nii';
 if ~ispc
     HIRES_TEMPLATE = convertPath2UNIX(HIRES_TEMPLATE);
@@ -360,47 +314,47 @@ if DO_K_ICPRUNE
             cluster_update = cluster_comp_dipole(TMP_ALLEEG, all_solutions{j}.solutions{1});
             TMP_STUDY.cluster = cluster_update;
             %## (PLOT) Looking for dipoles outside of brain.
-            % vol = load(MNI_VOL);
-            % try
-            %     vol = vol.vol;
-            % catch
-            %     vol = vol.mesh;
-            % end
-            % rmv_dip = [];
-            % fig = figure('color','w');
-            % ft_plot_mesh(vol.bnd(3));
-            % hold on;
-            % for c = 2:length(TMP_STUDY.cluster)
-            %     for d = 1:size(TMP_STUDY.cluster(c).all_diplocs,1)
-            %         depth = ft_sourcedepth(TMP_STUDY.cluster(c).all_diplocs(d,:), vol);
-            %         if depth > 0
-            %             rmv_dip = [rmv_dip;[c,d]];
-            %             plot3(TMP_STUDY.cluster(c).all_diplocs(d,1),TMP_STUDY.cluster(c).all_diplocs(d,2),TMP_STUDY.cluster(c).all_diplocs(d,3),'*-');
-            %         end
-            %     end
-            % end
-            % hold off;
-            % drawnow;
-            % saveas(fig,[cluster_dir filesep sprintf('ics_out_of_brain.fig')]);
-            % % TMP_STUDY = STUDY;
-            % sets_ob = zeros(size(rmv_dip,1),1);
-            % comps_ob = zeros(size(rmv_dip,1),1);
-            % clusts = unique(rmv_dip(:,1));
-            % cnt = 1;
-            % for c_i = 1:length(clusts)
-            %     inds = clusts(c_i)==rmv_dip(:,1);
-            %     d_i = rmv_dip(inds,2);
-            %     sets_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).sets(d_i);
-            %     comps_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).comps(d_i);
-            %     TMP_STUDY.cluster(clusts(c_i)).sets(d_i) = [];
-            %     TMP_STUDY.cluster(clusts(c_i)).comps(d_i) = [];
-            %     cnt = cnt + length(d_i);
-            % end
-            % TMP_STUDY.cluster(end+1).sets = sets_ob';
-            % TMP_STUDY.cluster(end).comps = comps_ob';
-            % TMP_STUDY.cluster(end).name = 'Outlier cluster_outside-brain';
-            % TMP_STUDY.cluster(end).parent = TMP_STUDY.cluster(2).parent;
-            % TMP_STUDY.cluster(end).algorithm = 'ft_sourcedepth < 0';
+            vol = load(MNI_VOL);
+            try
+                vol = vol.vol;
+            catch
+                vol = vol.mesh;
+            end
+            rmv_dip = [];
+            fig = figure('color','w');
+            ft_plot_mesh(vol.bnd(3));
+            hold on;
+            for c = 2:length(TMP_STUDY.cluster)
+                for d = 1:size(TMP_STUDY.cluster(c).all_diplocs,1)
+                    depth = ft_sourcedepth(TMP_STUDY.cluster(c).all_diplocs(d,:), vol);
+                    if depth > 0
+                        rmv_dip = [rmv_dip;[c,d]];
+                        plot3(TMP_STUDY.cluster(c).all_diplocs(d,1),TMP_STUDY.cluster(c).all_diplocs(d,2),TMP_STUDY.cluster(c).all_diplocs(d,3),'*-');
+                    end
+                end
+            end
+            hold off;
+            drawnow;
+            saveas(fig,[cluster_dir filesep sprintf('ics_out_of_brain.fig')]);
+            % TMP_STUDY = STUDY;
+            sets_ob = zeros(size(rmv_dip,1),1);
+            comps_ob = zeros(size(rmv_dip,1),1);
+            clusts = unique(rmv_dip(:,1));
+            cnt = 1;
+            for c_i = 1:length(clusts)
+                inds = clusts(c_i)==rmv_dip(:,1);
+                d_i = rmv_dip(inds,2);
+                sets_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).sets(d_i);
+                comps_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).comps(d_i);
+                TMP_STUDY.cluster(clusts(c_i)).sets(d_i) = [];
+                TMP_STUDY.cluster(clusts(c_i)).comps(d_i) = [];
+                cnt = cnt + length(d_i);
+            end
+            TMP_STUDY.cluster(end+1).sets = sets_ob';
+            TMP_STUDY.cluster(end).comps = comps_ob';
+            TMP_STUDY.cluster(end).name = 'Outlier cluster_outside-brain';
+            TMP_STUDY.cluster(end).parent = TMP_STUDY.cluster(2).parent;
+            TMP_STUDY.cluster(end).algorithm = 'ft_sourcedepth < 0';
             %## REMOVE BASED ON RV
             % [cluster_update] = evaluate_cluster(STUDY,ALLEEG,clustering_solutions,'min_rv');
             [TMP_STUDY,~,~] = cluster_rv_reduce(TMP_STUDY,TMP_ALLEEG);

@@ -35,7 +35,7 @@ fprintf(1,'Current folder: %s\n',SRC_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
 %%
 %## hard define
 %- datset name

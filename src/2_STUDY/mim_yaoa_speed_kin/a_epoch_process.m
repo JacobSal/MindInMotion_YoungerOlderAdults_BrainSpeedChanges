@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
 
 %{
 %## RESTORE MATLAB
@@ -78,7 +78,7 @@ else
 end
 %- datetime override
 % dt = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-epoch_study_fpath = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 %- Subject Directory information
 OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 % OA_PREP_FPATH = '01132024_antsnorm_iccREEG0p65_iccREMG0p4_skull0p0042'
@@ -89,7 +89,7 @@ OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP
 study_fName_1 = 'all_comps_study';
 study_fName_2 = 'epoch_study';
 % TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',epoch_study_fpath)];
+save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name)];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);

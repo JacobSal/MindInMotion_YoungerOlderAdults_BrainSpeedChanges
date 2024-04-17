@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_c_fooof_spec_data.sh
 
 %{
 %## RESTORE MATLAB
@@ -12,35 +12,35 @@ clc;
 close all;
 clearvars
 %}
-%% Initialization
+%% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-%% REQUIRED SETUP 4 ALL SCRIPTS ======================================== %%
-%- VARS
-USER_NAME = 'jsalminen'; %getenv('username');
-fprintf(1,'Current user: %s\n',USER_NAME);
-PWD_DIR = mfilename('fullpath');
-if contains(PWD_DIR,'LiveEditorEvaluationHelper')
-    PWD_DIR = matlab.desktop.editor.getActiveFilename;
-    PWD_DIR = fileparts(PWD_DIR);
-else
-    try
-        PWD_DIR = matlab.desktop.editor.getActiveFilename;
-        PWD_DIR = fileparts(PWD_DIR);
-    catch e
-        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
-        PWD_DIR = dir(['.' filesep]);
-        PWD_DIR = PWD_DIR(1).folder;
-    end
-end
-addpath(PWD_DIR);
-cd(PWD_DIR)
-fprintf(1,'Current folder: %s\n',PWD_DIR);
-%% SET WORKSPACE ======================================================= %%
 global ADD_CLEANING_SUBMODS %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
-%- set PWD_DIR, EEGLAB path, _functions path, and others...
+%## Determine Working Directories
+if ~ispc
+    STUDY_DIR = getenv('STUDY_DIR');
+    SCRIPT_DIR = getenv('SCRIPT_DIR');
+    SRC_DIR = getenv('SRC_DIR');
+else
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        SCRIPT_DIR = dir(['.' filesep]);
+        SCRIPT_DIR = SCRIPT_DIR(1).folder;
+    end
+    STUDY_DIR = SCRIPT_DIR;
+    SRC_DIR = fileparts(fileparts(STUDY_DIR));
+end
+%## Add Study & Script Paths
+addpath(STUDY_DIR);
+addpath(SRC_DIR);
+cd(SRC_DIR);
+fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
+%## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
 [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
@@ -72,11 +72,12 @@ SPEC_PARAMS = struct('freqrange',[1,200],...
 DATA_SET = 'MIM_dataset';
 % cluster_study_dir = '12012023_OAYA104_icc0p65-0p2_changparams';
 % cluster_study_dir = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
-cluster_study_dir = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% cluster_study_dir = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % cluster_study_dir = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
+cluster_study_dir = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 ICLABEL_EYE_CUTOFF = 0.75;
 %- study group and saving
-DATA_DIR = [source_dir filesep '_data'];
+DATA_DIR = [PATHS.src_dir filesep '_data'];
 STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir)];
 load_dir_1 = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir)];
@@ -91,13 +92,13 @@ if ~exist(save_dir,'dir')
 end
 %##
 CLUSTER_CLIM_MATCH = [];
-SUB_GROUP_FNAME = ['spec_of_oh'];
+SUB_GROUP_FNAME = ['group_spec'];
 STUDY_DESI_PARAMS = {{'subjselect',{},...
             'variable2','cond','values2',{'flat','low','med','high'},...
-            'variable1','group','values1',{'H2000''s','H3000''s'}},...
+            'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}},...
             {'subjselect',{},...
             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
-            'variable1','group','values1',{'H2000''s','H3000''s'}}};
+            'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}}};
 %% ===================================================================== %%
 %## LOAD STUDY
 if ~ispc

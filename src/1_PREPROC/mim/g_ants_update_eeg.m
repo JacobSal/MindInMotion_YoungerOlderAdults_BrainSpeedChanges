@@ -4,7 +4,7 @@
 %   Summary: 
 
 %- run script
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_PREPROCE/mim/run_a_preprocess.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_PREPROC/mim/run_g_ants_update_eeg.sh
 
 %% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
@@ -37,7 +37,7 @@ fprintf(1,'Current folder: %s\n',SRC_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
 subj_names = [SUBJ_PICS{:}];
 %% ===================================================================== %%
 %## MRI TEMPLATE FOR SOURCE DEPTH
@@ -103,44 +103,51 @@ parfor (subj_i = 1:length(subj_names),floor(length(subj_names)/2))
         tmp = load([in_fpath filesep 'dipfit_struct']);
         dipfit_fem = tmp.SAVEVAR;
         %## Reformat Dipfit Structure
-        empty_dip_struct = struct('posxyz',[nan(),nan(),nan()],'momxyz',[nan(),nan(),nan()],'rv',nan(),'diffmap',nan(),'sourcepot',nan(),'datapot',nan());
+        empty_dip_struct = struct('posxyz',[nan(),nan(),nan()],...
+            'momxyz',[nan(),nan(),nan()],...
+            'rv',nan(),...
+            'diffmap',nan(),...
+            'sourcepot',nan(),...
+            'datapot',nan(),...
+            'mnipos',[],...
+            'mni_voxinds',[],...
+            'pos_old',[]);
         EEG.dipfit_fem = [];
         EEG.dipfit_fem.model = empty_dip_struct;
         dipfit_fem_pos = zeros(length([dipfit_fem.component]),3);
         for i=1:length([dipfit_fem.component])
             %- 
             if ~isempty(dipfit_fem(i).dip)
-                %- get dipole depth and reject if it isn't in brain volume
-                depth = ft_sourcedepth(dipfit_fem(i).dip.pos, vol);
-                if depth <= 0
-                    %- other
-                    EEG.dipfit_fem.model(i).posxyz = dipfit_fem(i).dip.pos;
-                    EEG.dipfit_fem.model(i).momxyz = reshape(dipfit_fem(i).dip.mom, 3, length(dipfit_fem(i).dip.mom)/3)';
-                    if ~isempty(dipfit_fem(i).dip.rv)
-                        EEG.dipfit_fem.model(i).rv     = dipfit_fem(i).dip.rv;
-                    else
-                        EEG.dipfit_fem.model(i).rv     = nan();
-                    end
-                    %- 
-                    EEG.dipfit_fem.model(i).diffmap = dipfit_fem(i).Vmodel - dipfit_fem(i).Vdata;
-                    EEG.dipfit_fem.model(i).sourcepot = dipfit_fem(i).Vmodel;
-                    EEG.dipfit_fem.model(i).datapot   = dipfit_fem(i).Vdata;
-                    dipfit_fem_pos(i,:) = dipfit_fem(i).dip.pos;
+                %- other
+                EEG.dipfit_fem.model(i).posxyz = dipfit_fem(i).dip.pos;
+                EEG.dipfit_fem.model(i).momxyz = reshape(dipfit_fem(i).dip.mom, 3, length(dipfit_fem(i).dip.mom)/3)';
+                if ~isempty(dipfit_fem(i).dip.rv)
+                    EEG.dipfit_fem.model(i).rv     = dipfit_fem(i).dip.rv;
                 else
-                    fprintf('%s) dip [%0.2g,%0.2g,%0.2g] outside brain volume...\n',subj_name,dipfit_fem(i).dip.pos)
-                    EEG.dipfit_fem.model(i) = empty_dip_struct;
+                    EEG.dipfit_fem.model(i).rv     = nan();
                 end
+                %- 
+                EEG.dipfit_fem.model(i).diffmap = dipfit_fem(i).Vmodel - dipfit_fem(i).Vdata;
+                EEG.dipfit_fem.model(i).sourcepot = dipfit_fem(i).Vmodel;
+                EEG.dipfit_fem.model(i).datapot   = dipfit_fem(i).Vdata;
+                dipfit_fem_pos(i,:) = dipfit_fem(i).dip.pos;
             else
                 EEG.dipfit_fem.model(i) = empty_dip_struct;
             end
         end
         %##
         for i=1:size(norm_chan,1)
-            EEG.dipfit_fem.model(norm_chan.chan(i)).mnipos = norm_pos(i,:);
-            EEG.dipfit_fem.model(norm_chan.chan(i)).mni_voxinds = voxinds(i,:);
-            EEG.dipfit_fem.model(norm_chan.chan(i)).pos_old = [norm_chan{i,2:end}];
-            EEG.dipfit_fem.model(norm_chan.chan(i)).posxyz = norm_pos(i,:);
-%             disp(EEG.dipfit_fem.model(norm_chan.chan(i)));
+            %- get dipole depth and reject if it isn't in brain volume
+            depth = ft_sourcedepth(norm_pos(i,:), vol);
+            if depth <= 0
+                EEG.dipfit_fem.model(norm_chan.chan(i)).mnipos = norm_pos(i,:);
+                EEG.dipfit_fem.model(norm_chan.chan(i)).mni_voxinds = voxinds(i,:);
+                EEG.dipfit_fem.model(norm_chan.chan(i)).pos_old = [norm_chan{i,2:end}];
+                EEG.dipfit_fem.model(norm_chan.chan(i)).posxyz = norm_pos(i,:);
+            else
+                fprintf('%s) dip [%0.2g,%0.2g,%0.2g] outside brain volume: %0.2f...\n',subj_name,dipfit_fem(norm_chan.chan(i)).dip.pos,depth)
+                EEG.dipfit_fem.model(norm_chan.chan(i)) = empty_dip_struct;
+            end
         end
         %## SAVE
         dipfit_fem_norm = EEG.dipfit_fem;

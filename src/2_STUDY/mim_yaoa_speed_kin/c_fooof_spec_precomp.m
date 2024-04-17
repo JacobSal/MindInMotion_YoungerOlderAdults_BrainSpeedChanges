@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_c_fooof_spec_data.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_c_fooof_spec_precomp.sh
 
 %{
 %## RESTORE MATLAB
@@ -74,15 +74,13 @@ DATA_SET = 'MIM_dataset';
 % cluster_study_dir = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 % cluster_study_dir = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % cluster_study_dir = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
-cluster_study_dir = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-ICLABEL_EYE_CUTOFF = 0.75;
+% study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 %- study group and saving
-DATA_DIR = [PATHS.src_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir)];
-load_dir_1 = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir)];
+STUDIES_DIR = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
+save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name)];
 %- load cluster
-CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir) filesep 'cluster'];
+CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
 CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
 CLUSTER_K = 12;
