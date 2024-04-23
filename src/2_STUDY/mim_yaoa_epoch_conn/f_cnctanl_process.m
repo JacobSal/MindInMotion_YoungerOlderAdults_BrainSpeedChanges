@@ -52,18 +52,35 @@ set_workspace
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- connecitivty modeling
+SRATE = 500;
 CONN_FREQS = (4:50);
-CONN_METHODS = {'dDTF08','S'}; %{'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
+CONN_METHODS = {'dDTF08'}; %{'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 WINDOW_LENGTH = 0.4;
-WINDOW_STEP_SIZE = 0.02;
 VERBOSITY_LEVEL = 1;
-MORDER = 32;
+MORDER = 50;
+WINDOW_STEP_SIZE = (1/SRATE)*MORDER;
 %-
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 RESAMLE_FREQ = 225;
 DO_BOOTSTRAP = false;
 DO_PHASE_RND = false;
 DO_STANDARD_TRIALS = false;
+MIN_CONN_TRIALS = 100;
+%## EPOCH PARAMS
+DEF_EPOCH_PARAMS = struct('epoch_method','timewarp',...
+    'percent_overlap',0,...
+    'epoch_event_char','RHS',...
+    'epoch_time_lims',[-0.5,4.5],...
+    'baseline_time_lims',[-0.5,4.5-2],...
+    'tw_stdev',3,...
+    'tw_events',{{'RHS','LTO','LHS','RTO','RHS'}},...
+    'path_ext','gait_epoched',...
+    'cond_field','cond',...
+    'appx_cond_len',3*60,...
+    'slide_cond_chars',{{}},...
+    'gait_trial_chars',{{'0p25','0p5','0p75','1p0','flat','low','med','high'}},...
+    'rest_trial_char',{{}},...
+    'do_recalc_epoch',true);
 %## PREPARE DATA PARAMS
 DEF_PREPDATA = struct('VerbosityLevel',VERBOSITY_LEVEL,...
              'SignalType',{{'Components'}},...
@@ -77,6 +94,26 @@ DEF_PREPDATA = struct('VerbosityLevel',VERBOSITY_LEVEL,...
              'newtrials',[],...
              'equalizetrials',false);
 %## ESTIAMTE MODEL ORDER PARAMS
+% DEF_ESTSELMOD = struct('modelingApproach',{{'Segmentation VAR',...
+%                         'algorithm',{{'Vieira-Morf'}},...
+%                         'winStartIdx',[],...
+%                         'winlen',WINDOW_LENGTH,...
+%                         'winstep',WINDOW_STEP_SIZE,...
+%                         'taperfcn','rectwin',...
+%                         'epochTimeLims',[],...
+%                         'prctWinToSample',100,...
+%                         'normalize',[],...
+%                         'detrend',{'method','linear'},...
+%                         'verb',VERBOSITY_LEVEL}},...
+%     'morderRange',[40, 70],...
+%     'downdate',true,...
+%     'runPll',[],...
+%     'icselector',{{'aic','hq'}},...
+%     'winStartIdx',[],...
+%     'epochTimeLims',[],...
+%     'prctWinToSample',80,...
+%     'plot',[],...
+%     'verb',VERBOSITY_LEVEL);
 DEF_ESTSELMOD = struct('modelingApproach',{{'Segmentation VAR',...
                         'algorithm',{{'Vieira-Morf'}},...
                         'winStartIdx',[],...
@@ -88,9 +125,10 @@ DEF_ESTSELMOD = struct('modelingApproach',{{'Segmentation VAR',...
                         'normalize',[],...
                         'detrend',{'method','linear'},...
                         'verb',VERBOSITY_LEVEL}},...
-    'morderRange',[1, 32],...
+    'morderRange',[40,70],...
     'downdate',true,...
-    'runPll',[],...
+    'RunInParallel',{{'profile','local',...
+        'numWorkers',SLURM_POOL_SIZE}},...
     'icselector',{{'aic','hq'}},...
     'winStartIdx',[],...
     'epochTimeLims',[],...
@@ -98,27 +136,28 @@ DEF_ESTSELMOD = struct('modelingApproach',{{'Segmentation VAR',...
     'plot',[],...
     'verb',VERBOSITY_LEVEL);
 %##
-DEF_PLOTORDERCRIT = struct('conditions', TRIAL_TYPES,    ...
-                            'icselector', {DEF_ESTSELMOD.icselector},  ...
+DEF_PLOTORDERCRIT = struct('conditions',{DEF_EPOCH_PARAMS.gait_trial_chars},    ...
+                            'icselector',{DEF_ESTSELMOD.icselector},  ...
                             'minimizer',{{'min'}}, ...
                             'prclim', 90);
 %##
 DEF_ESTDISPMVAR_CHK = struct('morder',MORDER,...
-        'winlen',0.4,'winstep',0.02,'verb',1);
+        'winlen',WINDOW_LENGTH,'winstep',WINDOW_STEP_SIZE,'verb',1);
 %##
 DEF_ESTFITMVAR = struct('connmethods',CONN_METHODS, ...
             'absvalsq',true,           ...
             'spectraldecibels',true,   ...
             'freqs',CONN_FREQS,        ...
-            'verb',1);
+            'verb',0);
 %## PATHING
 % study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 %## soft define
 studies_dir = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
-conn_save_dir = [studies_dir filesep sprintf('%s',study_dir_name) filesep 'conn_valid'];
+conn_fig_dir = [studies_dir filesep sprintf('%s',study_dir_name) filesep 'conn_valid_epoch'];
 %- load study file
-STUDY_FNAME = 'epoch_study';
+% STUDY_FNAME = 'epoch_study';
+STUDY_FNAME = 'all_comps_study';
 STUDY_FPATH = [studies_dir filesep sprintf('%s',study_dir_name)];
 STUDY_FNAME_SAVE = 'epoch_conn_study';
 %- load cluster
@@ -127,8 +166,8 @@ CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
 CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
 CLUSTER_K = 12;
 %- create new study directory
-if ~exist(conn_save_dir,'dir')
-    mkdir(conn_save_dir);
+if ~exist(conn_fig_dir,'dir')
+    mkdir(conn_fig_dir);
 end
 %% LOAD EPOCH STUDY
 %- Create STUDY & ALLEEG structs
@@ -146,33 +185,33 @@ else
     MAIN_STUDY.cluster = cl_struct;
     [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
 end
-%% MIM STUDY STATS
-%## FIND MINIMUM TRIALS ACROSS COHORT
-if DO_STANDARD_TRIALS
-    subj_chars = {MAIN_STUDY.datasetinfo.subject}';
-    trial_counts = cell(length(subj_chars),length(TRIAL_TYPES));
-    channel_rejs = cell(length(subj_chars),1);
-    sample_rej_perc = cell(length(subj_chars),1);
-    for subj_i=1:length(subj_chars)
-        EEG = MAIN_ALLEEG(subj_i);
-        for cond_i = 1:length(TRIAL_TYPES)
-            tmp = sum(strcmp({MAIN_STUDY.datasetinfo(subj_i).trialinfo.cond},TRIAL_TYPES{cond_i}));
-            trial_counts{subj_i,cond_i} = tmp;
-        end
-        channel_rejs{subj_i,1} = sum(~EEG.etc.channel_mask(strcmp({EEG.urchanlocs.type},'EEG')));
-        sample_rej_perc{subj_i,1} = (length(EEG.etc.clean_sample_mask)-sum(EEG.etc.clean_sample_mask))/length(EEG.etc.clean_sample_mask);
-    end
-    tbl_out = table(subj_chars,trial_counts(:,1),trial_counts(:,2),trial_counts(:,3),...
-        trial_counts(:,4),trial_counts(:,5),trial_counts(:,6),trial_counts(:,7),trial_counts(:,8),channel_rejs,sample_rej_perc,'VariableNames',{'subj_chars','0p25','0p5','0p75','1p0','flat','low','med','high','channel_rejs','sample_rej_perc'});
-    vals = tbl_out{:,2:9};
-    trial_mins = zeros(size(vals,2),1);
-    trial_maxs = zeros(size(vals,2),1);
-    for i = 1:size(vals,2)
-        trial_mins(i) = min([vals{:,i}]);
-        trial_maxs(i) = max([vals{:,i}]);
-    end
-    MIN_CONN_TRIALS = min(trial_mins);
-end
+% %% MIM STUDY STATS
+% %## FIND MINIMUM TRIALS ACROSS COHORT
+% if DO_STANDARD_TRIALS
+%     subj_chars = {MAIN_STUDY.datasetinfo.subject}';
+%     trial_counts = cell(length(subj_chars),length(TRIAL_TYPES));
+%     channel_rejs = cell(length(subj_chars),1);
+%     sample_rej_perc = cell(length(subj_chars),1);
+%     for subj_i=1:length(subj_chars)
+%         EEG = MAIN_ALLEEG(subj_i);
+%         for cond_i = 1:length(TRIAL_TYPES)
+%             tmp = sum(strcmp({MAIN_STUDY.datasetinfo(subj_i).trialinfo.cond},TRIAL_TYPES{cond_i}));
+%             trial_counts{subj_i,cond_i} = tmp;
+%         end
+%         channel_rejs{subj_i,1} = sum(~EEG.etc.channel_mask(strcmp({EEG.urchanlocs.type},'EEG')));
+%         sample_rej_perc{subj_i,1} = (length(EEG.etc.clean_sample_mask)-sum(EEG.etc.clean_sample_mask))/length(EEG.etc.clean_sample_mask);
+%     end
+%     tbl_out = table(subj_chars,trial_counts(:,1),trial_counts(:,2),trial_counts(:,3),...
+%         trial_counts(:,4),trial_counts(:,5),trial_counts(:,6),trial_counts(:,7),trial_counts(:,8),channel_rejs,sample_rej_perc,'VariableNames',{'subj_chars','0p25','0p5','0p75','1p0','flat','low','med','high','channel_rejs','sample_rej_perc'});
+%     vals = tbl_out{:,2:9};
+%     trial_mins = zeros(size(vals,2),1);
+%     trial_maxs = zeros(size(vals,2),1);
+%     for i = 1:size(vals,2)
+%         trial_mins(i) = min([vals{:,i}]);
+%         trial_maxs(i) = max([vals{:,i}]);
+%     end
+%     MIN_CONN_TRIALS = min(trial_mins);
+% end
 %% INITIALIZE PARFOR LOOP VARS
 fPaths = {MAIN_ALLEEG.filepath};
 fNames = {MAIN_ALLEEG.filename};
@@ -187,57 +226,97 @@ fprintf('Computing Connectivity\n');
 pop_editoptions('option_computeica', 1);
 %## PARFOR LOOP
 EEG = [];
-parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
-% for subj_i = LOOP_VAR
+% parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
+for subj_i = LOOP_VAR
     %- Parse out components
     components = comps_out(:,subj_i);
     components = sort(components(components ~= 0));
     %## LOAD EEG DATA
-    EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
-    eeg_savefpath = [fPaths{subj_i} filesep 'conn'];
+    eeg_savefpath = [fPaths{subj_i} filesep 'conn_epoch'];
     if ~exist(eeg_savefpath,'dir')
         mkdir(eeg_savefpath)
     end
-    %- Recalculate ICA Matrices && Book Keeping
-    EEG = eeg_checkset(EEG,'loaddata');
-    if isempty(EEG.icaact)
-        fprintf('%s) Recalculating ICA activations\n',EEG.subject);
-        EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
-        EEG.icaact = reshape(EEG.icaact,size(EEG.icaact,1),EEG.pnts,EEG.trials);
-    end
-    EEG = pop_resample(EEG,RESAMLE_FREQ);
-    try
-        %## RUN MAIN_FUNC
-        [TMP,t_out] = cnctanl_sift_pipe(EEG,components,conn_save_dir,...
-            'DO_PHASE_RND',DO_PHASE_RND,...
-            'DO_BOOTSTRAP',DO_BOOTSTRAP,...
-            'PREPDATA',DEF_PREPDATA,...
-            'ESTSELMOD',DEF_ESTSELMOD,...
-            'ESTDISPMVAR_CHK',DEF_ESTDISPMVAR_CHK,...
-            'ESTFITMVAR',DEF_ESTFITMVAR,...
-            'PLOTORDERCRIT',DEF_PLOTORDERCRIT);
-%         for i=1:length(TMP)
-%             par_save(TMP(i).CAT)
-%         end
-        BIG_CAT = cat(1,TMP(:).CAT);
-        EEG.etc.COND_CAT = BIG_CAT;
-        EEG.etc.conn_table = t_out;
-        EEG.etc.conn_meta.comps_out = comps_out;
-        fName = strsplit(EEG.filename,'.'); fName = [fName{1} '.mat'];
-        par_save(t_out,eeg_savefpath,fName,'_conntable');
-        [EEG] = pop_saveset(EEG,...
-            'filepath',eeg_savefpath,'filename',EEG.filename,...
-            'savemode','twofiles');
-        tmp{subj_i} = EEG;
-    catch e
-        rmv_subj(subj_i) = 1;
-        EEG.CAT = struct([]);
-        tmp{subj_i} = EEG;
-        fprintf(['error. identifier: %s\n',...
-                 'error. %s\n',...
-                 'error. on subject %s\n',...
-                 'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
-        disp(e);
+    if ~exist([eeg_savefpath filesep fNames{subj_i}],'file')
+        EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
+        %- Recalculate ICA Matrices && Book Keeping
+        EEG = eeg_checkset(EEG,'loaddata');
+        if isempty(EEG.icaact)
+            fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+            EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+            EEG.icaact = reshape(EEG.icaact,size(EEG.icaact,1),EEG.pnts,EEG.trials);
+        end
+        %## RESAMPLE
+        EEG = pop_resample(EEG,RESAMLE_FREQ);
+        %## REMOVE USELESS EVENT FIELDS (Improve Load Time)
+        if isfield(EEG.event,'trialName')
+            EEG.event = rmfield(EEG.event,'trialName');
+        end
+        if isfield(EEG.event,'channel')
+            EEG.event = rmfield(EEG.event,'channel');
+        end
+        if isfield(EEG.event,'code')
+            EEG.event = rmfield(EEG.event,'code');
+        end
+        if isfield(EEG.event,'bvtime')
+            EEG.event = rmfield(EEG.event,'bvtime');
+        end
+        if isfield(EEG.event,'bvmknum')
+            EEG.event = rmfield(EEG.event,'bvmknum');
+        end
+        if isfield(EEG.event,'datetime')
+            EEG.event = rmfield(EEG.event,'datetime');
+        end
+        %## EPOCH
+        [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,'EPOCH_PARAMS',DEF_EPOCH_PARAMS);
+        for i = 1:length(ALLEEG)
+            if DO_STANDARD_TRIALS
+                %##
+                inds = randi(length(ALLEEG(i).epoch),MIN_CONN_TRIALS,1);
+                %##
+                tmp_all = ALLEEG(i);
+                tmp_all = pop_selectevent(tmp_all,'event',inds);
+                while length(tmp_all.epoch)~=MIN_CONN_TRIALS
+                    tmp_all = ALLEEG(i);
+                    inds = randi(length(tmp_all.epoch),MIN_CONN_TRIALS,1)
+                    tmp_all = pop_selectevent(tmp_all,'event',inds);
+                end
+                ALLEEG(i) = tmp_all;
+            end
+        end
+        EEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);    
+        try
+            %## RUN MAIN_FUNC
+            [TMP,t_out] = cnctanl_sift_pipe(EEG,components,conn_fig_dir,...
+                'DO_PHASE_RND',DO_PHASE_RND,...
+                'DO_BOOTSTRAP',DO_BOOTSTRAP,...
+                'PREPDATA',DEF_PREPDATA,...
+                'ESTSELMOD',DEF_ESTSELMOD,...
+                'ESTDISPMVAR_CHK',DEF_ESTDISPMVAR_CHK,...
+                'ESTFITMVAR',DEF_ESTFITMVAR,...
+                'PLOTORDERCRIT',DEF_PLOTORDERCRIT);
+    %         for i=1:length(TMP)
+    %             par_save(TMP(i).CAT)
+    %         end
+            BIG_CAT = cat(1,TMP(:).CAT);
+            EEG.etc.COND_CAT = BIG_CAT;
+            EEG.etc.conn_table = t_out;
+            EEG.etc.conn_meta.comps_out = comps_out;
+            fName = strsplit(EEG.filename,'.'); fName = [fName{1} '.mat'];
+            par_save(t_out,eeg_savefpath,fName,'_conntable');
+            [EEG] = pop_saveset(EEG,...
+                'filepath',eeg_savefpath,'filename',EEG.filename,...
+                'savemode','twofiles');
+            tmp{subj_i} = EEG;
+        catch e
+            rmv_subj(subj_i) = 1;
+            EEG.CAT = struct([]);
+            tmp{subj_i} = EEG;
+            fprintf(['error. identifier: %s\n',...
+                     'error. %s\n',...
+                     'error. on subject %s\n',...
+                     'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
+            disp(e);
+        end
     end
 end
 pop_editoptions('option_computeica',0);

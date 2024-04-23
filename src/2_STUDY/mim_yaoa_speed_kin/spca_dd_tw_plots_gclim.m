@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_spca_dd_tw_plots_gclim.sh
 
 %{
 %## RESTORE MATLAB
@@ -22,49 +22,45 @@ ADD_CLEANING_SUBMODS = false;
 if ~ispc
     STUDY_DIR = getenv('STUDY_DIR');
     SCRIPT_DIR = getenv('SCRIPT_DIR');
+    SRC_DIR = getenv('SRC_DIR');
 else
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
-        STUDY_DIR = SCRIPT_DIR;
     catch e
         fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
-        STUDY_DIR = SCRIPT_DIR;
     end
+    STUDY_DIR = SCRIPT_DIR;
+    SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
 %## Add Study & Script Paths
 addpath(STUDY_DIR);
-cd(SCRIPT_DIR);
+addpath(SRC_DIR);
+cd(SRC_DIR);
 fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa_spca');
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
 DATA_SET = 'MIM_dataset';
-% cluster_study_dir = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
-% cluster_study_dir = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
-cluster_study_dir = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
-% cluster_study_dir = '12012023_OAYA104_icc0p65-0p4_changparams';
-study_fName_1 = 'epoch_study';
-spca_study_dir = '01122024_spca_analysis';
-% study_fName_2 = 'epoch_study';
+% study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+spca_dir_name = '03232024_spca_analysis_OA';
 %- study group and saving
-DATA_DIR = [source_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir) filesep 'spca'];
-load_dir_1 = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir)];
-load_dir_2 = [STUDIES_DIR filesep sprintf('%s',spca_study_dir)];
-% OUTSIDE_DATA_DIR = [STUDIES_DIR filesep ica_orig_dir]; % JACOB,SAL(02/23/2023)
+studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
-CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir) filesep 'cluster'];
-CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
-CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
 CLUSTER_K = 12;
+CLUSTER_STUDY_NAME = 'temp_study_rejics5';
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
+save_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K) filesep 'spca'];
+%- spca dir
+spca_dir_fpath = [studies_fpath filesep spca_dir_name];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
@@ -73,13 +69,13 @@ end
 %% ===================================================================== %%
 %## LOAD STUDY
 if ~ispc
-    tmp = load('-mat',[CLUSTER_STUDY_DIR filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_FNAME)]);
+    tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
     STUDY = tmp.STUDY;
 else
-    tmp = load('-mat',[CLUSTER_STUDY_DIR filesep sprintf('%s.study',CLUSTER_STUDY_FNAME)]);
+    tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s.study',CLUSTER_STUDY_NAME)]);
     STUDY = tmp.STUDY;
 end
-cl_struct = par_load([CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
 % [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(TMP_STUDY);
 % fPaths = {TMP_STUDY.datasetinfo.filepath};
@@ -96,9 +92,9 @@ for subj_i = 1:length(STUDY.datasetinfo)
 end
 [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
 %% ===================================================================== %%
-%## ERSP PARAMS
-%-
-ERSP_STAT_PARAMS_COND = struct('condstats','on',... % ['on'|'off]
+
+%* ERSP PARAMS
+ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
     'groupstats','off',... %['on'|'off']
     'method','perm',... % ['param'|'perm'|'bootstrap']
     'singletrials','off',... % ['on'|'off'] load single trials spectral data (if available). Default is 'off'.
@@ -107,15 +103,6 @@ ERSP_STAT_PARAMS_COND = struct('condstats','on',... % ['on'|'off]
     'fieldtripmethod','montecarlo',... %[('montecarlo'/'permutation')|'parametric']
     'fieldtripmcorrect','cluster',...  % ['cluster'|'fdr']
     'fieldtripnaccu',2000);
-%-
-ERSP_STAT_PARAMS_GROUP = ERSP_STAT_PARAMS_COND;
-ERSP_STAT_PARAMS_GROUP.groupstats = 'on';
-ERSP_STAT_PARAMS_GROUP.condstats = 'off';
-%- 
-ERSP_STAT_PARAMS_GC = ERSP_STAT_PARAMS_COND;
-ERSP_STAT_PARAMS_GC.groupstats = 'on';
-ERSP_STAT_PARAMS_GC.condstats = 'on';
-%-
 ERSP_PARAMS = struct('subbaseline','off',...
     'timerange',[],...
     'ersplim',[-2,2],...
@@ -129,26 +116,28 @@ STUDY_DESI_PARAMS = {{'subjselect',{},...
             'variable1','cond','values1',{'0p25','0p5','0p75','1p0'},...
             'variable2','group','values2',{}}};
 %## ersp plot per cluster per condition
-args = eeglab_struct2args(ERSP_STAT_PARAMS_COND);
-STUDY = pop_statparams(STUDY,args{:});
-args = eeglab_struct2args(ERSP_PARAMS);
-STUDY = pop_erspparams(STUDY,args{:});
+STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
+        'groupstats',ERSP_STAT_PARAMS.groupstats,...
+        'method',ERSP_STAT_PARAMS.method,...
+        'singletrials',ERSP_STAT_PARAMS.singletrials,'mode',ERSP_STAT_PARAMS.mode,...
+        'fieldtripalpha',ERSP_STAT_PARAMS.fieldtripalpha,...
+        'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
+        'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
+STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_PARAMS.subbaseline,...
+      'ersplim',ERSP_PARAMS.ersplim,'freqrange',ERSP_PARAMS.freqrange);
 STUDY.cache = [];
 for des_i = 1:length(STUDY_DESI_PARAMS)
     [STUDY] = std_makedesign(STUDY,[],des_i,STUDY_DESI_PARAMS{des_i}{:});
 end
 %%
 %##
-ATLAS_PATH = [PATH_ROOT filesep 'par_EEGProcessing' filesep 'submodules',...
-    filesep 'fieldtrip' filesep 'template' filesep 'atlas'];
+ATLAS_PATH = [PATHS.submods_dir filesep 'fieldtrip' filesep 'template' filesep 'atlas'];
 % see. https://www.fieldtriptoolbox.org/template/atlas/
 ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI atalst
     [ATLAS_PATH filesep 'afni' filesep 'TTatlas+tlrc.HEAD'],... % tailarch atlas
     [ATLAS_PATH filesep 'spm_anatomy' filesep 'AllAreas_v18_MPM.mat']}; % also a discrete version of this
 atlas_i = 1;
 %##
-groups_ind = [2,3];
-groups = {'HOA','FOA'};
 condition_gait = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 % condition_pairs = {{'flat','low','med','high'},...
 %     {'0p25','0p5','0p75','1p0'}};
@@ -167,8 +156,15 @@ condition_gait = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %     'timewarpms',[0,259,703,977,1408],'freqs',[3,250],...
 %     'plotersp','off','plotitc','off','plotphase','off','baseline',NaN};
 %- option 4
-icatimef_f = [STUDY.datasetinfo(1).filepath filesep sprintf('%s.icatimef',STUDY.datasetinfo(1).subject)];
-[~, timef_params, hardcode_times, hardcode_freqs, ~ ] = std_readfile( icatimef_f,'components',1);
+% icatimef_f = [STUDY.datasetinfo(1).filepath filesep sprintf('%s.icatimef',STUDY.datasetinfo(1).subject)];
+% [~, timef_params, hardcode_times, hardcode_freqs, ~ ] = std_readfile( icatimef_f,'components',1);
+%- option 5 (update?)
+tmpf = par_load([spca_dir_fpath filesep sprintf('%s',STUDY.datasetinfo(1).subject) filesep 'GAIT_EPOCHED' filesep [condition_gait{:}]],'gait_ersp_spca.mat');
+timef_params = tmpf.icatimefopts;
+timef_params.timewarpms = tmpf.warptimes;
+tmpf = par_load([spca_dir_fpath filesep sprintf('%s',STUDY.datasetinfo(1).subject) filesep 'GAIT_EPOCHED' filesep [condition_gait{:}]],'condmed_spca_ersp.mat');
+hardcode_times = tmpf.times;
+hardcode_freqs = tmpf.freqs;
 %##
 % allfreqs = 1:size(spca_table.tf_erspcorr_c{1},2); %4:100; %1:size(allersp_com{1},2);
 % alltimes = 1:size(spca_table.tf_erspcorr_c{1},1);
@@ -214,7 +210,6 @@ PLOT_STRUCT = struct('figure_position_inch',[],...
     'subplot_height',[],...
     'horiz_shift_amnt',[],...
     'vert_shift_amnt',[],...
-    'group_titles',{{}},...
     'stats_title','F Stats (p<0.05)',...
     'figure_title','');
 SAVE_STATS = false;

@@ -102,10 +102,10 @@ ERSP_PARAMS = struct('subbaseline','off',...
     'plot_freqrange',[4,60],...
     'plot_clim',[-2,2]);
 %- clustering parameters
-MIN_ICS_SUBJ = [5]; %[2,3,4,5,6,7,8]; % iterative clustering
+MIN_ICS_SUBJ = [3,4,5]; %[2,3,4,5,6,7,8]; % iterative clustering
 % K_RANGE = [10,22];
 MAX_REPEATED_ITERATIONS = 1;
-CLUSTER_SWEEP_VALS = [12,14]; %[10,13,14,19,20]; %K_RANGE(1):K_RANGE(2);
+CLUSTER_SWEEP_VALS = [12]; %[10,13,14,19,20]; %K_RANGE(1):K_RANGE(2);
 % DO_K_DISTPRUNE = false;
 DO_K_ICPRUNE = true;
 % DO_K_SWEEPING = false;
@@ -288,12 +288,12 @@ if DO_K_ICPRUNE
         %##
         [TMP_STUDY,TMP_ALLEEG] = std_preclust(TMP_STUDY,TMP_ALLEEG,1,STD_PRECLUST_COMMAND);
         %- remove components outside the brain
-        [TMP_STUDY, TMP_ALLEEG] = std_editset(TMP_STUDY,TMP_ALLEEG,...
-                                        'commands',{'inbrain','on'});                  
+        % [TMP_STUDY, TMP_ALLEEG] = std_editset(TMP_STUDY,TMP_ALLEEG,...
+        %                                 'commands',{'inbrain','on'});                  
         %- store essential info in STUDY struct for later reading
-        freqrange = [4 60];
-        TMP_STUDY.etc.clustering.preclustparams.clustering_weights = clustering_weights;
-        TMP_STUDY.etc.clustering.preclustparams.freqrange = freqrange;
+        % freqrange = [4 60];
+        TMP_STUDY.etc.clustering.preclustparams.clustering_weights = STD_PRECLUST_COMMAND;
+        TMP_STUDY.etc.clustering.preclustparams.freqrange = SPEC_PARAMS.freqrange;
         %## (Step 2) CALCULATE REPEATED CLUSTERED SOLUTIONS
         all_solutions = mim_cluster_process(TMP_STUDY,TMP_ALLEEG,tmp_dir,...
             'CLUSTER_PARAMS',CLUSTER_PARAMS,...
@@ -336,25 +336,26 @@ if DO_K_ICPRUNE
             hold off;
             drawnow;
             saveas(fig,[cluster_dir filesep sprintf('ics_out_of_brain.fig')]);
-            % TMP_STUDY = STUDY;
-            sets_ob = zeros(size(rmv_dip,1),1);
-            comps_ob = zeros(size(rmv_dip,1),1);
-            clusts = unique(rmv_dip(:,1));
-            cnt = 1;
-            for c_i = 1:length(clusts)
-                inds = clusts(c_i)==rmv_dip(:,1);
-                d_i = rmv_dip(inds,2);
-                sets_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).sets(d_i);
-                comps_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).comps(d_i);
-                TMP_STUDY.cluster(clusts(c_i)).sets(d_i) = [];
-                TMP_STUDY.cluster(clusts(c_i)).comps(d_i) = [];
-                cnt = cnt + length(d_i);
+            if ~isempty(rmv_dip)
+                sets_ob = zeros(size(rmv_dip,1),1);
+                comps_ob = zeros(size(rmv_dip,1),1);
+                clusts = unique(rmv_dip(:,1));
+                cnt = 1;
+                for c_i = 1:length(clusts)
+                    inds = clusts(c_i)==rmv_dip(:,1);
+                    d_i = rmv_dip(inds,2);
+                    sets_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).sets(d_i);
+                    comps_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).comps(d_i);
+                    TMP_STUDY.cluster(clusts(c_i)).sets(d_i) = [];
+                    TMP_STUDY.cluster(clusts(c_i)).comps(d_i) = [];
+                    cnt = cnt + length(d_i);
+                end
+                TMP_STUDY.cluster(end+1).sets = sets_ob';
+                TMP_STUDY.cluster(end).comps = comps_ob';
+                TMP_STUDY.cluster(end).name = 'Outlier cluster_outside-brain';
+                TMP_STUDY.cluster(end).parent = TMP_STUDY.cluster(2).parent;
+                TMP_STUDY.cluster(end).algorithm = 'ft_sourcedepth < 0';
             end
-            TMP_STUDY.cluster(end+1).sets = sets_ob';
-            TMP_STUDY.cluster(end).comps = comps_ob';
-            TMP_STUDY.cluster(end).name = 'Outlier cluster_outside-brain';
-            TMP_STUDY.cluster(end).parent = TMP_STUDY.cluster(2).parent;
-            TMP_STUDY.cluster(end).algorithm = 'ft_sourcedepth < 0';
             %## REMOVE BASED ON RV
             % [cluster_update] = evaluate_cluster(STUDY,ALLEEG,clustering_solutions,'min_rv');
             [TMP_STUDY,~,~] = cluster_rv_reduce(TMP_STUDY,TMP_ALLEEG);

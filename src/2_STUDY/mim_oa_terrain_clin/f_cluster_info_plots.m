@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_f_cluster_info_plots.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_oa_terrain_clin/run_f_cluster_info_plots.sh
 
 %{
 %## RESTORE MATLAB
@@ -43,7 +43,7 @@ fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa_spca');
 %% (PARAMETERS) ======================================================== %%
 fprintf('Assigning Params\n');
 %## Hard Define
@@ -59,16 +59,6 @@ DO_SUBJ_PLOTS = false;
 speed_trials = {'0p25','0p5','0p75','1p0'};
 terrain_trials = {'flat','low','med','high'};
 COND_DESIGNS = {speed_trials,terrain_trials};
-%##
-clustering_weights.dipoles = 1;
-clustering_weights.scalp = 0;
-clustering_weights.ersp = 0;
-clustering_weights.spec = 0;
-do_multivariate_data = 1;
-evaluate_method = 'min_rv';
-clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
-    '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
-    '_spec_',num2str(clustering_weights.spec)];
 %##
 %* ERSP PARAMS
 ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
@@ -107,9 +97,8 @@ STUDIES_DIR = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- cluster directory for study
-study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-%- study info
-SUB_GROUP_FNAME = 'group_spec';
+% study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
@@ -120,23 +109,10 @@ cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% ================================================================== %%
 %## LOAD STUDY
 cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
-if ~isempty(SUB_GROUP_FNAME)
-    spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
-    plot_store_dir = [cluster_dir filesep 'plots_out' filesep SUB_GROUP_FNAME];
-else
-    spec_data_dir = [cluster_dir filesep 'spec_data'];
-    plot_store_dir = [cluster_dir filesep 'plots_out'];
-end
-if ~exist(spec_data_dir,'dir')
-    error('spec_data dir does not exist');
-end
-if ~exist(plot_store_dir,'dir')
-    mkdir(plot_store_dir);
-end
 if ~ispc
-    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',spec_data_dir);
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',cluster_study_fpath);
 else
-    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',spec_data_dir);
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',cluster_study_fpath);
 end
 cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;

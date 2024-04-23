@@ -23,7 +23,7 @@ SUBPLOT_INIT_SHIFT = 0.06;
 ALPHA_MULTIPLE = 0.5;
 CONTOURF_GRAIN = 200;
 % COLORBAR_SHIFT = 0.08;
-COLORBAR_SHIFT = 0.07;
+COLORBAR_SHIFT = 0.085;
 %-
 alltitles = cell(length(allersp),1);
 for i = 1:length(allersp)
@@ -259,14 +259,13 @@ function [b] = validate_struct(x,DEFAULT_STRUCT)
     end
     b = true;
 end
-%##
+%% ===================================================================== %%
 function [struct_out] = set_defaults_struct(x,DEFAULT_STRUCT)
     struct_out = x;
     %##
     fs1 = fields(x);
     fs2 = fields(DEFAULT_STRUCT);
     vals1 = struct2cell(x);
-    vals2 = struct2cell(DEFAULT_STRUCT);
     %- check field value's class type
     for f = 1:length(fs2)
         ind = strcmp(fs2{f},fs1);

@@ -33,7 +33,8 @@ function [ALLEEG,conn_mat_table] = cnctanl_sift_pipe(ALLEEG,conn_components,save
 % Code Date: 12/30/2022, MATLAB 2019a
 % Copyright (C) Jacob Salminen, jsalminen@ufl.edu
 %## TIME
-tic
+topt = tic();
+% com.mathworks.mwswing.MJUtilities.initJIDE;
 %% (HIGH LEVEL VARS) =================================================== %%
 DO_BOOTSTRAP            = true;
 DO_PHASE_RND            = true;
@@ -111,15 +112,18 @@ DEF_ESTSELMOD = struct('modelingApproach',{{'Segmentation VAR',...
                         'normalize',[],...
                         'detrend',{'method','linear'},...
                         'verb',VERBOSITY_LEVEL}},...
-                'morderRange',[1, ceil((ALLEEG(1).srate*WINDOW_LENGTH)/4-1)],...
-                'downdate',true,...
-                'runPll',[],...
-                'icselector',{{'aic','hq'}},...
-                'winStartIdx',[],...
-                'epochTimeLims',[],...
-                'prctWinToSample',80,...
-                'plot',[],...
-                'verb',VERBOSITY_LEVEL);
+    'morderRange',[10,30],...
+    'downdate',true,...
+    'RunInParallel',{{'profile','local',...
+        'numWorkers',2}},...
+    'icselector',{{'aic','hq'}},...
+    'winStartIdx',[],...
+    'epochTimeLims',[],...
+    'prctWinToSample',80,...
+    'plot',[],...
+    'verb',VERBOSITY_LEVEL);
+%- (04/21/2024) JS, changing runPll to on and running each subject at a
+%a time to test rpocessing time increases
 DEF_PLOTORDERCRIT = struct('conditions', {{}},    ...
                             'icselector', {DEF_ESTSELMOD.icselector},  ...
                             'minimizer',{{'min'}}, ...
@@ -134,32 +138,48 @@ DEF_ESTVALMVAR = struct('checkWhiteness',{{'alpha',0.05,...
                                  'whitenessCriteria',{'Ljung-Box','ACF','Box-Pierce','Li-McLeod'},...
                                  'winStartIdx',[],...
                                  'prctWinToSample',100,...
-                                 'verb',VERBOSITY_LEVEL}}, ...
+                                 'verb',0}}, ...
                          'checkResidualVariance',{{'alpha',0.05,...
                                  'statcorrection','none',...
                                  'numAcfLags',50,...
-                                 'whitenessCriteria',{{}},...
+                                 'whitenessCriteria',{},...
                                  'winStartIdx',[],...
                                  'prctWinToSample',100,...
-                                 'verb',VERBOSITY_LEVEL}}, ...
+                                 'verb',0}}, ...
                          'checkConsistency',{{'winStartIdx',[],...
                                  'prctWinToSample',100,...
                                  'Nr',[],...
                                  'donorm',0,...
                                  'nlags',[],...
-                                 'verb',VERBOSITY_LEVEL}}, ...
+                                 'verb',0}}, ...
                          'checkStability',{{'winStartIdx',[],...
                                  'prctWinToSample',100,...
-                                 'verb',VERBOSITY_LEVEL}},     ...
+                                 'verb',0}},     ...
+                         'prctWinToSample',70,...
                          'winStartIdx',[],      ...
-                         'verb',VERBOSITY_LEVEL,...
+                         'verb',0,...
                          'plot',false);
+    %- (04/19/2024) JS, setting verbosity to 0 because when ran on
+    %hipergator with 2023b the txt output creates very large (~10GB) log
+    %files that are difficult to open. Perhaps only est_checkMVARConsistency is to blame... Specifically this:
+    %       Warning: The specified AR model is unstable at timeindex 1.
+    %       > In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('tvarsim', '/blue/dferris/jsalminen/GitHub/par_EEGProcessing/submodules/SIFT/sim/tvarsim.m', 112)" style="font-weight:bold">tvarsim</a> (<a href="matlab: opentoline('/blue/dferris/jsalminen/GitHub/par_EEGProcessing/submodules/SIFT/sim/tvarsim.m',112,0)">line 112</a>)
+    %       In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('est_consistency', '/blue/dferris/jsalminen/GitHub/par_EEGProcessing/submodules/SIFT/est/est_consistency.m', 78)" style="font-weight:bold">est_consistency</a> (<a href="matlab: opentoline('/blue/dferris/jsalminen/GitHub/par_EEGProcessing/submodules/SIFT/est/est_consistency.m',78,0)">line 78</a>)
+    %       In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('est_checkMVARConsistency', '/blue/dferris/jsalminen/GitHub/par_EEGProcessing/submodules/SIFT/est/est_checkMVARConsistency.m', 135)" style="font-weight:bold">est_checkMVARConsistency</a> (<a href="matlab: opentoline('/blue/dferris/jsalminen/GitHub/par_EEGProcessing/submodules/SIFT/est/est_checkMVARConsistency.m',135,0)">line 135</a>)
+    %       In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('est_validateMVAR', '/blue/dferris/jsalminen/GitHub/par_EEGProcessing/submodules/SIFT/est/est_validateMVAR.m', 210)" style="font-weight:bold">est_validateMVAR</a> (<a href="matlab: opentoline('/blue/dferris/jsalminen/GitHub/par_EEGProcessing/submodules/SIFT/est/est_validateMVAR.m',210,0)">line 210</a>)
+    %       In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('pop_est_validateMVAR', '/blue/dferris/jsalminen/GitHub/par_EEGProcessing/submodules/SIFT/pop/pop_est_validateMVAR.m', 147)" style="font-weight:bold">pop_est_validateMVAR</a> (<a href="matlab: opentoline('/blue/dferris/jsalminen/GitHub/par_EEGProcessing/submodules/SIFT/pop/pop_est_validateMVAR.m',147,0)">line 147</a>)
+    %       In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('cnctanl_sift_pipe', '/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_functions/v2_0/cnctanl/cnctanl_sift_pipe.m', 356)" style="font-weight:bold">cnctanl_sift_pipe</a> (<a href="matlab: opentoline('/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_functions/v2_0/cnctanl/cnctanl_sift_pipe.m',356,0)">line 356</a>)
+    %       In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('parallel_function>make_general_channel/channel_general', '/apps/matlab/r2023b/toolbox/matlab/lang/parallel_function.m', 837)" style="font-weight:bold">parallel_function>make_general_channel/channel_general</a> (<a href="matlab: opentoline('/apps/matlab/r2023b/toolbox/matlab/lang/parallel_function.m',837,0)">line 837</a>)
+    %       In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('parallel.internal.parfor.cppRemoteParallelFunction', '/apps/matlab/r2023b/toolbox/parallel/cluster/+parallel/+internal/+parfor/cppRemoteParallelFunction.m', 53)" style="font-weight:bold">parallel.internal.parfor.cppRemoteParallelFunction</a> (<a href="matlab: opentoline('/apps/matlab/r2023b/toolbox/parallel/cluster/+parallel/+internal/+parfor/cppRemoteParallelFunction.m',53,0)">line 53</a>)
+    %
 %## CONNECTIVITY ESTIMATION PARAMS
 DEF_ESTFITMVAR = struct('connmethods',{'dDTF08','S'}, ...
             'absvalsq',ABSVALSQ,           ...
             'spectraldecibels',SPECTRAL_DB,   ...
             'freqs',FREQS,        ...
-            'verb',VERBOSITY_LEVEL);
+            'verb',0);
+    %- (04/20/2024) JS, setting verb to 0 to suppress memory dlg boxes and
+    %just proc error. 
 %## SURROGATE STATISTICS PARAMS
 %- BOOTSTRAP
 DEF_STAT_BS_CFG = struct('mode',struct('arg_direct',1,...
@@ -188,24 +208,17 @@ addRequired(p,'ALLEEG',@isstruct)
 addRequired(p,'conn_components',@isnumeric)
 addRequired(p,'save_dir',sd_validfunc)
 %## PARAMETER
-%-PREPDATA_CFG
+%- MAIN PROCESSING PARAMS
 addParameter(p,'PREPDATA',DEF_PREPDATA,@(x) validate_struct(x,DEF_PREPDATA));
-%-
 addParameter(p,'ESTSELMOD',DEF_ESTSELMOD,@(x) validate_struct(x,DEF_ESTSELMOD));
 addParameter(p,'PLOTORDERCRIT',DEF_PLOTORDERCRIT,@(x) validate_struct(x,DEF_PLOTORDERCRIT));
-
-%-
-% addParameter(p,'ESTVALMVAR_CW',DEF_ESTVALMVAR_CW,@(x) validate_struct(x,DEF_ESTVALMVAR_CW));
-% addParameter(p,'ESTVALMVAR_CRV',DEF_ESTVALMVAR_CRV,@(x) validate_struct(x,DEF_ESTVALMVAR_CRV));
-% addParameter(p,'ESTVALMVAR_CC',DEF_ESTVALMVAR_CC,@(x) validate_struct(x,DEF_ESTVALMVAR_CC));
-% addParameter(p,'ESTVALMVAR_CS',DEF_ESTVALMVAR_CS,@(x) validate_struct(x,DEF_ESTVALMVAR_CS));
 addParameter(p,'ESTVALMVAR',DEF_ESTVALMVAR,@(x) validate_struct(x,DEF_ESTVALMVAR));
-%-
 addParameter(p,'ESTDISPMVAR_CHK',DEF_ESTDISPMVAR_CHK,@(x) validate_struct(x,DEF_ESTDISPMVAR_CHK));
 addParameter(p,'ESTFITMVAR',DEF_ESTFITMVAR,@(x) validate_struct(x,DEF_ESTFITMVAR));
+%- SURROGATE STATS PARAMS
 addParameter(p,'STAT_BS_CFG',DEF_STAT_BS_CFG,@(x) validate_struct(x,DEF_STAT_BS_CFG));
 addParameter(p,'STAT_PR_CFG',DEF_STAT_PR_CFG,@(x) validate_struct(x,DEF_STAT_PR_CFG));
-%-
+%- SWITCHES
 addParameter(p,'DO_PHASE_RND',DO_PHASE_RND,dpr_validFcn);
 addParameter(p,'DO_BOOTSTRAP',DO_BOOTSTRAP,dbs_validFcn);
 parse(p,ALLEEG,conn_components,save_dir,varargin{:});
@@ -214,17 +227,13 @@ parse(p,ALLEEG,conn_components,save_dir,varargin{:});
 PREPDATA       = p.Results.PREPDATA;
 ESTSELMOD       = p.Results.ESTSELMOD;
 PLOTORDERCRIT = p.Results.PLOTORDERCRIT;
-%-
-% ESTVALMVAR_CW      = p.Results.ESTVALMVAR_CW;
-% ESTVALMVAR_CRV       = p.Results.ESTVALMVAR_CRV;
-% ESTVALMVAR_CC       = p.Results.ESTVALMVAR_CC;
-% ESTVALMVAR_CS       = p.Results.ESTVALMVAR_CS;
 ESTVALMVAR = p.Results.ESTVALMVAR;
-%-
 ESTDISPMVAR_CHK       = p.Results.ESTDISPMVAR_CHK;
 ESTFITMVAR      = p.Results.ESTFITMVAR;
+%-
 STAT_BS_CFG       = p.Results.STAT_BS_CFG;
 STAT_PR_CFG       = p.Results.STAT_PR_CFG;
+%-
 DO_PHASE_RND       = p.Results.DO_PHASE_RND;
 DO_BOOTSTRAP       = p.Results.DO_BOOTSTRAP;
 %##
@@ -251,6 +260,7 @@ end
 
 %% GENERATE CONNECTIVITY MEASURES
 fprintf(1,'\n==== GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s ====\n',ALLEEG(1).subject);
+tt = tic();
 %## ASSIGN PATH FOR SIFT
 %- make sure path is in right format and make sure it exists
 if ~exist(save_dir,'dir')
@@ -277,11 +287,11 @@ if length(conn_components) ~= size(ALLEEG(1).icaweights,1)
         ALLEEG(cond_i) = TMP_EEG;
     end
 end
+toc(tt);
 %% (MAIN CONNECTIVITY PIPELINE) ======================================== %%
 %## STEP 3: Pre-process the data
-fprintf('===================================================\n');
-disp('PRE-PROCESSISNG DATA');
-fprintf('===================================================\n');
+fprintf('===================================================\nPRE-PROCESSISNG DATA\n===================================================\n');
+tt = tic();
 %- (NOTE FROM EXAMPLE SIFT SCRIPT) No piecewise detrending based on conversation with Andreas Widmann.
 % convert list of components to cell array of strings
 comp_names = [];
@@ -293,20 +303,21 @@ PREPDATA.VariableNames = comp_names;
 cfg = struct2args(PREPDATA);
 [ALLEEG] = pop_pre_prepData(ALLEEG,GUI_MODE,...
              cfg{:});
-
+fprintf('%s) Pre-Processing Data Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
 %% STEP 4: Identify the optimal model order
-fprintf('===================================================\n');
-disp('MODEL ORDER IDENTIFICATION');
-fprintf('===================================================\n');
+fprintf('===================================================\nMODEL ORDER IDENTIFICATION\n===================================================\n');
+tt = tic();
 %- NOTE: Here we compute various model order selection criteria for varying model
 % orders (e.g. 1 to 30) and visualize the results
 %## OPTION 1
 % cfg = struct2args(ESTSELMOD);
 % ALLEEG(cond_i) = pop_est_selModelOrder(ALLEEG(cond_i),GUI_MODE,cfg{:});
 %## OPTION 2
+cfg = struct2args(ESTSELMOD);
 for cond_i=1:length(ALLEEG)
     %* calculate the information criteria
-    [ALLEEG(cond_i).CAT.IC,cfg] = est_selModelOrder(ALLEEG(cond_i),ESTSELMOD);
+    [ALLEEG(cond_i).CAT.IC,cfg] = est_selModelOrder(ALLEEG(cond_i),cfg{:});
+    % [ALLEEG(cond_i).CAT.IC,cfg] = est_selModelOrder(ALLEEG(cond_i),ESTSELMOD);
     if isempty(ALLEEG(cond_i).CAT.IC)
         % use canceled
         fprintf('ERROR. Model fittings didn''t produce a viable model\n...')
@@ -319,8 +330,10 @@ for cond_i=1:length(ALLEEG)
 end
 modFuncName = ['pop_' ALLEEG(1).CAT.IC.modelFitting.modelingFuncName];
 fprintf('Running %s for subject %s...\n',modFuncName,ALLEEG(1).subject)
-ALLEEG = feval(modFuncName, ALLEEG,0,ALLEEG(1).CAT.IC.modelFitting.modelingArguments);
+ALLEEG = feval(modFuncName,ALLEEG,GUI_MODE,ALLEEG(1).CAT.IC.modelFitting.modelingArguments);
+fprintf('%s) Model Order Identification Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
 %## (PLOT) ============================================================= %%
+tt = tic();
 tmp_morder = zeros(1,length(ALLEEG));
 % cfg = struct2args(PLOTORDERCRIT);
 for cond_i = 1:length(ALLEEG)
@@ -334,12 +347,11 @@ end
 if isempty(ESTDISPMVAR_CHK.morder)
     ESTDISPMVAR_CHK.morder = ceil(mean(tmp_morder));
 end
-fprintf('\n\n');
+fprintf('%s) Plotting Order Criteria Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
 %% STEP 5: Fit the VAR model
-fprintf('===================================================\n');
-disp('MODEL FITTING');
-fprintf('===================================================\n');
+fprintf('===================================================\nMODEL FITTING\n===================================================\n');
 fprintf('\n');
+tt = tic();
 %- Here we can check that our selected parameters make sense
 % cfg = struct2args(ESTDISPMVAR_CHK);
 for cond_i = 1:length(ALLEEG)
@@ -355,10 +367,10 @@ for cond_i = 1:length(ALLEEG)
             ALLEEG(cond_i).CAT.configs.est_selModelOrder.modelingApproach,...
             'ModelOrder',ESTDISPMVAR_CHK.morder);
 end
+fprintf('%s) Model Fitting Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
 %% STEP 6: Validate the fitted model
-fprintf('===================================================\n');
-disp('MODEL VALIDATION');
-fprintf('===================================================\n');
+fprintf('===================================================\nMODEL VALIDATION\n===================================================\n');
+tt = tic();
 % Here we assess the quality of the fit of our model w.r.t. the data. This
 % step can be slow. We can obtain statistics for residual whiteness, percent consistency, and
 % model stability...
@@ -381,21 +393,16 @@ for cond_i = 1:length(ALLEEG)
         fprintf(1,'WARNING: Residuals are not completely white!\nModel fit may not be valid...\n');
     end
 end
-fprintf('\n\n');
+fprintf('%s) Model Validation Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
 %% STEP 7: Compute Connectivity
 %- NOTE: Next we will compute various dynamical quantities, including connectivity,
 % from the fitted VAR model.
-fprintf('===================================================\n');
-fprintf('CONNECTIVITY ESTIMATION\n');
-fprintf('===================================================\n');
+fprintf('===================================================\nCONNECTIVITY ESTIMATION\n===================================================\n');
+tt = tic();
 cfg = struct2args(ESTFITMVAR);
 ALLEEG = pop_est_mvarConnectivity(ALLEEG,GUI_MODE, ...
             cfg{:});
-        
-disp('===================================')
-disp('DONE.')
-disp('===================================')
-fprintf(1,'\n==== DONE: GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s ====\n',ALLEEG(1).subject);          
+fprintf('%s) Connectivity Estimation  Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
 %% ===================================================================== %%
 %## STEP 5.a) (BOOTSTRAPPING) GROUP STATISTICS 
 % (09/22/2022), JS, Might want to try and speed up bootstrap by
@@ -405,6 +412,7 @@ fprintf(1,'\n==== DONE: GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s ====\n',
 % (12/7/2022), JS, need to update this boostrapping to include ALLEEG
 if DO_BOOTSTRAP
     fprintf('\n==== CALCULATING BOOTSTRAP MEASURES ====\n')
+    tt = tic();
     for cond_i=1:length(ALLEEG)
         %- calculate BootStrap distribution
         %- clear PConn
@@ -426,8 +434,8 @@ if DO_BOOTSTRAP
     for cond_i = 1:length(ALLEEG)
         %- clear bootstrap calculation
         ALLEEG(cond_i).CAT.PConn = [];
-    end    
-    fprintf('\n==== DONE: CALCULATING BOOTSTRAP MEASURES ====\n')
+    end
+    fprintf('%s) Bootstrap Calculation Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
 end
 %% ===================================================================== %%
 %## STEP 5.b) GENERATE PHASE RANDOMIZED DISTRIBUTION    
@@ -435,7 +443,7 @@ end
 % see. stat_surrogateStats
 if DO_PHASE_RND
     fprintf(1,'\n==== GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
-    %## (1) ALTERNATIVE CODE 
+    tt = tic();
     for cond_i=1:length(ALLEEG)
         %- Generate Phase Randomized Distribution
         fprintf('\n==== PHASE RANDOMIZING CONNECTIVITY MEASURES ====\n')
@@ -454,27 +462,27 @@ if DO_PHASE_RND
         fprintf('done.\n')
     end
     clear TMP_EEG
-    fprintf(1,'\n==== DONE: GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
+    fprintf('%s) Phase Randomization Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
 end
 
 %% ===================================================================== %%
 %## STEP 6) CONNECTIVITY MATRICES & VISUALS
 %## TABLE VARS
-t_fPaths = cell(length(ALLEEG)*length(conn_estimators),1);
-t_fNames = cell(length(ALLEEG)*length(conn_estimators),1);
-t_conn_comps = cell(length(ALLEEG)*length(conn_estimators),1);
-t_conn_meas = cell(length(ALLEEG)*length(conn_estimators),1);
-t_cond_char = cell(length(ALLEEG)*length(conn_estimators),1);
+t_fPaths = cell(length(ALLEEG)*length(ESTFITMVAR.connmethods),1);
+t_fNames = cell(length(ALLEEG)*length(ESTFITMVAR.connmethods),1);
+t_conn_comps = cell(length(ALLEEG)*length(ESTFITMVAR.connmethods),1);
+t_conn_meas = cell(length(ALLEEG)*length(ESTFITMVAR.connmethods),1);
+t_cond_char = cell(length(ALLEEG)*length(ESTFITMVAR.connmethods),1);
 disp(ALLEEG);
 %## Generate Connectivity Matrix
 cnt = 1;
-for conn_i = 1:length(conn_estimators)
+for conn_i = 1:length(ESTFITMVAR.connmethods)
     for cond_i = 1:length(ALLEEG)
         disp(ALLEEG(cond_i).CAT.Conn);
         t_conn_comps{cnt} = conn_components;
         t_fPaths{cnt} = ALLEEG(cond_i).filepath;
         t_fNames{cnt} = ALLEEG(cond_i).filename;
-        t_conn_meas{cnt} = conn_estimators{conn_i};
+        t_conn_meas{cnt} = ESTFITMVAR.connmethods{conn_i};
         t_cond_char{cnt} = ALLEEG(cond_i).condition;
         cnt = cnt + 1;
     end
@@ -493,12 +501,9 @@ for cond_i = 1:length(ALLEEG)
         ALLEEG(cond_i).CAT = rmfield(ALLEEG(cond_i).CAT,'PConn');
     end
 end
-fprintf(1,'\n==== DONE: GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
-
 %% DONE
-fprintf('DONE: %s\n',ALLEEG(1).subject);
-%## TIME
-toc
+fprintf(1,'DONE: GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s: %0.1f\n\n',ALLEEG(1).subject,toc(topt));          
+
 end
 
 %% ===================================================================== %%

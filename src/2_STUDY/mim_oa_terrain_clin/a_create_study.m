@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_oa_terrain_clin/run_a_create_study.sh
 
 %{
 %## RESTORE MATLAB
@@ -111,7 +111,8 @@ subjects_from = {MAIN_ALLEEG.subject};
 alleeg_fpaths = cell(length(MAIN_ALLEEG),1);
 inds = cellfun(@(x) find(strcmp(x,subjects_from)),subjects_to);
 ALLEEG = MAIN_ALLEEG(inds);
-for i = 1:length(ALLEEG)
+% for i = 1:length(ALLEEG)
+parfor i = 1:length(ALLEEG)
     tmp = strsplit(ALLEEG(i).filepath,filesep);
     ind = find(strcmp(tmp,study_dir_name_from));
     tmp = strjoin(tmp(ind+1:end),filesep);

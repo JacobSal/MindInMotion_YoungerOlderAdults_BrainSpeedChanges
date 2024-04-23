@@ -1,0 +1,90 @@
+---
+title: "md_summary_contrasts"
+author: "Jacob Salminen"
+date: "2024-04-19"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Packages
+```{r} 
+library(readxl);
+library(broom);
+library(purrr);
+library(dplyr)
+library(tidyverse);
+```
+
+## load table 
+```{r} 
+excel_dir <-"M:/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01/cluster/icrej_5/12/spec_data/group_spec/psd_calcs/fooof_kinematics_table.xlsx";
+table_out <- read_excel(excel_dir,sheet="Sheet1") 
+```
+
+### get unique entries 
+```{r} 
+clusters = unique(table_out$cluster_id);
+subjects = unique(table_out$subj_char);
+eeg_measures = c('alpha_avg_power','beta_avg_power','theta_avg_power','aperiodic_exp','aperiodic_offset');
+```
+
+### get speeds only 
+```{r} 
+table_out <- filter_at(table_out,vars('cond_char'), any_vars(. %in% c('0.25','0.5','0.75','1.0'))) 
+```
+
+### convert speeds & groups to factors 
+```{r table_out, fig.width=3, fig.height=3}
+table_out <- mutate(table_out,across(c('cond_char','group_char'), factor))
+head(table_out)
+```
+
+### LOOP through clusters & get constrast summaries 
+```{r contrasts, echo=FALSE, message=FALSE, results="asis"}
+invisible(
+for (ci in 1:length(clusters)) {
+  for (mi in 1:length(eeg_measures)) {
+    tmpt <- filter_at(table_out,vars('cluster_id'), any_vars(. %in% clusters[ci]));
+    tapply(tmpt[[eeg_measures[mi]]],tmpt$cond_char);
+    contr.poly(4)
+    contrasts(tmpt$cond_char) = contr.poly(4)
+    fo <- reformulate("cond_char",response=eeg_measures[mi])
+    fit <- do.call("lm", list(fo,quote(tmpt)))
+    tidy(fit)
+    # s <- modelsummary(fit, output="kableExtra")
+    # print(s)
+    # print(kable(s),col.names = c(".L",".Q",".C"))
+    # cat("\n")
+    s <- summary(fit)
+    cat("\n##EEG Measure",eeg_measures[mi],"\n")
+    sapply(1:19, function(j)
+    cat(paste0("`", ". ", capture.output(s)[j]), "` \n"))
+    cat(" \n")
+  }
+}
+)
+```
+# ```{r}
+# for (ci in clusters) { 
+#   for (mi in eeg_measures) {
+#     tmpt <- filter_at(table_out,vars('cluster_id'), any_vars(. %in% ci))
+#     tapply(tmpt[[mi]],tmpt$cond_char)
+#     contr.poly(4)
+#     contrasts(tmpt$cond_char) = contr.poly(4)
+#     fit <- lm(paste(mi,"~ cond_char"),tmpt)
+#     tidy(fit)
+#     modelsummary(fit, output="kableExtra")
+#   } 
+# }
+# ```
+# invisible(sapply(seq(eeg_measures), function(i) {
+#   fo <- reformulate("cond_char",response=eeg_measures[i])
+#   s <- modelsummary(do.call("lm", list(fo,quote(table_out))))
+#   cat("\n##EEG Measure",eeg_measures[i],"\n")
+#   sapply(1:length(eeg_measures), function(j)
+#     cat(paste0("`", ". ", capture.output(s)[j]), "` \n"))
+#   cat(" \n")
+# }))

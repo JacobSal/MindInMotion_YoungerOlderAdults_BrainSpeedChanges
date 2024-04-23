@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_c_fooof_spec_data.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_oa_terrain_clin/run_c_fooof_spec_precomp.sh
 
 %{
 %## RESTORE MATLAB
@@ -43,7 +43,7 @@ fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa_spca');
 %% (PARAMETERS) ======================================================== %%
 %##
 FORCE_RECALC_SPEC = false;
@@ -74,39 +74,41 @@ DATA_SET = 'MIM_dataset';
 % cluster_study_dir = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 % cluster_study_dir = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % cluster_study_dir = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
-cluster_study_dir = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-ICLABEL_EYE_CUTOFF = 0.75;
+% study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 %- study group and saving
-DATA_DIR = [PATHS.src_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir)];
-load_dir_1 = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir)];
-%- load cluster
-CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir) filesep 'cluster'];
-CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
-CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
+studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
+save_dir = [studies_fpath filesep sprintf('%s',study_dir_name)];
+%- cluster info
 CLUSTER_K = 12;
+CLUSTER_STUDY_NAME = 'temp_study_rejics5';
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
 %##
 CLUSTER_CLIM_MATCH = [];
-SUB_GROUP_FNAME = ['group_spec'];
+SUB_GROUP_FNAME = 'all_spec';
+% STUDY_DESI_PARAMS = {{'subjselect',{},...
+%             'variable2','cond','values2',{'flat','low','med','high'},...
+%             'variable1','group','values1',{'H2000''s','H3000''s'}},...
+%             {'subjselect',{},...
+%             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
+%             'variable1','group','values1',{'H2000''s','H3000''s'}}};
 STUDY_DESI_PARAMS = {{'subjselect',{},...
-            'variable2','cond','values2',{'flat','low','med','high'},...
-            'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}},...
+            'variable2','cond','values2',{'flat','low','med','high'}},...
             {'subjselect',{},...
-            'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
-            'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}}};
+            'variable2','cond','values2',{'0p25','0p5','0p75','1p0'}}};
 %% ===================================================================== %%
 %## LOAD STUDY
 if ~ispc
-    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAME '_UNIX.study'],'filepath',CLUSTER_STUDY_DIR);
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',cluster_study_fpath);
 else
-    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAME '.study'],'filepath',CLUSTER_STUDY_DIR);
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',cluster_study_fpath);
 end
-cl_struct = par_load([CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
 [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
 condition_gait = unique({STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
@@ -162,12 +164,19 @@ end
 % PlotAndSaveERSP_CL_V3.m, Stats_Plotting_ERSPs_local_allCondBaseline_V3.m,
 % Figures_Plotting_ERSPs_local_allCondBaseline_V3.m, plotERSP_parfor.m
 %-
+% for i = 1:length(STUDY.datasetinfo)
+%     STUDY.datasetinfo(i).group = 'OA';
+% end
+% for i = 1:length(STUDY.datasetinfo)
+%     STUDY.datasetinfo(i).group = ALLEEG(i).group;
+% end
+%-
 STUDY.cache = [];
 for des_i = 1:length(STUDY_DESI_PARAMS)
     [STUDY] = std_makedesign(STUDY,ALLEEG,des_i,STUDY_DESI_PARAMS{des_i}{:});
 end
 %## Get Cluster Information
-cluster_dir = [CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)];
+cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 if ~isempty(SUB_GROUP_FNAME)
     spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
 else

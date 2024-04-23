@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_spca_d_tw_plots_clim.sh
 
 %{
 %## RESTORE MATLAB
@@ -22,21 +22,23 @@ ADD_CLEANING_SUBMODS = false;
 if ~ispc
     STUDY_DIR = getenv('STUDY_DIR');
     SCRIPT_DIR = getenv('SCRIPT_DIR');
+    SRC_DIR = getenv('SRC_DIR');
 else
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
-        STUDY_DIR = SCRIPT_DIR;
     catch e
         fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
-        STUDY_DIR = SCRIPT_DIR;
     end
+    STUDY_DIR = SCRIPT_DIR;
+    SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
 %## Add Study & Script Paths
 addpath(STUDY_DIR);
-cd(SCRIPT_DIR);
+addpath(SRC_DIR);
+cd(SRC_DIR);
 fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
@@ -44,27 +46,24 @@ set_workspace
 [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
 %% (PARAMETERS) ======================================================== %%
 %## hard define
+BOOT_NITERS = 2000;
+BOOT_ALPHA = 0.05;
+BOOT_CLUST_THRESH = 1000;
 %- datset name
 DATA_SET = 'MIM_dataset';
-% cluster_study_dir = '12082023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p1';
-% cluster_study_dir = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
-cluster_study_dir = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
-% cluster_study_dir = '12012023_OAYA104_icc0p65-0p4_changparams';
-study_fName_1 = 'epoch_study';
-spca_study_dir = '01122024_spca_analysis';
-% study_fName_2 = 'epoch_study';
+% study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+spca_dir_name = '03232024_spca_analysis_OA';
 %- study group and saving
-DATA_DIR = [source_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir) filesep 'spca'];
-load_dir_1 = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir)];
-load_dir_2 = [STUDIES_DIR filesep sprintf('%s',spca_study_dir)];
-% OUTSIDE_DATA_DIR = [STUDIES_DIR filesep ica_orig_dir]; % JACOB,SAL(02/23/2023)
+studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
-CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir) filesep 'cluster'];
-CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
-CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
 CLUSTER_K = 12;
+CLUSTER_STUDY_NAME = 'temp_study_rejics5';
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
+save_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K) filesep 'spca'];
+%- spca dir
+spca_dir_fpath = [studies_fpath filesep spca_dir_name];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
@@ -73,13 +72,13 @@ end
 %% ===================================================================== %%
 %## LOAD STUDY
 if ~ispc
-    tmp = load('-mat',[CLUSTER_STUDY_DIR filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_FNAME)]);
+    tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
     STUDY = tmp.STUDY;
 else
-    tmp = load('-mat',[CLUSTER_STUDY_DIR filesep sprintf('%s.study',CLUSTER_STUDY_FNAME)]);
+    tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s.study',CLUSTER_STUDY_NAME)]);
     STUDY = tmp.STUDY;
 end
-cl_struct = par_load([CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
 % [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(TMP_STUDY);
 % fPaths = {TMP_STUDY.datasetinfo.filepath};
@@ -135,8 +134,7 @@ for des_i = 1:length(STUDY_DESI_PARAMS)
 end
 %%
 %##
-ATLAS_PATH = [PATH_ROOT filesep 'par_EEGProcessing' filesep 'submodules',...
-    filesep 'fieldtrip' filesep 'template' filesep 'atlas'];
+ATLAS_PATH = [PATHS.submods_dir filesep 'fieldtrip' filesep 'template' filesep 'atlas'];
 % see. https://www.fieldtriptoolbox.org/template/atlas/
 ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI atalst
     [ATLAS_PATH filesep 'afni' filesep 'TTatlas+tlrc.HEAD'],... % tailarch atlas
@@ -161,8 +159,15 @@ condition_gait = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %     'timewarpms',[0,259,703,977,1408],'freqs',[3,250],...
 %     'plotersp','off','plotitc','off','plotphase','off','baseline',NaN};
 %- option 4
-icatimef_f = [STUDY.datasetinfo(1).filepath filesep sprintf('%s.icatimef',STUDY.datasetinfo(1).subject)];
-[~, timef_params, hardcode_times, hardcode_freqs, ~ ] = std_readfile( icatimef_f,'components',1);
+% icatimef_f = [STUDY.datasetinfo(1).filepath filesep sprintf('%s.icatimef',STUDY.datasetinfo(1).subject)];
+% [~, timef_params, hardcode_times, hardcode_freqs, ~ ] = std_readfile( icatimef_f,'components',1);
+%- option 5 (update?)
+tmpf = par_load([spca_dir_fpath filesep sprintf('%s',STUDY.datasetinfo(4).subject) filesep 'GAIT_EPOCHED' filesep [condition_gait{:}]],'gait_ersp_spca.mat');
+timef_params = tmpf.icatimefopts;
+timef_params.timewarpms = tmpf.warptimes;
+tmpf = par_load([spca_dir_fpath filesep sprintf('%s',STUDY.datasetinfo(4).subject) filesep 'GAIT_EPOCHED' filesep [condition_gait{:}]],'condmed_spca_ersp.mat');
+hardcode_times = tmpf.times;
+hardcode_freqs = tmpf.freqs;
 %##
 % allfreqs = 1:size(spca_table.tf_erspcorr_c{1},2); %4:100; %1:size(allersp_com{1},2);
 % alltimes = 1:size(spca_table.tf_erspcorr_c{1},1);
@@ -193,9 +198,10 @@ TERRAIN_REF_CHAR = 'flat';
 SPEED_REF_CHAR = '1p0';
 SPEED_OVERRIDE_CHARS = {'0.25m/s','0.5m/s','0.75m/s','1.0m/s'};
 ff = @chk_cell;
-PLOT_STRUCT = struct('figure_position_inch',[],...
+
+PLOT_STRUCT = struct('figure_position_inch',[0.5,0.5,6.5,9],...
     'alltitles',{{}},...
-    'xlabel','Gait Cycle Events',...
+    'xlabel','Gait Cycle Time (ms)',...
     'ylabel','Frequency (Hz)',...
     'xticklabel_times',timewarp_times,...
     'xticklabel_chars',{timewarp_chars},...
@@ -205,14 +211,15 @@ PLOT_STRUCT = struct('figure_position_inch',[],...
     'freq_lims',FREQ_BOUND,...
     'time_lims',TIME_BOUND,...
     'subplot_width',[],...
-    'subplot_height',[],...
+    'subplot_height',[],... %(02/17/2024) was 0.2
     'horiz_shift_amnt',[],...
     'vert_shift_amnt',[],...
-    'stats_title','F Stats (p<0.05)',...
+    'group_titles',{{}},...
+    'stats_title','F Statistic Mask',...
     'figure_title','');
 SAVE_STATS = false;
 %%
-spca_table = par_load(CLUSTER_STUDY_DIR,'spca_cluster_table.mat');
+spca_table = par_load(cluster_study_fpath,'spca_cluster_table.mat');
 paramsersp = timef_params; 
 alltimes = hardcode_times(time_crop);
 allfreqs = hardcode_freqs(freq_crop);
@@ -360,14 +367,21 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         STORAGE{des_i,5} = allgpm;
         STORAGE{des_i,6} = allersp_orig;
         STORAGE{des_i,7} = allgpm_orig;
+        %-
         STORAGE{des_i,8} = allersp_f;
         STORAGE{des_i,9} = allgpm_f;
         STORAGE{des_i,10} = allersp_orig_f;
         STORAGE{des_i,11} = allgpm_orig_f;
+        %-
         STORAGE{des_i,12} = allersp_com;
         STORAGE{des_i,13} = allgpm_com;
         STORAGE{des_i,14} = allersp_com_f;
         STORAGE{des_i,15} = allgpm_com_f;
+        %-
+        STORAGE{des_i,16} = allersp_sb;
+        STORAGE{des_i,17} = allgpm_sb;
+        STORAGE{des_i,18} = allersp_sb_f;
+        STORAGE{des_i,19} = allgpm_sb_f;
     end
     %% CLIM
     %## GPM PLOTS
@@ -401,14 +415,22 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         allgpm = STORAGE{des_i,5};
         allersp_orig = STORAGE{des_i,6};
         allgpm_orig = STORAGE{des_i,7};
+        %-
         allersp_f  = STORAGE{des_i,8};
         allgpm_f = STORAGE{des_i,9};
         allersp_orig_f = STORAGE{des_i,10};
         allgpm_orig_f = STORAGE{des_i,11};
+        %-
         allersp_com = STORAGE{des_i,12};
         allgpm_com = STORAGE{des_i,13};
         allersp_com_f = STORAGE{des_i,14};
         allgpm_com_f = STORAGE{des_i,15};
+        %-
+        allersp_sb = STORAGE{des_i,16};
+        allgpm_sb = STORAGE{des_i,17};
+        allersp_sb_f = STORAGE{des_i,18};
+        allgpm_sb_f = STORAGE{des_i,19};
+        %-
         p1 = cell(length(con_con),1);
         p2 = cell(length(con_con),1);
         p3 = cell(length(con_con),1);
@@ -420,6 +442,110 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
             condnames = trial_order;
         end
         alltitles = std_figtitle('condnames',condnames);
+        %% BOOTSTRAPING ALLERSP
+        clust_ersp = cell(size(allersp_sb,1),size(allersp_sb,2));
+        clust_maskedersp = cell(size(allersp_sb,1),size(allersp_sb,2));
+        for cond_i = 1:size(allersp_sb,1)
+            fprintf('Performing Stats for Condition %i & Cluster %i\n',cond_i,cl_i);
+            tmp = allersp_sb{cond_i,1};
+            tmp_mean = mean(tmp,3);
+            boot_freq = 1:size(tmp,1);
+            boot_subj = 1:size(tmp,3);
+            boot_surro = zeros(size(tmp,1),size(tmp,2),BOOT_NITERS);
+            surro = zeros(size(tmp,1),size(tmp,2),BOOT_NITERS);
+            %- scramble time samples and calculate the average across
+            %all times and all frequencies and store that value.
+            for n = 1:BOOT_NITERS
+                boot_time = randi(size(tmp,2),[size(tmp,2),1]); % random time samples
+                tmpSurro = mean(tmp(boot_freq,boot_time,boot_subj),3);
+                surro(:,:,n) = tmpSurro; % save 2000 iterations of surrogates 
+            end
+            %- Pull length(subject) surrogate averages from distribution then calc mean across
+            %surrogates 
+            for n = 1:BOOT_NITERS
+                bootIdx  = randi(BOOT_NITERS,[size(tmp,3),1]);
+                tmpSurro = mean(surro(:,:,bootIdx),3);
+                boot_surro(:,:,n) = tmpSurro;
+            end
+            pvalMap = stat_surrogate_pvals(boot_surro,tmp_mean,'both');
+            pvalMap(pvalMap>1)=1; 
+            [p_masked, ~, ~, ~] = fdr_bh(pvalMap,BOOT_ALPHA,'pdep',1);
+            % debri removal
+            [labelMap,~] = bwlabeln(p_masked);
+            tmpDisp = sort(labelMap(:),'descend');
+%             [occurrence,idx] = hist(tmpDisp,unique(tmpDisp));
+            [occurrence,idx,~] = histcounts(tmpDisp,unique(tmpDisp));
+            kMask = ismember(labelMap,idx((occurrence<BOOT_CLUST_THRESH)));
+            finalMask = p_masked-kMask;
+            clust_ersp{cond_i} = tmp_mean; 
+            tmp = clust_ersp{cond_i}; 
+            tmp(~finalMask) = 0;
+            clust_maskedersp{cond_i} = tmp;
+        end
+        PLOT_STRUCT_PAR.subplot_width = 0.13;
+        PLOT_STRUCT_PAR.subplot_height = 0.16;
+        PLOT_STRUCT_PAR.horiz_shift_amnt = 0.17;
+        PLOT_STRUCT_PAR.vert_shift_amnt = 0.22;
+        PLOT_STRUCT_PAR.alltitles = alltitles;
+        PLOT_STRUCT_PAR.clim = GPM_CLIM;
+        [fig] = plot_txf_mask_contourf(clust_ersp,alltimes,allfreqs,clust_maskedersp,clust_maskedersp,{},...
+            'PLOT_STRUCT',PLOT_STRUCT_PAR);
+        drawnow;
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_sb.tiff',cl_i,des_i)],'Resolution',1000);
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_sb.jpg',cl_i,des_i)],'Resolution',300);
+        close(fig);
+        %% BOOTSTRAPING ALLERSP
+        clust_ersp = cell(size(allersp,1),size(allersp,2));
+        clust_maskedersp = cell(size(allersp,1),size(allersp,2));
+        for cond_i = 1:size(allersp,1)
+            fprintf('Performing Stats for Condition %i & Cluster %i\n',cond_i,cl_i);
+            tmp = allersp_com{cond_i,1};
+            tmp_mean = mean(tmp,3);
+            boot_freq = 1:size(tmp,1);
+            boot_subj = 1:size(tmp,3);
+            boot_surro = zeros(size(tmp,1),size(tmp,2),BOOT_NITERS);
+            surro = zeros(size(tmp,1),size(tmp,2),BOOT_NITERS);
+            %- scramble time samples and calculate the average across
+            %all times and all frequencies and store that value.
+            for n = 1:BOOT_NITERS
+                boot_time = randi(size(tmp,2),[size(tmp,2),1]); % random time samples
+                tmpSurro = mean(tmp(boot_freq,boot_time,boot_subj),3);
+                surro(:,:,n) = tmpSurro; % save 2000 iterations of surrogates 
+            end
+            %- Pull length(subject) surrogate averages from distribution then calc mean across
+            %surrogates 
+            for n = 1:BOOT_NITERS
+                bootIdx  = randi(BOOT_NITERS,[size(tmp,3),1]);
+                tmpSurro = mean(surro(:,:,bootIdx),3);
+                boot_surro(:,:,n) = tmpSurro;
+            end
+            pvalMap = stat_surrogate_pvals(boot_surro,tmp_mean,'both');
+            pvalMap(pvalMap>1)=1; 
+            [p_masked, ~, ~, ~] = fdr_bh(pvalMap,BOOT_ALPHA,'pdep',1);
+            % debri removal
+            [labelMap,~] = bwlabeln(p_masked);
+            tmpDisp = sort(labelMap(:),'descend');
+%             [occurrence,idx] = hist(tmpDisp,unique(tmpDisp));
+            [occurrence,idx,~] = histcounts(tmpDisp,unique(tmpDisp));
+            kMask = ismember(labelMap,idx((occurrence<BOOT_CLUST_THRESH)));
+            finalMask = p_masked-kMask;
+            clust_ersp{cond_i} = tmp_mean; 
+            tmp = clust_ersp{cond_i}; 
+            tmp(~finalMask) = 0;
+            clust_maskedersp{cond_i} = tmp;
+        end
+        PLOT_STRUCT_PAR.alltitles = alltitles;
+        PLOT_STRUCT_PAR.clim = GPM_CLIM;
+        [fig] = plot_txf_mask_contourf(clust_ersp,alltimes,allfreqs,clust_maskedersp,clust_maskedersp,{},...
+            'PLOT_STRUCT',PLOT_STRUCT_PAR);
+        drawnow;
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_com.tiff',cl_i,des_i)],'Resolution',1000);
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_com.jpg',cl_i,des_i)],'Resolution',300);
+        close(fig);
+        PLOT_STRUCT_PAR.subplot_width = [];
+        PLOT_STRUCT_PAR.subplot_height = [];
+        PLOT_STRUCT_PAR.horiz_shift_amnt = [];
+        PLOT_STRUCT_PAR.vert_shift_amnt = [];
         %% NO BASELINE
         [pcond_ersp_crop, ~, ~] = ersp_stats_conds(TMP_STUDY,allersp,allfreqs,alltimes);
         [pcond_gpm_crop, ~, ~] = ersp_stats_conds(TMP_STUDY,allgpm,allfreqs,alltimes);
@@ -436,22 +562,22 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         PLOT_STRUCT_PAR.alltitles = alltitles;
         PLOT_STRUCT_PAR.clim = ERSP_CLIM;
 %         PLOT_STRUCT_PAR.figure_title = 'ERSP corrected';
-        fig = plot_txf_conds_tftopo(p1,alltimes,allfreqs,pcond_ersp_crop{1},...
+        fig = plot_txf_conds_tftopo(p1,alltimes,allfreqs,pcond_ersp_crop,{},...
             'PLOT_STRUCT',PLOT_STRUCT_PAR);
-        pause(2);
-        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp.tiff',cl_i,des_i)],'Resolution',1000);
-        pause(2);
+        drawnow;
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp.tiff',cl_i,des_i)],'Resolution',1000);
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp.jpg',cl_i,des_i)],'Resolution',300);
         close(fig);
 %         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp.jpg',cl_i,des_i)],'Resolution',300);
         %##
 %         PLOT_STRUCT_PAR.figure_title = 'GPM corrected';
         PLOT_STRUCT_PAR.alltitles = alltitles;
         PLOT_STRUCT_PAR.clim = GPM_CLIM;
-        fig = plot_txf_conds_tftopo(p2,alltimes,allfreqs,pcond_gpm_crop{1},...
+        fig = plot_txf_conds_tftopo(p2,alltimes,allfreqs,pcond_gpm_crop,{},...
             'PLOT_STRUCT',PLOT_STRUCT_PAR);
-        pause(2);
-        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm.tiff',cl_i,des_i)],'Resolution',1000);
-        pause(2);
+        drawnow;
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm.tiff',cl_i,des_i)],'Resolution',1000);
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm.jpg',cl_i,des_i)],'Resolution',300);
         close(fig);
 %         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm.jpg',cl_i,des_i)],'Resolution',300);
         %##
@@ -482,19 +608,21 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         PLOT_STRUCT_PAR.alltitles = alltitles;
         PLOT_STRUCT_PAR.clim = ERSP_CLIM;
 %         PLOT_STRUCT_PAR.figure_title = 'ERSP corrected common-base';
-        fig = plot_txf_conds_tftopo(p1,alltimes,allfreqs,pcond_ersp_crop{1},...
+        fig = plot_txf_conds_tftopo(p1,alltimes,allfreqs,pcond_ersp_crop,{},...
             'PLOT_STRUCT',PLOT_STRUCT_PAR);
-        pause(2);
-        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp_com.tiff',cl_i,des_i)],'Resolution',1000);
+        drawnow;
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp_com.tiff',cl_i,des_i)],'Resolution',1000);
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp_com.jpg',cl_i,des_i)],'Resolution',300);
         close(fig);
 %         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp_com.jpg',cl_i,des_i)],'Resolution',300);
         %##
 %         PLOT_STRUCT_PAR.figure_title = 'GPM corrected common-base';
         PLOT_STRUCT_PAR.clim = GPM_CLIM;
-        fig = plot_txf_conds_tftopo(p2,alltimes,allfreqs,pcond_gpm_crop{1},...
+        fig = plot_txf_conds_tftopo(p2,alltimes,allfreqs,pcond_gpm_crop,{},...
             'PLOT_STRUCT',PLOT_STRUCT_PAR);
-        pause(2);
-        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm_com.tiff',cl_i,des_i)],'Resolution',1000);
+        drawnow;
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm_com.tiff',cl_i,des_i)],'Resolution',1000);
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm_com.jpg',cl_i,des_i)],'Resolution',300);
         close(fig);
 %         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm_com.jpg',cl_i,des_i)],'Resolution',300);
         %##
@@ -584,9 +712,9 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
 %             alltimes = hardcode_times;
 %             allfreqs = hardcode_freqs;
             %-
-            ersp_raw = {erspDiff_wind.raw};
-            ersp_pcond = {erspDiff_wind.pcond};
-            ersp_masked = {erspDiff_wind.masked};
+            ersp_raw = {erspDiff_wind.raw}';
+            ersp_pcond = {erspDiff_wind.pcond}';
+            ersp_masked = {erspDiff_wind.masked}';
             alltimes = hardcode_times(time_crop);
             allfreqs = hardcode_freqs(freq_crop);
             %-
@@ -602,11 +730,11 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
 %             PLOT_STRUCT_PAR.figure_title = sprintf('%s based',data_chars{data_i});
             PLOT_STRUCT_PAR.alltitles = plot_alltitles;
             PLOT_STRUCT_PAR.clim = data_clim{data_i};
-            [fig] = plot_txf_mask_contourf(ersp_raw,alltimes,allfreqs,ersp_masked,ersp_pcond,...
+            [fig] = plot_txf_mask_contourf(ersp_raw,alltimes,allfreqs,ersp_masked,ersp_pcond,{},...
                 'PLOT_STRUCT',PLOT_STRUCT_PAR);
-            pause(2);
-            exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spcadiff_%s.tiff',cl_i,des_i,data_chars{data_i})],'Resolution',1000);
-%             exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spcadiff_%s.jpg',cl_i,des_i,data_chars{data_i})],'Resolution',300);
+            drawnow;
+            % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spcadiff_%s.tiff',cl_i,des_i,data_chars{data_i})],'Resolution',1000);
+            exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spcadiff_%s.jpg',cl_i,des_i,data_chars{data_i})],'Resolution',300);
             close(fig);
         end
     end

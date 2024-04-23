@@ -17,12 +17,13 @@ tic
 AXES_POS = [0.15 0.20 0.8 0.7];
 XLABEL_OFFSET = -0.225;
 % GROUPLAB_POS = [0.225,0.775];
-GROUPLAB_POS = [0.125,0.475,0.812];
-GROUPLAB_YOFFSET = -0.25;
-REGRESS_TXT_XMULTI = 1; %-0.8;
-REGRESS_TXT_YMULTI = 1;
+% GROUPLAB_POS = [0.125,0.475,0.812];
+
+GROUPLAB_YOFFSET = -0.2;
+% REGRESS_TXT_XMULTI = 1; %-0.8;
+% REGRESS_TXT_YMULTI = 1;
 % REGRESS_TXT_SIZE = 6;
-REGRESS_TXT_SIZE = 8;
+REGRESS_TXT_SIZE = 6;
 SCATTER_MARK_SIZE = 5;
 STD_CUTOFF = 3;
 VIOLIN_PARAMS = {'Width',0.05,...
@@ -32,7 +33,9 @@ VIOLIN_PARAMS = {'Width',0.05,...
             'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
 PLOT_PARAMS = struct('color_map',linspecer(length(unique(table_in.(cond_char)))),...
     'cond_labels',unique(table_in.(cond_char)),'group_labels',unique(table_in.(group_char)),...
-    'cond_offsets',linspace(-0.3,0.3,length(unique(table_in.(cond_char)))),'y_label','unit',...
+    'cond_offsets',linspace(-0.3,0.3,length(unique(table_in.(cond_char)))),...
+    'group_offsets',[0.125,0.475,0.812],....
+    'y_label','unit',...
     'x_label','x','title','','font_size',12,'ylim',[min(table_in.(measure_char)),max(table_in.(measure_char))],...
     'font_name','Arial','do_combine_groups',false);
 STATS_STRUCT = struct('anova',{{}},...
@@ -78,7 +81,7 @@ groups = unique(table_tmp.(group_char));
 conds = unique(table_tmp.(cond_char));
 if PLOT_PARAMS.do_combine_groups
     table_tmp.(group_char) = categorical(ones(height(table_tmp),1));
-    GROUPLAB_POS = [0.5];
+    PLOT_PARAMS.group_offsets = [0.5];
     groups = unique(table_tmp.(group_char));
     PLOT_PARAMS.group_labels = {[sprintf('%s',PLOT_PARAMS.group_labels(1)), sprintf(' & %s',PLOT_PARAMS.group_labels(2:end))]};
 end
@@ -94,7 +97,9 @@ xticks = [];
 xtick_labs = {};
 %- group primary, cond secondary
 ymaxs = zeros(length(groups),length(conds));
+sigline_ymax = zeros(length(groups),length(conds));
 violins = cell(length(groups)*length(conds),1);
+g_offset = 0;
 for i=1:length(groups)
     for j=1:length(conds)
         g_i = groups(i);
@@ -103,13 +108,14 @@ for i=1:length(groups)
         %- outliers
         tt = table_tmp(inds,:);
         vals = tt.(measure_char);
+        sigline_ymax(i,j) = max(tt.(measure_char));
         data_mean = mean(vals);
         data_std = std(vals);
         ind_crop = tt.(measure_char)>data_mean-STD_CUTOFF*data_std & tt.(measure_char)<data_mean+STD_CUTOFF*data_std;
         outliers = tt(~ind_crop,:);
         tt = tt(ind_crop,:);
         %- final table in
-        offset = PLOT_PARAMS.cond_offsets(j);
+        offset = PLOT_PARAMS.cond_offsets(j)+g_offset;
         %- check input types
         if ~isnumscalar(g_i)
             tmp_gi = double(g_i); %double(string(g_i));
@@ -160,6 +166,7 @@ for i=1:length(groups)
         end
         cnt = cnt+1;
     end
+    g_offset = g_offset + 0.2;
 end
 hold on;
 %##
@@ -172,7 +179,8 @@ hold_xlim = get(gca,'xlim');
 annotes = [];
 for i=1:length(groups)
     %- CATEGORICAL
-    y = max(ymaxs(i,:));
+    % y = max(ymaxs(i,:));
+    y = max(sigline_ymax(i,:));
     for j = 1:length(conds)
         if ~isempty(STATS_STRUCT.anova) && ~isempty(STATS_STRUCT.pvals)
             if STATS_STRUCT.anova{i} < 0.05
@@ -214,7 +222,7 @@ for i=1:length(groups)
             % y_txt = mean(ymaxs(i,:))*REGRESS_TXT_YMULTI*(1+(i-1))+std(ymaxs(i,:));
             % xx = xticks(cnt_g:cnt_g+length(conds)-1)
             % x_txt = min(xx)*REGRESS_TXT_XMULTI*((i-1))+xticks(1)+std(xticks);
-            x_txt = GROUPLAB_POS(i)-0.1;
+            x_txt = PLOT_PARAMS.group_offsets(i)-0.1;
             y_txt = 0.9;
             if STATS_STRUCT.regress_pval{i} > 0.01 & STATS_STRUCT.regress_pval{i} < 0.05
                 text(x_txt,y_txt,sprintf('* slope=%0.2g\nR^2=%0.2g',STATS_STRUCT.regress_line{i}(2),STATS_STRUCT.r2_coeff(i)),...
@@ -232,30 +240,6 @@ for i=1:length(groups)
                     'FontName',PLOT_PARAMS.font_name,...
                     'FontWeight','bold','Units','normalized');
             end
-            % pos = get(gca,'Position');
-            % if STATS_STRUCT.regress_pval{i} > 0.01 & STATS_STRUCT.regress_pval{i} < 0.05
-            %     an = annotation('textbox',[0.25,0.25,0.2,0.2],...
-            %         'String',sprintf('* m=%0.2g\nR^2=%0.2g',STATS_STRUCT.regress_line{i}(2),STATS_STRUCT.r2_coeff(i)),...
-            %         'HorizontalAlignment','center',...
-            %         'VerticalAlignment','middle','LineStyle','none','FontName',PLOT_PARAMS.font_name,...
-            %         'FontSize',REGRESS_TXT_SIZE,'FontWeight','Bold','Units','normalized',...
-            %         'BackgroundColor','none');
-            % elseif STATS_STRUCT.regress_pval{i} <= 0.01 & STATS_STRUCT.regress_pval{i} > 0.001
-            %     an = annotation('textbox',[0.25,0.25,0.2,0.2],...
-            %         'String',sprintf('** m=%0.2g\nR^2=%0.2g',STATS_STRUCT.regress_line{i}(2),STATS_STRUCT.r2_coeff(i)),...
-            %         'HorizontalAlignment','center',...
-            %         'VerticalAlignment','middle','LineStyle','none','FontName',PLOT_PARAMS.font_name,...
-            %         'FontSize',REGRESS_TXT_SIZE,'FontWeight','Bold','Units','normalized',...
-            %         'BackgroundColor','none');
-            % else
-            %     an = annotation('textbox',[0.25,0.25,0.2,0.2],...
-            %         'String',sprintf('*** m=%0.2g\nR^2=%0.2g',STATS_STRUCT.regress_line{i}(2),STATS_STRUCT.r2_coeff(i)),...
-            %         'HorizontalAlignment','center',...
-            %         'VerticalAlignment','middle','LineStyle','none','FontName',PLOT_PARAMS.font_name,...
-            %         'FontSize',REGRESS_TXT_SIZE,'FontWeight','Bold','Units','normalized',...
-            %         'BackgroundColor','none');
-            % end
-            % annotes = [annotes, an];
         end
     end
     cnt_g = cnt_g + length(conds);
@@ -278,14 +262,16 @@ pos1(1,2)=pos1(1,2)+XLABEL_OFFSET;
 set(xlh,'Position',pos1);
 %- set group labels
 try
-    cnt_g = 1;
-    for i = 1:length(groups)
-        x = GROUPLAB_POS(i);
-        y = GROUPLAB_YOFFSET; %GROUPLAB_YOFFSET
-        text(x,y,0,char(PLOT_PARAMS.group_labels(i)),...
-            'FontSize',PLOT_PARAMS.font_size,'FontWeight','bold','HorizontalAlignment','center',...
-            'Units','normalized');
-        cnt_g = cnt_g + length(conds);
+    if ~isempty(PLOT_PARAMS.group_labels)
+        cnt_g = 1;
+        for i = 1:length(groups)
+            x = PLOT_PARAMS.group_offsets(i);
+            y = GROUPLAB_YOFFSET; %GROUPLAB_YOFFSET
+            text(x,y,0,char(PLOT_PARAMS.group_labels(i)),...
+                'FontSize',PLOT_PARAMS.font_size,'FontWeight','bold','HorizontalAlignment','center',...
+                'Units','normalized');
+            cnt_g = cnt_g + length(conds);
+        end
     end
 catch e
     error('Error. Plotting group labels failed...\n\n%s',getReport(e));

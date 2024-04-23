@@ -44,6 +44,19 @@ fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
 [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
+%- override with already processed ALLEEG set
+SUBJ_PICS = cell(1,length(GROUP_NAMES));
+SUBJ_ITERS = cell(1,length(GROUP_NAMES));
+for i = 1:length(ALLEEG)
+    gi = find(strcmp(ALLEEG(i).group,GROUP_NAMES));
+    SUBJ_PICS{gi} = [SUBJ_PICS{gi}, {ALLEEG(i).subject}];
+    if isempty(SUBJ_ITERS{gi})
+        SUBJ_ITERS{gi} = 1;
+    else
+        SUBJ_ITERS{gi} = [SUBJ_ITERS{gi}, SUBJ_ITERS{gi}(end)+1];
+    end
+end
+% SUBJ_PICS = {ALLEEG.subject};
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
@@ -51,7 +64,8 @@ DATA_SET = 'MIM_dataset';
 %- datetime override
 colormap(linspecer);
 % study_dir_name = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 %## soft define
 STUDIES_DIR = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'raw_data_vis'];

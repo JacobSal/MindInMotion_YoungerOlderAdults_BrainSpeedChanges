@@ -60,7 +60,7 @@ function [p] = unix_genpath(d)
              ~strcmp( dirname,'private')    && ...
              ~strcmp( dirname,'resources') && ...
              ~strcmp( dirname,'__archive')
-          p = [p genpath([d filesep dirname])]; % recursive calling of this function.
+          p = [p unix_genpath([d filesep dirname])]; % recursive calling of this function.
        end
     end
 end

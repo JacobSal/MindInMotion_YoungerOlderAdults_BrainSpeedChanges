@@ -22,22 +22,24 @@ ADD_CLEANING_SUBMODS = false;
 if ~ispc
     STUDY_DIR = getenv('STUDY_DIR');
     SCRIPT_DIR = getenv('SCRIPT_DIR');
+    SRC_DIR = getenv('SRC_DIR');
 else
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
-        STUDY_DIR = SCRIPT_DIR;
     catch e
         fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
-        STUDY_DIR = SCRIPT_DIR;
     end
+    STUDY_DIR = SCRIPT_DIR;
+    SRC_DIR = filesep(filesep(STUDY_DIR));
 end
-%## Add Study & Script Paths
+%## Add Study, Src, & Script Paths
+addpath(SRC_DIR);
 addpath(STUDY_DIR);
-cd(SCRIPT_DIR);
-fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
+cd(SRC_DIR);
+fprintf(1,'Current folder: %s\n',SRC_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%

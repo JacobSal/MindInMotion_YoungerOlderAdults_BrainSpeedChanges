@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_a_epoch_process.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_spca_c_clusters_tw.sh
 
 %{
 %## RESTORE MATLAB
@@ -22,51 +22,49 @@ ADD_CLEANING_SUBMODS = false;
 if ~ispc
     STUDY_DIR = getenv('STUDY_DIR');
     SCRIPT_DIR = getenv('SCRIPT_DIR');
+    SRC_DIR = getenv('SRC_DIR');
 else
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
-        STUDY_DIR = SCRIPT_DIR;
     catch e
         fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
-        STUDY_DIR = SCRIPT_DIR;
     end
+    STUDY_DIR = SCRIPT_DIR;
+    SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
 %## Add Study & Script Paths
 addpath(STUDY_DIR);
-cd(SCRIPT_DIR);
+addpath(SRC_DIR);
+cd(SRC_DIR);
 fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa_spca');
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
 DATA_SET = 'MIM_dataset';
 ica_orig_dir = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 % cluster_study_dir = '12012023_OAYA104_icc0p65-0p2_changparams';
-cluster_study_dir = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
-% cluster_study_dir = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
-
-study_fName_1 = 'epoch_study';
-spca_study_dir = '01122024_spca_analysis';
-study_fName_2 = 'epoch_study';
+% study_dir_name = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
+% study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+spca_study_dir = '03232024_spca_analysis_OA';
 ICLABEL_EYE_CUTOFF = 0.75;
 %- study group and saving
-DATA_DIR = [source_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir)];
-load_dir_1 = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir)];
-load_dir_2 = [STUDIES_DIR filesep sprintf('%s',spca_study_dir)];
-OUTSIDE_DATA_DIR = [STUDIES_DIR filesep ica_orig_dir]; % JACOB,SAL(02/23/2023)
+studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
+save_dir = [studies_fpath filesep sprintf('%s',study_dir_name)];
+load_dir = [studies_fpath filesep sprintf('%s',spca_study_dir)];
+OUTSIDE_DATA_DIR = [studies_fpath filesep ica_orig_dir]; % JACOB,SAL(02/23/2023)
 %- load cluster
-CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',cluster_study_dir) filesep 'cluster'];
-CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
-CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
 CLUSTER_K = 12;
+CLUSTER_STUDY_NAME = 'temp_study_rejics5';
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
@@ -74,13 +72,13 @@ end
 %% ===================================================================== %%
 %## LOAD STUDY
 if ~ispc
-    tmp = load('-mat',[CLUSTER_STUDY_DIR filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_FNAME)]);
+    tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
     TMP_STUDY = tmp.STUDY;
 else
-    tmp = load('-mat',[CLUSTER_STUDY_DIR filesep sprintf('%s.study',CLUSTER_STUDY_FNAME)]);
+    tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s.study',CLUSTER_STUDY_NAME)]);
     TMP_STUDY = tmp.STUDY;
 end
-cl_struct = par_load([CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 TMP_STUDY.cluster = cl_struct;
 [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(TMP_STUDY);
 condition_gait = unique({TMP_STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
@@ -92,10 +90,10 @@ fNames = {TMP_STUDY.datasetinfo.filename};
 CLUSTER_PICKS = main_cl_inds(2:end);
 subj_i = 2;
 cond_i = 1;
-tmpd = dir([load_dir_2 filesep subject_chars{subj_i} filesep 'GAIT_EPOCHED' filesep '*' filesep sprintf('cond%s_spca_ersp.mat',condition_gait{cond_i})]);
+tmpd = dir([load_dir filesep subject_chars{subj_i} filesep 'GAIT_EPOCHED' filesep '*' filesep sprintf('cond%s_spca_ersp.mat',condition_gait{cond_i})]);
 gait_epoch_subf = strsplit(tmpd.folder,filesep);
 gait_epoch_subf = gait_epoch_subf{end};
-spca_fpath = [load_dir_2 filesep subject_chars{subj_i} filesep 'GAIT_EPOCHED' filesep gait_epoch_subf];
+spca_fpath = [load_dir filesep subject_chars{subj_i} filesep 'GAIT_EPOCHED' filesep gait_epoch_subf];
 spca_ersp = par_load(spca_fpath,sprintf('cond%s_spca_ersp.mat',condition_gait{cond_i}));
 T_DIM = size(spca_ersp.ersp_corr,1);
 F_DIM = size(spca_ersp.ersp_corr,3);
@@ -135,7 +133,7 @@ parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
         [valc,ordc] = sort(tmp_cut);
         unmix = [valc; ordc];
         %- load spca data
-        spca_fpath = [load_dir_2 filesep subject_chars{subj_i} filesep 'GAIT_EPOCHED' filesep gait_epoch_subf];
+        spca_fpath = [load_dir filesep subject_chars{subj_i} filesep 'GAIT_EPOCHED' filesep gait_epoch_subf];
         EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
         fprintf('Running subject %s\n',EEG.subject)
         ic_keep = EEG.etc.urreject.ic_keep;
@@ -214,4 +212,4 @@ end
 % tt = table(subj_c,group_c,cluster_c,cond_c,tf_erspcorr_c,tf_gpmcorr_c,tf_erporig_c,tf_gpmorig_c,tf_pc1_c,tf_coeff_c);
 tt = cat(1,loop_store{:});
 tt = tt(~all(cellfun(@isempty,tt{:,:}),2),:);
-par_save(tt,CLUSTER_STUDY_DIR,'spca_cluster_table.mat');
+par_save(tt,cluster_study_fpath,'spca_cluster_table.mat');

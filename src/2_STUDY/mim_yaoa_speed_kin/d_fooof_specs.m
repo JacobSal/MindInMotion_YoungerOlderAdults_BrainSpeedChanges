@@ -86,7 +86,8 @@ beta_band  = [12 30];
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- cluster directory for study
-study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 %- study info
 SUB_GROUP_FNAME = 'group_spec';
 %- study group and saving
@@ -261,11 +262,13 @@ subj_cl_ind = zeros(table_len,1);
 subj_char = categorical(repmat({''},table_len,1));
 comp_id = zeros(table_len,1);
 design_id = categorical(zeros(table_len,1));
-cond_id = zeros(table_len,1);
-cond_char = categorical(repmat({''},table_len,1));
+cluster_id = categorical(zeros(table_len,1));
 group_id = zeros(table_len,1);
 group_char = categorical(repmat({''},table_len,1));
-cluster_id = categorical(zeros(table_len,1));
+speed_double = zeros(table_len,1);
+speed_cat = categorical(repmat({''},table_len,1));
+terrain_cat = categorical(repmat({''},table_len,1));
+
 aperiodic_exp = zeros(table_len,1);
 aperiodic_offset = zeros(table_len,1);
 central_freq = cell(table_len,1);
@@ -351,12 +354,16 @@ for dd = 1:length(DESIGN_INDS)
                         FOOOF_TABLE.subj_char(cnt) = categorical(cl_chars(subj_i));
                         FOOOF_TABLE.comp_id(cnt) = cl_comps(subj_i);
                         FOOOF_TABLE.design_id(cnt) = categorical(des_i);
-                        FOOOF_TABLE.cond_id(cnt) = cond_i;
+                        % FOOOF_TABLE.cond_id(cnt) = cond_i;
                         if any(strcmp(c_chars(cond_i),TERRAIN_VALS))
-                            FOOOF_TABLE.cond_char(cnt) = categorical(c_chars(cond_i));
+                            FOOOF_TABLE.terrain_cat(cnt) = categorical(c_chars(cond_i));
+                            FOOOF_TABLE.speed_double(cnt) = [];
+                            FOOOF_TABLE.speed_cat(cnt) = categorical([]);
                         else
                             ind = strcmp(c_chars(cond_i),SPEED_VALS(2,:));
-                            FOOOF_TABLE.cond_char(cnt) = categorical(SPEED_VALS(1,ind));
+                            FOOOF_TABLE.terrain_cat(cnt) = categorical([]);
+                            FOOOF_TABLE.speed_double(cnt) = SPEED_VALS(1,ind);
+                            FOOOF_TABLE.speed_cat(cnt) = categorical(SPEED_VALS(1,ind));
                         end
                         FOOOF_TABLE.group_id(cnt) = group_i;
                         FOOOF_TABLE.group_char(cnt) = categorical(g_chars(group_i));

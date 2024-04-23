@@ -86,9 +86,11 @@ beta_band  = [12 30];
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- cluster directory for study
-study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 %- study info
-SUB_GROUP_FNAME = 'group_spec';
+SUB_GROUP_FNAME = 'all_spec';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
@@ -231,21 +233,41 @@ end
 speed_alleeg = speed_alleeg(~cellfun(@isempty,speed_alleeg(:,1)),:);
 %% (TABLE) GENERATE FOOOF VALUES ======================================= %%
 table_len = 0;
+c_chars = nan();
+g_chars = nan();
 for des_i = DESIGN_INDS
     for cl_i = CLUSTER_PICKS
         s_chars = {STUDY.datasetinfo(STUDY.cluster(cl_i).sets).subject};
-        g_chars = STUDY.design(des_i).variable(1).value;
-        c_chars = STUDY.design(des_i).variable(2).value;
+        for i = 1:length(STUDY.design(des_i).variable)
+            if strcmp(STUDY.design(des_i).variable(i).label,'cond')
+                c_chars = STUDY.design(des_i).variable(i).value;
+            elseif strcmp(STUDY.design(des_i).variable(i).label,'group')
+                g_chars = STUDY.design(des_i).variable(i).value;
+            end
+        end
+        % try
+        %     g_chars = STUDY.design(des_i).variable(1).value;
+        % catch
+        %     g_chars = 'group';
+        % end
+        % c_chars = STUDY.design(des_i).variable(2).value;
         chk = true;
-        for group_i = 1:length(g_chars)
-            g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
-            chk = chk && sum(g_inds) > length(STUDY.design(des_i).variable(2).value);
+        if ~isnan(g_chars)
+            for group_i = 1:length(g_chars)
+                g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+                chk = chk && sum(g_inds) > length(STUDY.design(des_i).variable(2).value);
+            end
+        else
+            chk = true;
         end
         if chk
             for group_i = 1:length(g_chars)
-                g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+                if ~isnan(g_chars)
+                    g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+                else
+                    g_inds = (1:length(STUDY.cluster(cl_i).sets));
+                end
                 cl_chars = s_chars(g_inds);
-           
                 for cond_i = 1:length(c_chars)
                     for subj_i = 1:length(cl_chars)
                         table_len = table_len + 1;
@@ -261,11 +283,14 @@ subj_cl_ind = zeros(table_len,1);
 subj_char = categorical(repmat({''},table_len,1));
 comp_id = zeros(table_len,1);
 design_id = categorical(zeros(table_len,1));
-cond_id = zeros(table_len,1);
-cond_char = categorical(repmat({''},table_len,1));
+cluster_id = categorical(zeros(table_len,1));
 group_id = zeros(table_len,1);
 group_char = categorical(repmat({''},table_len,1));
-cluster_id = categorical(zeros(table_len,1));
+% speed_double = zeros(table_len,1);
+cond_id = zeros(table_len,1);
+cond_char = categorical(repmat({''},table_len,1));
+% speed_cat = categorical(repmat({''},table_len,1));
+% terrain_cat = categorical(repmat({''},table_len,1));
 aperiodic_exp = zeros(table_len,1);
 aperiodic_offset = zeros(table_len,1);
 central_freq = cell(table_len,1);
@@ -303,32 +328,53 @@ for dd = 1:length(DESIGN_INDS)
         file_mat = STUDY.etc.mim_gen_ersp_data(ind).spec_ss_fpaths;
         tmp = par_load(file_mat,[]);
         %## Note: spec_subj_mean_stats separate young and older adults
-        specdata = cell(size(tmp,2),size(tmp,1));
-        specfreqs = cell(size(tmp,2),size(tmp,1));
-        for j = 1:size(tmp,1) % group
-            for k = 1:size(tmp,2) % cond
-                specdata{k,j} = tmp(j,k).specdata;
-                specfreqs{k,j} = tmp(j,k).specfreqs;
+        if ~isnan(g_chars)
+            specdata = cell(size(tmp,2),size(tmp,1));
+            specfreqs = cell(size(tmp,2),size(tmp,1));
+            for j = 1:size(tmp,1) % group
+                for k = 1:size(tmp,2) % cond
+                    specdata{k,j} = tmp(j,k).specdata;
+                    specfreqs{k,j} = tmp(j,k).specfreqs;
+                end
+            end
+        else
+            specdata = cell(size(tmp,1),1);
+            specfreqs = cell(size(tmp,1),1);
+            for k = 1:size(tmp,1) % cond
+                specdata{k,1} = tmp(k,1).specdata;
+                specfreqs{k,1} = tmp(k,1).specfreqs;
             end
         end
         %## RUN FOOOF
         %- get subjects in cluster
         s_chars = {STUDY.datasetinfo(STUDY.cluster(cl_i).sets).subject};
-        g_chars = STUDY.design(des_i).variable(1).value;
-        c_chars = STUDY.design(des_i).variable(2).value;
+        for i = 1:length(STUDY.design(des_i).variable)
+            if strcmp(STUDY.design(des_i).variable(i).label,'cond')
+                c_chars = STUDY.design(des_i).variable(i).value;
+            elseif strcmp(STUDY.design(des_i).variable(i).label,'group')
+                g_chars = STUDY.design(des_i).variable(i).value;
+            end
+        end
         chk = true;
-        for group_i = 1:length(g_chars)
-            g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
-            chk = chk && sum(g_inds) > length(STUDY.design(des_i).variable(2).value);
+        if ~isnan(g_chars)
+            for group_i = 1:length(g_chars)
+                g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+                chk = chk && sum(g_inds) > length(STUDY.design(des_i).variable(2).value);
+            end
+        else
+            chk = true;
         end
         if chk
             for group_i = 1:size(specdata,2) % in case there is young and old adult group
-                g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+                if ~isnan(g_chars)
+                    g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+                else
+                    g_inds = (1:length(STUDY.cluster(cl_i).sets));
+                end
                 %-
                 cl_chars = s_chars(g_inds);
                 subj_inds = STUDY.cluster(cl_i).sets(g_inds);
                 cl_inds = find(g_inds);
-                
                 cl_comps = STUDY.cluster(cl_i).comps(g_inds);
                 cl_speeds = zeros(length(cl_chars),1);
                 fprintf('%i) subjects (N=%i): %s\n',cl_i,length(cl_chars),sprintf('%s,',cl_chars{:}));
@@ -351,15 +397,30 @@ for dd = 1:length(DESIGN_INDS)
                         FOOOF_TABLE.subj_char(cnt) = categorical(cl_chars(subj_i));
                         FOOOF_TABLE.comp_id(cnt) = cl_comps(subj_i);
                         FOOOF_TABLE.design_id(cnt) = categorical(des_i);
-                        FOOOF_TABLE.cond_id(cnt) = cond_i;
+                        % FOOOF_TABLE.cond_id(cnt) = cond_i;
                         if any(strcmp(c_chars(cond_i),TERRAIN_VALS))
                             FOOOF_TABLE.cond_char(cnt) = categorical(c_chars(cond_i));
+                            FOOOF_TABLE.cond_id(cnt) = cond_i;
+
+                            % FOOOF_TABLE.terrain_cat(cnt) = categorical(c_chars(cond_i));
+                            % FOOOF_TABLE.speed_double(cnt) = [];
+                            % FOOOF_TABLE.speed_cat(cnt) = categorical([]);
                         else
                             ind = strcmp(c_chars(cond_i),SPEED_VALS(2,:));
                             FOOOF_TABLE.cond_char(cnt) = categorical(SPEED_VALS(1,ind));
+                            FOOOF_TABLE.cond_id(cnt) = cond_i;
+
+                            % ind = strcmp(c_chars(cond_i),SPEED_VALS(2,:));
+                            % FOOOF_TABLE.terrain_cat(cnt) = categorical([]);
+                            % FOOOF_TABLE.speed_double(cnt) = SPEED_VALS(1,ind);
+                            % FOOOF_TABLE.speed_cat(cnt) = categorical(SPEED_VALS(1,ind));
                         end
                         FOOOF_TABLE.group_id(cnt) = group_i;
-                        FOOOF_TABLE.group_char(cnt) = categorical(g_chars(group_i));
+                        if ~isnan(g_chars)
+                            FOOOF_TABLE.group_char(cnt) = categorical(g_chars(group_i));
+                        else
+                            FOOOF_TABLE.group_char(cnt) = categorical({'all'});
+                        end
                         FOOOF_TABLE.cluster_id(cnt) = categorical(cl_i);
                         FOOOF_TABLE.aperiodic_exp(cnt) = fooof_results{des_i}{cond_i,group_i}{subj_i}.aperiodic_params(2);
                         FOOOF_TABLE.aperiodic_offset(cnt) = fooof_results{des_i}{cond_i,group_i}{subj_i}.aperiodic_params(1);
