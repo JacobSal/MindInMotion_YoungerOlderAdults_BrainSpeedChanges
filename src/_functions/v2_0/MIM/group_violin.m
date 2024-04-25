@@ -38,12 +38,22 @@ PLOT_PARAMS = struct('color_map',linspecer(length(unique(table_in.(cond_char))))
     'y_label','unit',...
     'x_label','x','title','','font_size',12,'ylim',[min(table_in.(measure_char)),max(table_in.(measure_char))],...
     'font_name','Arial','do_combine_groups',false);
+% STATS_STRUCT = struct('anova',{{}},...
+%                       'pvals',{{}},...
+%                       'pvals_pairs',{{}},...
+%                       'regress_pval',{{}},...
+%                       'regress_line',{{}},...
+%                       'r2_coeff',0);
 STATS_STRUCT = struct('anova',{{}},...
-                      'pvals',{{}},...
-                      'pvals_pairs',{{}},...
-                      'regress_pval',{{}},...
-                      'regress_line',{{}},...
-                      'r2_coeff',0);
+                          'anova_grp',{{}},...
+                          'pvals',{{}},...
+                          'pvals_pairs',{{}},...
+                          'pvals_grp',{{}},...
+                          'pvals_grp_pairs',{{}},...
+                          'regress_pval',{{}},...
+                          'regress_line',{{}},...
+                          'r2_coeff',{{}},...
+                          'regress_xvals',0);
 %- STATS_STRUCT EXAMPLE:
 % STATS_STRUCT = struct('anova',{0.02,0.1},...
 %                       'pvals',{[0.001,0.002,0.01],[0.2,0.3,0.05,0.1]},...
@@ -177,10 +187,62 @@ yiter = yiter(2)-yiter(1);
 cnt_g = 1;
 hold_xlim = get(gca,'xlim');
 annotes = [];
+set_y = true;
 for i=1:length(groups)
-    %- CATEGORICAL
-    % y = max(ymaxs(i,:));
-    y = max(sigline_ymax(i,:));
+    %- GROUP STATISTICS
+    if ~isempty(STATS_STRUCT.anova_grp)
+        if STATS_STRUCT.anova_grp{i} < 0.05
+            if STATS_STRUCT.pvals_grp{i} < 0.05
+                x = zeros(1,2);
+                bx1 = zeros(1,2);
+                bx2 = zeros(1,2);
+                by1 = zeros(1,2);
+                by2 = zeros(1,2);
+                g1 = STATS_STRUCT.pvals_grp_pairs{i}(1,1);
+                g2 = STATS_STRUCT.pvals_grp_pairs{i}(1,2);
+                if i ~= 1
+                    if g1 ~= 1
+                        bx1(1) = (g1-1)*length(conds)+1;
+                        bx1(2) = (g1-1)*length(conds)+length(conds);
+                    else
+                        bx1(1) = g1;
+                        bx1(2) = g1+length(conds)-1;
+                    end
+                    if g2 ~= 1
+                        bx2(1) = (g2-1)*length(conds)+1;
+                        bx2(2) = (g2-1)*length(conds)+length(conds);
+                    else
+                        bx2(1) = g2;
+                        bx2(2) = g2+length(conds)-1;
+                    end
+                    tmpy = [];
+                    for tt = linspace(bx1(1),bx1(2),bx1(2)-bx1(1)+1)
+                        tmpy = [tmpy, violins{tt}.ScatterPlot.YData];
+                    end
+                    by1(1) = max(tmpy)*1.01; 
+                    by1(2) = max(tmpy)*1.05;
+                    tmpy = [];
+                    for tt = linspace(bx2(1),bx2(2),bx2(2)-bx2(1)+1)
+                        tmpy = [tmpy, violins{tt}.ScatterPlot.YData];
+                    end
+                    by2(1) = max(tmpy)*1.01; 
+                    by2(2) = max(tmpy)*1.05;
+                    %-
+                    for tt = 1:length(bx1)
+                        bx1(tt) = violins{bx1(tt)}.MedianPlot.XData;
+                        bx2(tt) = violins{bx2(tt)}.MedianPlot.XData;
+                    end     
+                    pp = cus_sigbracket('+',STATS_STRUCT.pvals{i}(j),bx1,bx2,by1,by2);
+                    y = gety(pp);
+                    set_y = false;
+                end
+            end
+        end
+    end
+    if set_y
+        y = max(sigline_ymax(i,:));
+    end
+    %- CONDITION STATISTICS
     for j = 1:length(conds)
         if ~isempty(STATS_STRUCT.anova) && ~isempty(STATS_STRUCT.pvals)
             if STATS_STRUCT.anova{i} < 0.05
@@ -205,7 +267,8 @@ for i=1:length(groups)
                     y = gety(pp);
                     % y = y + yiter*0.4; %gety(gca); %SIG_LINE_INCR;
                 end
-             end
+            end
+            
         end
     end
     %- REGRESSION-CONTINUOUS
@@ -281,6 +344,37 @@ ylabel(PLOT_PARAMS.y_label,'FontSize',PLOT_PARAMS.font_size);
 title(PLOT_PARAMS.title);
 ylim(PLOT_PARAMS.ylim);
 hold off;
+end
+%% ================================================================== %%
+function pp = cus_sigbracket(lbl,pVal,bx1,bx2,by1,by2)
+    
+    bxx1 = [bx1(1),bx1(1),bx1(2),bx1(2)];
+    bxx2 = [bx2(1),bx2(1),bx2(2),bx2(2)];
+    byy1 = [by1(1),by1(2),by1(2),by1(1)];
+    byy2 = [by2(1),by2(2),by2(2),by2(1)];
+    bm1 = mean(bx1);
+    bm2 = mean(bx2);
+    [byymax,~] = max([by1,by2]);
+    boffset = abs(by2(2)-by2(1));
+    byconn = [max(by1),byymax+boffset,byymax+boffset,max(by2)];
+    bxconn = [bm1,bm1,bm2,bm2];
+    % Now plot the sig line on the current axis
+    hold on;
+    plot(bxx1,byy1,'-k','LineWidth',0.5);
+    plot(bxx2,byy2,'-k','LineWidth',0.5);
+    pp = plot(bxconn,byconn,'-k','LineWidth',0.5);
+    %- add label
+    if lbl
+        if pVal < 0.001
+            lbl = '***';
+        elseif pVal > 0.001 && pVal < 0.01
+            lbl = '**';
+        elseif pVal > 0.01 && pVal < 0.05
+            lbl = '*';
+        end
+        text(mean(bxconn)*1, max(byconn)*1.05, lbl) % the sig star sign
+    end
+    hold off;
 end
 %% ================================================================== %%
 function pp = cus_sigline(xs,lbl,h,yv,pVal)

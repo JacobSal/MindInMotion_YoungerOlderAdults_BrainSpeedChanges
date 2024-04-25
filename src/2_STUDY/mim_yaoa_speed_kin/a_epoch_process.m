@@ -56,29 +56,45 @@ OVERRIDE_DIPFIT = true;
 %- epoching params
 DO_SLIDING_WINDOW = false;
 RECALC_ICA_STUDY = false;
-%* sliding window
-WINDOW_LENGTH = 6; % sliding window length in seconds
-PERCENT_OVERLAP = 0.0; % percent overlap between epochs
-%* gait
-EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
-STD_TIMEWARP = 3;
-EPOCH_TIME_LIMITS = [-0.5,4.5]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
-% (10/13/2023) changing from [-1,4.25] to [-0.5,4.5] to match chang's
-% (10/25/2023) changing from [-0.5,4.5] to [-1,4.25] as it seems to help
-% with frequency decomposition artifact during ERSP creation
-% paper
-% (01/23/2024) changing from [-1,4.25] to [-0.5,4.5] to match chang
-TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
-if DO_SLIDING_WINDOW
-    SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
-    TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
-else
-    SUFFIX_PATH_EPOCHED = 'GAIT_EPOCHED';
-    TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-end
+% %* sliding window
+% WINDOW_LENGTH = 6; % sliding window length in seconds
+% PERCENT_OVERLAP = 0.0; % percent overlap between epochs
+% %* gait
+% EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
+% STD_TIMEWARP = 3;
+% EPOCH_TIME_LIMITS = [-0.5,4.5]; %[-1,3]; %[-0.5,5]; % [-1,3] captures gait events well , [-0.5,5] captures gait events poorly
+% % (10/13/2023) changing from [-1,4.25] to [-0.5,4.5] to match chang's
+% % (10/25/2023) changing from [-0.5,4.5] to [-1,4.25] as it seems to help
+% % with frequency decomposition artifact during ERSP creation
+% % paper
+% % (01/23/2024) changing from [-1,4.25] to [-0.5,4.5] to match chang
+% TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
+% if DO_SLIDING_WINDOW
+%     SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
+%     TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
+% else
+%     SUFFIX_PATH_EPOCHED = 'GAIT_EPOCHED';
+%     TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+% end
+%## EPOCH PARAMS
+DEF_EPOCH_PARAMS = struct('epoch_method','timewarp',...
+    'percent_overlap',0,...
+    'epoch_event_char','RHS',...
+    'epoch_time_lims',[-0.5,4.5],...
+    'baseline_time_lims',[-0.5,4.5-2],...
+    'tw_stdev',3,...
+    'tw_events',{{'RHS','LTO','LHS','RTO','RHS'}},...
+    'path_ext','gait_epoched',...
+    'cond_field','cond',...
+    'appx_cond_len',3*60,...
+    'slide_cond_chars',{{}},...
+    'gait_trial_chars',{{'0p25','0p5','0p75','1p0','flat','low','med','high'}},...
+    'rest_trial_char',{{}},...
+    'do_recalc_epoch',true);
 %- datetime override
 % dt = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 %- Subject Directory information
 OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 % OA_PREP_FPATH = '01132024_antsnorm_iccREEG0p65_iccREMG0p4_skull0p0042'
@@ -215,32 +231,31 @@ parfor (subj_i = LOOP_VAR,SLURM_POOL_SIZE)
     end
     %- parse
     try
-        %## EPOCH
-        [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,DO_SLIDING_WINDOW,...
-            'EPOCH_TIME_LIMITS',EPOCH_TIME_LIMITS,...
-            'STD_TIMEWARP',STD_TIMEWARP,...
-            'COND_CHARS',TRIAL_TYPES);
-        %## REMOVE USELESS EVENT FIELDS (Improve Load Time)
-        for i = 1:length(ALLEEG)
-            if isfield(ALLEEG(i).event,'trialName')
-                ALLEEG(i).event = rmfield(ALLEEG(i).event,'trialName');
+         %## REMOVE USELESS EVENT FIELDS (Improve Load Time)
+        for i = 1:length(EEG)
+            if isfield(EEG.event,'trialName')
+                EEG.event = rmfield(EEG.event,'trialName');
             end
-            if isfield(ALLEEG(i).event,'channel')
-                ALLEEG(i).event = rmfield(ALLEEG(i).event,'channel');
+            if isfield(EEG.event,'channel')
+                EEG.event = rmfield(EEG.event,'channel');
             end
-            if isfield(ALLEEG(i).event,'code')
-                ALLEEG(i).event = rmfield(ALLEEG(i).event,'code');
+            if isfield(EEG.event,'code')
+                EEG.event = rmfield(EEG.event,'code');
             end
-            if isfield(ALLEEG(i).event,'bvtime')
-                ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvtime');
+            if isfield(EEG.event,'bvtime')
+                EEG.event = rmfield(EEG.event,'bvtime');
             end
-            if isfield(ALLEEG(i).event,'bvmknum')
-                ALLEEG(i).event = rmfield(ALLEEG(i).event,'bvmknum');
+            if isfield(EEG.event,'bvmknum')
+                EEG.event = rmfield(EEG.event,'bvmknum');
             end
-            if isfield(ALLEEG(i).event,'datetime')
-                ALLEEG(i).event = rmfield(ALLEEG(i).event,'datetime');
+            if isfield(EEG.event,'datetime')
+                EEG.event = rmfield(EEG.event,'datetime');
             end
         end
+        %## EPOCH
+        [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,'EPOCH_PARAMS',DEF_EPOCH_PARAMS);
+        
+       
         %## SAVE EEG's AS INDIVIDUAL FILES (CONNECTIVITY)
         cond_files = struct('fPath',[],'fName',[]);
         if SAVE_ALLEEG
@@ -262,7 +277,7 @@ parfor (subj_i = LOOP_VAR,SLURM_POOL_SIZE)
         ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
         ALLEEG.etc.cond_files = cond_files;
         %## timewarp for across condition
-        if ~DO_SLIDING_WINDOW
+        if strcmp(DEF_EPOCH_PARAMS.epoch_method,'sliding_window')
             timewarp = make_timewarp(ALLEEG,TIMEWARP_EVENTS,'baselineLatency',0, ...
                     'maxSTDForAbsolute',inf,...
                     'maxSTDForRelative',inf);

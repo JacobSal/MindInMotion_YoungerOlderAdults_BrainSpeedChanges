@@ -12,6 +12,8 @@ for i = 1:size(table_in,1)
 end
 % t.display;
 t.HasHeader = true;
-t.print;
+% t.Format = 'tex';
+% t.Caption = '';
+% t.print;
 end
 

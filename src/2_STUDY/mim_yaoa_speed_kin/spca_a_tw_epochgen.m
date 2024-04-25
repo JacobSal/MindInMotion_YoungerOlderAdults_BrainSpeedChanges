@@ -56,21 +56,36 @@ study_fname_gait = 'epoch_study_ya';
 SAVE_ALLEEG = false;
 %- epoching params
 DO_SLIDING_WINDOW = false;
-%* sliding window
-WINDOW_LENGTH = 6; % sliding window length in seconds
-PERCENT_OVERLAP = 0.0; % percent overlap between epochs
-%* gai
-EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
-STD_TIMEWARP = 3;
-EPOCH_TIME_LIMITS = [-0.5,4.5];
-TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
-if DO_SLIDING_WINDOW
-    SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
-    TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
-else
-    SUFFIX_PATH_EPOCHED = 'GAIT_EPOCHED';
-    TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-end
+% %* sliding window
+% WINDOW_LENGTH = 6; % sliding window length in seconds
+% PERCENT_OVERLAP = 0.0; % percent overlap between epochs
+% %* gai
+% EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
+% STD_TIMEWARP = 3;
+% EPOCH_TIME_LIMITS = [-0.5,4.5];
+% TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
+% if DO_SLIDING_WINDOW
+%     SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
+%     TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
+% else
+%     SUFFIX_PATH_EPOCHED = 'GAIT_EPOCHED';
+%     TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+% end
+%## EPOCH PARAMS
+DEF_EPOCH_PARAMS = struct('epoch_method','timewarp',...
+    'percent_overlap',0,...
+    'epoch_event_char','RHS',...
+    'epoch_time_lims',[-0.5,4.5],...
+    'baseline_time_lims',[-0.5,4.5-2],...
+    'tw_stdev',3,...
+    'tw_events',{{'RHS','LTO','LHS','RTO','RHS'}},...
+    'path_ext','gait_epoched',...
+    'cond_field','cond',...
+    'appx_cond_len',3*60,...
+    'slide_cond_chars',{{}},...
+    'gait_trial_chars',{{'0p25','0p5','0p75','1p0','flat','low','med','high'}},...
+    'rest_trial_char',{{}},...
+    'do_recalc_epoch',true);
 %- compute measures for spectrum and ersp
 ICLABEL_EYE_CUTOFF = 0.75;
 FORCE_RECALC_ERSP = false;
@@ -234,10 +249,8 @@ parfor (subj_i = 1:length(fPaths),floor(length(fPaths)/3))
             EEG.event = rmfield(EEG.event,'datetime');
         end
         %## EPOCH
-        [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,false,...
-            'EPOCH_TIME_LIMITS',EPOCH_TIME_LIMITS,...
-            'STD_TIMEWARP',STD_TIMEWARP,...
-            'COND_CHARS',TRIAL_TYPES);
+        [ALLEEG,timewarp_struct] = mim_parse_trials(EEG,'EPOCH_PARAMS',DEF_EPOCH_PARAMS);
+        
         
         %## SAVE EEG's AS INDIVIDUAL FILES (CONNECTIVITY)
         fprintf('\nConcatenating datasets...\n');

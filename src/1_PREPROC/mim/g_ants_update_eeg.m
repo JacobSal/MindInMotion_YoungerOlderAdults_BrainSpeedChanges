@@ -65,6 +65,7 @@ end
 %- datset name
 THRESHOLD_RV_BRAIN = 0.15;
 DATA_SET = 'MIM_dataset';
+DEPTH_ERROR = 15; % +/-30mm 
 %- eeglab_cluster.m spectral params
 % OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
 % OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
@@ -139,7 +140,7 @@ parfor (subj_i = 1:length(subj_names),floor(length(subj_names)/2))
         for i=1:size(norm_chan,1)
             %- get dipole depth and reject if it isn't in brain volume
             depth = ft_sourcedepth(norm_pos(i,:), vol);
-            if depth <= 0
+            if depth <= DEPTH_ERROR
                 EEG.dipfit_fem.model(norm_chan.chan(i)).mnipos = norm_pos(i,:);
                 EEG.dipfit_fem.model(norm_chan.chan(i)).mni_voxinds = voxinds(i,:);
                 EEG.dipfit_fem.model(norm_chan.chan(i)).pos_old = [norm_chan{i,2:end}];

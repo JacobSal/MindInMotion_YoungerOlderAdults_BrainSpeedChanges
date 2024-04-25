@@ -21,7 +21,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -144,47 +144,56 @@ DEF_PLOTORDERCRIT = struct('conditions',{DEF_EPOCH_PARAMS.gait_trial_chars},    
 DEF_ESTDISPMVAR_CHK = struct('morder',MORDER,...
         'winlen',WINDOW_LENGTH,'winstep',WINDOW_STEP_SIZE,'verb',1);
 %##
-DEF_ESTFITMVAR = struct('connmethods',CONN_METHODS, ...
+DEF_ESTFITMVAR = struct('connmethods',{CONN_METHODS}, ...
             'absvalsq',true,           ...
             'spectraldecibels',true,   ...
             'freqs',CONN_FREQS,        ...
-            'verb',0);
+            'verb',1);
 %## PATHING
 % study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-%## soft define
-studies_dir = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
-conn_fig_dir = [studies_dir filesep sprintf('%s',study_dir_name) filesep 'conn_valid_epoch'];
+%- study dir & conn figure dir
+studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
+conn_fig_dir = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'conn_valid_epoch'];
 %- load study file
-% STUDY_FNAME = 'epoch_study';
-STUDY_FNAME = 'all_comps_study';
-STUDY_FPATH = [studies_dir filesep sprintf('%s',study_dir_name)];
+STUDY_FNAME_LOAD = 'all_comps_study';
 STUDY_FNAME_SAVE = 'epoch_conn_study';
+study_fpath = [studies_fpath filesep sprintf('%s',study_dir_name)];
 %- load cluster
-CLUSTER_DIR = [studies_dir filesep sprintf('%s',study_dir_name) filesep 'cluster'];
-CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
-CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
 CLUSTER_K = 12;
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %- create new study directory
 if ~exist(conn_fig_dir,'dir')
     mkdir(conn_fig_dir);
 end
 %% LOAD EPOCH STUDY
 %- Create STUDY & ALLEEG structs
-if ~exist([STUDY_FPATH filesep STUDY_FNAME '.study'],'file')
-    error('ERROR. study file does not exist');
-    exit(); %#ok<UNRCH>
+% if ~exist([STUDY_FPATH filesep STUDY_FNAME '.study'],'file')
+%     error('ERROR. study file does not exist');
+%     exit(); %#ok<UNRCH>
+% else
+%     %## LOAD STUDY
+%     if ~ispc
+%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME '_UNIX.study'],'filepath',STUDY_FPATH);
+%     else
+%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME '.study'],'filepath',STUDY_FPATH);
+%     end
+%     cl_struct = par_load([CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+%     MAIN_STUDY.cluster = cl_struct;
+%     [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
+% end
+%## LOAD STUDY
+if ~ispc
+    tmp = load('-mat',[study_fpath filesep sprintf('%s_UNIX.study',STUDY_FNAME_LOAD)]);
+    STUDY = tmp.STUDY;
 else
-    %## LOAD STUDY
-    if ~ispc
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME '_UNIX.study'],'filepath',STUDY_FPATH);
-    else
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME '.study'],'filepath',STUDY_FPATH);
-    end
-    cl_struct = par_load([CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
-    MAIN_STUDY.cluster = cl_struct;
-    [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
+    tmp = load('-mat',[study_fpath filesep sprintf('%s.study',STUDY_FNAME_LOAD)]);
+    STUDY = tmp.STUDY;
 end
+cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+STUDY.cluster = cl_struct;
+[comps_out,~,~,valid_cls] = eeglab_get_cluster_comps(STUDY);
 % %% MIM STUDY STATS
 % %## FIND MINIMUM TRIALS ACROSS COHORT
 % if DO_STANDARD_TRIALS
@@ -213,11 +222,11 @@ end
 %     MIN_CONN_TRIALS = min(trial_mins);
 % end
 %% INITIALIZE PARFOR LOOP VARS
-fPaths = {MAIN_ALLEEG.filepath};
-fNames = {MAIN_ALLEEG.filename};
-LOOP_VAR = 1:length(MAIN_ALLEEG);
-tmp = cell(1,length(MAIN_ALLEEG));
-rmv_subj = zeros(1,length(MAIN_ALLEEG));
+fPaths = {STUDY.datasetinfo.filepath};
+fNames = {STUDY.datasetinfo.filename};
+LOOP_VAR = 1:length(STUDY.datasetinfo);
+tmp = cell(1,length(STUDY.datasetinfo));
+rmv_subj = zeros(1,length(STUDY.datasetinfo));
 %## CUT OUT NON VALID CLUSTERS
 inds = setdiff(1:length(comps_out),valid_cls);
 comps_out(inds,:) = 0;
@@ -226,6 +235,10 @@ fprintf('Computing Connectivity\n');
 pop_editoptions('option_computeica', 1);
 %## PARFOR LOOP
 EEG = [];
+%{
+fPaths = {'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01\H1004\GAIT_EPOCHED\cond_0p5'};
+fNames = {'cond_0p5.set'};
+%}
 % parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
 for subj_i = LOOP_VAR
     %- Parse out components
@@ -246,7 +259,14 @@ for subj_i = LOOP_VAR
             EEG.icaact = reshape(EEG.icaact,size(EEG.icaact,1),EEG.pnts,EEG.trials);
         end
         %## RESAMPLE
-        EEG = pop_resample(EEG,RESAMLE_FREQ);
+        %- (04/24/2024) JS, the rationale for resampling is majorly based
+        %on computation times, however, a argument could be made that by
+        %removing higher frequency (i.e., downsampling) data the
+        %connectivity model may fit more accurately to lower frequency
+        %content. The latter point has not been proven, merely suggested in
+        %the literature.
+        %(https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10044923/)
+        % EEG = pop_resample(EEG,RESAMLE_FREQ);
         %## REMOVE USELESS EVENT FIELDS (Improve Load Time)
         if isfield(EEG.event,'trialName')
             EEG.event = rmfield(EEG.event,'trialName');
@@ -283,7 +303,11 @@ for subj_i = LOOP_VAR
                 ALLEEG(i) = tmp_all;
             end
         end
-        EEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);    
+        EEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
+        %- checks
+        EEG = eeg_checkset(EEG,'eventconsistency');
+        EEG = eeg_checkset(EEG);
+        EEG = eeg_checkamica(EEG);
         try
             %## RUN MAIN_FUNC
             [TMP,t_out] = cnctanl_sift_pipe(EEG,components,conn_fig_dir,...
@@ -355,7 +379,7 @@ tmp = eeg_checkset(tmp,'eventconsistency');
                                 'savedat','off',...
                                 'name',STUDY_FNAME_SAVE,...
                                 'filename',STUDY_FNAME_SAVE,...
-                                'filepath',STUDY_FPATH);
+                                'filepath',study_fpath);
 %## ASSIGN PARAMETERS
 STUDY.etc.a_epoch_process.epoch_chars = TRIAL_TYPES;
 STUDY.etc.d_cnctanl_process.params = struct('DO_PHASE_RND',DO_PHASE_RND,...
@@ -367,7 +391,7 @@ STUDY.etc.d_cnctanl_process.params = struct('DO_PHASE_RND',DO_PHASE_RND,...
             'PLOTORDERCRIT',DEF_PLOTORDERCRIT,...
             'comps',comps_out);
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
-                                            STUDY_FNAME_SAVE,STUDY_FPATH,...
+                                            STUDY_FNAME_SAVE,study_fpath,...
                                             'STUDY_COND',[]);                          
 %% Version History
 %{

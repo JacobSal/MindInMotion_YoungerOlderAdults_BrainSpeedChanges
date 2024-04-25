@@ -100,8 +100,8 @@ F_DIM = size(spca_ersp.ersp_corr,3);
 CL_DIM = length(TMP_STUDY.cluster);
 %%
 loop_store = cell(length(subject_chars),1);
-parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
-% for subj_i = 1:length(subject_chars)
+% parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
+for subj_i = 1:length(subject_chars)
     %## INITIATION
     %-
     cond_c          = cell(length(condition_gait)*length(CLUSTER_PICKS),1);

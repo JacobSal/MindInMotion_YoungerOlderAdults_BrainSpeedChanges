@@ -23,7 +23,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR%#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -77,6 +77,7 @@ cellfun(@(x) path(path,x),dep);
 % par_save(fout,SCRIPT_DIR,'dependencies.mat');
 files_to_compile = par_load(SCRIPT_DIR,'dependencies.mat');
 keepinds = zeros(length(files_to_compile),1);
+paths_to_add = {};
 data_to_include = {};
 extra = {};
 for i = 1:length(files_to_compile)
@@ -85,6 +86,8 @@ for i = 1:length(files_to_compile)
     else
         files_to_compile{i} = convertPath2Drive(files_to_compile{i});
     end
+    tmp = strsplit(files_to_compile{i},filesep);
+    paths_to_add = [paths_to_add, strjoin(tmp(1:end-1),filesep)];
     regchk = regexp(files_to_compile{i},'(?<=\.)[^.]*$','match');
     if strcmp(regchk,'m')
         keepinds(i) = 1;
@@ -101,7 +104,12 @@ for i = 1:length(files_to_compile)
         keepinds(i) = 1;
     end
 end
-files_to_compile = files_to_compile(logical(keepinds));
+files_to_compile = [files_to_compile(logical(keepinds)),...
+    [PATHS.submods_dir filesep 'eeglab/plugins/ICLabel/matconvnet/matlab/+dagnn_bc/Conv.m'],...
+    ];
+paths_to_add = [unique(paths_to_add),...
+    [PATHS.submods_dir filesep 'eeglab/functions/@eegobj']];
+cellfun(@(x) path(path,x),paths_to_add);
 % disp(files_to_compile);
 % disp(data_to_include);
 %- method 2

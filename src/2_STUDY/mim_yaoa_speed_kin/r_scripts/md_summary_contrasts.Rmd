@@ -51,7 +51,7 @@ for (ci in 1:length(clusters)) {
     tapply(tmpt[[eeg_measures[mi]]],tmpt$cond_char);
     contr.poly(4)
     contrasts(tmpt$cond_char) = contr.poly(4)
-    fo <- reformulate("cond_char",response=eeg_measures[mi])
+    fo <- reformulate("1+cond_char",response=eeg_measures[mi])
     fit <- do.call("lm", list(fo,quote(tmpt)))
     tidy(fit)
     # s <- modelsummary(fit, output="kableExtra")
