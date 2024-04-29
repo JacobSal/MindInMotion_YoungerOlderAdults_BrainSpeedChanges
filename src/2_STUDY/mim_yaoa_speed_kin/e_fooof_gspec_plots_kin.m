@@ -1082,7 +1082,8 @@ REGRESS_TXT_SIZE = 8;
 % REGRESS_TXT_YMULTI = 1.0;
 im_resize = 0.7;
 AX_W = 0.35;
-AX_H = 0.25;
+AX_H = 0.25*3;
+SCATTER_BOTTOM = 0.175;
 GROUP_SHORTS = {'YA','HO','FO'};
 GROUP_MARKS = {'o','x','^'};
 GROUP_LINESTYLES = {'-','-.',':'};
@@ -1101,7 +1102,7 @@ for cl_i = 1:length(clusters)
         atlas_name = atlas_name_store{cl_i};
         fig = figure('color','white','renderer','Painters');
         sgtitle(atlas_name,'FontName',PLOT_STRUCT.font_name,'FontSize',14,'FontWeight','bold','Interpreter','none');
-        set(fig,'Units','inches','Position',[0.5,0.5,6.5,9])
+        set(fig,'Units','inches','Position',[0.5,0.5,6.5,3])
         set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
         hold on;
         set(gca,AXES_DEFAULT_PROPS{:})
@@ -1132,14 +1133,15 @@ for cl_i = 1:length(clusters)
                 % T_vals_plot.cond_char = double(string(T_vals_plot.cond_char));
                 loc_cond_chars = unique(T_vals_plot.cond_char);
                 y_lim_calc = [min(T_vals_plot.(measure_name))-std(T_vals_plot.(measure_name)),max(T_vals_plot.(measure_name))+std(T_vals_plot.(measure_name))];
-                T_vals_plot = table(double(T_vals_plot.(measure_name)),categorical(string(T_vals_plot.cond_char)),categorical(string(T_vals_plot.group_char),double(T_vals_plot.(varnames{var_i}))),...
+                T_vals_plot = table(double(T_vals_plot.(measure_name)),categorical(string(T_vals_plot.cond_char)),categorical(string(T_vals_plot.group_char)),double(T_vals_plot.(varnames{var_i})),...
                     'VariableNames',{measure_name,'cond_char','group_char',varnames{var_i}});
                 try
-                    mod = sprintf('%s ~ 1 + cond_char + %s + cond_char*%s',measure_name,varnames{var_i});
+                    mod = sprintf('%s ~ 1 + cond_char + %s + cond_char:%s',measure_name,varnames{var_i},varnames{var_i});
                     % stats_out = fitlme(T_vals_plot,mod);
                     stats_out = fitlm(T_vals_plot,mod);
                     % anova_out = anova(stats_out);
-                    out = anova(T_vals_plot,mod,'SumOfSquaresType',"three");
+                    out = anova(T_vals_plot,mod,'SumOfSquaresType',"three",'CategoricalFactors',{'cond_char'},...
+                            'ModelSpecification','interactions');
                     anova_out = out.stats();
                     % anova_out = anovan(double(T_vals_plot.(measure_name)),{T_vals_plot.group_char,T_vals_plot.cond_char},...
                     %         'model','interaction',...
@@ -1162,18 +1164,18 @@ for cl_i = 1:length(clusters)
                     pval_0p75 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_0.75'));
                     pval_1p0 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_1.0'));
                     pval_var = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,varnames{var_i}));
-                    pval_0p5_var = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,sptrinf('cond_char_0.5:%s',varnames{var_i})));
+                    pval_0p5_var = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,sprintf('cond_char_0.5:%s',varnames{var_i})));
                     pval_0p75_var = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,sprintf('cond_char_0.75:%s',varnames{var_i})));
-                    pval_1p0_var = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,sptrinf('cond_char_1.0:%s',varnames{var_i})));
+                    pval_1p0_var = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,sprintf('cond_char_1.0:%s',varnames{var_i})));
                     %-
                     slope_inter = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,'(Intercept)')));
                     slope_0p5 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_0.5'));
                     slope_0p75 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_0.75'));
                     slope_1p0 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_1.0'));
                     slope_var = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,varnames{var_i}));
-                    slope_0p5_var = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,sptrinf('cond_char_0.5:%s',varnames{var_i}))));
-                    slope_0p75_var = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,sptrinf('cond_char_0.75:%s',varnames{var_i}))));
-                    slope_1p0_var = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,sptrinf('cond_char_1.0:%s',varnames{var_i}))));
+                    slope_0p5_var = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,sprintf('cond_char_0.5:%s',varnames{var_i}))));
+                    slope_0p75_var = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,sprintf('cond_char_0.75:%s',varnames{var_i}))));
+                    slope_1p0_var = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,sprintf('cond_char_1.0:%s',varnames{var_i}))));
                 catch e
                     fprintf('Error. Cluster %s\n\n%s\n',string(clusters(cl_i)),getReport(e))
                     R2 = 0;
@@ -1229,7 +1231,7 @@ for cl_i = 1:length(clusters)
                             y(i) = x(i)*slope_var + slope_0p5*c2 + slope_0p75*c3 + slope_1p0*c4 + slope_0p5_var*x(i)*c2 + slope_0p75_var*x(i)*c3 + slope_1p0_var*x(i)*c4 + slope_inter ;
                         end
                         pp = plot(x,y,...
-                            'DisplayName',sprintf('p-vals=(%0.2f,%0.2f,%0.2f)',anova_p_var,anova_p_grp,anova_p_inter),...
+                            'DisplayName',sprintf('p_{%s}=(%0.2f,%0.2f,%0.2f)',MEASURE_NAME_LABS{meas_i},anova_p_var,anova_p_grp,anova_p_inter),...
                             'LineWidth',2);
                         pp.LineStyle = GROUP_LINESTYLES{group_i};
                         pp.Color = color_light(cond_i,:);
@@ -1237,24 +1239,23 @@ for cl_i = 1:length(clusters)
                             % eq = sprintf('y=(%0.1g)*x+(%0.1g)*%0.2f+(%0.1g)*x+(%0.1g)',slope_var,slope_cnd,loc_cond_chars(cond_i),slope_grp,inter_mn);
                             % eq = sprintf('y=(%0.1g)*x+(%0.1g)*c_i\n%6s+(%0.1g)',slope_var,slope_cnd,'',inter_mn);
                             eq = '';
+                            x_txt = 0.15;
+                            y_txt = 0.7;
                             if anova_p_var > 0.01 & anova_p_var < 0.05
-                                annotation('textbox',[horiz_shift+0.1,SCATTER_BOTTOM-vert_shift+0.05,0.2,0.2],...
-                                    'String',sprintf('* %s\nR^2=%0.2g',eq,R2),'HorizontalAlignment','center',...
-                                    'VerticalAlignment','middle','LineStyle','none','FontName',PLOT_PARAMS.font_name,...
-                                    'FontSize',REGRESS_TXT_SIZE,'FontWeight','Bold','Units','normalized',...
-                                    'BackgroundColor','none');
-                            elseif anova_p_var <= 0.01 & anova_p_var > 0.001
-                                annotation('textbox',[horiz_shift+0.1,SCATTER_BOTTOM-vert_shift+0.05,0.2,0.2],...
-                                    'String',sprintf('** %s\nR^2=%0.2g',eq,R2),'HorizontalAlignment','center',...
-                                    'VerticalAlignment','middle','LineStyle','none','FontName',PLOT_PARAMS.font_name,...
-                                    'FontSize',REGRESS_TXT_SIZE,'FontWeight','Bold','Units','normalized',...
-                                    'BackgroundColor','none');
+                                text(x_txt,y_txt,sprintf('* %s\nR^2=%0.2g',eq,R2),...
+                                    'FontSize',REGRESS_TXT_SIZE,...
+                                    'FontName',PLOT_PARAMS.font_name,...
+                                    'FontWeight','bold','Units','normalized');
+                            elseif anova_p_var <= 0.01 & anova_p_var > 0.001 
+                                text(x_txt,y_txt,sprintf('** %s\nR^2=%0.2g',eq,R2),...
+                                    'FontSize',REGRESS_TXT_SIZE,...
+                                    'FontName',PLOT_PARAMS.font_name,...
+                                    'FontWeight','bold','Units','normalized');
                             else
-                                annotation('textbox',[horiz_shift+0.1,SCATTER_BOTTOM-vert_shift+0.05,0.2,0.2],...
-                                    'String',sprintf('*** %s\nR^2=%0.2g',eq,R2),'HorizontalAlignment','center',...
-                                    'VerticalAlignment','middle','LineStyle','none','FontName',PLOT_PARAMS.font_name,...
-                                    'FontSize',REGRESS_TXT_SIZE,'FontWeight','Bold','Units','normalized',...
-                                    'BackgroundColor','none');
+                                text(x_txt,y_txt,sprintf('*** %s\nR^2=%0.2g',eq,R2),...
+                                    'FontSize',REGRESS_TXT_SIZE,...
+                                    'FontName',PLOT_PARAMS.font_name,...
+                                    'FontWeight','bold','Units','normalized');
                             end
                             stats_store = [stats_store, pp];
                         end
@@ -1278,7 +1279,7 @@ for cl_i = 1:length(clusters)
                     end
                     set(lg2,'String',tmp,'FontName','Arial','FontSize',9)
                     set(lg2,'Orientation','horizontal')
-                    set(lg2,'Position',[0.1-0.027,SCATTER_BOTTOM+AX_W*im_resize-vert_shift,lg2.Position(3),lg2.Position(4)]);
+                    set(lg2,'Position',[0.1,0.84,lg2.Position(3),lg2.Position(4)]);
                     lg2.ItemTokenSize(1) = 18;
                 elseif meas_i == 2
                     % %- lg1
@@ -1297,23 +1298,23 @@ for cl_i = 1:length(clusters)
                         set(lg3,'Orientation','horizontal')
                         set(lg3,'FontName','Arial','FontSize',9)
                         % set(lg1,'Position',[0.1,SCATTER_BOTTOM+AX_W*im_resize-vert_shift,lg1.Position(3),lg1.Position(4)]);
-                        set(lg3,'Position',[0.1+0.01,SCATTER_BOTTOM+AX_W*im_resize-vert_shift-0.03,lg3.Position(3),lg3.Position(4)]);
+                        set(lg3,'Position',[0.1,0.775,lg3.Position(3),lg3.Position(4)]);
                         lg3.ItemTokenSize(1) = 18;
                     end
                 end
-                set(gca,'Position',[horiz_shift+0.05,SCATTER_BOTTOM-vert_shift,AX_W*im_resize,AX_H*im_resize]);  %[left bottom width height]
-                horiz_shift = horiz_shift + AX_H*im_resize + 0.125;
+                set(gca,'Position',[horiz_shift+0.1,SCATTER_BOTTOM-vert_shift,AX_W*im_resize,AX_H*im_resize]);  %[left bottom width height]
+                horiz_shift = horiz_shift + AX_W*im_resize + 0.05;
             end
             %## TITLE
             % annotation('textbox',[0.5-0.1,SCATTER_BOTTOM-vert_shift-0.05+AX_H*im_resize,0.2,0.2],...
             %     'String',string(design_chars(des_i)),'HorizontalAlignment','center',...
             %     'VerticalAlignment','middle','LineStyle','none','FontName',PLOT_PARAMS.font_name,...
             %     'FontSize',14,'FontWeight','Bold','Units','normalized');
-            vert_shift = vert_shift + AX_H*im_resize+0.1;
+            % vert_shift = vert_shift + AX_H*im_resize+0.1;
         end
         hold off;
         %##
-        exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_%s_eeg-kin-speed-inter.tiff',string(clusters(cl_i)),varnames{var_i})],'Resolution',300)
+        exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_eeg-kin-speed-inter.tiff',string(clusters(cl_i)),varnames{var_i})],'Resolution',300)
         % close(fig)
     end
 end
@@ -1321,9 +1322,9 @@ end
 %% PREDICTORS: SPEED Factor, GROUP, INTERACTION. RESPONSE: BRAIN ACTIVITY, STATS TEST
 im_resize = 0.8;
 AX_W = 0.35;
-AX_H = 0.25;
+AX_H = 0.25*3;
 DO_PLOT_GROUPS = true;
-VIOLIN_BOTTOM = 0.7;
+VIOLIN_BOTTOM = 0.2;
 % GROUP_SHORTS = {'HO','FO'};
 MEASURE_NAME_LABS = {'Mean \theta','Mean \alpha','Mean \beta'};
 tmp_savedir = [save_dir filesep 'Pspeedf-PGroup-Pinter-Reeg'];

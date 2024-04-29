@@ -400,16 +400,33 @@ fprintf('%s) Model Validation Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
 fprintf('===================================================\nCONNECTIVITY ESTIMATION\n===================================================\n');
 tt = tic();
 % cfg = struct2args(ESTFITMVAR);
-% tmp = ALLEEG; 
-% ALLEEG = pop_est_mvarConnectivity(tmp,GUI_MODE, ...
+% tmp = ALLEEG;
+% cfg = struct2args(ESTFITMVAR);
+% Conn = pop_est_mvarConnectivity(tmp,GUI_MODE, ...
 %             'connmethods',{ESTFITMVAR.connmethods},...
 %             'absvalsq',ESTFITMVAR.absvalsq,...
 %             'spectraldecibels',ESTFITMVAR.spectraldecibels,...
 %             'freqs',ESTFITMVAR.freqs,...
 %             'verb',1);
 cfg = struct2args(ESTFITMVAR);
-ALLEEG = est_mvarConnectivity('EEG',ALLEEG,'MODEL',ALLEEG(1).CAT.MODEL,...
-            cfg{:});
+for cond_i = 1:length(ALLEEG)
+    Conn = est_mvarConnectivity('ALLEEG',ALLEEG(cond_i),'MODEL',ALLEEG(cond_i).CAT.MODEL,...
+                cfg{:});
+    if ~isempty(Conn)
+        ALLEEG(cond_i).CAT.Conn = Conn; 
+    end
+    % clear any existing visualization GUI config files
+    visFields = fieldnames(ALLEEG(cond_i).CAT.configs);
+    visFields = visFields(~cellfun(@isempty,strfind(visFields,'vis_')));
+    for k=1:length(visFields)
+        ALLEEG(cond_i).CAT.configs.(visFields{k}) = struct([]);
+    end
+    
+    if ~isempty(cfg)
+        % store the configuration structure
+        ALLEEG(cond_i).CAT.configs.('est_mvarConnectivity') = cfg;
+    end
+end
 fprintf('%s) Connectivity Estimation  Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
 %% ===================================================================== %%
 %## STEP 5.a) (BOOTSTRAPPING) GROUP STATISTICS 

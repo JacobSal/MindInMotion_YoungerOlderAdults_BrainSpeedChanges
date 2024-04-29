@@ -71,12 +71,13 @@ RECALC_ICA_STUDY = false;
 % TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
 % if DO_SLIDING_WINDOW
 %     SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
-%     TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
+%     DEF_EPOCH_PARAMS.gait_trial_chars = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
 % else
 %     SUFFIX_PATH_EPOCHED = 'GAIT_EPOCHED';
-%     TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+%     DEF_EPOCH_PARAMS.gait_trial_chars = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 % end
 %## EPOCH PARAMS
+SUFFIX_PATH_EPOCHED = 'GAIT_EPOCHED';
 DEF_EPOCH_PARAMS = struct('epoch_method','timewarp',...
     'percent_overlap',0,...
     'epoch_event_char','RHS',...
@@ -157,7 +158,7 @@ for group_i = 1:length(SUBJ_ITERS)
     %## Assigning paths for eeglab study
     for subj_i = sub_idx
         subjectNames{cnt} = SUBJ_PICS{group_i}{subj_i};
-        tmp = join(TRIAL_TYPES,'_'); 
+        tmp = join(DEF_EPOCH_PARAMS.gait_trial_chars,'_'); 
         conditions{cnt} = tmp{:};
         groups{cnt} = GROUP_NAMES{group_i};
         sessions{cnt} = SESSION_NUMBER;
@@ -223,9 +224,9 @@ parfor (subj_i = LOOP_VAR,SLURM_POOL_SIZE)
     end
     
     %## PARSE TRIALS
-    epoched_fPath = [save_dir filesep EEG.subject filesep SUFFIX_PATH_EPOCHED];
-    fPath = [epoched_fPath filesep [TRIAL_TYPES{:}]];
-    fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[TRIAL_TYPES{:}]);
+    epoched_fPath = [save_dir filesep EEG.subject];
+    fPath = [epoched_fPath filesep [DEF_EPOCH_PARAMS.gait_trial_chars{:}]];
+    fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[DEF_EPOCH_PARAMS.gait_trial_chars{:}]);
     if ~exist(fPath,'dir')
         mkdir(fPath)
     end
@@ -295,11 +296,11 @@ parfor (subj_i = LOOP_VAR,SLURM_POOL_SIZE)
             ALLEEG.etc.timewarp_by_cond = timewarp_struct;
             %## STRUCT EDITS
             ALLEEG.urevent = []; % might be needed
-            ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
+            ALLEEG.etc.epoch.epoch_limits = DEF_EPOCH_PARAMS.epoch_time_lims;
         end
         %## STRUCT EDITS
         ALLEEG.urevent = []; % might be needed
-        ALLEEG.etc.epoch.epoch_limits = EPOCH_TIME_LIMITS;
+        ALLEEG.etc.epoch.epoch_limits = DEF_EPOCH_PARAMS.epoch_time_lims;
         %- checks
         ALLEEG = eeg_checkset(ALLEEG,'eventconsistency');
         ALLEEG = eeg_checkset(ALLEEG);
@@ -360,7 +361,7 @@ tmp = cellfun(@(x) [[]; x], tmp);
                                 'filename',study_fName_2,...
                                 'filepath',save_dir);
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
-STUDY.etc.a_epoch_process.epoch_chars = TRIAL_TYPES;
+STUDY.etc.a_epoch_process.epoch_params = DEF_EPOCH_PARAMS;
 STUDY.etc.a_epoch_process.epoch_alleeg_fpaths = alleeg_fpaths;
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                         STUDY.filename,STUDY.filepath,...

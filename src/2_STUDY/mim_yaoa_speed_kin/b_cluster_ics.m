@@ -16,7 +16,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR%#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -124,7 +124,7 @@ STD_PRECLUST_COMMAND = {'dipoles','weight',1};
 %- datetime override
 % dt = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % cluster_study_dir = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 
 %## soft define
 DATA_DIR = [PATHS.src_dir filesep '_data'];
@@ -313,49 +313,49 @@ if DO_K_ICPRUNE
             %## Calculate dipole positions
             cluster_update = cluster_comp_dipole(TMP_ALLEEG, all_solutions{j}.solutions{1});
             TMP_STUDY.cluster = cluster_update;
-            %## (PLOT) Looking for dipoles outside of brain.
-            vol = load(MNI_VOL);
-            try
-                vol = vol.vol;
-            catch
-                vol = vol.mesh;
-            end
-            rmv_dip = [];
-            fig = figure('color','w');
-            ft_plot_mesh(vol.bnd(3));
-            hold on;
-            for c = 2:length(TMP_STUDY.cluster)
-                for d = 1:size(TMP_STUDY.cluster(c).all_diplocs,1)
-                    depth = ft_sourcedepth(TMP_STUDY.cluster(c).all_diplocs(d,:), vol);
-                    if depth > 0
-                        rmv_dip = [rmv_dip;[c,d]];
-                        plot3(TMP_STUDY.cluster(c).all_diplocs(d,1),TMP_STUDY.cluster(c).all_diplocs(d,2),TMP_STUDY.cluster(c).all_diplocs(d,3),'*-');
-                    end
-                end
-            end
-            hold off;
-            drawnow;
-            saveas(fig,[cluster_dir filesep sprintf('ics_out_of_brain.fig')]);
-            if ~isempty(rmv_dip)
-                sets_ob = zeros(size(rmv_dip,1),1);
-                comps_ob = zeros(size(rmv_dip,1),1);
-                clusts = unique(rmv_dip(:,1));
-                cnt = 1;
-                for c_i = 1:length(clusts)
-                    inds = clusts(c_i)==rmv_dip(:,1);
-                    d_i = rmv_dip(inds,2);
-                    sets_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).sets(d_i);
-                    comps_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).comps(d_i);
-                    TMP_STUDY.cluster(clusts(c_i)).sets(d_i) = [];
-                    TMP_STUDY.cluster(clusts(c_i)).comps(d_i) = [];
-                    cnt = cnt + length(d_i);
-                end
-                TMP_STUDY.cluster(end+1).sets = sets_ob';
-                TMP_STUDY.cluster(end).comps = comps_ob';
-                TMP_STUDY.cluster(end).name = 'Outlier cluster_outside-brain';
-                TMP_STUDY.cluster(end).parent = TMP_STUDY.cluster(2).parent;
-                TMP_STUDY.cluster(end).algorithm = 'ft_sourcedepth < 0';
-            end
+        %     %## (PLOT) Looking for dipoles outside of brain.
+        %     vol = load(MNI_VOL);
+        %     try
+        %         vol = vol.vol;
+        %     catch
+        %         vol = vol.mesh;
+        %     end
+        %     rmv_dip = [];
+        %     fig = figure('color','w');
+        %     ft_plot_mesh(vol.bnd(3));
+        %     hold on;
+        %     for c = 2:length(TMP_STUDY.cluster)
+        %         for d = 1:size(TMP_STUDY.cluster(c).all_diplocs,1)
+        %             depth = ft_sourcedepth(TMP_STUDY.cluster(c).all_diplocs(d,:), vol);
+        %             if depth > 0
+        %                 rmv_dip = [rmv_dip;[c,d]];
+        %                 plot3(TMP_STUDY.cluster(c).all_diplocs(d,1),TMP_STUDY.cluster(c).all_diplocs(d,2),TMP_STUDY.cluster(c).all_diplocs(d,3),'*-');
+        %             end
+        %         end
+        %     end
+        %     hold off;
+        %     drawnow;
+        %     saveas(fig,[cluster_dir filesep sprintf('ics_out_of_brain.fig')]);
+        %     if ~isempty(rmv_dip)
+        %         sets_ob = zeros(size(rmv_dip,1),1);
+        %         comps_ob = zeros(size(rmv_dip,1),1);
+        %         clusts = unique(rmv_dip(:,1));
+        %         cnt = 1;
+        %         for c_i = 1:length(clusts)
+        %             inds = clusts(c_i)==rmv_dip(:,1);
+        %             d_i = rmv_dip(inds,2);
+        %             sets_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).sets(d_i);
+        %             comps_ob(cnt:cnt+length(d_i)-1) = TMP_STUDY.cluster(clusts(c_i)).comps(d_i);
+        %             TMP_STUDY.cluster(clusts(c_i)).sets(d_i) = [];
+        %             TMP_STUDY.cluster(clusts(c_i)).comps(d_i) = [];
+        %             cnt = cnt + length(d_i);
+        %         end
+        %         TMP_STUDY.cluster(end+1).sets = sets_ob';
+        %         TMP_STUDY.cluster(end).comps = comps_ob';
+        %         TMP_STUDY.cluster(end).name = 'Outlier cluster_outside-brain';
+        %         TMP_STUDY.cluster(end).parent = TMP_STUDY.cluster(2).parent;
+        %         TMP_STUDY.cluster(end).algorithm = 'ft_sourcedepth < 0';
+            % end
             %## REMOVE BASED ON RV
             % [cluster_update] = evaluate_cluster(STUDY,ALLEEG,clustering_solutions,'min_rv');
             [TMP_STUDY,~,~] = cluster_rv_reduce(TMP_STUDY,TMP_ALLEEG);

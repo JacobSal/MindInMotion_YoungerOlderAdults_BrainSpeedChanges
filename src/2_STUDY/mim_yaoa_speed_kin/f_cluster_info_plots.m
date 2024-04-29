@@ -16,7 +16,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -60,16 +60,6 @@ speed_trials = {'0p25','0p5','0p75','1p0'};
 terrain_trials = {'flat','low','med','high'};
 COND_DESIGNS = {speed_trials,terrain_trials};
 %##
-clustering_weights.dipoles = 1;
-clustering_weights.scalp = 0;
-clustering_weights.ersp = 0;
-clustering_weights.spec = 0;
-do_multivariate_data = 1;
-evaluate_method = 'min_rv';
-clustering_method = ['dipole_',num2str(clustering_weights.dipoles),...
-    '_scalp_',num2str(clustering_weights.scalp),'_ersp_',num2str(clustering_weights.ersp),...
-    '_spec_',num2str(clustering_weights.spec)];
-%##
 %* ERSP PARAMS
 ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
     'groupstats','off',... %['on'|'off']
@@ -108,7 +98,8 @@ STUDIES_DIR = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'
 DATA_SET = 'MIM_dataset';
 %- cluster directory for study
 % study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 %- study info
 SUB_GROUP_FNAME = 'group_spec';
 %- study group and saving
@@ -120,29 +111,55 @@ cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'clu
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% ================================================================== %%
 %## LOAD STUDY
+if ~ispc
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',cluster_study_fpath);
+else
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',cluster_study_fpath);
+end
+cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+STUDY.cluster = cl_struct;
+[comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
+condition_gait = unique({STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
+subject_chars = {STUDY.datasetinfo.subject};
+%-
+fPaths = {STUDY.datasetinfo.filepath};
+fNames = {STUDY.datasetinfo.filename};
+CLUSTER_PICKS = main_cl_inds(2:end);
+%## CREATE PATHS
 cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 if ~isempty(SUB_GROUP_FNAME)
     spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
-    plot_store_dir = [cluster_dir filesep 'plots_out' filesep SUB_GROUP_FNAME];
 else
     spec_data_dir = [cluster_dir filesep 'spec_data'];
-    plot_store_dir = [cluster_dir filesep 'plots_out'];
 end
 if ~exist(spec_data_dir,'dir')
-    error('spec_data dir does not exist');
+    mkdir(spec_data_dir);
+    % error('spec_data dir does not exist');
 end
-if ~exist(plot_store_dir,'dir')
-    mkdir(plot_store_dir);
-end
-if ~ispc
-    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',spec_data_dir);
-else
-    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',spec_data_dir);
-end
-cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
-STUDY.cluster = cl_struct;
-[comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
-CLUSTER_PICKS = main_cl_inds(2:end);
+%## LOAD STUDY
+% cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
+% if ~isempty(SUB_GROUP_FNAME)
+%     spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
+%     plot_store_dir = [cluster_dir filesep 'plots_out' filesep SUB_GROUP_FNAME];
+% else
+%     spec_data_dir = [cluster_dir filesep 'spec_data'];
+%     plot_store_dir = [cluster_dir filesep 'plots_out'];
+% end
+% if ~exist(spec_data_dir,'dir')
+%     error('spec_data dir does not exist');
+% end
+% if ~exist(plot_store_dir,'dir')
+%     mkdir(plot_store_dir);
+% end
+% if ~ispc
+%     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',spec_data_dir);
+% else
+%     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',spec_data_dir);
+% end
+% cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
+% STUDY.cluster = cl_struct;
+% [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
+% CLUSTER_PICKS = main_cl_inds(2:end);
 %% NEW DIPOLE IMPLEMENTATION
 HIRES_TEMPLATE = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\_resources\mni_icbm152_nlin_sym_09a\mni_icbm152_t1_tal_nlin_sym_09a.nii';
 if ~ispc

@@ -57,7 +57,7 @@ CONN_FREQS = (4:50);
 CONN_METHODS = {'dDTF08'}; %{'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 WINDOW_LENGTH = 0.4;
 VERBOSITY_LEVEL = 1;
-MORDER = 50;
+MORDER = 70;
 WINDOW_STEP_SIZE = (1/SRATE)*MORDER;
 %-
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
@@ -125,7 +125,7 @@ DEF_ESTSELMOD = struct('modelingApproach',{{'Segmentation VAR',...
                         'normalize',[],...
                         'detrend',{'method','linear'},...
                         'verb',VERBOSITY_LEVEL}},...
-    'morderRange',[40,70],...
+    'morderRange',[1,floor(SRATE*(WINDOW_LENGTH/2)-1)],...
     'downdate',true,...
     'RunInParallel',{{'profile','local',...
         'numWorkers',SLURM_POOL_SIZE}},...
@@ -169,17 +169,17 @@ if ~exist(conn_fig_dir,'dir')
 end
 %% LOAD EPOCH STUDY
 %- Create STUDY & ALLEEG structs
-% if ~exist([STUDY_FPATH filesep STUDY_FNAME '.study'],'file')
+% if ~exist([study_fpath filesep STUDY_FNAME_LOAD '.study'],'file')
 %     error('ERROR. study file does not exist');
 %     exit(); %#ok<UNRCH>
 % else
 %     %## LOAD STUDY
 %     if ~ispc
-%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME '_UNIX.study'],'filepath',STUDY_FPATH);
+%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_LOAD '_UNIX.study'],'filepath',study_fpath);
 %     else
-%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME '.study'],'filepath',STUDY_FPATH);
+%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_LOAD '.study'],'filepath',study_fpath);
 %     end
-%     cl_struct = par_load([CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+%     cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 %     MAIN_STUDY.cluster = cl_struct;
 %     [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
 % end
@@ -232,15 +232,16 @@ inds = setdiff(1:length(comps_out),valid_cls);
 comps_out(inds,:) = 0;
 %% CONNECTIVITY MAIN FUNC
 fprintf('Computing Connectivity\n');
-pop_editoptions('option_computeica', 1);
+pop_editoptions('option_computeica',1);
 %## PARFOR LOOP
 EEG = [];
+%## CASE DEBUG
 %{
 fPaths = {'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01\H1004\GAIT_EPOCHED\cond_0p5'};
 fNames = {'cond_0p5.set'};
 %}
-% parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
-for subj_i = LOOP_VAR
+parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
+% for subj_i = LOOP_VAR
     %- Parse out components
     components = comps_out(:,subj_i);
     components = sort(components(components ~= 0));
@@ -255,7 +256,7 @@ for subj_i = LOOP_VAR
         EEG = eeg_checkset(EEG,'loaddata');
         if isempty(EEG.icaact)
             fprintf('%s) Recalculating ICA activations\n',EEG.subject);
-            EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+            EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:); 
             EEG.icaact = reshape(EEG.icaact,size(EEG.icaact,1),EEG.pnts,EEG.trials);
         end
         %## RESAMPLE
@@ -308,6 +309,13 @@ for subj_i = LOOP_VAR
         EEG = eeg_checkset(EEG,'eventconsistency');
         EEG = eeg_checkset(EEG);
         EEG = eeg_checkamica(EEG);
+        %- Recalculate ICA Matrices && Book Keeping
+        EEG = eeg_checkset(EEG,'loaddata');
+        if isempty(EEG.icaact)
+            fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+            EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:); 
+            EEG.icaact = reshape(EEG.icaact,size(EEG.icaact,1),EEG.pnts,EEG.trials);
+        end
         try
             %## RUN MAIN_FUNC
             [TMP,t_out] = cnctanl_sift_pipe(EEG,components,conn_fig_dir,...

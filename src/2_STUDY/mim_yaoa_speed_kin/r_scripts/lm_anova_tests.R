@@ -4,6 +4,7 @@ library(readxl)
 library(R.matlab)
 library(purrr)
 library(tidyverse)
+library(tibble)
 library(dplyr)
 
 #%% load table
@@ -12,6 +13,7 @@ table_out <- read_excel(excel_dir,sheet="Sheet1")
 #%% get unique entries
 clusters = unique(table_out$cluster_id)
 subjects = unique(table_out$subj_char)
+kin_vars = c('mean_APexc_COV','mean_APexc_mean','mean_MLexc_COV','mean_MLexc_mean','mean_StepDur','mean_UDexc_COV','mean_UDexc_mean','mean_StanceDur','mean_GaitCycleDur','mean_PeakUpDownVel_mean');
 eeg_measures = c('alpha_avg_power','beta_avg_power','theta_avg_power','aperiodic_exp','aperiodic_offset');
 #%% get speeds only
 table_out <- filter_at(table_out,vars('cond_char'), any_vars(. %in% c('0.25','0.5','0.75','1.0')))
@@ -28,6 +30,20 @@ for (ci in clusters) {
     summary(lm(paste(mi,"~ cond_char"),tmpt))
   }
 }
+
+##
+vi = kin_vars[1];
+ci = clusters[1];
+mi = eeg_measures[1];
+tmpt <- filter_at(table_out,vars('cluster_id'), any_vars(. %in% ci))
+tapply(tmpt[[mi]],tmpt$cond_char)
+mod = paste(mi,"~ cond_char + ",vi," + cond_char:",vi);
+tmplm = lm(mod,tmpt);
+summary(tmplm)
+anova(tmplm)
+# aov_out <- aov(alpha_avg_power ~ cond_char + mean_APexc_COV + cond_char:mean_APexc_COV,data=tmpt)
+# summary(aov_out)
+
 # table_out <- filter_at(table_out,vars('cluster_id'), any_vars(. %in% c('3')))
 # table_out <- select(table_out,cond_char,cluster_id,group_char,beta_avg_power)
 # #%% convert speeds & groups to factors

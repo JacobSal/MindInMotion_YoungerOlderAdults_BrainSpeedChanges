@@ -52,7 +52,8 @@ ica_orig_dir = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 % cluster_study_dir = '12012023_OAYA104_icc0p65-0p2_changparams';
 % study_dir_name = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 % study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 spca_study_dir = '03232024_spca_analysis_OA';
 ICLABEL_EYE_CUTOFF = 0.75;
 %- study group and saving

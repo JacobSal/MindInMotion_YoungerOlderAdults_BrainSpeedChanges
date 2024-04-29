@@ -39,7 +39,7 @@ else
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
-    STUDY_DIR = SCRIPT_DIR;
+    STUDY_DIR = fileparts(fileparts(SCRIPT_DIR));
     SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
 %%
@@ -79,6 +79,7 @@ files_to_compile = par_load(SCRIPT_DIR,'dependencies.mat');
 keepinds = zeros(length(files_to_compile),1);
 paths_to_add = {};
 data_to_include = {};
+% rejections = {'horzcat2.m'};
 extra = {};
 for i = 1:length(files_to_compile)
     if ~ispc
@@ -87,28 +88,62 @@ for i = 1:length(files_to_compile)
         files_to_compile{i} = convertPath2Drive(files_to_compile{i});
     end
     tmp = strsplit(files_to_compile{i},filesep);
-    paths_to_add = [paths_to_add, strjoin(tmp(1:end-1),filesep)];
-    regchk = regexp(files_to_compile{i},'(?<=\.)[^.]*$','match');
-    if strcmp(regchk,'m')
-        keepinds(i) = 1;
-    elseif strcmp(regchk,'mat')
-        data_to_include = [data_to_include, files_to_compile(i)];
-    elseif strcmp(regchk,'mexw64')
-        if ~ispc
-            tmp = strsplit(files_to_compile{i},'.');
-            tmp{end}= 'mexa64';
-            tmp = strjoin(tmp,'.');
-            files_to_compile{i} = tmp;
+    if any(contains(tmp,'@')) || any(contains(tmp,'+')) || any(contains(tmp,'private'))
+        fprintf('Skipping: %s\n',strjoin(tmp,filesep));
+    else
+        paths_to_add = [paths_to_add, strjoin(tmp(1:end-1),filesep)];
+        regchk = regexp(files_to_compile{i},'(?<=\.)[^.]*$','match');
+        if strcmp(regchk,'m')
+            keepinds(i) = 1;
+        elseif strcmp(regchk,'mat')
+            data_to_include = [data_to_include, files_to_compile(i)];
+        elseif strcmp(regchk,'mexw64')
+            if ~ispc
+                tmp = strsplit(files_to_compile{i},'.');
+                tmp{end}= 'mexa64';
+                tmp = strjoin(tmp,'.');
+                files_to_compile{i} = tmp;
+            end
+            disp(i);
+            keepinds(i) = 1;
         end
-        disp(i);
-        keepinds(i) = 1;
     end
 end
-files_to_compile = [files_to_compile(logical(keepinds)),...
+%## FINAL CHECK FOR DUPLICATES
+files_to_compile = files_to_compile(logical(keepinds));
+out = cellfun(@(x) strsplit(x,filesep),files_to_compile,'UniformOutput',false);
+out_n = cellfun(@(x) regexp(x{end},'[^.]*(?=\.)','match'),out);
+out_e = cellfun(@(x) regexp(x{end},'(?<=\.)[^.]*$','match'),out);
+[~,ind,ic] = unique(out_n);
+ind_keep = [];
+for o = 1:length(ind)
+    tmp = out{ind(o)};
+    t_n = out_n{ind(o)};
+    t_e = out_e{ind(o)};
+    ii = find(strcmp(t_n,out_n));
+    if length(ii) > 1
+        t_e = out_e(ii);
+        i1 = strcmp(t_e,'m');
+        if ~ispc
+            i2 = strcmp(t_e,'mexa64');
+        else
+            i2 = strcmp(t_e,'mexw64');
+        end
+        if any(i2)
+            ind_keep = [ind_keep, ii(i2)];
+        else
+            fprintf('Unable to reconcile multiple file matches for: %s\n',t_n);
+            fprintf('Values: '); fprintf('%s, ',t_e{:}); fprintf('\n');
+        end
+    else
+        ind_keep = [ind_keep, ind(o)];
+    end
+end
+filese_to_compile = files_to_compile(ind_keep);
+files_to_compile = [filese_to_compile,...
     [PATHS.submods_dir filesep 'eeglab/plugins/ICLabel/matconvnet/matlab/+dagnn_bc/Conv.m'],...
     ];
-paths_to_add = [unique(paths_to_add),...
-    [PATHS.submods_dir filesep 'eeglab/functions/@eegobj']];
+paths_to_add = [unique(paths_to_add)];
 cellfun(@(x) path(path,x),paths_to_add);
 % disp(files_to_compile);
 % disp(data_to_include);

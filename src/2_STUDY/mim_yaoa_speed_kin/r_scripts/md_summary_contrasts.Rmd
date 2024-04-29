@@ -12,10 +12,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Packages
 ```{r} 
 library(readxl);
-library(broom);
-library(purrr);
-library(dplyr)
+# library(purrr)
 library(tidyverse);
+# library(tibble)
+library(knitr);
 ```
 
 ## load table 
@@ -53,13 +53,13 @@ for (ci in 1:length(clusters)) {
     contrasts(tmpt$cond_char) = contr.poly(4)
     fo <- reformulate("1+cond_char",response=eeg_measures[mi])
     fit <- do.call("lm", list(fo,quote(tmpt)))
-    tidy(fit)
+    # tidy(fit)
     # s <- modelsummary(fit, output="kableExtra")
     # print(s)
     # print(kable(s),col.names = c(".L",".Q",".C"))
     # cat("\n")
     s <- summary(fit)
-    cat("\n##EEG Measure",eeg_measures[mi],"\n")
+    cat("##EEG Measure",eeg_measures[mi],"\n")
     sapply(1:19, function(j)
     cat(paste0("`", ". ", capture.output(s)[j]), "` \n"))
     cat(" \n")
