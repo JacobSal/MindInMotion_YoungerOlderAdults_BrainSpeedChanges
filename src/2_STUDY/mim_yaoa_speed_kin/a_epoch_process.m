@@ -16,7 +16,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR%#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -278,8 +278,8 @@ parfor (subj_i = LOOP_VAR,SLURM_POOL_SIZE)
         ALLEEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
         ALLEEG.etc.cond_files = cond_files;
         %## timewarp for across condition
-        if strcmp(DEF_EPOCH_PARAMS.epoch_method,'sliding_window')
-            timewarp = make_timewarp(ALLEEG,TIMEWARP_EVENTS,'baselineLatency',0, ...
+        if strcmp(DEF_EPOCH_PARAMS.epoch_method,'timewarp')
+            timewarp = make_timewarp(ALLEEG,DEF_EPOCH_PARAMS.tw_events,'baselineLatency',0, ...
                     'maxSTDForAbsolute',inf,...
                     'maxSTDForRelative',inf);
             %- subject specific warpto (later use to help calc grand avg warpto across subjects)

@@ -306,16 +306,17 @@ parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
         end
         EEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
         %- checks
-        EEG = eeg_checkset(EEG,'eventconsistency');
-        EEG = eeg_checkset(EEG);
-        EEG = eeg_checkamica(EEG);
-        %- Recalculate ICA Matrices && Book Keeping
+        % EEG = eeg_checkset(EEG,'eventconsistency');
+        % EEG = eeg_checkset(EEG);
+        % EEG = eeg_checkamica(EEG);
+        % %- Recalculate ICA Matrices && Book Keeping
         EEG = eeg_checkset(EEG,'loaddata');
         if isempty(EEG.icaact)
             fprintf('%s) Recalculating ICA activations\n',EEG.subject);
             EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:); 
             EEG.icaact = reshape(EEG.icaact,size(EEG.icaact,1),EEG.pnts,EEG.trials);
         end
+        % pop_editoptions('option_computeica',1);
         try
             %## RUN MAIN_FUNC
             [TMP,t_out] = cnctanl_sift_pipe(EEG,components,conn_fig_dir,...

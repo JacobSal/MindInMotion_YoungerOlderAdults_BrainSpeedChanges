@@ -17,7 +17,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR%#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -87,9 +87,12 @@ beta_band  = [12 30];
 DATA_SET = 'MIM_dataset';
 %- cluster directory for study
 % study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-%- study info
-SUB_GROUP_FNAME = 'group_spec';
+% study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+
+- study info
+SUB_GROUP_FNAME = 'all_spec';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
@@ -163,25 +166,7 @@ pyversion('c:\User\python.exe')
 pe = pyenv;
 %}
 %%
-%## CALCULATE GRANDAVERAGE WARPTOs
-for subj_i = 1:length(ALLEEG)
-    %- assign percondition timewarping
-    ALLEEG(subj_i).timewarp.warpto = nanmedian(cat(1,ALLEEG(subj_i).etc.timewarp_by_cond.warpto));
-%     ALLEEG(subj_i).timewarp.warpto = nanmean(cat(1,ALLEEG(subj_i).etc.timewarp_by_cond.warpto));
-end
-allWarpTo = nan(length(ALLEEG),size(ALLEEG(1).timewarp.warpto,2));
-% allWarpTo = zeros(length(ALLEEG),size(ALLEEG(1).timewarp.warpto,2));
-for subj_i = 1:length(ALLEEG)
-    allWarpTo(subj_i,:) = ALLEEG(subj_i).timewarp.warpto; %stack subject specific median event latencies
-end
-% grandAvgWarpTo = floor(nanmedian(allWarpTo)); % tends to be shorter? (e.g., [0,242,686,915,1357])
-averaged_warpto_events = floor(nanmean(allWarpTo)); % tends to be longer? (e.g., [0,262,706,982,1415])
-%## (ERSP PLOT PREP) PREPARE STUDYFILE FOR EXTRACTION (BLACK-HAWK DOWN!)
-TIMEWARP_NTIMES = floor(ALLEEG(1).srate/pi); % conservative nyquist frequency. making this too big can cause overlap between gait cyles
-ERSP_TIMERANGE=[averaged_warpto_events(1), averaged_warpto_events(end)];
-STUDY.etc.averaged_warpto_events = averaged_warpto_events;
-fprintf('Using timewarp limits: [%0.4g,%0.4f]\n',averaged_warpto_events(1),averaged_warpto_events(end));
-disp(averaged_warpto_events);
+
 %## RE-POP PARAMS
 STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
     'groupstats',ERSP_STAT_PARAMS.groupstats,...
@@ -232,21 +217,49 @@ end
 speed_alleeg = speed_alleeg(~cellfun(@isempty,speed_alleeg(:,1)),:);
 %% (TABLE) GENERATE FOOOF VALUES ======================================= %%
 table_len = 0;
+c_chars = nan();
+g_chars = nan();
 for des_i = DESIGN_INDS
     for cl_i = CLUSTER_PICKS
         s_chars = {STUDY.datasetinfo(STUDY.cluster(cl_i).sets).subject};
-        g_chars = STUDY.design(des_i).variable(1).value;
-        c_chars = STUDY.design(des_i).variable(2).value;
+        for i = 1:length(STUDY.design(des_i).variable)
+            if strcmp(STUDY.design(des_i).variable(i).label,'cond')
+                c_chars = STUDY.design(des_i).variable(i).value;
+            elseif strcmp(STUDY.design(des_i).variable(i).label,'group')
+                g_chars = STUDY.design(des_i).variable(i).value;
+            end
+        end
+        % try
+        %     g_chars = STUDY.design(des_i).variable(1).value;
+        % catch
+        %     g_chars = 'group';
+        % end
+        % c_chars = STUDY.design(des_i).variable(2).value;
         chk = true;
-        for group_i = 1:length(g_chars)
-            g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
-            chk = chk && sum(g_inds) > length(STUDY.design(des_i).variable(2).value);
+        try
+            if isnan(g_chars)
+                chk = true;
+            else
+                fprintf('g_chars has some weird value in it\n')
+            end
+        catch
+            for group_i = 1:length(g_chars)
+                g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+                chk = chk && sum(g_inds) > length(STUDY.design(des_i).variable(2).value);
+            end
         end
         if chk
             for group_i = 1:length(g_chars)
-                g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+                try
+                    if isnan(g_chars)
+                        g_inds = (1:length(STUDY.cluster(cl_i).sets));
+                    else
+                        fprintf('g_chars has some weird value in it\n')
+                    end
+                catch
+                    g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});                   
+                end
                 cl_chars = s_chars(g_inds);
-           
                 for cond_i = 1:length(c_chars)
                     for subj_i = 1:length(cl_chars)
                         table_len = table_len + 1;
@@ -265,10 +278,11 @@ design_id = categorical(zeros(table_len,1));
 cluster_id = categorical(zeros(table_len,1));
 group_id = zeros(table_len,1);
 group_char = categorical(repmat({''},table_len,1));
-speed_double = zeros(table_len,1);
-speed_cat = categorical(repmat({''},table_len,1));
-terrain_cat = categorical(repmat({''},table_len,1));
-
+% speed_double = zeros(table_len,1);
+cond_id = zeros(table_len,1);
+cond_char = categorical(repmat({''},table_len,1));
+% speed_cat = categorical(repmat({''},table_len,1));
+% terrain_cat = categorical(repmat({''},table_len,1));
 aperiodic_exp = zeros(table_len,1);
 aperiodic_offset = zeros(table_len,1);
 central_freq = cell(table_len,1);
@@ -304,34 +318,65 @@ for dd = 1:length(DESIGN_INDS)
         ind_des = [STUDY.etc.mim_gen_ersp_data.des_ind] == des_i;
         ind = ind_cl & ind_des;
         file_mat = STUDY.etc.mim_gen_ersp_data(ind).spec_ss_fpaths;
-        tmp = par_load(file_mat,[]);
-        %## Note: spec_subj_mean_stats separate young and older adults
-        specdata = cell(size(tmp,2),size(tmp,1));
-        specfreqs = cell(size(tmp,2),size(tmp,1));
-        for j = 1:size(tmp,1) % group
-            for k = 1:size(tmp,2) % cond
-                specdata{k,j} = tmp(j,k).specdata;
-                specfreqs{k,j} = tmp(j,k).specfreqs;
-            end
-        end
+        tmp = par_load(file_mat,[]);        
         %## RUN FOOOF
         %- get subjects in cluster
         s_chars = {STUDY.datasetinfo(STUDY.cluster(cl_i).sets).subject};
-        g_chars = STUDY.design(des_i).variable(1).value;
-        c_chars = STUDY.design(des_i).variable(2).value;
-        chk = true;
-        for group_i = 1:length(g_chars)
-            g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
-            chk = chk && sum(g_inds) > length(STUDY.design(des_i).variable(2).value);
+        for i = 1:length(STUDY.design(des_i).variable)
+            if strcmp(STUDY.design(des_i).variable(i).label,'cond')
+                c_chars = STUDY.design(des_i).variable(i).value;
+            elseif strcmp(STUDY.design(des_i).variable(i).label,'group')
+                g_chars = STUDY.design(des_i).variable(i).value;
+            end
+        end
+        try
+            if isnan(g_chars)
+                specdata = cell(size(tmp,1),1);
+                specfreqs = cell(size(tmp,1),1);
+                for k = 1:size(tmp,1) % cond
+                    specdata{k,1} = tmp(k,1).specdata;
+                    specfreqs{k,1} = tmp(k,1).specfreqs;
+                end
+            else
+                fprintf('g_chars has some weird value in it\n')
+            end
+        catch
+            specdata = cell(size(tmp,2),size(tmp,1));
+            specfreqs = cell(size(tmp,2),size(tmp,1));
+            for j = 1:size(tmp,1) % group
+                for k = 1:size(tmp,2) % cond
+                    specdata{k,j} = tmp(j,k).specdata;
+                    specfreqs{k,j} = tmp(j,k).specfreqs;
+                end
+            end
+        end
+        try
+            if isnan(g_chars)
+                chk = true;
+            else
+                fprintf('g_chars has some weird value in it\n')
+            end
+        catch
+            for group_i = 1:length(g_chars)
+                g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+                chk = chk && sum(g_inds) > length(STUDY.design(des_i).variable(2).value);
+            end
         end
         if chk
             for group_i = 1:size(specdata,2) % in case there is young and old adult group
-                g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+                try
+                    if isnan(g_chars)
+                        g_inds = (1:length(STUDY.cluster(cl_i).sets));
+                    else
+                        fprintf('g_chars has some weird value in it\n')
+                    end
+                catch
+                    g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});                   
+                end
                 %-
                 cl_chars = s_chars(g_inds);
                 subj_inds = STUDY.cluster(cl_i).sets(g_inds);
                 cl_inds = find(g_inds);
-                
                 cl_comps = STUDY.cluster(cl_i).comps(g_inds);
                 cl_speeds = zeros(length(cl_chars),1);
                 fprintf('%i) subjects (N=%i): %s\n',cl_i,length(cl_chars),sprintf('%s,',cl_chars{:}));
@@ -356,17 +401,32 @@ for dd = 1:length(DESIGN_INDS)
                         FOOOF_TABLE.design_id(cnt) = categorical(des_i);
                         % FOOOF_TABLE.cond_id(cnt) = cond_i;
                         if any(strcmp(c_chars(cond_i),TERRAIN_VALS))
-                            FOOOF_TABLE.terrain_cat(cnt) = categorical(c_chars(cond_i));
-                            FOOOF_TABLE.speed_double(cnt) = [];
-                            FOOOF_TABLE.speed_cat(cnt) = categorical([]);
+                            FOOOF_TABLE.cond_char(cnt) = categorical(c_chars(cond_i));
+                            FOOOF_TABLE.cond_id(cnt) = cond_i;
+
+                            % FOOOF_TABLE.terrain_cat(cnt) = categorical(c_chars(cond_i));
+                            % FOOOF_TABLE.speed_double(cnt) = [];
+                            % FOOOF_TABLE.speed_cat(cnt) = categorical([]);
                         else
                             ind = strcmp(c_chars(cond_i),SPEED_VALS(2,:));
-                            FOOOF_TABLE.terrain_cat(cnt) = categorical([]);
-                            FOOOF_TABLE.speed_double(cnt) = SPEED_VALS(1,ind);
-                            FOOOF_TABLE.speed_cat(cnt) = categorical(SPEED_VALS(1,ind));
+                            FOOOF_TABLE.cond_char(cnt) = categorical(SPEED_VALS(1,ind));
+                            FOOOF_TABLE.cond_id(cnt) = cond_i;
+
+                            % ind = strcmp(c_chars(cond_i),SPEED_VALS(2,:));
+                            % FOOOF_TABLE.terrain_cat(cnt) = categorical([]);
+                            % FOOOF_TABLE.speed_double(cnt) = SPEED_VALS(1,ind);
+                            % FOOOF_TABLE.speed_cat(cnt) = categorical(SPEED_VALS(1,ind));
                         end
                         FOOOF_TABLE.group_id(cnt) = group_i;
-                        FOOOF_TABLE.group_char(cnt) = categorical(g_chars(group_i));
+                        try
+                            if isnan(g_chars)
+                                FOOOF_TABLE.group_char(cnt) = categorical({'all'});
+                            else
+                                fprintf('g_chars has some weird value in it\n')
+                            end
+                        catch
+                            FOOOF_TABLE.group_char(cnt) = categorical(g_chars(group_i));
+                        end
                         FOOOF_TABLE.cluster_id(cnt) = categorical(cl_i);
                         FOOOF_TABLE.aperiodic_exp(cnt) = fooof_results{des_i}{cond_i,group_i}{subj_i}.aperiodic_params(2);
                         FOOOF_TABLE.aperiodic_offset(cnt) = fooof_results{des_i}{cond_i,group_i}{subj_i}.aperiodic_params(1);
