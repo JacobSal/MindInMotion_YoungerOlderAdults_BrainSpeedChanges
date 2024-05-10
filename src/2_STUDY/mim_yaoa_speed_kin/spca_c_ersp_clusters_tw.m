@@ -16,7 +16,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -43,7 +43,7 @@ fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa_spca');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
@@ -53,7 +53,8 @@ ica_orig_dir = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 % study_dir_name = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
 % study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+% study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 spca_study_dir = '03232024_spca_analysis_OA';
 ICLABEL_EYE_CUTOFF = 0.75;
 %- study group and saving
@@ -101,8 +102,8 @@ F_DIM = size(spca_ersp.ersp_corr,3);
 CL_DIM = length(TMP_STUDY.cluster);
 %%
 loop_store = cell(length(subject_chars),1);
-% parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
-for subj_i = 1:length(subject_chars)
+parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
+% for subj_i = 1:length(subject_chars)
     %## INITIATION
     %-
     cond_c          = cell(length(condition_gait)*length(CLUSTER_PICKS),1);

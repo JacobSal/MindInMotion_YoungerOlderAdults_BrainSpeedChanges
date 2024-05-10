@@ -9,7 +9,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Packages
+# Packages & Setup
 ```{r}
 # install.packages(c("tidyverse","purrr","R.matlab","readxl","dplyr"))
 library(readxl);
@@ -19,6 +19,7 @@ library(tibble)
 library(knitr);
 library(gtsummary)
 library(kableExtra)
+library(lme4)
 ```
 
 ## GTSUMMARY THEME
@@ -44,7 +45,8 @@ gtsummary::set_gtsummary_theme(theme_gtsummary_journal("jama"))
 
 ## load table 
 ```{r} 
-excel_dir <-"M:/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01/cluster/icrej_5/12/spec_data/group_spec/psd_calcs/fooof_kinematics_table.xlsx";
+# excel_dir <-"M:/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01/cluster/icrej_5/12/spec_data/group_spec/psd_calcs/fooof_kinematics_table.xlsx";
+excel_dir <-"M:/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej/cluster/icrej_5/12/spec_data/group_spec/psd_calcs/fooof_kinematics_table.xlsx";
 eegt <- read_excel(excel_dir,sheet="Sheet1") 
 ```
 
@@ -78,6 +80,7 @@ eegt <- mutate(eegt,across(c('cond_char'), factor))
 head(eegt)
 eegt$group_speed_code = paste(eegt$group_char,eegt$cond_char,sep="_")
 ```
+
 # Cluster Polynomial Constrast Summaries
 ```{r contrasts tables, echo=FALSE, message=FALSE, results="asis"}
 library(gtsummary)
@@ -299,6 +302,29 @@ for (ci in 1:length(clusters)) {
                       detailed=TRUE) %>%
       select(.y.,group1,group2,n1,n2,statistic,p.adj,p.adj.signif) %>%
       knitr::kable(caption = cat("## Cluster: ",clusters[ci],"Aperiodic Exponent wilcoxon"),
+                   col.names = c("*EEG Var*", "*Group_Speed_1*", "*Group_Speed_2*", "*N1*", "*N2*","*Wstat*","*p-value*","*sig."),
+                   align = c("l", "l", "l", "c", "c","c","c","c"),
+                   digits = 2
+                   )
+  )
+  cat('\n\n<!-- -->\n\n')
+}
+```
+# APERIODIC Offset WILCOXON TESTS
+```{r APEXPW, echo=FALSE, message=FALSE, results="asis"}
+# library(rstatix)
+for (ci in 1:length(clusters)) {
+  print(
+    tbl <- eegt %>% 
+      filter_at(vars('cluster_id'), any_vars(. %in% clusters[ci])) %>%
+      select(group_speed_code,alpha_avg_power,theta_avg_power,beta_avg_power,aperiodic_exp,aperiodic_offset,group_char,cond_char) %>%
+      mutate(across(c('group_speed_code'), factor)) %>%
+      pairwise_wilcox_test(aperiodic_offset~group_speed_code,
+                      p.adjust.method = "none",
+                      paired=FALSE,
+                      detailed=TRUE) %>%
+      select(.y.,group1,group2,n1,n2,statistic,p.adj,p.adj.signif) %>%
+      knitr::kable(caption = cat("## Cluster: ",clusters[ci],"Aperiodic Offset wilcoxon"),
                    col.names = c("*EEG Var*", "*Group_Speed_1*", "*Group_Speed_2*", "*N1*", "*N2*","*Wstat*","*p-value*","*sig."),
                    align = c("l", "l", "l", "c", "c","c","c","c"),
                    digits = 2

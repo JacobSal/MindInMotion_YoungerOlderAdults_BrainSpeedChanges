@@ -43,14 +43,15 @@ fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa_spca');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
 DATA_SET = 'MIM_dataset';
 % study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+% study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 spca_dir_name = '03232024_spca_analysis_OA';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
@@ -91,11 +92,11 @@ for subj_i = 1:length(STUDY.datasetinfo)
     tmp = regexp(subject_chars{subj_i},'\d','match');
     group_id(subj_i) = str2num(tmp{1});
 end
+% groups_ind = unique(group_id);
 [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
 %% ===================================================================== %%
-
-%* ERSP PARAMS
-ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
+%-
+ERSP_STAT_PARAMS_COND = struct('condstats','on',... % ['on'|'off]
     'groupstats','off',... %['on'|'off']
     'method','perm',... % ['param'|'perm'|'bootstrap']
     'singletrials','off',... % ['on'|'off'] load single trials spectral data (if available). Default is 'off'.
@@ -104,28 +105,42 @@ ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
     'fieldtripmethod','montecarlo',... %[('montecarlo'/'permutation')|'parametric']
     'fieldtripmcorrect','cluster',...  % ['cluster'|'fdr']
     'fieldtripnaccu',2000);
+%-
+ERSP_STAT_PARAMS_GROUP = ERSP_STAT_PARAMS_COND;
+ERSP_STAT_PARAMS_GROUP.groupstats = 'on';
+ERSP_STAT_PARAMS_GROUP.condstats = 'off';
+%- 
+ERSP_STAT_PARAMS_GC = ERSP_STAT_PARAMS_COND;
+ERSP_STAT_PARAMS_GC.groupstats = 'on';
+%-
 ERSP_PARAMS = struct('subbaseline','off',...
     'timerange',[],...
     'ersplim',[-2,2],...
     'freqfac',4,...
     'cycles',[3,0.8],...
     'freqrange',[1,200]);
+% STUDY_DESI_PARAMS = {{'subjselect',{},...
+%             'variable1','cond','values1',{'flat','low','med','high'},...
+%             'variable2','group','values2',{}},...
+%             {'subjselect',{},...
+%             'variable1','cond','values1',{'0p25','0p5','0p75','1p0'},...
+%             'variable2','group','values2',{}}};
+% STUDY_DESI_PARAMS = {{'subjselect',{},...
+%             'variable2','cond','values2',{'flat','low','med','high'}},...
+%             {'subjselect',{},...
+%             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'}}};
 STUDY_DESI_PARAMS = {{'subjselect',{},...
-            'variable1','cond','values1',{'flat','low','med','high'},...
-            'variable2','group','values2',{}},...
+            'variable2','cond','values2',{'flat','low','med','high'},...
+            'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}},...
             {'subjselect',{},...
-            'variable1','cond','values1',{'0p25','0p5','0p75','1p0'},...
-            'variable2','group','values2',{}}};
+            'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
+            'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}}};
+
 %## ersp plot per cluster per condition
-STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
-        'groupstats',ERSP_STAT_PARAMS.groupstats,...
-        'method',ERSP_STAT_PARAMS.method,...
-        'singletrials',ERSP_STAT_PARAMS.singletrials,'mode',ERSP_STAT_PARAMS.mode,...
-        'fieldtripalpha',ERSP_STAT_PARAMS.fieldtripalpha,...
-        'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
-        'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
-STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_PARAMS.subbaseline,...
-      'ersplim',ERSP_PARAMS.ersplim,'freqrange',ERSP_PARAMS.freqrange);
+args = eeglab_struct2args(ERSP_STAT_PARAMS_COND);
+STUDY = pop_statparams(STUDY,args{:});
+args = eeglab_struct2args(ERSP_PARAMS);
+STUDY = pop_erspparams(STUDY,args{:});
 STUDY.cache = [];
 for des_i = 1:length(STUDY_DESI_PARAMS)
     [STUDY] = std_makedesign(STUDY,[],des_i,STUDY_DESI_PARAMS{des_i}{:});
@@ -139,7 +154,11 @@ ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI at
     [ATLAS_PATH filesep 'spm_anatomy' filesep 'AllAreas_v18_MPM.mat']}; % also a discrete version of this
 atlas_i = 1;
 %##
+groups_ind = [1,2,3];
+groups = {'YA','HOA','FOA'};
+group_chars = unique({STUDY.datasetinfo.group});
 condition_gait = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+
 % condition_pairs = {{'flat','low','med','high'},...
 %     {'0p25','0p5','0p75','1p0'}};
 %## LOAD ICATIMEF OPTS
@@ -215,7 +234,7 @@ PLOT_STRUCT = struct('figure_position_inch',[],...
     'figure_title','');
 SAVE_STATS = false;
 %%
-spca_table = par_load(CLUSTER_STUDY_DIR,'spca_cluster_table.mat');
+spca_table = par_load(cluster_study_fpath,'spca_cluster_table.mat');
 spca_table = spca_table(~all(cellfun(@isempty,spca_table{:,:}),2),:);
 paramsersp = timef_params; 
 alltimes = hardcode_times(time_crop);
@@ -292,7 +311,8 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
                 inds_grp = cellfun(@(x) x == groups_ind(group_i),spca_table.group_c);
                 trial_order{cond_i,group_i} = condition_gait{con_con(cond_i)};
                 inds = inds_cl & inds_cond & inds_grp;
-                fprintf('True subjects in cluster: %i, Alg subjects in cluster: %i\n',length(TMP_STUDY.cluster(cl_i).sets),sum(inds))
+                g_inds = cellfun(@(x) strcmp(x,group_chars{groups_ind(group_i)}),{TMP_STUDY.datasetinfo(TMP_STUDY.cluster(cl_i).sets).group});           
+                fprintf('True subjects of group %s in cluster: %i, Alg subjects in cluster: %i\n',group_chars{groups_ind(group_i)},sum(g_inds),sum(inds))
                 %- extract ersp
                 tmp = cat(3,spca_table.tf_erspcorr_c{inds});
                 tmp = permute(tmp,[2,1,3]);

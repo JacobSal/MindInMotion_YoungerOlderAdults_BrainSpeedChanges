@@ -16,7 +16,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -52,12 +52,15 @@ BOOT_CLUST_THRESH = 1000;
 %- datset name
 DATA_SET = 'MIM_dataset';
 % study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+
 spca_dir_name = '03232024_spca_analysis_OA';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
 SUB_GROUP_FNAME = 'all_spec';
+SUB_GROUP_GFNAME = 'group_spec';
 CLUSTER_K = 12;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
@@ -86,11 +89,10 @@ end
 cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 if ~isempty(SUB_GROUP_FNAME)
     spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
-    plot_store_dir = [cluster_dir filesep 'plots_out' filesep SUB_GROUP_FNAME];
 else
     spec_data_dir = [cluster_dir filesep 'spec_data'];
-    plot_store_dir = [cluster_dir filesep 'plots_out'];
 end
+gspec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_GFNAME];
 %## LOAD STUDY
 if ~ispc
     tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
@@ -313,6 +315,31 @@ for k_i = flip(main_cl_inds,2) %length(cl_names):-1:1 %1:length(cl_names)
     Title1.TextFrame.TextRange.Text = sprintf(caption2,figure_cnt-1,atlas_name_store{k_i});
     Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
     Title1.TextFrame.TextRange.Font.Size = FONT_SIZE;
+    %## (SLIDE 2) GROUP VIOLIN STATS
+    IM_DPI = 300;
+    im_scale = COVNERT_PPI_DPI/IM_DPI;
+    TOP_DIST = 30;
+    LEFT_DIST = 0;
+    newSlide = slides.AddSlide(1,layout);
+    
+    im_f = [gspec_data_dir filesep 'psd_calcs' filesep sprintf('Group_Violins_cl%i.tiff',k_i)];
+    tmp = imread(im_f);
+    newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+    
+    figure_cnt = figure_cnt + 3;
+    %## (SLIDE 1) GROUP PSD STATS
+    IM_DPI = 300;
+    im_scale = COVNERT_PPI_DPI/IM_DPI;
+    TOP_DIST = 30;
+    LEFT_DIST = 0;
+    newSlide = slides.AddSlide(1,layout);
+    %- title slide
+    
+    im_f = [gspec_data_dir filesep 'psd_calcs' filesep sprintf('Group_PSDs_cl%i.tiff',k_i)];
+    tmp = imread(im_f);
+    newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+
+    figure_cnt = figure_cnt + 3;
     %## (SLIDE TITLE) TOPO, DIPOLE, AND PSD STATS
     IM_DPI = 1000;
     im_scale = COVNERT_PPI_DPI/IM_DPI;

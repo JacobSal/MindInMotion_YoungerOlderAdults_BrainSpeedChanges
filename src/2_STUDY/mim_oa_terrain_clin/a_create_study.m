@@ -16,7 +16,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -76,8 +76,10 @@ end
 %- datetime override
 % dt = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name_from = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name_to = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name_from = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name_from = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+study_dir_name_from = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+study_dir_name_to = '04232024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 %## soft define
 STUDIES_DIR = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 study_fname_to = 'epoch_study';
@@ -104,15 +106,31 @@ else
         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fname_from '.study'],'filepath',load_dir);
     end
 end
+%## LOAD STUDY
+if ~ispc
+    tmp = load('-mat',[load_dir filesep sprintf('%s_UNIX.study',study_fname_from)]);
+    MAIN_STUDY = tmp.STUDY;
+else
+    tmp = load('-mat',[load_dir filesep sprintf('%s.study',study_fname_from)]);
+    MAIN_STUDY = tmp.STUDY;
+end
 %% INITIALIZE PARFOR LOOP VARS
-fPaths = {MAIN_ALLEEG.filepath};
-fNames = {MAIN_ALLEEG.filename};
-subjects_from = {MAIN_ALLEEG.subject};
-alleeg_fpaths = cell(length(MAIN_ALLEEG),1);
-inds = cellfun(@(x) find(strcmp(x,subjects_from)),subjects_to);
+fPaths = {MAIN_STUDY.datasetinfo.filepath};
+fNames = {MAIN_STUDY.datasetinfo.filename};
+subjects_from = {MAIN_STUDY.datasetinfo.subject};
+alleeg_fpaths = cell(length(MAIN_STUDY.datasetinfo),1);
+inds = zeros(length(subjects_from),1);
+for i = 1:length(subjects_to)
+    if any(strcmp(subjects_to{i},subjects_from))
+        inds(strcmp(subjects_to{i},subjects_from)) = 1;
+    end
+end
+inds = find(inds);
+% inds = cellfun(@(x) find(strcmp(x,subjects_from)),subjects_to);
 ALLEEG = MAIN_ALLEEG(inds);
 % for i = 1:length(ALLEEG)
-parfor i = 1:length(ALLEEG)
+parfor (i = 1:length(ALLEEG),SLURM_POOL_SIZE)
+    fprintf('Adding subject: %s\n',ALLEEG(i).subject);
     tmp = strsplit(ALLEEG(i).filepath,filesep);
     ind = find(strcmp(tmp,study_dir_name_from));
     tmp = strjoin(tmp(ind+1:end),filesep);

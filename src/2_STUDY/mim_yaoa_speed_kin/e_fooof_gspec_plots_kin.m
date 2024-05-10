@@ -86,7 +86,9 @@ beta_band  = [12 30];
 DATA_SET = 'MIM_dataset';
 %- cluster directory for study
 % study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+
 %- study info
 SUB_GROUP_FNAME = 'group_spec';
 %- study group and saving
@@ -1231,7 +1233,7 @@ for cl_i = 1:length(clusters)
                             y(i) = x(i)*slope_var + slope_0p5*c2 + slope_0p75*c3 + slope_1p0*c4 + slope_0p5_var*x(i)*c2 + slope_0p75_var*x(i)*c3 + slope_1p0_var*x(i)*c4 + slope_inter ;
                         end
                         pp = plot(x,y,...
-                            'DisplayName',sprintf('p_{%s}=(%0.2f,%0.2f,%0.2f)',MEASURE_NAME_LABS{meas_i},anova_p_var,anova_p_grp,anova_p_inter),...
+                            'DisplayName',sprintf('p_{%s}=(%0.2f,%0.2f,%0.2f)',MEASURE_NAME_LABS{meas_i},anova_p_var,anova_p_cond,anova_p_inter),...
                             'LineWidth',2);
                         pp.LineStyle = GROUP_LINESTYLES{group_i};
                         pp.Color = color_light(cond_i,:);

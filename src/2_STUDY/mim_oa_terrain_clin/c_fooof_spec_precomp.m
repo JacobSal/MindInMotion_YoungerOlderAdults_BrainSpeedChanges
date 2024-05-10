@@ -16,7 +16,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR%#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -75,7 +75,8 @@ DATA_SET = 'MIM_dataset';
 % cluster_study_dir = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % cluster_study_dir = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
 % study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04232024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 save_dir = [studies_fpath filesep sprintf('%s',study_dir_name)];
@@ -90,17 +91,18 @@ if ~exist(save_dir,'dir')
 end
 %##
 CLUSTER_CLIM_MATCH = [];
-SUB_GROUP_FNAME = 'all_spec';
-% STUDY_DESI_PARAMS = {{'subjselect',{},...
-%             'variable2','cond','values2',{'flat','low','med','high'},...
-%             'variable1','group','values1',{'H2000''s','H3000''s'}},...
-%             {'subjselect',{},...
-%             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
-%             'variable1','group','values1',{'H2000''s','H3000''s'}}};
+% SUB_GROUP_FNAME = 'all_spec';
+SUB_GROUP_FNAME = 'group_spec';
 STUDY_DESI_PARAMS = {{'subjselect',{},...
-            'variable2','cond','values2',{'flat','low','med','high'}},...
+            'variable2','cond','values2',{'flat','low','med','high'},...
+            'variable1','group','values1',{'H2000''s','H3000''s'}},...
             {'subjselect',{},...
-            'variable2','cond','values2',{'0p25','0p5','0p75','1p0'}}};
+            'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
+            'variable1','group','values1',{'H2000''s','H3000''s'}}};
+% STUDY_DESI_PARAMS = {{'subjselect',{},...
+%             'variable2','cond','values2',{'flat','low','med','high'}},...
+%             {'subjselect',{},...
+%             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'}}};
 %% ===================================================================== %%
 %## LOAD STUDY
 if ~ispc

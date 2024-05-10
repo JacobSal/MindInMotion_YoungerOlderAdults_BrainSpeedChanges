@@ -8,7 +8,7 @@
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -25,7 +25,7 @@ else
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
     STUDY_DIR = SCRIPT_DIR;
-    SRC_DIR = filesep(filesep(STUDY_DIR));
+    SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
 %## Add Study, Src, & Script Paths
 addpath(SRC_DIR);
@@ -36,6 +36,7 @@ fprintf(1,'Current folder: %s\n',SRC_DIR);
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
 [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
+subj_names = [SUBJ_PICS{:}];
 %%
 %## hard define
 %- datset name
@@ -66,9 +67,14 @@ for subj_i = 1:length(subj_names)
         end
         coords(~all(coords,2),:) = [];
         chan(~all(chan,2),:) = [];
-        x_coord = coords(:,1);
+        %-
+        x_coord = coords(:,1); 
         y_coord = coords(:,2);
         z_coord = coords(:,3);
+        % (05/09/2024) JS, flipping x,y signs to convert from LPS space to
+        % RAS spcae. ANTs uses LPS but fieldtrip uses RAS (acpc as origin
+        % still).
+        %-
         t_in = table(x_coord,y_coord,z_coord);
     %     csvwrite([dipfit_fPath filesep 'dip_pos.csv'],coords);
         writetable(t_in,[dipfit_fPath filesep 'dip_pos.csv']);

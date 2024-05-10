@@ -36,14 +36,19 @@ function [ERSP_corr, GPM_corr, ERSP_psc1, PSC, V] = specPCAdenoising(ERSP, varar
 % v1.0 last changed May-30-2022
 
 if isempty(varargin) % check whether eigenvalues are provided, if not calculate from data
-
-% PCA of ERSP --> dim = num freqs
-CC = cov(squeeze(mean(ERSP))); %covariance matrix: freq x freq
-[v, d] = eig(CC); % obtain eigenvalues
-
-% find component with greatest eigenvalue
-[D, sort_ix] = sort(diag(d),'descend');
-V = v(:,sort_ix);
+    % PCA of ERSP --> dim = num freqs
+    if size(ERSP,1) == 1
+        ERSP_cc = squeeze(ERSP);
+        % ERSP_cc = permute(ERSP_cc,[2,1]);
+        CC = cov(squeeze(ERSP_cc)); %covariance matrix: freq x freq
+    else
+        CC = cov(squeeze(mean(ERSP))); %covariance matrix: freq x freq
+    end
+    [v, d] = eig(CC); % obtain eigenvalues
+    
+    % find component with greatest eigenvalue
+    [D, sort_ix] = sort(diag(d),'descend');
+    V = v(:,sort_ix);
 else
     V = varargin{1};
 end

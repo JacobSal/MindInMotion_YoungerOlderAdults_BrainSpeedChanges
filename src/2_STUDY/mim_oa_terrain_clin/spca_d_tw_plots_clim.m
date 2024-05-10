@@ -16,7 +16,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -51,7 +51,8 @@ BOOT_ALPHA = 0.05;
 BOOT_CLUST_THRESH = 1000;
 %- datset name
 DATA_SET = 'MIM_dataset';
-study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04232024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 spca_dir_name = '03232024_spca_analysis_OA';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
@@ -94,7 +95,6 @@ for subj_i = 1:length(STUDY.datasetinfo)
 end
 [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
 %% ===================================================================== %%
-
 %* ERSP PARAMS
 ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
     'groupstats','off',... %['on'|'off']

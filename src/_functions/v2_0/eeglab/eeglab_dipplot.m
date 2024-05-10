@@ -305,7 +305,8 @@ for cc = 1:length(clusters)
             % (02/20/2024) JS, no good way of defining the dipole size, but
             % can provide approximations with the right scaling
             % 1150 (with default zoom) ~197mm? => 5.8376 dipsize/mm
-            DIPPLOT_STRUCT.dipolesize =  5.8376*(mean_dist+std_dist*3)*3*1.5/10; 
+            % DIPPLOT_STRUCT.dipolesize =  5.8376*(mean_dist+std_dist*3)*3*1.5/10; 
+            DIPPLOT_STRUCT.dipolesize =  5.8376*(40*3)*3*1.5/10; 
             dipplot(avgdip,DIPPLOT_STRUCT);
         case 'all_nogroup'
             %- plot all dipoles
@@ -313,7 +314,7 @@ for cc = 1:length(clusters)
             dipplot(dips,DIPPLOT_STRUCT);
         case 'all_group'
             %- plot all dipoles
-            DIPPLOT_STRUCT.dipolesize = 5.8376*(10)*3*1.5/10;
+            DIPPLOT_STRUCT.dipolesize = 5.8376*(20)*3*1.5/10;
             grps = unique({dips.grp});
             if length(grps) > 1
                 color_chng = (1/(length(grps)))+0.1;

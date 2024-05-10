@@ -10,7 +10,7 @@
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -27,7 +27,7 @@ else
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
     STUDY_DIR = SCRIPT_DIR;
-    SRC_DIR = filesep(filesep(STUDY_DIR));
+    SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
 %## Add Study, Src, & Script Paths
 addpath(SRC_DIR);
@@ -84,11 +84,17 @@ parfor (subj_i = 1:length(subj_names),floor(length(subj_names)/2))
     in_fpath = [OUTSIDE_DATA_DIR filesep subj_name filesep 'head_model'];
     out_fpath = [OUTSIDE_DATA_DIR filesep subj_name filesep 'clean'];
     try
-        %-
+        %- load transformed dipole pos & convert to RAS from LPS
         norm_pos = readtable([in_fpath filesep 'dip_pos_outf.csv']);
         norm_pos = [norm_pos{:,:}];
+        for i = 1:size(norm_pos,1)
+            norm_pos(i,:) = [-norm_pos(i,1),-norm_pos(i,2),norm_pos(i,3)];
+        end
+        % (05/09/2024) JS, flipping x,y coords for dipole to recorrect the
+        % LPS to RAS conversion made before the transformation is made. 
+        %- load channel mapping file
         norm_chan = par_load(in_fpath, 'dip_pos.mat');
-        %-
+        %- load EEG set file
         fname = dir([out_fpath filesep '*.set']);
         EEG = pop_loadset('filepath',out_fpath,'filename',fname(1).name);
         %-
@@ -97,10 +103,10 @@ parfor (subj_i = 1:length(subj_names),floor(length(subj_names)/2))
     %     R_mat = [R_mat; 0 0 0 1];
     %     F_mat = eye(3,3);
     %     F_mat = [F_mat, trans_mat.fixed]; F_mat = [F_mat; 0 0 0 1];
-        %-
+        %- convert dipole coordinates (cartesian space in mm) to voxel
         ants_mri = ft_read_mri([mri_path filesep 'antsWarped.nii.gz']);
         voxinds = round(ft_warp_apply(pinv(ants_mri.transform), norm_pos ));
-        %-
+        %- load the original dipfit structure for editing
         tmp = load([in_fpath filesep 'dipfit_struct']);
         dipfit_fem = tmp.SAVEVAR;
         %## Reformat Dipfit Structure
@@ -116,10 +122,11 @@ parfor (subj_i = 1:length(subj_names),floor(length(subj_names)/2))
         EEG.dipfit_fem = [];
         EEG.dipfit_fem.model = empty_dip_struct;
         dipfit_fem_pos = zeros(length([dipfit_fem.component]),3);
+        %## LOOP THROUGH NON-NORMAL DIPOLES AND ADD TO STRUCT
         for i=1:length([dipfit_fem.component])
-            %- 
+            %- if dipole was calculated
             if ~isempty(dipfit_fem(i).dip)
-                %- other
+                %- update dipfit_fem struct in EEG with original fem fits
                 EEG.dipfit_fem.model(i).posxyz = dipfit_fem(i).dip.pos;
                 EEG.dipfit_fem.model(i).momxyz = reshape(dipfit_fem(i).dip.mom, 3, length(dipfit_fem(i).dip.mom)/3)';
                 if ~isempty(dipfit_fem(i).dip.rv)
@@ -136,7 +143,7 @@ parfor (subj_i = 1:length(subj_names),floor(length(subj_names)/2))
                 EEG.dipfit_fem.model(i) = empty_dip_struct;
             end
         end
-        %##
+        %## LOOP THROUGH NORMALIZED DIPOLES AND ADD TO STRUCT
         for i=1:size(norm_chan,1)
             %- get dipole depth and reject if it isn't in brain volume
             depth = ft_sourcedepth(norm_pos(i,:), vol);
@@ -150,6 +157,7 @@ parfor (subj_i = 1:length(subj_names),floor(length(subj_names)/2))
                 EEG.dipfit_fem.model(norm_chan.chan(i)) = empty_dip_struct;
             end
         end
+        
         %## SAVE
         dipfit_fem_norm = EEG.dipfit_fem;
         EEG.dipfit = EEG.dipfit_fem;
@@ -166,4 +174,3 @@ parfor (subj_i = 1:length(subj_names),floor(length(subj_names)/2))
     end
    
 end
-

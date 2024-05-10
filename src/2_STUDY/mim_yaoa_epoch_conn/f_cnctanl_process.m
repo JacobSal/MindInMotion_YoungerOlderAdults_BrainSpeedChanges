@@ -243,6 +243,8 @@ fNames = {'cond_0p5.set'};
 parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
 % for subj_i = LOOP_VAR
     %- Parse out components
+    EEG = struct.empty;
+    ALLEEG = struct.empty;
     components = comps_out(:,subj_i);
     components = sort(components(components ~= 0));
     %## LOAD EEG DATA
@@ -305,6 +307,7 @@ parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
             end
         end
         EEG = pop_mergeset(ALLEEG,1:length(ALLEEG),1);
+        ALLEEG = struct.empty;
         %- checks
         % EEG = eeg_checkset(EEG,'eventconsistency');
         % EEG = eeg_checkset(EEG);
@@ -330,8 +333,8 @@ parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
     %         for i=1:length(TMP)
     %             par_save(TMP(i).CAT)
     %         end
-            BIG_CAT = cat(1,TMP(:).CAT);
-            EEG.etc.COND_CAT = BIG_CAT;
+            % BIG_CAT = cat(1,TMP(:).CAT);
+            EEG.etc.COND_CAT = cat(1,TMP(:).CAT);
             EEG.etc.conn_table = t_out;
             EEG.etc.conn_meta.comps_out = comps_out;
             fName = strsplit(EEG.filename,'.'); fName = [fName{1} '.mat'];
@@ -340,24 +343,38 @@ parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
                 'filepath',eeg_savefpath,'filename',EEG.filename,...
                 'savemode','twofiles');
             tmp{subj_i} = EEG;
+            EEG = struct.empty;
+            TMP = struct.empty;
         catch e
             rmv_subj(subj_i) = 1;
             EEG.CAT = struct([]);
-            tmp{subj_i} = EEG;
+            tmp{subj_i} = [];
             fprintf(['error. identifier: %s\n',...
                      'error. %s\n',...
                      'error. on subject %s\n',...
                      'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
             disp(e);
         end
+    else
+        tmp{subj_i} = pop_loadset('filepath',eeg_savefpath,'filename',fNames{subj_i});
     end
 end
 pop_editoptions('option_computeica',0);
 %% SAVE BIG STUDY
 fprintf('==== Reformatting Study ====\n');
 %- remove bugged out subjects
-fprintf('Bugged Subjects: %s',MAIN_ALLEEG(cellfun(@isempty,tmp)).subject);
-tmp = tmp(~cellfun(@isempty,tmp));
+try
+    fprintf('Bugged Subjects:\n');
+    fprintf('%s\n',STUDY.datasetinfo(cellfun(@isempty,tmp)).subject);
+    bugged_subjs = STUDY.datasetinfo(cellfun(@isempty,tmp)).subject;
+    subj_keep = find(~cellfun(@isempty,tmp));
+    tmp = tmp(~cellfun(@isempty,tmp));
+catch
+    bugged_subjs = [];
+    subj_keep = find(~cellfun(@isempty,tmp));
+    tmp = tmp(~cellfun(@isempty,tmp));
+    fprintf('No Bugged Subjects.\n');
+end
 %## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
 fss = cell(1,length(tmp));
 for subj_i = 1:length(tmp)
@@ -383,15 +400,16 @@ end
 tmp = cellfun(@(x) [[]; x], tmp);
 %##
 tmp = eeg_checkset(tmp,'eventconsistency');
-[STUDY, ALLEEG] = std_editset([],tmp,...
+
+[NEW_STUDY, ALLEEG] = std_editset([],tmp,...
                                 'updatedat','off',...
                                 'savedat','off',...
                                 'name',STUDY_FNAME_SAVE,...
                                 'filename',STUDY_FNAME_SAVE,...
                                 'filepath',study_fpath);
 %## ASSIGN PARAMETERS
-STUDY.etc.a_epoch_process.epoch_chars = TRIAL_TYPES;
-STUDY.etc.d_cnctanl_process.params = struct('DO_PHASE_RND',DO_PHASE_RND,...
+NEW_STUDY.etc.a_epoch_process.epoch_chars = TRIAL_TYPES;
+NEW_STUDY.etc.d_cnctanl_process.params = struct('DO_PHASE_RND',DO_PHASE_RND,...
             'DO_BOOTSTRAP',DO_BOOTSTRAP,...
             'PREPDATA',DEF_PREPDATA,...
             'ESTSELMOD',DEF_ESTSELMOD,...
@@ -399,7 +417,7 @@ STUDY.etc.d_cnctanl_process.params = struct('DO_PHASE_RND',DO_PHASE_RND,...
             'ESTFITMVAR',DEF_ESTFITMVAR,...
             'PLOTORDERCRIT',DEF_PLOTORDERCRIT,...
             'comps',comps_out);
-[STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
+[NEW_STUDY,ALLEEG] = parfunc_save_study(NEW_STUDY,ALLEEG,...
                                             STUDY_FNAME_SAVE,study_fpath,...
                                             'STUDY_COND',[]);                          
 %% Version History
