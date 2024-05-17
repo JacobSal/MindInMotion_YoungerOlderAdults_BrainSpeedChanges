@@ -306,7 +306,7 @@ for cc = 1:length(clusters)
             % can provide approximations with the right scaling
             % 1150 (with default zoom) ~197mm? => 5.8376 dipsize/mm
             % DIPPLOT_STRUCT.dipolesize =  5.8376*(mean_dist+std_dist*3)*3*1.5/10; 
-            DIPPLOT_STRUCT.dipolesize =  5.8376*(40*3)*3*1.5/10; 
+            DIPPLOT_STRUCT.dipolesize =  5.8376*(20*3)*3*1.5/10; 
             dipplot(avgdip,DIPPLOT_STRUCT);
         case 'all_nogroup'
             %- plot all dipoles
@@ -335,13 +335,14 @@ for cc = 1:length(clusters)
                 fig.Children(end).Children(cnt+3).Marker = GROUP_MARKERS{gg};
                 fig.Children(end).Children(cnt+3).LineStyle = '-';
                 fig.Children(end).Children(cnt+3).Color = [0,0,0];
-                if GROUP_MARKERS{gg} == 'o'
-                    fig.Children(end).Children(cnt+3).LineWidth = fig.Children(end).Children(cnt+3+1).MarkerSize*0.05;
-                else
-                    fig.Children(end).Children(cnt+3).LineWidth = fig.Children(end).Children(cnt+3+1).MarkerSize*0.05;
-                end
+                % if GROUP_MARKERS{gg} == 'o'
+                %     fig.Children(end).Children(cnt+3).LineWidth = fig.Children(end).Children(cnt+3+1).MarkerSize*0.05;
+                % else
+                %     fig.Children(end).Children(cnt+3).LineWidth = fig.Children(end).Children(cnt+3+1).MarkerSize*0.05;
+                % end
+                fig.Children(end).Children(cnt+3).LineWidth = fig.Children(end).Children(cnt+3+1).MarkerSize*0.05;
                 fig.Children(end).Children(cnt+3).MarkerFaceColor = fig.Children(end).Children(cnt+3+1).Color;
-                fig.Children(end).Children(cnt+3).MarkerSize = fig.Children(end).Children(cnt+3+1).MarkerSize*1.3;
+                fig.Children(end).Children(cnt+3).MarkerSize = fig.Children(end).Children(cnt+3+1).MarkerSize*1.6;
                 % disp(length(fig.Children(end).Children))
                 % if kk ~= 0 && length(grps) > 1
                 %     % tmpax = findobj('Marker','.','XData',dips(ii).posxyz(1),'YData',dips(ii).posxyz(2),'ZData',dips(ii).posxyz(3));

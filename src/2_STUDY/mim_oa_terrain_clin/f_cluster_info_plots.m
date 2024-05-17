@@ -118,7 +118,33 @@ end
 cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
 [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
-CLUSTER_PICKS = main_cl_inds(2:end);
+% CLUSTER_PICKS = main_cl_inds(2:end);
+CLUSTER_PICKS = [6,9,12,13,14];
+AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
+%% TOPO PLOTS
+tmp_study = STUDY;
+RE_CALC = true;
+if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
+    tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
+    tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
+    tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
+    tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
+    tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
+end
+if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
+% designs = unique(FOOOF_TABLE.design_id);
+% clusters = unique(FOOOF_TABLE.cluster_id);
+for j = 1:length(CLUSTER_PICKS) % For each cluster requested
+    cluster_i = CLUSTER_PICKS(j);
+    if isempty(tmp_study.cluster(cluster_i).topo) || RE_CALC
+        tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cluster_i);% Using this custom modified code to allow taking average within participant for each cluster
+        STUDY.cluster(cluster_i).topox = tmp_study.cluster(cluster_i).topox;
+        STUDY.cluster(cluster_i).topoy = tmp_study.cluster(cluster_i).topoy;
+        STUDY.cluster(cluster_i).topoall = tmp_study.cluster(cluster_i).topoall;
+        STUDY.cluster(cluster_i).topo = tmp_study.cluster(cluster_i).topo;
+        STUDY.cluster(cluster_i).topopol = tmp_study.cluster(cluster_i).topopol;
+    end
+end
 %% NEW DIPOLE IMPLEMENTATION
 HIRES_TEMPLATE = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\_resources\mni_icbm152_nlin_sym_09a\mni_icbm152_t1_tal_nlin_sym_09a.nii';
 if ~ispc
@@ -219,37 +245,65 @@ view([0,-45,0])
 exportgraphics(fig,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.tiff')],'Resolution',1000);
 pause(2);
 close(fig);
-%##
+%% INDIVIDUAL CLUSTER DIPOLE PLOTS & TOPOS
 for i = 1:length(CLUSTER_PICKS)
-%         cluster_i = CLUSTER_PICKS(i);
-%         [fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_i,...
-%             'PLOT_TYPE','all_nogroup',...
-%             'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
-%         pause(2);
-% %         camzoom(1.2^2);
-%         exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.tiff',cluster_i)],'Resolution',1000);
-%         view([45,0,0])
-%         exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.tiff',cluster_i)],'Resolution',1000);
-%         view([0,-45,0])
-%         exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cluster_i)],'Resolution',1000);
-%         pause(2);
-%         close(fig);
+    %## NONGROUPWISE DIPOLE PLOTS
+%     cluster_i = CLUSTER_PICKS(i);
+%     [fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_i,...
+%         'PLOT_TYPE','all_nogroup',...
+%         'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
+%     pause(2);
+%     exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.tiff',cluster_i)],'Resolution',1000);
+%     view([45,0,0])
+%     exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.tiff',cluster_i)],'Resolution',1000);
+%     view([0,-45,0])
+%     exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cluster_i)],'Resolution',1000);
+%     pause(2);
+%     close(fig);
+    %## GROUPWISE DIPOLE PLOTS
+    % cluster_i = CLUSTER_PICKS(i);
+    % [fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_i,...
+    %     'PLOT_TYPE','all_group',...
+    %     'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
+    % pause(2);
+    % exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.tiff',cluster_i)],'Resolution',1000);
+    % view([45,0,0])
+    % exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.tiff',cluster_i)],'Resolution',1000);
+    % view([0,-45,0])
+    % exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cluster_i)],'Resolution',1000);
+    % pause(2);
+    % close(fig);
+    %% ===================================================================== %%
     cluster_i = CLUSTER_PICKS(i);
-    [fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_i,...
-        'PLOT_TYPE','all_group',...
-        'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
-    % GROUP_MARKERS = {'.','diamond','^','pentagram','hexagram'};
-    % for ii = 1:length(fig.Children(end).Children)
-    %     fig.Children(end).Children(ii+3).Marker = GROUP_MARKERS{gg};     
-    % end
-    pause(2);
-%         camzoom(1.2^2);
-    exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.tiff',cluster_i)],'Resolution',1000);
-    view([45,0,0])
-    exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.tiff',cluster_i)],'Resolution',1000);
-    view([0,-45,0])
-    exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cluster_i)],'Resolution',1000);
-    pause(2);
+    %## AXES LIMITS
+    fig = figure('color','white','renderer','Painters');
+    % sgtitle(atlas_name,'FontName','Arial','FontSize',14,'FontWeight','bold','Interpreter','none');
+    set(fig,'Units','inches','Position',[0.5,0.5,6.5,9])
+    set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+    set(gca,AXES_DEFAULT_PROPS{:})
+    hold on;
+    %## ALIGNMENT
+    GAP = 0.05;
+    LEFT_D = 2;
+    BOT_D = 4;
+    %## topo plot 
+    im_resize = 10;
+    axes();
+    std_topoplot_CL(STUDY,cluster_i,'together');
+    colormap(linspecer); %colormap_ersp)
+    fig_i = get(groot,'CurrentFigure');
+    set(fig_i,'color','w')
+    fig_i.Children(1).Title.String = sprintf('N=%i',length(STUDY.cluster(cluster_i).sets));
+    fig_i.Children(1).Title.Interpreter = 'none';
+    fig_i.Children(1).FontSize = 12; %PLOT_STRUCT.font_size;
+    fig_i.Children(1).FontName = 'Arial';
+    fig_i.Children(1).FontWeight = 'bold';
+    fig_i.Children(1).OuterPosition = [0,0,1,1];
+    fig_i.Children(1).Units = 'Inches';
+    fig_i.Children(1).Position = [0.5,BOT_D-0.175,0.225*im_resize,0.25*im_resize];  %[left bottom width height]
+    
+    % exportgraphics(fig,[save_dir filesep sprintf('topo_cl%i.tiff',cluster_i)],'Resolution',300)
+    exportgraphics(fig,[save_dir filesep sprintf('topo_cl%i.tiff',cluster_i)],'Resolution',1000)
     close(fig);
 end
 %% Version History

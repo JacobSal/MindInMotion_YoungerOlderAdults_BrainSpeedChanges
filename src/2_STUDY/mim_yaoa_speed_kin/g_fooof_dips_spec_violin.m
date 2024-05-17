@@ -88,9 +88,11 @@ DATA_SET = 'MIM_dataset';
 % study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 
 %- study info
 SUB_GROUP_FNAME = 'group_spec';
+% SUB_GROUP_FNAME = 'all_spec';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
@@ -99,14 +101,19 @@ CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% ================================================================== %%
-%## LOAD STUDY
+%## SET STUDY PATHS
 cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 if ~isempty(SUB_GROUP_FNAME)
     spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
 else
     spec_data_dir = [cluster_dir filesep 'spec_data'];
 end
-%## LOAD STUDY
+save_dir = [spec_data_dir filesep 'psd_calcs'];
+if ~exist(save_dir,'dir')
+    mkdir(save_dir);
+end
+%% LOAD STUDY
+%{
 if ~ispc
     tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
     STUDY = tmp.STUDY;
@@ -114,19 +121,15 @@ else
     tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s.study',CLUSTER_STUDY_NAME)]);
     STUDY = tmp.STUDY;
 end
-% if ~ispc
-%     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',spec_data_dir);
-% else
-%     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',spec_data_dir);
-% end
+%}
+if ~ispc
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',spec_data_dir);
+else
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',spec_data_dir);
+end
 cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
-save_dir = [spec_data_dir filesep 'psd_calcs'];
-if ~exist(save_dir,'dir')
-    mkdir(save_dir);
-end
-%%
-%## RE-POP PARAMS
+%% RE-POP PARAMS
 STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
     'groupstats',ERSP_STAT_PARAMS.groupstats,...
     'method',ERSP_STAT_PARAMS.method,...
@@ -155,7 +158,36 @@ tmp = load([save_dir filesep 'fooof_results.mat']);
 fooof_results = tmp.fooof_results;
 fooof_freq = fooof_results{1}{1,1}{1}.freqs;
 %## TOPO PLOTS
-%{
+% tmp_study = STUDY;
+% RE_CALC = true;
+% if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
+% end
+% if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
+% designs = unique(FOOOF_TABLE.design_id);
+% clusters = unique(FOOOF_TABLE.cluster_id);
+% for i = 1:length(designs)
+%     des_i = string(designs(i));
+%     for j = 1:length(clusters) % For each cluster requested
+%         cl_i = double(string(clusters(j)));
+%         if isempty(tmp_study.cluster(cl_i).topo) || RE_CALC
+%             inds = find(FOOOF_TABLE.design_id == des_i & FOOOF_TABLE.cluster_id == string(cl_i));
+%             sets_i = unique([FOOOF_TABLE.subj_cl_ind(inds)]);
+%             tmp_study.cluster(cl_i).sets = tmp_study.cluster(cl_i).sets(sets_i);
+%             tmp_study.cluster(cl_i).comps = tmp_study.cluster(cl_i).comps(sets_i);
+%             tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cl_i);% Using this custom modified code to allow taking average within participant for each cluster
+%             STUDY.cluster(cl_i).topox = tmp_study.cluster(cl_i).topox;
+%             STUDY.cluster(cl_i).topoy = tmp_study.cluster(cl_i).topoy;
+%             STUDY.cluster(cl_i).topoall = tmp_study.cluster(cl_i).topoall;
+%             STUDY.cluster(cl_i).topo = tmp_study.cluster(cl_i).topo;
+%             STUDY.cluster(cl_i).topopol = tmp_study.cluster(cl_i).topopol;
+%         end
+%     end
+% end
 tmp_study = STUDY;
 RE_CALC = true;
 if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
@@ -166,27 +198,19 @@ if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') ||
     tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
 end
 if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
-designs = unique(FOOOF_TABLE.design_id);
-clusters = unique(FOOOF_TABLE.cluster_id);
-for i = 1:length(designs)
-    des_i = string(designs(i));
-    for j = 1:length(clusters) % For each cluster requested
-        cl_i = double(string(clusters(j)));
-        if isempty(tmp_study.cluster(cl_i).topo) || RE_CALC
-            inds = find(FOOOF_TABLE.design_id == des_i & FOOOF_TABLE.cluster_id == string(cl_i));
-            sets_i = unique([FOOOF_TABLE.subj_cl_ind(inds)]);
-            tmp_study.cluster(cl_i).sets = tmp_study.cluster(cl_i).sets(sets_i);
-            tmp_study.cluster(cl_i).comps = tmp_study.cluster(cl_i).comps(sets_i);
-            tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cl_i);% Using this custom modified code to allow taking average within participant for each cluster
-            STUDY.cluster(cl_i).topox = tmp_study.cluster(cl_i).topox;
-            STUDY.cluster(cl_i).topoy = tmp_study.cluster(cl_i).topoy;
-            STUDY.cluster(cl_i).topoall = tmp_study.cluster(cl_i).topoall;
-            STUDY.cluster(cl_i).topo = tmp_study.cluster(cl_i).topo;
-            STUDY.cluster(cl_i).topopol = tmp_study.cluster(cl_i).topopol;
-        end
+% designs = unique(FOOOF_TABLE.design_id);
+% clusters = unique(FOOOF_TABLE.cluster_id);
+for j = 1:length(CLUSTER_PICKS) % For each cluster requested
+    cluster_i = CLUSTER_PICKS(j);
+    if isempty(tmp_study.cluster(cluster_i).topo) || RE_CALC
+        tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cluster_i);% Using this custom modified code to allow taking average within participant for each cluster
+        STUDY.cluster(cluster_i).topox = tmp_study.cluster(cluster_i).topox;
+        STUDY.cluster(cluster_i).topoy = tmp_study.cluster(cluster_i).topoy;
+        STUDY.cluster(cluster_i).topoall = tmp_study.cluster(cluster_i).topoall;
+        STUDY.cluster(cluster_i).topo = tmp_study.cluster(cluster_i).topo;
+        STUDY.cluster(cluster_i).topopol = tmp_study.cluster(cluster_i).topopol;
     end
 end
-%}
 %## STATS
 iter = 200; % in eeglab, the fdr stats will automatically *20
 try
@@ -311,8 +335,6 @@ cellfun(@(x) disp(x),txt_store);
 SCATTER_BOTTOM = 0.65;
 im_resize = 0.7;
 AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
-kin_savedir = [save_dir filesep 'kinematics'];
-mkdir(kin_savedir);
 tmp = load([save_dir filesep 'psd_feature_table.mat']);
 FOOOF_TABLE = tmp.FOOOF_TABLE;
 designs = unique(FOOOF_TABLE.design_id);
@@ -329,7 +351,7 @@ PLOT_PARAMS = struct('color_map',linspecer(4),...
 measure_name_plot = {'theta_avg_power','alpha_avg_power','beta_avg_power'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
 title_plot = {'Mean \theta','Mean \alpha','Mean \beta'};
 %% ===================================================================== %%
-%## GROUP PLOTS
+%## TOPO & DIPOLE PLOTS
 for k_i = 1:length(clusters)
     cl_i = double(string(clusters(k_i)));
     %## ANATOMY
@@ -539,185 +561,11 @@ for k_i = 1:length(clusters)
     close(fig);
 end
 %% ================================================================= %%
-%{
-%## PSDS
-PSD_BOTTOM = 0.7;
-im_resize = 0.5;
-AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
-for k_i = 1:length(clusters)
-    %##
-    cl_i = double(string(clusters(k_i)));
-    atlas_name = atlas_name_store{k_i};
-    fig = figure('color','white','renderer','Painters');
-    sgtitle(atlas_name,'FontName',PLOT_STRUCT.font_name,'FontSize',14,'FontWeight','bold','Interpreter','none');
-    set(fig,'Units','inches','Position',[0.5,0.5,6.5,9])
-    set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
-    hold on;
-    set(gca,AXES_DEFAULT_PROPS{:})
-    vert_shift = 0;
-    for j = 1:length(groups)
-        %## PLOT SPEEED PSDS
-        horiz_shift = 0;
-        for des_i = 1:length(designs)
-            switch des_i
-                case 1
-                    color_dark = COLORS_MAPS_TERRAIN;
-                    color_light = COLORS_MAPS_TERRAIN;
-                    GROUP_CMAP_OFFSET = [0,0.1,0.1];
-                    xtick_label_g = {'flat','low','med','high'};
-                case 2
-                    color_dark = COLOR_MAPS_SPEED;
-                    color_light = COLOR_MAPS_SPEED+0.15;
-                    GROUP_CMAP_OFFSET = [0.15,0,0];
-                    xtick_label_g = {'0.25','0.50','0.75','1.0'};
-            end
-            %## non-fooof psd (speed)
-            axes();
-            hold on;
-            for i = 1:size(spec_data_original{des_i}{cl_i},1)
-                data = spec_data_original{des_i}{cl_i}{i,j}';
-                switch j
-                    case 1
-                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
-                            color_dark(i,:),color_light(i,:));
-                        Pa.EdgeColor = "none";
-                        
-                    case 2
-                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
-                            color_dark(i,:)+GROUP_CMAP_OFFSET,color_light(i,:)+GROUP_CMAP_OFFSET);
-                        Pa.EdgeColor = color_light(i,:)+GROUP_CMAP_OFFSET;
-                    case 3
-                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
-                            color_dark(i,:)+GROUP_CMAP_OFFSET,color_light(i,:)+GROUP_CMAP_OFFSET);
-                        Pa.EdgeColor = color_light(i,:)+GROUP_CMAP_OFFSET;
-
-                end
-            end
-            axs = [];
-            for i = 1:size(spec_data_original{des_i}{cl_i},1)
-                data = spec_data_original{des_i}{cl_i}{i,j}';
-                switch j
-                    case 1
-                        ax = plot(fooof_freq,mean(data),'color',color_dark(i,:),'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
-                    case 2
-                        ax = plot(fooof_freq,mean(data),'color',color_dark(i,:)+GROUP_CMAP_OFFSET,'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
-                    otherwise
-                end
-                axs = [axs, ax];
-            end 
-            %- plot the aperiodic line
-            for i = 1:size(spec_data_original{des_i}{cl_i},1)
-                aperiodic_fit = fooof_apfit_store{des_i}{cl_i}{i,j}';
-                switch j
-                    case 1
-                        dash = plot(fooof_freq,mean(aperiodic_fit),'color',color_dark(i,:),'linestyle','-.','linewidth',2,'displayname','ap. fit');
-                    case 2
-                        dash = plot(fooof_freq,mean(aperiodic_fit),'color',color_dark(i,:)+GROUP_CMAP_OFFSET,'linestyle','-.','linewidth',2,'displayname','ap. fit');
-                    otherwise
-                end
-            end
-            ax = gca;
-            xlim([4 40]);
-            ylim([-30 -5]);
-            switch j
-                case 1
-                    [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond_org{des_i}{cl_i}{1}(:,2), 'background', 'Frequency(Hz)');
-                case 2
-                    [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond_org{des_i}{cl_i}{1}(:,2), 'background', 'Frequency(Hz)');
-            end
-            plot([0 40],[0 0],'--','color','black');
-            xlabel('Frequency(Hz)');
-            ylabel('10*log_{10}(Power)');
-            xline(3,'--'); xline(8,'--'); xline(13,'--'); xline(30,'--');
-            set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size,...
-                'FontWeight','bold')
-            title('PSD')
-            set(ax,'OuterPosition',[0,0,1,1]);
-            set(ax,'Position',[0.08+horiz_shift,PSD_BOTTOM-vert_shift,0.3*im_resize,0.25*im_resize]);  %[left bottom width height]
-            hold off;
-        
-            %## fooof psd (speed)
-            axes();
-            hold on;
-            axs = [];
-            for i = 1:size(fooof_diff_store{des_i}{cl_i},1)
-                data = fooof_diff_store{des_i}{cl_i}{i,j}';
-                switch j
-                    case 1
-                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
-                            color_dark(i,:),color_light(i,:));
-                        Pa.EdgeColor = "none";
-                        
-                    case 2
-                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
-                            color_dark(i,:)+GROUP_CMAP_OFFSET,color_light(i,:)+GROUP_CMAP_OFFSET);
-                        Pa.EdgeColor = color_light(i,:)+GROUP_CMAP_OFFSET;
-                        % Pa.FaceAlpha = 0.2;
-                        Pa.LineStyle = ":";
-                        Pa.LineWidth = 1;
-                    otherwise
-                end
-            end
-            for i = 1:size(fooof_diff_store{des_i}{cl_i},1)
-                data = fooof_diff_store{des_i}{cl_i}{i,j}';
-                switch j
-                    case 1
-                        ax = plot(fooof_freq,mean(data),'color',color_dark(i,:),'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
-                    case 2
-                        ax = plot(fooof_freq,mean(data),'color',color_dark(i,:)+GROUP_CMAP_OFFSET,'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
-                    otherwise
-                end
-                axs = [axs, ax];
-            end
-            %-
-            ax = gca;
-            switch j
-                case 1
-                    [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond{des_i}{cl_i}{j}(:,2), 'background', 'Frequency(Hz)');
-                case 2
-                    [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond{des_i}{cl_i}{j}(:,2), 'background', 'Frequency(Hz)');
-            end
-            xlim([4 40]);
-            plot([0 40],[0 0],'--','color','black');
-            xlabel('Frequency(Hz)');
-            ylabel('10*log_{10}(Power)');
-            xline([3],'--'); xline([8],'--'); xline([13],'--'); xline([30],'--');
-        %     set(ax,'LineWidth',2)
-            set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size,...
-                'FontWeight','bold')
-            %- legend
-            legend([axs,dash],'FontSize',9,'FontName',PLOT_STRUCT.font_name);
-            [lg1,icons,plots,txt] = legend('boxoff');
-            set(lg1,'Position',[0.20+0.3*im_resize+horiz_shift,PSD_BOTTOM+0.025-vert_shift,0.2,0.1]);
-            lg1.ItemTokenSize(1) = 18;
-            %-
-            title('Flattened PSD')
-            set(ax,'OuterPosition',[0,0,1,1]);
-            carry_ov = 0.12+0.3*im_resize;
-            set(ax,'Position',[carry_ov+horiz_shift,PSD_BOTTOM-vert_shift,0.35*im_resize,0.25*im_resize]);  %[left bottom width height]
-        %         icons(2).XData = [0.05 0.1];
-            horiz_shift = horiz_shift + carry_ov + 0.25*im_resize + 0.1;
-        end
-        %## TITLE
-        annotation('textbox',[0.5-0.1,PSD_BOTTOM-vert_shift-0.05+0.25*im_resize,0.2,0.2],...
-            'String',string(group_chars(j)),'HorizontalAlignment','center',...
-            'VerticalAlignment','middle','LineStyle','none','FontName',PLOT_STRUCT.font_name,...
-            'FontSize',14,'FontWeight','Bold','Units','normalized');
-        % close(fig);
-        vert_shift = vert_shift + 0.25*im_resize+0.1;
-    end
-    hold off;
-    % exportgraphics(fig,[save_dir filesep sprintf('Group_Violins_cl%i.tiff',cl_i)],'Resolution',1000)
-    exportgraphics(fig,[save_dir filesep sprintf('Group_PSDs_cl%i.tiff',cl_i)],'Resolution',300)
-    % close(fig);
-end
-%}
-%% ================================================================= %%
+%## VIOLIN PLOTS
 im_resize= 0.9;
 VIOLIN_BOTTOM = 0.7;
 AX_H  = 0.2;
 AX_W = 0.25;
-%## VIOLIN PLOTS
 for k_i = 1:length(clusters)
     %
     atlas_name = atlas_name_store{k_i};
@@ -876,6 +724,7 @@ for k_i = 1:length(clusters)
     close(fig);
 end
 %% ===================================================================== %%
+%## COMBINED PLOT FOR ALL (NO GROUPING)
 CLUSTERS_TO_PLOT = main_cl_inds(2:end); %valid_clusters(1:end-1); %main_cl_inds(2:end);
 VIOLIN_BOTTOM = 0.375;
 PSD_BOTTOM = 0.575;
@@ -966,6 +815,9 @@ for k_i = 1:length(CLUSTERS_TO_PLOT)
     %## PSDS
     im_resize = 0.5;
     vert_shift = 0;
+    if length(groups)>1
+        error('This is for aggregate stats only. Use plots above for multigroup plotting');
+    end
     for j = 1:length(groups)
         %## PLOT SPEEED PSDS
         horiz_shift = 0;
@@ -987,51 +839,25 @@ for k_i = 1:length(CLUSTERS_TO_PLOT)
             hold on;
             for i = 1:size(spec_data_original{des_i}{cl_i},1)
                 data = spec_data_original{des_i}{cl_i}{i,j}';
-                switch j
-                    case 1
-                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
+                [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
                             color_dark(i,:),color_light(i,:));
-                        Pa.EdgeColor = "none";
-                        
-                    case 2
-                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
-                            color_dark(i,:)+GROUP_CMAP_OFFSET,color_light(i,:)+GROUP_CMAP_OFFSET);
-                        Pa.EdgeColor = color_light(i,:)+GROUP_CMAP_OFFSET;
-                    otherwise
-                end
+                Pa.EdgeColor = "none";
             end
             axs = [];
             for i = 1:size(spec_data_original{des_i}{cl_i},1)
                 data = spec_data_original{des_i}{cl_i}{i,j}';
-                switch j
-                    case 1
-                        ax = plot(fooof_freq,mean(data),'color',color_dark(i,:),'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
-                    case 2
-                        ax = plot(fooof_freq,mean(data),'color',color_dark(i,:)+GROUP_CMAP_OFFSET,'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
-                    otherwise
-                end
+                ax = plot(fooof_freq,mean(data),'color',color_dark(i,:),'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
                 axs = [axs, ax];
             end 
             %- plot the aperiodic line
             for i = 1:size(spec_data_original{des_i}{cl_i},1)
                 aperiodic_fit = fooof_apfit_store{des_i}{cl_i}{i,j}';
-                switch j
-                    case 1
-                        dash = plot(fooof_freq,mean(aperiodic_fit),'color',color_dark(i,:),'linestyle','-.','linewidth',2,'displayname','ap. fit');
-                    case 2
-                        dash = plot(fooof_freq,mean(aperiodic_fit),'color',color_dark(i,:)+GROUP_CMAP_OFFSET,'linestyle','-.','linewidth',2,'displayname','ap. fit');
-                    otherwise
-                end
+                dash = plot(fooof_freq,mean(aperiodic_fit),'color',color_dark(i,:),'linestyle','-.','linewidth',2,'displayname','ap. fit');
             end
             ax = gca;
             xlim([4 40]);
             ylim([-30 -5]);
-            switch j
-                case 1
-                    [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond_org{des_i}{cl_i}{1}(:,2), 'background', 'Frequency(Hz)');
-                case 2
-                    [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond_org{des_i}{cl_i}{1}(:,2), 'background', 'Frequency(Hz)');
-            end
+            [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond_org{des_i}{cl_i}{1}(:,2), 'background', 'Frequency(Hz)');
             plot([0 40],[0 0],'--','color','black');
             xlabel('Frequency(Hz)');
             ylabel('10*log_{10}(Power)');
@@ -1049,41 +875,18 @@ for k_i = 1:length(CLUSTERS_TO_PLOT)
             axs = [];
             for i = 1:size(fooof_diff_store{des_i}{cl_i},1)
                 data = fooof_diff_store{des_i}{cl_i}{i,j}';
-                switch j
-                    case 1
-                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
+                [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
                             color_dark(i,:),color_light(i,:));
-                        Pa.EdgeColor = "none";
-                        
-                    case 2
-                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
-                            color_dark(i,:)+GROUP_CMAP_OFFSET,color_light(i,:)+GROUP_CMAP_OFFSET);
-                        Pa.EdgeColor = color_light(i,:)+GROUP_CMAP_OFFSET;
-                        % Pa.FaceAlpha = 0.2;
-                        Pa.LineStyle = ":";
-                        Pa.LineWidth = 1;
-                    otherwise
-                end
+                Pa.EdgeColor = "none";
             end
             for i = 1:size(fooof_diff_store{des_i}{cl_i},1)
                 data = fooof_diff_store{des_i}{cl_i}{i,j}';
-                switch j
-                    case 1
-                        ax = plot(fooof_freq,mean(data),'color',color_dark(i,:),'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
-                    case 2
-                        ax = plot(fooof_freq,mean(data),'color',color_dark(i,:)+GROUP_CMAP_OFFSET,'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
-                    otherwise
-                end
+                ax = plot(fooof_freq,mean(data),'color',color_dark(i,:),'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
                 axs = [axs, ax];
             end
             %-
             ax = gca;
-            switch j
-                case 1
-                    [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond{des_i}{cl_i}{j}(:,2), 'background', 'Frequency(Hz)');
-                case 2
-                    [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond{des_i}{cl_i}{j}(:,2), 'background', 'Frequency(Hz)');
-            end
+            [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond{des_i}{cl_i}{j}(:,2), 'background', 'Frequency(Hz)');
             xlim([4 40]);
             plot([0 40],[0 0],'--','color','black');
             xlabel('Frequency(Hz)');
@@ -1272,3 +1075,177 @@ for k_i = 1:length(CLUSTERS_TO_PLOT)
     % exportgraphics(fig,[save_dir filesep sprintf('cl%i_topo-dips-psd-violins.tiff',k)],'Resolution',300)
     close(fig);
 end
+%% ================================================================= %%
+%{
+%## PSDS
+PSD_BOTTOM = 0.7;
+im_resize = 0.5;
+AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
+for k_i = 1:length(clusters)
+    %##
+    cl_i = double(string(clusters(k_i)));
+    atlas_name = atlas_name_store{k_i};
+    fig = figure('color','white','renderer','Painters');
+    sgtitle(atlas_name,'FontName',PLOT_STRUCT.font_name,'FontSize',14,'FontWeight','bold','Interpreter','none');
+    set(fig,'Units','inches','Position',[0.5,0.5,6.5,9])
+    set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+    hold on;
+    set(gca,AXES_DEFAULT_PROPS{:})
+    vert_shift = 0;
+    for j = 1:length(groups)
+        %## PLOT SPEEED PSDS
+        horiz_shift = 0;
+        for des_i = 1:length(designs)
+            switch des_i
+                case 1
+                    color_dark = COLORS_MAPS_TERRAIN;
+                    color_light = COLORS_MAPS_TERRAIN;
+                    GROUP_CMAP_OFFSET = [0,0.1,0.1];
+                    xtick_label_g = {'flat','low','med','high'};
+                case 2
+                    color_dark = COLOR_MAPS_SPEED;
+                    color_light = COLOR_MAPS_SPEED+0.15;
+                    GROUP_CMAP_OFFSET = [0.15,0,0];
+                    xtick_label_g = {'0.25','0.50','0.75','1.0'};
+            end
+            %## non-fooof psd (speed)
+            axes();
+            hold on;
+            for i = 1:size(spec_data_original{des_i}{cl_i},1)
+                data = spec_data_original{des_i}{cl_i}{i,j}';
+                switch j
+                    case 1
+                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
+                            color_dark(i,:),color_light(i,:));
+                        Pa.EdgeColor = "none";
+                        
+                    case 2
+                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
+                            color_dark(i,:)+GROUP_CMAP_OFFSET,color_light(i,:)+GROUP_CMAP_OFFSET);
+                        Pa.EdgeColor = color_light(i,:)+GROUP_CMAP_OFFSET;
+                    case 3
+                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
+                            color_dark(i,:)+GROUP_CMAP_OFFSET,color_light(i,:)+GROUP_CMAP_OFFSET);
+                        Pa.EdgeColor = color_light(i,:)+GROUP_CMAP_OFFSET;
+
+                end
+            end
+            axs = [];
+            for i = 1:size(spec_data_original{des_i}{cl_i},1)
+                data = spec_data_original{des_i}{cl_i}{i,j}';
+                switch j
+                    case 1
+                        ax = plot(fooof_freq,mean(data),'color',color_dark(i,:),'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
+                    case 2
+                        ax = plot(fooof_freq,mean(data),'color',color_dark(i,:)+GROUP_CMAP_OFFSET,'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
+                    otherwise
+                end
+                axs = [axs, ax];
+            end 
+            %- plot the aperiodic line
+            for i = 1:size(spec_data_original{des_i}{cl_i},1)
+                aperiodic_fit = fooof_apfit_store{des_i}{cl_i}{i,j}';
+                switch j
+                    case 1
+                        dash = plot(fooof_freq,mean(aperiodic_fit),'color',color_dark(i,:),'linestyle','-.','linewidth',2,'displayname','ap. fit');
+                    case 2
+                        dash = plot(fooof_freq,mean(aperiodic_fit),'color',color_dark(i,:)+GROUP_CMAP_OFFSET,'linestyle','-.','linewidth',2,'displayname','ap. fit');
+                    otherwise
+                end
+            end
+            ax = gca;
+            xlim([4 40]);
+            ylim([-30 -5]);
+            switch j
+                case 1
+                    [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond_org{des_i}{cl_i}{1}(:,2), 'background', 'Frequency(Hz)');
+                case 2
+                    [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond_org{des_i}{cl_i}{1}(:,2), 'background', 'Frequency(Hz)');
+            end
+            plot([0 40],[0 0],'--','color','black');
+            xlabel('Frequency(Hz)');
+            ylabel('10*log_{10}(Power)');
+            xline(3,'--'); xline(8,'--'); xline(13,'--'); xline(30,'--');
+            set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size,...
+                'FontWeight','bold')
+            title('PSD')
+            set(ax,'OuterPosition',[0,0,1,1]);
+            set(ax,'Position',[0.08+horiz_shift,PSD_BOTTOM-vert_shift,0.3*im_resize,0.25*im_resize]);  %[left bottom width height]
+            hold off;
+        
+            %## fooof psd (speed)
+            axes();
+            hold on;
+            axs = [];
+            for i = 1:size(fooof_diff_store{des_i}{cl_i},1)
+                data = fooof_diff_store{des_i}{cl_i}{i,j}';
+                switch j
+                    case 1
+                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
+                            color_dark(i,:),color_light(i,:));
+                        Pa.EdgeColor = "none";
+                        
+                    case 2
+                        [Pa,Li] = JackKnife_sung(fooof_freq,mean(data),[mean(data)-std(data)/sqrt(size(data,1))],[mean(data)+std(data)/sqrt(size(data,1))],...
+                            color_dark(i,:)+GROUP_CMAP_OFFSET,color_light(i,:)+GROUP_CMAP_OFFSET);
+                        Pa.EdgeColor = color_light(i,:)+GROUP_CMAP_OFFSET;
+                        % Pa.FaceAlpha = 0.2;
+                        Pa.LineStyle = ":";
+                        Pa.LineWidth = 1;
+                    otherwise
+                end
+            end
+            for i = 1:size(fooof_diff_store{des_i}{cl_i},1)
+                data = fooof_diff_store{des_i}{cl_i}{i,j}';
+                switch j
+                    case 1
+                        ax = plot(fooof_freq,mean(data),'color',color_dark(i,:),'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
+                    case 2
+                        ax = plot(fooof_freq,mean(data),'color',color_dark(i,:)+GROUP_CMAP_OFFSET,'linewidth',2,'LineStyle','-','displayname',sprintf('%s',xtick_label_g{i}));
+                    otherwise
+                end
+                axs = [axs, ax];
+            end
+            %-
+            ax = gca;
+            switch j
+                case 1
+                    [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond{des_i}{cl_i}{j}(:,2), 'background', 'Frequency(Hz)');
+                case 2
+                    [axsignif,Pa] = highlight_CL(ax, fooof_freq, pcond{des_i}{cl_i}{j}(:,2), 'background', 'Frequency(Hz)');
+            end
+            xlim([4 40]);
+            plot([0 40],[0 0],'--','color','black');
+            xlabel('Frequency(Hz)');
+            ylabel('10*log_{10}(Power)');
+            xline([3],'--'); xline([8],'--'); xline([13],'--'); xline([30],'--');
+        %     set(ax,'LineWidth',2)
+            set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size,...
+                'FontWeight','bold')
+            %- legend
+            legend([axs,dash],'FontSize',9,'FontName',PLOT_STRUCT.font_name);
+            [lg1,icons,plots,txt] = legend('boxoff');
+            set(lg1,'Position',[0.20+0.3*im_resize+horiz_shift,PSD_BOTTOM+0.025-vert_shift,0.2,0.1]);
+            lg1.ItemTokenSize(1) = 18;
+            %-
+            title('Flattened PSD')
+            set(ax,'OuterPosition',[0,0,1,1]);
+            carry_ov = 0.12+0.3*im_resize;
+            set(ax,'Position',[carry_ov+horiz_shift,PSD_BOTTOM-vert_shift,0.35*im_resize,0.25*im_resize]);  %[left bottom width height]
+        %         icons(2).XData = [0.05 0.1];
+            horiz_shift = horiz_shift + carry_ov + 0.25*im_resize + 0.1;
+        end
+        %## TITLE
+        annotation('textbox',[0.5-0.1,PSD_BOTTOM-vert_shift-0.05+0.25*im_resize,0.2,0.2],...
+            'String',string(group_chars(j)),'HorizontalAlignment','center',...
+            'VerticalAlignment','middle','LineStyle','none','FontName',PLOT_STRUCT.font_name,...
+            'FontSize',14,'FontWeight','Bold','Units','normalized');
+        % close(fig);
+        vert_shift = vert_shift + 0.25*im_resize+0.1;
+    end
+    hold off;
+    % exportgraphics(fig,[save_dir filesep sprintf('Group_Violins_cl%i.tiff',cl_i)],'Resolution',1000)
+    exportgraphics(fig,[save_dir filesep sprintf('Group_PSDs_cl%i.tiff',cl_i)],'Resolution',300)
+    % close(fig);
+end
+%}

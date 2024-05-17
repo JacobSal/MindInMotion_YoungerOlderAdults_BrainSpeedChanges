@@ -102,10 +102,10 @@ ERSP_PARAMS = struct('subbaseline','off',...
     'plot_freqrange',[4,60],...
     'plot_clim',[-2,2]);
 %- clustering parameters
-MIN_ICS_SUBJ = [3,4,5]; %[2,3,4,5,6,7,8]; % iterative clustering
+MIN_ICS_SUBJ = [5]; %[2,3,4,5,6,7,8]; % iterative clustering
 % K_RANGE = [10,22];
 MAX_REPEATED_ITERATIONS = 1;
-CLUSTER_SWEEP_VALS = [12]; %[10,13,14,19,20]; %K_RANGE(1):K_RANGE(2);
+CLUSTER_SWEEP_VALS = [5,6,13,14]; %[10,13,14,19,20]; %K_RANGE(1):K_RANGE(2);
 % DO_K_DISTPRUNE = false;
 DO_K_ICPRUNE = true;
 % DO_K_SWEEPING = false;

@@ -2,8 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/.sh
-
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_oa_terrain_clin/.sh
 
 %{
 %## RESTORE MATLAB
@@ -17,7 +16,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR%#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -49,6 +48,7 @@ set_workspace
 fprintf('Assigning Params\n');
 %## Hard Define
 %- statistics & conditions
+SPEED_CUTOFF = 0.1;
 SPEED_VALS = {'0.25','0.5','0.75','1.0';
               '0p25','0p5','0p75','1p0'};
 TERRAIN_VALS = {'flat','low','med','high'};
@@ -86,12 +86,7 @@ beta_band  = [12 30];
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- cluster directory for study
-% study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-% study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-% study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-% study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 study_dir_name = '04232024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
-
 %- study info
 SUB_GROUP_FNAME = 'all_spec';
 % SUB_GROUP_FNAME = 'group_spec';
@@ -103,21 +98,27 @@ CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% ================================================================== %%
-%## LOAD STUDY
+%## SET STUDY PATHS
 cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 if ~isempty(SUB_GROUP_FNAME)
     spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
-    plot_store_dir = [cluster_dir filesep 'plots_out' filesep SUB_GROUP_FNAME];
 else
     spec_data_dir = [cluster_dir filesep 'spec_data'];
-    plot_store_dir = [cluster_dir filesep 'plots_out'];
 end
-if ~exist(spec_data_dir,'dir')
-    error('spec_data dir does not exist');
+save_dir = [spec_data_dir filesep 'psd_calcs'];
+if ~exist(save_dir,'dir')
+    mkdir(save_dir);
 end
-if ~exist(plot_store_dir,'dir')
-    mkdir(plot_store_dir);
+%% LOAD STUDY
+%{
+if ~ispc
+    tmp = load('-mat',[spec_data_dir filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
+    STUDY = tmp.STUDY;
+else
+    tmp = load('-mat',[spec_data_dir filesep sprintf('%s.study',CLUSTER_STUDY_NAME)]);
+    STUDY = tmp.STUDY;
 end
+%}
 if ~ispc
     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',spec_data_dir);
 else
@@ -126,11 +127,6 @@ end
 cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
 [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
-%- pull out pertinent study info
-% condition_gait = unique({STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
-% subject_chars = {STUDY.datasetinfo.subject};
-% fPaths = {STUDY.datasetinfo.filepath};
-% fNames = {STUDY.datasetinfo.filename};
 try
     GROUP_CHARS = STUDY.design(1).variable(1).value;
 catch
@@ -139,11 +135,6 @@ catch
 end
 CLUSTER_PICKS = main_cl_inds(2:end);
 DESIGN_INDS = 1:length(STUDY.design);
-save_dir = [spec_data_dir filesep 'psd_calcs'];
-if ~exist(save_dir,'dir')
-    mkdir(save_dir);
-end
-
 %% FOOOF SETUP & PYTHON
 %{
 % Check which python is being used
@@ -201,12 +192,11 @@ STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
 % tt.x400m_seconds = new_400m;
 % writetable(tt,'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\subject_mgmt\MIM_Redcap_Blood_Sppb_Grip.xlsx');
 %% READ IN SUBJECT SPECIFIC SPEEDS FOR TERRAIN
-SPEED_CUTOFF = 0.1;
 MasterTable = mim_read_master_sheet();
 speed_table = table(categorical(MasterTable.subject_code),MasterTable.terrain_trials_speed_ms);
-speed_alleeg = cell(length(ALLEEG),2);
-for i = 1:length(ALLEEG)
-    ss = ALLEEG(i).subject;
+speed_alleeg = cell(length(STUDY.datasetinfo),2);
+for i = 1:length(STUDY.datasetinfo)
+    ss = STUDY.datasetinfo(i).subject;
     ind = speed_table.Var1==ss;
     if any(ind)
         speed_alleeg{i,1} = speed_table.Var1(ind);
@@ -308,6 +298,7 @@ fooof_results = cell(length(DESIGN_INDS),1);
 fooof_diff_store = cell(length(DESIGN_INDS),1);
 fooof_apfit_store = cell(length(DESIGN_INDS),1);
 spec_data_original = cell(length(DESIGN_INDS),1);
+fooof_frequencies = zeros(2,1);
 subj_chk = {};
 cnt = 1;
 for dd = 1:length(DESIGN_INDS)
@@ -319,7 +310,8 @@ for dd = 1:length(DESIGN_INDS)
         ind_des = [STUDY.etc.mim_gen_ersp_data.des_ind] == des_i;
         ind = ind_cl & ind_des;
         file_mat = STUDY.etc.mim_gen_ersp_data(ind).spec_ss_fpaths;
-        tmp = par_load(file_mat,[]);        
+        tmp = par_load(file_mat,[]);     
+        
         %## RUN FOOOF
         %- get subjects in cluster
         s_chars = {STUDY.datasetinfo(STUDY.cluster(cl_i).sets).subject};
@@ -351,6 +343,16 @@ for dd = 1:length(DESIGN_INDS)
                 end
             end
         end
+        %-
+        iif = (specfreqs{cond_i,group_i} < f_range(2) & specfreqs{cond_i,group_i} > f_range(1));
+        fooof_frequencies = specfreqs{cond_i,group_i}(iif);
+        if ~any(f_range(2) == fooof_frequencies)
+            fooof_frequencies = [fooof_frequencies; f_range(2)];
+        end
+        if ~any(f_range(1) == fooof_frequencies)
+            fooof_frequencies = [f_range(1); fooof_frequencies];
+        end
+        %-
         try
             if isnan(g_chars)
                 chk = true;
@@ -404,7 +406,6 @@ for dd = 1:length(DESIGN_INDS)
                         if any(strcmp(c_chars(cond_i),TERRAIN_VALS))
                             FOOOF_TABLE.cond_char(cnt) = categorical(c_chars(cond_i));
                             FOOOF_TABLE.cond_id(cnt) = cond_i;
-
                             % FOOOF_TABLE.terrain_cat(cnt) = categorical(c_chars(cond_i));
                             % FOOOF_TABLE.speed_double(cnt) = [];
                             % FOOOF_TABLE.speed_cat(cnt) = categorical([]);
@@ -412,7 +413,6 @@ for dd = 1:length(DESIGN_INDS)
                             ind = strcmp(c_chars(cond_i),SPEED_VALS(2,:));
                             FOOOF_TABLE.cond_char(cnt) = categorical(SPEED_VALS(1,ind));
                             FOOOF_TABLE.cond_id(cnt) = cond_i;
-
                             % ind = strcmp(c_chars(cond_i),SPEED_VALS(2,:));
                             % FOOOF_TABLE.terrain_cat(cnt) = categorical([]);
                             % FOOOF_TABLE.speed_double(cnt) = SPEED_VALS(1,ind);
@@ -433,6 +433,12 @@ for dd = 1:length(DESIGN_INDS)
                         FOOOF_TABLE.aperiodic_offset(cnt) = fooof_results{des_i}{cond_i,group_i}{subj_i}.aperiodic_params(1);
                         FOOOF_TABLE.central_freq{cnt} = fooof_results{des_i}{cond_i,group_i}{subj_i}.peak_params(:,1);
                         FOOOF_TABLE.power{cnt} = fooof_results{des_i}{cond_i,group_i}{subj_i}.peak_params(:,2);
+                        % try
+                        %     FOOOF_TABLE.central_freq{cnt} = fooof_results{des_i}{cond_i,group_i}{subj_i}.peak_params(1,:);
+                        %     FOOOF_TABLE.power{cnt} = fooof_results{des_i}{cond_i,group_i}{subj_i}.peak_params(2,:);
+                        % catch
+                        %     fprintf('No peaks generated for subject: %s...\n',cl_chars{subj_i});
+                        % end
                         FOOOF_TABLE.r_squared(cnt) = fooof_results{des_i}{cond_i,group_i}{subj_i}.r_squared;
                         %- Compute average power after flatten curve
                         fooof_diff = 10*(fooof_results{des_i}{cond_i,group_i}{subj_i}.power_spectrum) - 10*(fooof_results{des_i}{cond_i,group_i}{subj_i}.ap_fit);
@@ -458,6 +464,64 @@ end
 disp(length(unique(subj_chk)));
 disp(length(unique(FOOOF_TABLE.subj_id)));
 save([save_dir filesep 'fooof_results.mat'],'fooof_results');
+%% (JS) DETERMINE PEAK FREQUENCIES
+designs = unique(FOOOF_TABLE.design_id);
+clusters = unique(FOOOF_TABLE.cluster_id);
+for i = 1:length(designs)
+    des_i = double(string(designs(i)));
+    for j = 1:length(clusters)
+        cl_i = double(string(clusters(j)));
+        inds = find(FOOOF_TABLE.design_id == designs(i) & FOOOF_TABLE.cluster_id == clusters(j));
+        for k = 1:length(inds)
+            subj_i = FOOOF_TABLE.subj_id(inds(k));
+            cond_i = FOOOF_TABLE.cond_id(inds(k));
+            group_i = FOOOF_TABLE.group_id(inds(k));
+            % tmp = fooof_diff_store{des_i}{cl_i}{cond_i,group_i}(:,subj_i);
+            % [val,ind] = findpeaks(tmp);
+            % fooof_frequencies(ind)
+            %-
+            % figure;
+            % hold on;
+            % plot(fooof_frequencies,tmp)
+            % scatter(fooof_frequencies(ind),val,'k^');
+            % scatter(FOOOF_TABLE.central_freq{inds(k)},FOOOF_TABLE.power{inds(k)},'go')
+            % hold off;
+            %-
+            if ~isempty(FOOOF_TABLE.central_freq{inds(k)})
+                for l = 1:length(FOOOF_TABLE.central_freq{inds(k)})
+                    cf = FOOOF_TABLE.central_freq{inds(k)}(l);
+                    if cf > theta_band(1) & cf <= theta_band(2)
+                        FOOOF_TABLE.theta{inds(k)} = [FOOOF_TABLE.theta{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
+                    elseif cf > alpha_band(1) & cf <= alpha_band(2)
+                        FOOOF_TABLE.alpha{inds(k)} = [FOOOF_TABLE.alpha{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
+                    elseif cf > beta_band(1) & cf <= beta_band(2)
+                        FOOOF_TABLE.beta{inds(k)} = [FOOOF_TABLE.beta{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
+                    end
+                end
+                if length(FOOOF_TABLE.theta{inds(k)}) > 1
+                    [~,indx] = min(abs(FOOOF_TABLE.theta{inds(k)}(:,1)-6));
+                    temp_power = FOOOF_TABLE.theta{inds(k)}(:,2);
+                    FOOOF_TABLE.theta_center{inds(k)} = [FOOOF_TABLE.theta{inds(k)}(indx,1) temp_power(indx)];
+                end
+                if length(FOOOF_TABLE.alpha{inds(k)}) > 1
+                    [~,indx] = min(abs(FOOOF_TABLE.alpha{inds(k)}(:,1)-10));
+                    temp_power = FOOOF_TABLE.alpha{inds(k)}(:,2);
+                    FOOOF_TABLE.alpha_center{inds(k)} = [FOOOF_TABLE.alpha{inds(k)}(indx,1) temp_power(indx)];
+                end
+                if length(FOOOF_TABLE.beta{inds(k)}) > 1
+                    [~,indx] = min(abs(FOOOF_TABLE.beta{inds(k)}(:,1)-20));
+                    temp_power = FOOOF_TABLE.beta{inds(k)}(:,2);
+                    FOOOF_TABLE.beta_center{inds(k)} = [FOOOF_TABLE.beta{inds(k)}(indx,1) temp_power(indx)];
+                end
+            end
+        end
+    end
+end
+%## SAVE DATA
+% save([save_dir filesep 'fooof_results_summary.mat'],'fooof_group_results_org');
+save([save_dir filesep 'fooof_diff_store.mat'],'fooof_diff_store');
+save([save_dir filesep 'fooof_apfit_store.mat'],'fooof_apfit_store');
+save([save_dir filesep 'spec_data_original.mat'],'spec_data_original');
 %% DETERMINE PEAK FREQUENCIES
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
@@ -503,36 +567,36 @@ save([save_dir filesep 'fooof_diff_store.mat'],'fooof_diff_store');
 save([save_dir filesep 'fooof_apfit_store.mat'],'fooof_apfit_store');
 save([save_dir filesep 'spec_data_original.mat'],'spec_data_original');
 %%
-tmp_study = STUDY;
-RE_CALC = true;
-if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
-end
-if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
-designs = unique(FOOOF_TABLE.design_id);
-clusters = unique(FOOOF_TABLE.cluster_id);
-for i = 1:length(designs)
-    des_i = string(designs(i));
-    for j = 1:length(clusters) % For each cluster requested
-        cl_i = double(string(clusters(j)));
-        if isempty(tmp_study.cluster(cl_i).topo) || RE_CALC
-            inds = find(FOOOF_TABLE.design_id == des_i & FOOOF_TABLE.cluster_id == string(cl_i));
-            sets_i = unique([FOOOF_TABLE.subj_cl_ind(inds)]);
-            tmp_study.cluster(cl_i).sets = tmp_study.cluster(cl_i).sets(sets_i);
-            tmp_study.cluster(cl_i).comps = tmp_study.cluster(cl_i).comps(sets_i);
-            tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cl_i);% Using this custom modified code to allow taking average within participant for each cluster
-            STUDY.cluster(cl_i).topox = tmp_study.cluster(cl_i).topox;
-            STUDY.cluster(cl_i).topoy = tmp_study.cluster(cl_i).topoy;
-            STUDY.cluster(cl_i).topoall = tmp_study.cluster(cl_i).topoall;
-            STUDY.cluster(cl_i).topo = tmp_study.cluster(cl_i).topo;
-            STUDY.cluster(cl_i).topopol = tmp_study.cluster(cl_i).topopol;
-        end
-    end
-end
+% tmp_study = STUDY;
+% RE_CALC = true;
+% if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
+% end
+% if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
+% designs = unique(FOOOF_TABLE.design_id);
+% clusters = unique(FOOOF_TABLE.cluster_id);
+% for i = 1:length(designs)
+%     des_i = string(designs(i));
+%     for j = 1:length(clusters) % For each cluster requested
+%         cl_i = double(string(clusters(j)));
+%         if isempty(tmp_study.cluster(cl_i).topo) || RE_CALC
+%             inds = find(FOOOF_TABLE.design_id == des_i & FOOOF_TABLE.cluster_id == string(cl_i));
+%             sets_i = unique([FOOOF_TABLE.subj_cl_ind(inds)]);
+%             tmp_study.cluster(cl_i).sets = tmp_study.cluster(cl_i).sets(sets_i);
+%             tmp_study.cluster(cl_i).comps = tmp_study.cluster(cl_i).comps(sets_i);
+%             tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cl_i);% Using this custom modified code to allow taking average within participant for each cluster
+%             STUDY.cluster(cl_i).topox = tmp_study.cluster(cl_i).topox;
+%             STUDY.cluster(cl_i).topoy = tmp_study.cluster(cl_i).topoy;
+%             STUDY.cluster(cl_i).topoall = tmp_study.cluster(cl_i).topoall;
+%             STUDY.cluster(cl_i).topo = tmp_study.cluster(cl_i).topo;
+%             STUDY.cluster(cl_i).topopol = tmp_study.cluster(cl_i).topopol;
+%         end
+%     end
+% end
     
 %% Create table from group results, take mean across participants ICs    
 designs = unique(FOOOF_TABLE.design_id);
@@ -938,36 +1002,36 @@ tmp = load([save_dir filesep 'fooof_results.mat']);
 fooof_results = tmp.fooof_results;
 fooof_freq = fooof_results{1}{1,1}{1}.freqs;
 %## TOPO PLOTS
-tmp_study = STUDY;
-RE_CALC = true;
-if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
-end
-if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
-designs = unique(FOOOF_TABLE.design_id);
-clusters = unique(FOOOF_TABLE.cluster_id);
-for i = 1:length(designs)
-    des_i = string(designs(i));
-    for j = 1:length(clusters) % For each cluster requested
-        cl_i = double(string(clusters(j)));
-        if isempty(tmp_study.cluster(cl_i).topo) || RE_CALC
-            inds = find(FOOOF_TABLE.design_id == des_i & FOOOF_TABLE.cluster_id == string(cl_i));
-            sets_i = unique([FOOOF_TABLE.subj_cl_ind(inds)]);
-            tmp_study.cluster(cl_i).sets = tmp_study.cluster(cl_i).sets(sets_i);
-            tmp_study.cluster(cl_i).comps = tmp_study.cluster(cl_i).comps(sets_i);
-            tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cl_i);% Using this custom modified code to allow taking average within participant for each cluster
-            STUDY.cluster(cl_i).topox = tmp_study.cluster(cl_i).topox;
-            STUDY.cluster(cl_i).topoy = tmp_study.cluster(cl_i).topoy;
-            STUDY.cluster(cl_i).topoall = tmp_study.cluster(cl_i).topoall;
-            STUDY.cluster(cl_i).topo = tmp_study.cluster(cl_i).topo;
-            STUDY.cluster(cl_i).topopol = tmp_study.cluster(cl_i).topopol;
-        end
-    end
-end
+% tmp_study = STUDY;
+% RE_CALC = true;
+% if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
+% end
+% if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
+% designs = unique(FOOOF_TABLE.design_id);
+% clusters = unique(FOOOF_TABLE.cluster_id);
+% for i = 1:length(designs)
+%     des_i = string(designs(i));
+%     for j = 1:length(clusters) % For each cluster requested
+%         cl_i = double(string(clusters(j)));
+%         if isempty(tmp_study.cluster(cl_i).topo) || RE_CALC
+%             inds = find(FOOOF_TABLE.design_id == des_i & FOOOF_TABLE.cluster_id == string(cl_i));
+%             sets_i = unique([FOOOF_TABLE.subj_cl_ind(inds)]);
+%             tmp_study.cluster(cl_i).sets = tmp_study.cluster(cl_i).sets(sets_i);
+%             tmp_study.cluster(cl_i).comps = tmp_study.cluster(cl_i).comps(sets_i);
+%             tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cl_i);% Using this custom modified code to allow taking average within participant for each cluster
+%             STUDY.cluster(cl_i).topox = tmp_study.cluster(cl_i).topox;
+%             STUDY.cluster(cl_i).topoy = tmp_study.cluster(cl_i).topoy;
+%             STUDY.cluster(cl_i).topoall = tmp_study.cluster(cl_i).topoall;
+%             STUDY.cluster(cl_i).topo = tmp_study.cluster(cl_i).topo;
+%             STUDY.cluster(cl_i).topopol = tmp_study.cluster(cl_i).topopol;
+%         end
+%     end
+% end
 %## STATS
 iter = 200; % in eeglab, the fdr stats will automatically *20
 try

@@ -107,7 +107,7 @@ SUB_GROUP_FNAME = 'group_spec';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
-CLUSTER_K = 12;
+CLUSTER_K = 6;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
@@ -138,30 +138,37 @@ if ~exist(spec_data_dir,'dir')
     mkdir(spec_data_dir);
     % error('spec_data dir does not exist');
 end
-%## LOAD STUDY
-% cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
-% if ~isempty(SUB_GROUP_FNAME)
-%     spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
-%     plot_store_dir = [cluster_dir filesep 'plots_out' filesep SUB_GROUP_FNAME];
-% else
-%     spec_data_dir = [cluster_dir filesep 'spec_data'];
-%     plot_store_dir = [cluster_dir filesep 'plots_out'];
-% end
-% if ~exist(spec_data_dir,'dir')
-%     error('spec_data dir does not exist');
-% end
-% if ~exist(plot_store_dir,'dir')
-%     mkdir(plot_store_dir);
-% end
-% if ~ispc
-%     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',spec_data_dir);
-% else
-%     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',spec_data_dir);
-% end
-% cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
-% STUDY.cluster = cl_struct;
-% [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
-% CLUSTER_PICKS = main_cl_inds(2:end);
+%## TOPO PLOTS
+tmp_study = STUDY;
+RE_CALC = true;
+if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
+    tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
+    tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
+    tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
+    tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
+    tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
+end
+if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
+designs = unique(FOOOF_TABLE.design_id);
+clusters = unique(FOOOF_TABLE.cluster_id);
+for i = 1:length(designs)
+    des_i = string(designs(i));
+    for j = 1:length(clusters) % For each cluster requested
+        cl_i = double(string(clusters(j)));
+        if isempty(tmp_study.cluster(cl_i).topo) || RE_CALC
+            inds = find(FOOOF_TABLE.design_id == des_i & FOOOF_TABLE.cluster_id == string(cl_i));
+            sets_i = unique([FOOOF_TABLE.subj_cl_ind(inds)]);
+            tmp_study.cluster(cl_i).sets = tmp_study.cluster(cl_i).sets(sets_i);
+            tmp_study.cluster(cl_i).comps = tmp_study.cluster(cl_i).comps(sets_i);
+            tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cl_i);% Using this custom modified code to allow taking average within participant for each cluster
+            STUDY.cluster(cl_i).topox = tmp_study.cluster(cl_i).topox;
+            STUDY.cluster(cl_i).topoy = tmp_study.cluster(cl_i).topoy;
+            STUDY.cluster(cl_i).topoall = tmp_study.cluster(cl_i).topoall;
+            STUDY.cluster(cl_i).topo = tmp_study.cluster(cl_i).topo;
+            STUDY.cluster(cl_i).topopol = tmp_study.cluster(cl_i).topopol;
+        end
+    end
+end
 %% NEW DIPOLE IMPLEMENTATION
 HIRES_TEMPLATE = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\_resources\mni_icbm152_nlin_sym_09a\mni_icbm152_t1_tal_nlin_sym_09a.nii';
 if ~ispc
@@ -294,6 +301,9 @@ for i = 1:length(CLUSTER_PICKS)
     exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cluster_i)],'Resolution',1000);
     pause(2);
     close(fig);
+
+    %##
+    
 end
 %% Version History
 %{

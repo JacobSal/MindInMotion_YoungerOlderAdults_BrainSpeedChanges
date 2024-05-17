@@ -16,7 +16,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -32,7 +32,7 @@ else
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
-    STUDY_DIR = SCRIPT_DIR;
+    STUDY_DIR = fileparts(SCRIPT_DIR);
     SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
 %## Add Study & Script Paths
@@ -51,12 +51,14 @@ BOOT_ALPHA = 0.05;
 BOOT_CLUST_THRESH = 1000;
 %- datset name
 DATA_SET = 'MIM_dataset';
-study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+study_dir_name = '04232024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 spca_dir_name = '03232024_spca_analysis_OA';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
+groups = {'HOA','FOA'};
 SUB_GROUP_FNAME = 'all_spec';
+SUB_GROUP_GFNAME = 'group_spec';
 CLUSTER_K = 12;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
@@ -85,11 +87,10 @@ end
 cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 if ~isempty(SUB_GROUP_FNAME)
     spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
-    plot_store_dir = [cluster_dir filesep 'plots_out' filesep SUB_GROUP_FNAME];
 else
     spec_data_dir = [cluster_dir filesep 'spec_data'];
-    plot_store_dir = [cluster_dir filesep 'plots_out'];
 end
+gspec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_GFNAME];
 %## LOAD STUDY
 if ~ispc
     tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
@@ -246,17 +247,126 @@ figure_cnt = 3;
 for k_i = flip(main_cl_inds,2) %length(cl_names):-1:1 %1:length(cl_names)
     %%
     atlas_name = titles_store{k_i};
-    %*
     spca_fpath = [cluster_dir filesep 'spca'];
     spec_fpath = [spec_data_dir filesep 'psd_calcs'];
-    %## (SLIDE 3b) Common Baselined ERSPs & Differences
+    %## (SLIDE 8) Cluster Level GROUP GPMs (not bootstrapped?)
+    IM_DPI = 300;
+    im_scale = COVNERT_PPI_DPI/IM_DPI;
+    TOP_DIST = 50;
+    LEFT_DIST = 50;
+    des_i = 2;
+    %-
+    newSlide = slides.AddSlide(1,layout);
+    Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
+    Title1.TextFrame.TextRange.Text = sprintf('(N=%i) %s',length(STUDY.cluster(k_i).sets),atlas_name);
+    Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
+    Title1.TextFrame.TextRange.Font.Size = FONT_SIZE;
+    %-
+    vertical_move = 0;
+    for g_i = 1:length(groups)
+        try
+            im_f = [spca_fpath filesep sprintf('cl%i_des%i_group%s_spcadiff_allersp_com.tiff',k_i,des_i,groups{g_i})];
+            tmp = imread(im_f);
+            newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST+vertical_move,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+            vertical_move = vertical_move + size(tmp,1)*im_scale-im_scale*125; 
+        catch e
+            fprintf('%s\n',getReport(e));
+        end
+    end
+    % Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,TOP_DIST+vertical_move+im_scale*125,SLIDE_W*COVNERT_PPI_DPI,70);
+    % Title1.TextFrame.TextRange.Text = sprintf(caption2,figure_cnt-1,atlas_name_store{k_i});
+    % Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
+    % Title1.TextFrame.TextRange.Font.Size = FONT_SIZE;
+
+    %## (SLIDE 7) Cluster Level GROUP GPMs (not bootstrapped?)
+    IM_DPI = 300;
+    im_scale = COVNERT_PPI_DPI/IM_DPI;
+    TOP_DIST = 50;
+    LEFT_DIST = 50;
+    des_i = 1;
+    %-
+    newSlide = slides.AddSlide(1,layout);
+    Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
+    Title1.TextFrame.TextRange.Text = sprintf('(N=%i) %s',length(STUDY.cluster(k_i).sets),atlas_name);
+    Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
+    Title1.TextFrame.TextRange.Font.Size = FONT_SIZE;
+    %-
+    vertical_move = 0;
+    for g_i = 1:length(groups)
+        try
+            im_f = [spca_fpath filesep sprintf('cl%i_des%i_group%s_spcadiff_allersp_com.tiff',k_i,des_i,groups{g_i})];
+            tmp = imread(im_f);
+            newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST+vertical_move,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+            vertical_move = vertical_move + size(tmp,1)*im_scale-im_scale*125; 
+        catch e
+            fprintf('%s\n',getReport(e));
+        end
+    end
+    % Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,TOP_DIST+vertical_move+im_scale*125,SLIDE_W*COVNERT_PPI_DPI,70);
+    % Title1.TextFrame.TextRange.Text = sprintf(caption2,figure_cnt-1,atlas_name_store{k_i});
+    % Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
+    % Title1.TextFrame.TextRange.Font.Size = FONT_SIZE;
+
+    %## (SLIDE 6) Cluster Level GROUP ERSP COM
+    IM_DPI = 300;
+    im_scale = COVNERT_PPI_DPI/IM_DPI;
+    TOP_DIST = 50;
+    LEFT_DIST = 5;
+    des_i = 2;
+    %-
+    newSlide = slides.AddSlide(1,layout);
+    Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
+    Title1.TextFrame.TextRange.Text = sprintf('(N=%i) %s',length(STUDY.cluster(k_i).sets),atlas_name);
+    Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
+    Title1.TextFrame.TextRange.Font.Size = FONT_SIZE;
+    %-
+    vertical_move = 0;
+    try
+        im_f = [spca_fpath filesep sprintf('cl%i_des%i_spca_groupersp_com.tiff',k_i,des_i)];
+        tmp = imread(im_f);
+        newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST+vertical_move,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+        vertical_move = vertical_move + size(tmp,1)*im_scale-im_scale*125; 
+    catch e
+        fprintf('%s\n',getReport(e));
+    end
+    % Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,TOP_DIST+vertical_move+im_scale*125,SLIDE_W*COVNERT_PPI_DPI,70);
+    % Title1.TextFrame.TextRange.Text = sprintf(caption2,figure_cnt-1,atlas_name_store{k_i});
+    % Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
+    % Title1.TextFrame.TextRange.Font.Size = FONT_SIZE;
+
+    %## (SLIDE 5) Cluster Level GROUP ERSP COM
+    IM_DPI = 300;
+    im_scale = COVNERT_PPI_DPI/IM_DPI;
+    TOP_DIST = 50;
+    LEFT_DIST = 5;
+    des_i = 1;
+    %-
+    newSlide = slides.AddSlide(1,layout);
+    Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
+    Title1.TextFrame.TextRange.Text = sprintf('(N=%i) %s',length(STUDY.cluster(k_i).sets),atlas_name);
+    Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
+    Title1.TextFrame.TextRange.Font.Size = FONT_SIZE;
+    %-
+    vertical_move = 0;
+    try
+        im_f = [spca_fpath filesep sprintf('cl%i_des%i_spca_groupersp_com.tiff',k_i,des_i)];
+        tmp = imread(im_f);
+        newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST+vertical_move,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+        vertical_move = vertical_move + size(tmp,1)*im_scale-im_scale*125; 
+    catch e
+        fprintf('%s\n',getReport(e));
+    end
+    % Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,TOP_DIST+vertical_move+im_scale*125,SLIDE_W*COVNERT_PPI_DPI,70);
+    % Title1.TextFrame.TextRange.Text = sprintf(caption2,figure_cnt-1,atlas_name_store{k_i});
+    % Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
+    % Title1.TextFrame.TextRange.Font.Size = FONT_SIZE;
+    %## (SLIDE 4) Common Baselined ERSPs & Differences
     IM_DPI = 300;
     im_scale = COVNERT_PPI_DPI/IM_DPI;
     TOP_DIST = 50;
     LEFT_DIST = 0;
     %## ERSP COMMON BASELINED
     newSlide = slides.AddSlide(1,layout);
-
     Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,0,400,70);
     % Title1.TextFrame.TextRange.Text = sprintf('(N=%i) %s',length(STUDY.cluster(k_i).sets),atlas_name);
     Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
@@ -268,10 +378,14 @@ for k_i = flip(main_cl_inds,2) %length(cl_names):-1:1 %1:length(cl_names)
     caption_height = 0;
     vertical_move = 0;
     for des_i = 1:length(STUDY.design)
-        im_f = [spca_fpath filesep sprintf('cl%i_des%i_spca_ersp_com.jpg',k_i,des_i)];
-        tmp = imread(im_f);
-        newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST+vertical_move,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
-        vertical_move = vertical_move + size(tmp,1)*im_scale-im_scale*125;
+        try
+            im_f = [spca_fpath filesep sprintf('cl%i_des%i_spca_ersp_com.jpg',k_i,des_i)];
+            tmp = imread(im_f);
+            newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST+vertical_move,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+            vertical_move = vertical_move + size(tmp,1)*im_scale-im_scale*125;
+        catch e
+            fprintf('%s\n',getReport(e));
+        end
     end
     caption_height = vertical_move;
     %## DIFFERENCE ERSPS
@@ -279,17 +393,21 @@ for k_i = flip(main_cl_inds,2) %length(cl_names):-1:1 %1:length(cl_names)
     im_scale = COVNERT_PPI_DPI/IM_DPI;
     vertical_move = vertical_move + im_scale*125;
     for des_i = 1:length(STUDY.design)
-        im_f = [spca_fpath filesep sprintf('cl%i_des%i_spcadiff_allersp_com.jpg',k_i,des_i)];
-        tmp = imread(im_f);
-        newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST+vertical_move,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
-        vertical_move = vertical_move + size(tmp,1)*im_scale-im_scale*125;  
+        try
+            im_f = [spca_fpath filesep sprintf('cl%i_des%i_spcadiff_allersp_com.jpg',k_i,des_i)];
+            tmp = imread(im_f);
+            newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST+vertical_move,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+            vertical_move = vertical_move + size(tmp,1)*im_scale-im_scale*125;
+        catch e
+            fprintf('%s\n',getReport(e));
+        end
     end
     Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',size(tmp,2)*im_scale,TOP_DIST+caption_height+im_scale*125,COVNERT_PPI_DPI*6.5-size(tmp,2)*im_scale,70);
     Title1.TextFrame.TextRange.Text = sprintf(caption3,figure_cnt,atlas_name_store{k_i});
     % newSlide.TextRange.MathZones
     Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
     Title1.TextFrame.TextRange.Font.Size = FONT_SIZE;
-    %## (SLIDE 3a) Cluster Level GPMs (bootstrapped?)
+    %## (SLIDE 3) Cluster Level GPMs (bootstrapped?)
     IM_DPI = 300;
     im_scale = COVNERT_PPI_DPI/IM_DPI;
     TOP_DIST = 50;
@@ -303,15 +421,50 @@ for k_i = flip(main_cl_inds,2) %length(cl_names):-1:1 %1:length(cl_names)
     %-
     vertical_move = 0;
     for des_i = 1:length(STUDY.design)
-        im_f = [spca_fpath filesep sprintf('cl%i_des%i_bootstraps_ersp_sb.jpg',k_i,des_i)];
-        tmp = imread(im_f);
-        newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST+vertical_move,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
-        vertical_move = vertical_move + size(tmp,1)*im_scale-im_scale*125;  
+        try
+            im_f = [spca_fpath filesep sprintf('cl%i_des%i_bootstraps_ersp_sb.jpg',k_i,des_i)];
+            tmp = imread(im_f);
+            newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST+vertical_move,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+            vertical_move = vertical_move + size(tmp,1)*im_scale-im_scale*125;  
+        catch e
+            fprintf('%s\n',getReport(e));
+        end
     end
     Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,TOP_DIST+vertical_move+im_scale*125,SLIDE_W*COVNERT_PPI_DPI,70);
     Title1.TextFrame.TextRange.Text = sprintf(caption2,figure_cnt-1,atlas_name_store{k_i});
     Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
     Title1.TextFrame.TextRange.Font.Size = FONT_SIZE;
+    
+    %## (SLIDE 2) GROUP VIOLIN STATS
+    IM_DPI = 300;
+    im_scale = COVNERT_PPI_DPI/IM_DPI;
+    TOP_DIST = 30;
+    LEFT_DIST = 0;
+    newSlide = slides.AddSlide(1,layout);
+    
+    try
+        im_f = [gspec_data_dir filesep 'psd_calcs' filesep sprintf('Group_Violins_cl%i.tiff',k_i)];
+        tmp = imread(im_f);
+        newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+    catch e
+        fprintf('%s\n',getReport(e));
+    end
+    figure_cnt = figure_cnt + 3;
+    %## (SLIDE 1) GROUP PSD STATS
+    IM_DPI = 300;
+    im_scale = COVNERT_PPI_DPI/IM_DPI;
+    TOP_DIST = 30;
+    LEFT_DIST = 0;
+    newSlide = slides.AddSlide(1,layout);
+    %- title slide
+    try
+        im_f = [gspec_data_dir filesep 'psd_calcs' filesep sprintf('Group_PSDs_cl%i.tiff',k_i)];
+        tmp = imread(im_f);
+        newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+    catch e
+        fprintf('%s\n',getReport(e));
+    end
+    figure_cnt = figure_cnt + 3;
     %## (SLIDE TITLE) TOPO, DIPOLE, AND PSD STATS
     IM_DPI = 1000;
     im_scale = COVNERT_PPI_DPI/IM_DPI;
@@ -326,9 +479,13 @@ for k_i = flip(main_cl_inds,2) %length(cl_names):-1:1 %1:length(cl_names)
     Title1.TextFrame.TextRange.Text = sprintf('%s\nSubjects: %s',atlas_name,subj_char);
     Title1.TextFrame.TextRange.Font.Name = FONT_NAME;
     Title1.TextFrame.TextRange.Font.Size = FONT_SIZE;
-    im_f = [spec_fpath filesep sprintf('cl%i_topo-dips-psd-violins.tiff',k_i)];
-    tmp = imread(im_f);
-    newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+    try
+        im_f = [spec_fpath filesep sprintf('cl%i_topo-dips-psd-violins.tiff',k_i)];
+        tmp = imread(im_f);
+        newSlide.Shapes.AddPicture(im_f, 'msoFalse', 'msoTrue',LEFT_DIST,TOP_DIST,size(tmp,2)*im_scale,size(tmp,1)*im_scale); %Left, top, width, height
+    catch e
+        fprintf('%s\n',getReport(e));
+    end
     Title1 = newSlide.Shapes.AddTextbox('msoTextOrientationHorizontal',0,TOP_DIST+size(tmp,1)*im_scale,SLIDE_W*COVNERT_PPI_DPI,70);
     Title1.TextFrame.TextRange.Text = sprintf(caption1,figure_cnt-2,atlas_name_store{k_i});
     Title1.TextFrame.TextRange.Font.Name = FONT_NAME;

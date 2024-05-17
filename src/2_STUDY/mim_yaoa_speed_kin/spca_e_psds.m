@@ -52,8 +52,10 @@ PREPROC_DIR_NAME = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 % study_dir = '01122024_spca_analysis';
 % study_dir = '02082024_spca_analysis_fix';
 STUDY_DIR_NAME = '03232024_spca_analysis_OA';
-STUDY_FNAME_REST = 'rest_epoch_study';
-STUDY_FNAME_GAIT = 'epoch_study';
+% STUDY_FNAME_REST = 'rest_epoch_study';
+% STUDY_FNAME_GAIT = 'epoch_study';
+STUDY_FNAME_GAIT = 'epoch_study_ya';
+STUDY_FNAME_REST = 'rest_epoch_study_ya';
 %- study group and saving
 SAVE_ALLEEG = false;
 % %- epoching params

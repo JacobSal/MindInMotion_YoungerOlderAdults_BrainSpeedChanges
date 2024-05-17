@@ -116,14 +116,16 @@ DEF_ESTFITMVAR = struct('connmethods',{CONN_METHODS}, ...
 %## PATHING
 % study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+% study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+
 
 %## soft define
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 conn_fig_dir = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'conn_valid_slide'];
 %- load study file
 STUDY_FNAME_LOAD = 'all_comps_study';
-STUDY_FNAME_SAVE = 'epoch_conn_study';
+STUDY_FNAME_SAVE = 'slide_conn_study';
 study_fpath = [studies_fpath filesep sprintf('%s',study_dir_name)];
 %- load cluster
 CLUSTER_K = 12;

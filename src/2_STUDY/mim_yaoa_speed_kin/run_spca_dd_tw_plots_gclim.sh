@@ -4,10 +4,10 @@
 #SBATCH --mail-user=jsalminen@ufl.edu # Where to send mail
 #SBATCH --nodes=1 # Use one node
 #SBATCH --ntasks=1 # Run a single task
-#SBATCH --cpus-per-task=20 # Number of CPU cores per task
-#SBATCH --mem-per-cpu=15000mb# Total memory limit
+#SBATCH --cpus-per-task=10 # Number of CPU cores per task
+#SBATCH --mem-per-cpu=30000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
-#SBATCH --time=12:00:00 # Time limit hrs:min:sec
+#SBATCH --time=24:00:00 # Time limit hrs:min:sec
 #SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/_slurm_logs/%j_spca_dd_tw_plots_gclim.log # Standard output
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name

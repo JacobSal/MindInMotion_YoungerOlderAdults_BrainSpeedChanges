@@ -490,8 +490,8 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         [fig] = plot_txf_mask_contourf(clust_ersp,alltimes,allfreqs,clust_maskedersp,clust_maskedersp,{},...
             'PLOT_STRUCT',PLOT_STRUCT_PAR);
         drawnow;
-        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_sb.tiff',cl_i,des_i)],'Resolution',1000);
-        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_sb.jpg',cl_i,des_i)],'Resolution',300);
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_sb.tiff',cl_i,des_i)],'Resolution',1000);
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_sb.jpg',cl_i,des_i)],'Resolution',300);
         close(fig);
         %% BOOTSTRAPING ALLERSP
         clust_ersp = cell(size(allersp,1),size(allersp,2));
@@ -538,8 +538,8 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         [fig] = plot_txf_mask_contourf(clust_ersp,alltimes,allfreqs,clust_maskedersp,clust_maskedersp,{},...
             'PLOT_STRUCT',PLOT_STRUCT_PAR);
         drawnow;
-        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_com.tiff',cl_i,des_i)],'Resolution',1000);
-        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_com.jpg',cl_i,des_i)],'Resolution',300);
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_com.tiff',cl_i,des_i)],'Resolution',1000);
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_com.jpg',cl_i,des_i)],'Resolution',300);
         close(fig);
         PLOT_STRUCT_PAR.subplot_width = [];
         PLOT_STRUCT_PAR.subplot_height = [];
@@ -575,8 +575,8 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         fig = plot_txf_conds_tftopo(p2,alltimes,allfreqs,pcond_gpm_crop,{},...
             'PLOT_STRUCT',PLOT_STRUCT_PAR);
         drawnow;
-        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm.tiff',cl_i,des_i)],'Resolution',1000);
-        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm.jpg',cl_i,des_i)],'Resolution',300);
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm.tiff',cl_i,des_i)],'Resolution',1000);
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm.jpg',cl_i,des_i)],'Resolution',300);
         close(fig);
 %         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm.jpg',cl_i,des_i)],'Resolution',300);
         %##
@@ -610,8 +610,8 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         fig = plot_txf_conds_tftopo(p1,alltimes,allfreqs,pcond_ersp_crop,{},...
             'PLOT_STRUCT',PLOT_STRUCT_PAR);
         drawnow;
-        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp_com.tiff',cl_i,des_i)],'Resolution',1000);
-        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp_com.jpg',cl_i,des_i)],'Resolution',300);
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp_com.tiff',cl_i,des_i)],'Resolution',1000);
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp_com.jpg',cl_i,des_i)],'Resolution',300);
         close(fig);
 %         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp_com.jpg',cl_i,des_i)],'Resolution',300);
         %##
@@ -620,8 +620,8 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         fig = plot_txf_conds_tftopo(p2,alltimes,allfreqs,pcond_gpm_crop,{},...
             'PLOT_STRUCT',PLOT_STRUCT_PAR);
         drawnow;
-        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm_com.tiff',cl_i,des_i)],'Resolution',1000);
-        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm_com.jpg',cl_i,des_i)],'Resolution',300);
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm_com.tiff',cl_i,des_i)],'Resolution',1000);
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm_com.jpg',cl_i,des_i)],'Resolution',300);
         close(fig);
 %         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm_com.jpg',cl_i,des_i)],'Resolution',300);
         %##
@@ -732,8 +732,8 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
             [fig] = plot_txf_mask_contourf(ersp_raw,alltimes,allfreqs,ersp_masked,ersp_pcond,{},...
                 'PLOT_STRUCT',PLOT_STRUCT_PAR);
             drawnow;
-            % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spcadiff_%s.tiff',cl_i,des_i,data_chars{data_i})],'Resolution',1000);
-            exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spcadiff_%s.jpg',cl_i,des_i,data_chars{data_i})],'Resolution',300);
+            exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spcadiff_%s.tiff',cl_i,des_i,data_chars{data_i})],'Resolution',1000);
+            % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spcadiff_%s.jpg',cl_i,des_i,data_chars{data_i})],'Resolution',300);
             close(fig);
         end
     end

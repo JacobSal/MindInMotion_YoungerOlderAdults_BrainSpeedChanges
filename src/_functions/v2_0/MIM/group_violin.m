@@ -23,28 +23,30 @@ GROUPLAB_YOFFSET = -0.2;
 % REGRESS_TXT_XMULTI = 1; %-0.8;
 % REGRESS_TXT_YMULTI = 1;
 % REGRESS_TXT_SIZE = 6;
-REGRESS_TXT_SIZE = 6;
+% REGRESS_TXT_SIZE = 10;
 SCATTER_MARK_SIZE = 5;
 STD_CUTOFF = 3;
-VIOLIN_PARAMS = {'Width',0.05,...
+DEFAULT_VIOLIN_PARAMS = {'Width',0.05,...
             'ShowWhiskers',false,'ShowNotches',false,'ShowBox',true,...
             'ShowMedian',true,'Bandwidth',0.1,'QuartileStyle','shadow',...
             'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
             'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
-PLOT_PARAMS = struct('color_map',linspecer(length(unique(table_in.(cond_char)))),...
+DEFAULT_PLOT_STRUCT = struct('color_map',linspecer(length(unique(table_in.(cond_char)))),...
     'cond_labels',unique(table_in.(cond_char)),'group_labels',unique(table_in.(group_char)),...
     'cond_offsets',linspace(-0.3,0.3,length(unique(table_in.(cond_char)))),...
     'group_offsets',[0.125,0.475,0.812],....
     'y_label','unit',...
     'x_label','x','title','','font_size',12,'ylim',[min(table_in.(measure_char)),max(table_in.(measure_char))],...
-    'font_name','Arial','do_combine_groups',false);
+    'font_name','Arial',...
+    'do_combine_groups',false,...
+    'regresslab_txt_size',6);
 % STATS_STRUCT = struct('anova',{{}},...
 %                       'pvals',{{}},...
 %                       'pvals_pairs',{{}},...
 %                       'regress_pval',{{}},...
 %                       'regress_line',{{}},...
 %                       'r2_coeff',0);
-STATS_STRUCT = struct('anova',{{}},...
+DEFAULT_STATS_STRUCT = struct('anova',{{}},...
                           'anova_grp',{{}},...
                           'pvals',{{}},...
                           'pvals_pairs',{{}},...
@@ -52,7 +54,7 @@ STATS_STRUCT = struct('anova',{{}},...
                           'pvals_grp_pairs',{{}},...
                           'regress_pval',{{}},...
                           'regress_line',{{}},...
-                          'r2_coeff',{{}},...
+                          'r2_coeff',{[]},...
                           'regress_xvals',0);
 %- STATS_STRUCT EXAMPLE:
 % STATS_STRUCT = struct('anova',{0.02,0.1},...
@@ -73,27 +75,30 @@ addRequired(p,'group_char',@ischar);
 %## OPTIONAL
 addOptional(p,'parent_axes',[],@isobject)
 %## PARAMETER
-addParameter(p,'VIOLIN_PARAMS',VIOLIN_PARAMS,@iscell);
-addParameter(p,'PLOT_PARAMS',PLOT_PARAMS,@isstruct);
-addParameter(p,'STATS_STRUCT',STATS_STRUCT,@isstruct);
+addParameter(p,'VIOLIN_PARAMS',DEFAULT_VIOLIN_PARAMS,@iscell);
+addParameter(p,'PLOT_STRUCT',DEFAULT_PLOT_STRUCT,@(x) validate_struct(x,DEFAULT_PLOT_STRUCT));
+addParameter(p,'STATS_STRUCT',DEFAULT_STATS_STRUCT,@(x) validate_struct(x,DEFAULT_STATS_STRUCT));
 %##
 parse(p,table_in,measure_char,cond_char,group_char,varargin{:});
 %## SET DEFAULTS
 parent_axes = p.Results.parent_axes;
 VIOLIN_PARAMS = p.Results.VIOLIN_PARAMS;
-PLOT_PARAMS = p.Results.PLOT_PARAMS;
+PLOT_STRUCT = p.Results.PLOT_STRUCT;
 STATS_STRUCT = p.Results.STATS_STRUCT;
+% VIOLIN_PARAMS = set_defaults_struct(VIOLIN_PARAMS,DEFAULT_VIOLIN_PARAMS);
+PLOT_STRUCT = set_defaults_struct(PLOT_STRUCT,DEFAULT_PLOT_STRUCT);
+STATS_STRUCT = set_defaults_struct(STATS_STRUCT,DEFAULT_STATS_STRUCT);
 %% ===================================================================== %%
 %##
 table_tmp = table_in;
 %##
 groups = unique(table_tmp.(group_char));
 conds = unique(table_tmp.(cond_char));
-if PLOT_PARAMS.do_combine_groups
+if PLOT_STRUCT.do_combine_groups
     table_tmp.(group_char) = categorical(ones(height(table_tmp),1));
-    PLOT_PARAMS.group_offsets = [0.5];
+    PLOT_STRUCT.group_offsets = [0.5];
     groups = unique(table_tmp.(group_char));
-    PLOT_PARAMS.group_labels = {[sprintf('%s',PLOT_PARAMS.group_labels(1)), sprintf(' & %s',PLOT_PARAMS.group_labels(2:end))]};
+    PLOT_STRUCT.group_labels = {[sprintf('%s',PLOT_STRUCT.group_labels(1)), sprintf(' & %s',PLOT_STRUCT.group_labels(2:end))]};
 end
 %%
 if isempty(parent_axes)
@@ -125,7 +130,7 @@ for i=1:length(groups)
         outliers = tt(~ind_crop,:);
         tt = tt(ind_crop,:);
         %- final table in
-        offset = PLOT_PARAMS.cond_offsets(j)+g_offset;
+        offset = PLOT_STRUCT.cond_offsets(j)+g_offset;
         %- check input types
         if ~isnumscalar(g_i)
             tmp_gi = double(g_i); %double(string(g_i));
@@ -153,12 +158,12 @@ for i=1:length(groups)
             violins{cnt}.NotchPlots(2).XData    = violins{cnt}.NotchPlots(2).XData+offset;
             violins{cnt}.MeanPlot.XData         = violins{cnt}.MeanPlot.XData+offset;
             violins{cnt}.ViolinPlotQ.XData      = violins{cnt}.ViolinPlotQ.XData+offset;
-            violins{cnt}.ViolinColor            = {PLOT_PARAMS.color_map(j,:)};
+            violins{cnt}.ViolinColor            = {PLOT_STRUCT.color_map(j,:)};
             xticks = [xticks,tmp_gi+offset];
-            if iscell(PLOT_PARAMS.cond_labels)
-                xtick_labs = [xtick_labs,{sprintf('%s',PLOT_PARAMS.cond_labels{j})}];
+            if iscell(PLOT_STRUCT.cond_labels)
+                xtick_labs = [xtick_labs,{sprintf('%s',PLOT_STRUCT.cond_labels{j})}];
             else
-                xtick_labs = [xtick_labs,{string(PLOT_PARAMS.cond_labels(j))}];
+                xtick_labs = [xtick_labs,{string(PLOT_STRUCT.cond_labels(j))}];
             end
         else
             fprintf('Condition %s & Group %s does not have entries\n',string(c_i),string(g_i))
@@ -285,22 +290,22 @@ for i=1:length(groups)
             % y_txt = mean(ymaxs(i,:))*REGRESS_TXT_YMULTI*(1+(i-1))+std(ymaxs(i,:));
             % xx = xticks(cnt_g:cnt_g+length(conds)-1)
             % x_txt = min(xx)*REGRESS_TXT_XMULTI*((i-1))+xticks(1)+std(xticks);
-            x_txt = PLOT_PARAMS.group_offsets(i)-0.1;
+            x_txt = PLOT_STRUCT.group_offsets(i)-0.1;
             y_txt = 0.9;
             if STATS_STRUCT.regress_pval{i} > 0.01 & STATS_STRUCT.regress_pval{i} < 0.05
                 text(x_txt,y_txt,sprintf('* slope=%0.2g\nR^2=%0.2g',STATS_STRUCT.regress_line{i}(2),STATS_STRUCT.r2_coeff(i)),...
-                    'FontSize',REGRESS_TXT_SIZE,...
-                    'FontName',PLOT_PARAMS.font_name,...
+                    'FontSize',PLOT_STRUCT.regresslab_txt_size,...
+                    'FontName',PLOT_STRUCT.font_name,...
                     'FontWeight','bold','Units','normalized');
             elseif STATS_STRUCT.regress_pval{i} <= 0.01 & STATS_STRUCT.regress_pval{i} > 0.001 
                 text(x_txt,y_txt,sprintf('* slope=%0.2g\nR^2=%0.2g',STATS_STRUCT.regress_line{i}(2),STATS_STRUCT.r2_coeff(i)),...
-                    'FontSize',REGRESS_TXT_SIZE,...
-                    'FontName',PLOT_PARAMS.font_name,...
+                    'FontSize',PLOT_STRUCT.regresslab_txt_size,...
+                    'FontName',PLOT_STRUCT.font_name,...
                     'FontWeight','bold','Units','normalized');
             else
                 text(x_txt,y_txt,sprintf('* slope=%0.2g\nR^2=%0.2g',STATS_STRUCT.regress_line{i}(2),STATS_STRUCT.r2_coeff(i)),...
-                    'FontSize',REGRESS_TXT_SIZE,...
-                    'FontName',PLOT_PARAMS.font_name,...
+                    'FontSize',PLOT_STRUCT.regresslab_txt_size,...
+                    'FontName',PLOT_STRUCT.font_name,...
                     'FontWeight','bold','Units','normalized');
             end
         end
@@ -313,25 +318,26 @@ end
 set(gca,'XLim',hold_xlim);
 set(gca,'box', 'off')
 set(gca,'LineWidth',1)
-set(gca,'FontName','Arial','FontSize',PLOT_PARAMS.font_size,'FontWeight','bold')
+set(gca,'FontName','Arial','FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
 set(gca,'OuterPosition',[0 0 1 1]);
 set(gca,'Position',AXES_POS);  %[left bottom width height] This I what I added, You need to play with this
 set(gca,'XTick',sort(xticks));
 set(gca,'XTickLabel',xtick_labs);
 xtickangle(45);
-xlh = xlabel(PLOT_PARAMS.x_label,'Units','normalized','FontSize',PLOT_PARAMS.font_size);
+xlh = xlabel(PLOT_STRUCT.x_label,'Units','normalized','FontSize',PLOT_STRUCT.font_size);
 pos1=get(xlh,'Position');
 pos1(1,2)=pos1(1,2)+XLABEL_OFFSET;
 set(xlh,'Position',pos1);
 %- set group labels
 try
-    if ~isempty(PLOT_PARAMS.group_labels)
+    % if ~isempty(PLOT_STRUCT.group_labels)
+    if ~isundefined(PLOT_STRUCT.group_labels)
         cnt_g = 1;
         for i = 1:length(groups)
-            x = PLOT_PARAMS.group_offsets(i);
+            x = PLOT_STRUCT.group_offsets(i);
             y = GROUPLAB_YOFFSET; %GROUPLAB_YOFFSET
-            text(x,y,0,char(PLOT_PARAMS.group_labels(i)),...
-                'FontSize',PLOT_PARAMS.font_size,'FontWeight','bold','HorizontalAlignment','center',...
+            text(x,y,0,char(PLOT_STRUCT.group_labels(i)),...
+                'FontSize',PLOT_STRUCT.font_size,'FontWeight','bold','HorizontalAlignment','center',...
                 'Units','normalized');
             cnt_g = cnt_g + length(conds);
         end
@@ -340,9 +346,9 @@ catch e
     error('Error. Plotting group labels failed...\n\n%s',getReport(e));
 end
 %- set ylabel & title
-ylabel(PLOT_PARAMS.y_label,'FontSize',PLOT_PARAMS.font_size);
-title(PLOT_PARAMS.title);
-ylim(PLOT_PARAMS.ylim);
+ylabel(PLOT_STRUCT.y_label,'FontSize',PLOT_STRUCT.font_size);
+title(PLOT_STRUCT.title);
+ylim(PLOT_STRUCT.ylim);
 hold off;
 end
 %% ================================================================== %%
@@ -440,5 +446,46 @@ function y=gety(h)
         end
     else
         y=h;
+    end
+end
+%% ===================================================================== %%
+function [b] = validate_struct(x,DEFAULT_STRUCT)
+    b = false;
+    struct_name = inputname(2);
+    %##
+    fs1 = fields(x);
+    fs2 = fields(DEFAULT_STRUCT);
+    vals1 = struct2cell(x);
+    vals2 = struct2cell(DEFAULT_STRUCT);
+    %- check field names
+    chk = cellfun(@(x) any(strcmp(x,fs2)),fs1);
+    if ~all(chk)
+        fprintf(2,'\nFields for struct do not match for %s\n',struct_name);
+        return
+    end
+    %- check field value's class type
+    for f = 1:length(fs2)
+        ind = strcmp(fs2{f},fs1);
+        chk = strcmp(class(vals2{f}),class(vals1{ind}));
+        if ~chk
+            fprintf(2,'\nStruct.%s must be type %s, but is type %s\n',fs2{f},class(vals2{f}),class(vals1{ind}));
+            return
+        end
+    end
+    b = true;
+end
+%% ===================================================================== %%
+function [struct_out] = set_defaults_struct(x,DEFAULT_STRUCT)
+    struct_out = x;
+    %##
+    fs1 = fields(x);
+    fs2 = fields(DEFAULT_STRUCT);
+    vals1 = struct2cell(x);
+    %- check field value's class type
+    for f = 1:length(fs2)
+        ind = strcmp(fs2{f},fs1);
+        if isempty(vals1{ind})
+            struct_out.(fs1{ind}) = DEFAULT_STRUCT.(fs2{ind});
+        end
     end
 end

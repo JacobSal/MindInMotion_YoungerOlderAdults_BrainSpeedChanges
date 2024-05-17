@@ -107,9 +107,9 @@ switch study_case
         ind1 = randi(length(SUBJ_1YA),1,2);
         ind2 = randi(length(SUBJ_2MA),1,2);
         ind3 = randi(length(SUBJ_3MA),1,2);
-        SUBJ_PICS = {SUBJ_1YA,SUBJ_2MA,SUBJ_3MA};
+        SUBJ_PICS = {SUBJ_1YA(ind1),SUBJ_2MA(ind2),SUBJ_3MA(ind3)};
         GROUP_NAMES = {'H1000''s','H2000''s','H3000''s'}; 
-        SUBJ_ITERS = {ind1,ind2,ind3};
+        SUBJ_ITERS = {1:length(ind1),1:length(ind2),1:length(ind3)};
     case 'oa_spca'
         SUBJ_PICS = {SUBJ_OA_SPCA{1},SUBJ_OA_SPCA{2}};
         GROUP_NAMES = {'H2000''s','H3000''s'}; 

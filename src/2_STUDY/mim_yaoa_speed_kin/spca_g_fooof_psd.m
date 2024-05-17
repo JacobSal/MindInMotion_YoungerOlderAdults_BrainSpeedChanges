@@ -146,29 +146,6 @@ if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
 
-%% FOOOF SETUP & PYTHON
-%{
-% Check which python is being used
-pyversion
-% The print out from above should tell you which Python you are calling
-%  It should show that you are using Python version 3.X
-%  If you are using anaconda, it should show your Python is in the anaconda folder
-%  If either of these things are not right, reset which Python you are using, as below
-% Set python version to use
-%  Note: you must do this first thing after opening Matlab (relaunch if you need to)
-%  You should only ever have to run this at most, once.
-%  You might need to change the path to where your python or anaconda install is
-%    For example, your anaconda folder might be `anaconda3` instead of `anaconda`
-%    or your anaconda path might be somewhere else, for example, '/opt/anaconda3/bin/python'
-%## MANUALLY SET TO A VERSION LOWER THAT 3.10
-% pyversion('C:\Users\jsalminen\AppData\Local\Programs\Python\Python37\python.EXE');
-% pyversion('C:\Users\jsalminen\AppData\Local\Microsoft\WindowsApps\python37.EXE');
-%pyversion('/cygdrive/c/Users/jsalminen/AppData/Local/Microsoft/WindowsApps/python3.8')
-NOTE: windows appstore installs do not work!!
-% pyversion('C:\Users\jsalminen\AppData\Local\Programs\Python\Python311\python.exe')
-pyversion('c:\User\python.exe')
-pe = pyenv;
-%}
 %%
 %## RE-POP PARAMS
 STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
@@ -179,30 +156,7 @@ STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
     'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
     'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
 %% ================================================================== %%
-% tt = readtable('M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\subject_mgmt\_save\MIM_Redcap_Blood_Sppb_Grip.xlsx',...
-%     'DatetimeType','text')
-% tt = readtable('M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\subject_mgmt\_save\MindInMotion-JacobReportEEG_DATA_LABELS_2024-03-28_1136.csv');
-% delinds = zeros(size(tt,1),1);
-% for i = 1:size(tt,1)
-%     chk = ~isempty(tt.x12_TimeToWalk400Meters_RecordTimeThatFirstFootCrossesTheFinish{i}) ||...
-%         ~isnan(tt.TotalSPPBScore_addScoresFromBalance_Gait_AndChairStand__(i)) ||...
-%         ~isempty(tt.x8_BloodDraw{i}) ||...
-%         ~isempty(tt.x1_HasAnyPainOrArthritisInYourHandsGottenMuchWorseRecently_{i});
-%     if chk
-%     else
-%         delinds(i) = 1;
-%     end
-% end
-% tt(logical(delinds),:) = [];
-% new_400m = zeros(size(tt,1),1);
-% for i = 1:size(tt,1)
-%     tmp = datetime(tt.x12_TimeToWalk400Meters_RecordTimeThatFirstFootCrossesTheFinish(i),'Inputformat',"mm:ss");
-%     tmp = minute(tmp)*60+second(tmp);
-%     new_400m(i) = tmp;
-% end
-% tt.x400m_seconds = new_400m;
-% writetable(tt,'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\subject_mgmt\MIM_Redcap_Blood_Sppb_Grip.xlsx');
-%% READ IN SUBJECT SPECIFIC SPEEDS FOR TERRAIN
+%## READ IN SUBJECT SPECIFIC SPEEDS FOR TERRAIN
 MasterTable = mim_read_master_sheet();
 speed_table = table(categorical(MasterTable.subject_code),MasterTable.terrain_trials_speed_ms);
 speed_alleeg = cell(length(STUDY.datasetinfo),2);
@@ -231,12 +185,6 @@ for des_i = DESIGN_INDS
                 g_chars = STUDY.design(des_i).variable(i).value;
             end
         end
-        % try
-        %     g_chars = STUDY.design(des_i).variable(1).value;
-        % catch
-        %     g_chars = 'group';
-        % end
-        % c_chars = STUDY.design(des_i).variable(2).value;
         chk = true;
         try
             if isnan(g_chars)
@@ -280,11 +228,8 @@ design_id = categorical(zeros(table_len,1));
 cluster_id = categorical(zeros(table_len,1));
 group_id = zeros(table_len,1);
 group_char = categorical(repmat({''},table_len,1));
-% speed_double = zeros(table_len,1);
 cond_id = zeros(table_len,1);
 cond_char = categorical(repmat({''},table_len,1));
-% speed_cat = categorical(repmat({''},table_len,1));
-% terrain_cat = categorical(repmat({''},table_len,1));
 aperiodic_exp = zeros(table_len,1);
 aperiodic_offset = zeros(table_len,1);
 central_freq = cell(table_len,1);
@@ -304,7 +249,11 @@ FOOOF_TABLE = table(speed_ms,subj_id,subj_cl_ind,subj_char,comp_id,design_id,con
     central_freq,power,r_squared,theta_avg_power,alpha_avg_power,beta_avg_power,...
     theta,alpha,beta,theta_center,alpha_center,beta_center);
 %%
-% fooof_group_results_org = cell(1,length(DESIGN_INDS));
+%%
+spca_table = par_load(cluster_study_fpath,'spca_cluster_table.mat');
+rest_psd = par_load(spca_fpath,sprintf('gait_psd_spca.mat'));
+freqs = rest_psd.icatimefopts.freqs;
+%-
 fooof_results = cell(length(DESIGN_INDS),1);
 fooof_diff_store = cell(length(DESIGN_INDS),1);
 fooof_apfit_store = cell(length(DESIGN_INDS),1);
@@ -321,7 +270,13 @@ for dd = 1:length(DESIGN_INDS)
         ind_des = [STUDY.etc.mim_gen_ersp_data.des_ind] == des_i;
         ind = ind_cl & ind_des;
         file_mat = STUDY.etc.mim_gen_ersp_data(ind).spec_ss_fpaths;
-        tmp = par_load(file_mat,[]);     
+        tmp = par_load(file_mat,[]);   
+        %- get cluster & condition indices
+        inds_cl = cellfun(@(x) ff(x,cl_i),spca_table.cluster_c);
+        inds_cond = strcmp(spca_table.cond_c,condition_gait{con_con(cond_i)});
+        trial_order{cond_i} = condition_gait{con_con(cond_i)};
+        inds = inds_cl & inds_cond;
+        fprintf('True subjects in cluster: %i, Alg subjects in cluster: %i\n',length(TMP_STUDY.cluster(cl_i).sets),sum(inds))
         
         %## RUN FOOOF
         %- get subjects in cluster

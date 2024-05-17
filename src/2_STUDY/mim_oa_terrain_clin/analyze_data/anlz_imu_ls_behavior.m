@@ -32,7 +32,7 @@ else
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
-    STUDY_DIR = SCRIPT_DIR;
+    STUDY_DIR = fileparts(SCRIPT_DIR);
     SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
 %## Add Study & Script Paths
@@ -43,19 +43,7 @@ fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa_spca');
-%- override with already processed ALLEEG set
-SUBJ_PICS = cell(1,length(GROUP_NAMES));
-SUBJ_ITERS = cell(1,length(GROUP_NAMES));
-for i = 1:length(ALLEEG)
-    gi = find(strcmp(ALLEEG(i).group,GROUP_NAMES));
-    SUBJ_PICS{gi} = [SUBJ_PICS{gi}, {ALLEEG(i).subject}];
-    if isempty(SUBJ_ITERS{gi})
-        SUBJ_ITERS{gi} = 1;
-    else
-        SUBJ_ITERS{gi} = [SUBJ_ITERS{gi}, SUBJ_ITERS{gi}(end)+1];
-    end
-end
+
 % SUBJ_PICS = {ALLEEG.subject};
 %% (PARAMETERS) ======================================================== %%
 %## hard define
@@ -69,11 +57,39 @@ colormap(linspecer);
 % study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 study_dir_name = '04232024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 %## soft define
-STUDIES_DIR = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'raw_data_vis'];
+studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
+save_dir = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'raw_data_vis'];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
+end
+%- load cluster
+CLUSTER_K = 12;
+CLUSTER_STUDY_NAME = 'temp_study_rejics5';
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
+%% ===================================================================== %%
+%## LOAD STUDY
+if ~ispc
+    tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
+    STUDY = tmp.STUDY;
+else
+    tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s.study',CLUSTER_STUDY_NAME)]);
+    STUDY = tmp.STUDY;
+end
+%##
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa_spca');
+%- override with already processed ALLEEG set
+SUBJ_PICS = cell(1,length(GROUP_NAMES));
+SUBJ_ITERS = cell(1,length(GROUP_NAMES));
+for i = 1:length(STUDY.datasetinfo)
+    gi = find(strcmp(STUDY.datasetinfo(i).group,GROUP_NAMES));
+    SUBJ_PICS{gi} = [SUBJ_PICS{gi}, {ALLEEG(i).subject}];
+    if isempty(SUBJ_ITERS{gi})
+        SUBJ_ITERS{gi} = 1;
+    else
+        SUBJ_ITERS{gi} = [SUBJ_ITERS{gi}, SUBJ_ITERS{gi}(end)+1];
+    end
 end
 %%
 % CATEGORIES = {'YoungAdult','HF_OlderAdult','LF_OlderAdult'};

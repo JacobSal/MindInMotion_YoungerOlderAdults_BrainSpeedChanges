@@ -85,7 +85,7 @@ save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name)];
 CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
 CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
-CLUSTER_K = 12;
+CLUSTER_K = 13;
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);

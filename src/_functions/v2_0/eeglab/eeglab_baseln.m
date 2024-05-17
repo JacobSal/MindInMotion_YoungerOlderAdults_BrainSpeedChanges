@@ -82,7 +82,7 @@ if DO_COMMON_BASE
             %- log-subtraction of baseline for a particular subject
             for j = 1:size(tmp_allersp,1)
                 allersp_bcom1{j,i}(:,:,n) = tmp_nolog(:,:,j)./(repmat(tmp_base_com,1,size(tmp_nolog,2)));
-                allersp_bcom2{j,i}(:,:,n) = 20*log(allersp_bcom1{j,i}(:,:,n)); 
+                allersp_bcom2{j,i}(:,:,n) = 20*log10(allersp_bcom1{j,i}(:,:,n)); 
             end
             %- store
             baseln_com(:,n) = tmp_base_com;
