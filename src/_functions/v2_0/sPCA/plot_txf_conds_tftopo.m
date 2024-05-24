@@ -271,6 +271,27 @@ for i = 1:size(allersp,2)
             'FontName',PLOT_STRUCT.font_name,'FontSize',10,'FontWeight','bold',...
             'HorizontalAlignment','center','VerticalAlignment','top');
     end
+    if DISPLAY_BAND_MARKS
+        FONT_SIZE = 8;
+        xx = SUBPLOT_INIT_SHIFT-0.03;
+        yy = PLOT_STRUCT.subplot_height+SUBPLOT_BOTTOM+vert_shift-0.03;
+        a = annotation(fig,'textbox',[xx,yy-PLOT_STRUCT.subplot_height*1.22,0.1,0.1],...
+                'String','\theta','LineStyle','none',...
+                'FontName',PLOT_STRUCT.font_name,'FontSize',FONT_SIZE,'FontWeight','bold',...
+                'HorizontalAlignment','left','VerticalAlignment','top','Units','normalized');
+        a = annotation(fig,'textbox',[xx,yy-PLOT_STRUCT.subplot_height*1,0.1,0.1],...
+                'String','\alpha','LineStyle','none',...
+                'FontName',PLOT_STRUCT.font_name,'FontSize',FONT_SIZE,'FontWeight','bold',...
+                'HorizontalAlignment','left','VerticalAlignment','top','Units','normalized');
+        a = annotation(fig,'textbox',[xx,yy-PLOT_STRUCT.subplot_height*.75,0.1,0.1],...
+                'String','\beta','LineStyle','none',...
+                'FontName',PLOT_STRUCT.font_name,'FontSize',FONT_SIZE,'FontWeight','bold',...
+                'HorizontalAlignment','left','VerticalAlignment','top','Units','normalized');
+        a = annotation(fig,'textbox',[xx,yy-PLOT_STRUCT.subplot_height*.5,0.1,0.1],...
+                'String','\gamma','LineStyle','none',...
+                'FontName',PLOT_STRUCT.font_name,'FontSize',FONT_SIZE,'FontWeight','bold',...
+                'HorizontalAlignment','left','VerticalAlignment','top','Units','normalized');
+    end
     vert_shift = vert_shift - PLOT_STRUCT.vert_shift_amnt;
 end
 if ~isempty(allpgroup)
@@ -359,24 +380,6 @@ if ~isempty(allpgroup)
             'FontName',PLOT_STRUCT.font_name,'FontSize',10,'FontWeight','bold',...
             'HorizontalAlignment','center','VerticalAlignment','top');
     end
-    % if DISPLAY_BAND_MARKS
-    %     a = annotation(fig,'textbox',[xx-0.05,yy-0.05,0.1,0.1],...
-    %             'String','\theta','LineStyle','none',...
-    %             'FontName',PLOT_STRUCT.font_name,'FontSize',10,'FontWeight','bold',...
-    %             'HorizontalAlignment','center','VerticalAlignment','top');
-    %     a = annotation(fig,'textbox',[xx-0.05,yy-0.05,0.1,0.1],...
-    %             'String','\alpha','LineStyle','none',...
-    %             'FontName',PLOT_STRUCT.font_name,'FontSize',10,'FontWeight','bold',...
-    %             'HorizontalAlignment','center','VerticalAlignment','top');
-    %     a = annotation(fig,'textbox',[xx-0.05,yy-0.05,0.1,0.1],...
-    %             'String','\beta','LineStyle','none',...
-    %             'FontName',PLOT_STRUCT.font_name,'FontSize',10,'FontWeight','bold',...
-    %             'HorizontalAlignment','center','VerticalAlignment','top');
-    %     a = annotation(fig,'textbox',[xx-0.05,yy-0.05,0.1,0.1],...
-    %             'String','\gamma','LineStyle','none',...
-    %             'FontName',PLOT_STRUCT.font_name,'FontSize',10,'FontWeight','bold',...
-    %             'HorizontalAlignment','center','VerticalAlignment','top');
-    % end
 end
 if ~isempty(PLOT_STRUCT.figure_title)
     sgtitle(PLOT_STRUCT.figure_title);
@@ -384,46 +387,4 @@ end
 hold off;
 drawnow;
 fig = get(groot,'CurrentFigure');
-end
-%% ===================================================================== %%
-function [b] = validate_struct(x,DEFAULT_STRUCT)
-    b = false;
-    struct_name = inputname(2);
-    %##
-    fs1 = fields(x);
-    fs2 = fields(DEFAULT_STRUCT);
-    vals1 = struct2cell(x);
-    vals2 = struct2cell(DEFAULT_STRUCT);
-    %- check field names
-    chk = cellfun(@(x) any(strcmp(x,fs2)),fs1);
-    if ~all(chk)
-        fprintf(2,'\nFields for struct do not match for %s\n',struct_name);
-        return
-    end
-    %- check field value's class type
-    for f = 1:length(fs2)
-        ind = strcmp(fs2{f},fs1);
-        chk = strcmp(class(vals2{f}),class(vals1{ind}));
-        if ~chk
-            fprintf(2,'\nStruct.%s must be type %s, but is type %s\n',fs2{f},class(vals2{f}),class(vals1{ind}));
-            return
-        end
-    end
-    b = true;
-end
-%##
-function [struct_out] = set_defaults_struct(x,DEFAULT_STRUCT)
-    struct_out = x;
-    %##
-    fs1 = fields(x);
-    fs2 = fields(DEFAULT_STRUCT);
-    vals1 = struct2cell(x);
-    vals2 = struct2cell(DEFAULT_STRUCT);
-    %- check field value's class type
-    for f = 1:length(fs2)
-        ind = strcmp(fs2{f},fs1);
-        if isempty(vals1{ind})
-            struct_out.(fs1{ind}) = DEFAULT_STRUCT.(fs2{ind});
-        end
-    end
 end

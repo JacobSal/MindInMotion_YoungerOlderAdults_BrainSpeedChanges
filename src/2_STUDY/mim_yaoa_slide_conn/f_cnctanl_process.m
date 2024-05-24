@@ -64,6 +64,7 @@ RESAMLE_FREQ = 225;
 DO_BOOTSTRAP = false;
 DO_PHASE_RND = false;
 DO_STANDARD_TRIALS = false;
+DO_RECOMPUTE = true;
 %## PREPARE DATA PARAMS
 DEF_PREPDATA = struct('VerbosityLevel',VERBOSITY_LEVEL,...
              'SignalType',{{'Components'}},...
@@ -118,8 +119,6 @@ DEF_ESTFITMVAR = struct('connmethods',{CONN_METHODS}, ...
 % study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
-
-
 %## soft define
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 conn_fig_dir = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'conn_valid_slide'];
@@ -131,7 +130,6 @@ study_fpath = [studies_fpath filesep sprintf('%s',study_dir_name)];
 CLUSTER_K = 12;
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
-
 %- create new study directory
 if ~exist(conn_fig_dir,'dir')
     mkdir(conn_fig_dir);
@@ -177,8 +175,8 @@ fprintf('Computing Connectivity\n');
 pop_editoptions('option_computeica', 1);
 %## PARFOR LOOP
 EEG = [];
-parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
-% for subj_i = LOOP_VAR
+% parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
+for subj_i = 1:length(LOOP_VAR)
     %- Parse out components
     components = comps_out(:,subj_i);
     components = sort(components(components ~= 0));
@@ -187,9 +185,8 @@ parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
         mkdir(eeg_savefpath)
     end
     %## LOAD EEG DATA
-    if ~exist([eeg_savefpath filesep fNames{subj_i}],'file')
+    if ~exist([eeg_savefpath filesep fNames{subj_i}],'file') || DO_RECOMPUTE
         EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
-        
         %- Recalculate ICA Matrices && Book Keeping
         EEG = eeg_checkset(EEG,'loaddata');
         if isempty(EEG.icaact)
@@ -197,6 +194,7 @@ parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
             EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
             EEG.icaact = reshape(EEG.icaact,size(EEG.icaact,1),EEG.pnts,EEG.trials);
         end
+        pop_editoptions('option_computeica', 1);
         %## RESAMPLE
         %- (04/24/2024) JS, the rationale for resampling is majorly based
         %on computation times, however, a argument could be made that by
@@ -253,7 +251,8 @@ try
     bugged_subjs = STUDY.datasetinfo(cellfun(@isempty,tmp)).subject;
     subj_keep = find(~cellfun(@isempty,tmp));
     tmp = tmp(~cellfun(@isempty,tmp));
-catch
+catch e
+    fprintf('\n%s\n',getReport(e))
     bugged_subjs = [];
     subj_keep = find(~cellfun(@isempty,tmp));
     tmp = tmp(~cellfun(@isempty,tmp));

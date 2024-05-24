@@ -96,29 +96,3 @@ end
 allersp_full = tmp_allersp;
 allersp_crop = cellfun(@(x) x(base_finds,base_tinds,:),tmp_allersp,'uniformoutput',false);
 end
-%% ===================================================================== %%
-function [b] = validate_struct(x,DEFAULT_STRUCT)
-    b = false;
-    struct_name = inputname(2);
-    %##
-    fs1 = fields(x);
-    fs2 = fields(DEFAULT_STRUCT);
-    vals1 = struct2cell(x);
-    vals2 = struct2cell(DEFAULT_STRUCT);
-    %- check field names
-    chk = cellfun(@(x) any(strcmp(x,fs2)),fs1);
-    if ~all(chk)
-        fprintf(2,'\nFields for struct do not match for %s\n',struct_name);
-        return
-    end
-    %- check field value's class type
-    for f = 1:length(fs2)
-        ind = strcmp(fs2{f},fs1);
-        chk = strcmp(class(vals2{f}),class(vals1{ind}));
-        if ~chk
-            fprintf(2,'\nStruct.%s must be type %s, but is type %s\n',fs2{f},class(vals2{f}),class(vals1{ind}));
-            return
-        end
-    end
-    b = true;
-end

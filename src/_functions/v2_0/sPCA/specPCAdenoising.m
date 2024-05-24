@@ -64,7 +64,7 @@ PSC = cell(1,length(V));
 % loop through all samples and correct them
 for t_cnt = 1:size(ERSP,1)
     F_psc = squeeze(ERSP(t_cnt,:,:)) * V;
-    ERSP_psc1(t_cnt,:,:) = F_psc(:,1) * Ai(1,:);
+    ERSP_psc1(t_cnt,:,:) = F_psc(:,1) * Ai(1,:); % times x chans x freqs
     ERSP_corr(t_cnt,:,:) = F_psc(:,2:end) * Ai(2:end,:);
     for p_cnt = 1:size(F_psc,2)
         if t_cnt==1

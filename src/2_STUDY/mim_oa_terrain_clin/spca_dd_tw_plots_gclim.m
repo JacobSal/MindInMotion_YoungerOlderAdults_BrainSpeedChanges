@@ -410,7 +410,7 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         STORAGE{des_i,19} = allgpm_sb_f;
     end
     %% CLIM
-    HIGH = 99.52;
+    HIGH = 99.99;
     LOW = 100-HIGH;
     %## GPM PLOTS
     INT=5;
@@ -471,9 +471,9 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         end
         alltitles = std_figtitle('condnames',condnames);
         %% BOOTSTRAPING ALLERSP
+        clust_ersp = cell(size(allersp_sb,1),size(allersp_sb,2));
+        clust_maskedersp = cell(size(allersp_sb,1),size(allersp_sb,2));
         for group_i = 1:size(allersp_sb,2)
-            clust_ersp = cell(size(allersp_sb,1),size(allersp_sb,2));
-            clust_maskedersp = cell(size(allersp_sb,1),size(allersp_sb,2));
             for cond_i = 1:size(allersp_sb,1)
                 fprintf('Performing Stats for Condition %i & Cluster %i\n',cond_i,cl_i);
                 tmp = allersp_sb{cond_i,group_i};
@@ -506,24 +506,27 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
                 [occurrence,idx,~] = histcounts(tmpDisp,unique(tmpDisp));
                 kMask = ismember(labelMap,idx((occurrence<BOOT_CLUST_THRESH)));
                 finalMask = p_masked-kMask;
-                clust_ersp{cond_i} = tmp_mean; 
-                tmp = clust_ersp{cond_i}; 
+                clust_ersp{cond_i,group_i} = tmp_mean; 
+                tmp = clust_ersp{cond_i,group_i}; 
                 tmp(~finalMask) = 0;
-                clust_maskedersp{cond_i} = tmp;
+                clust_maskedersp{cond_i,group_i} = tmp;
             end
-            PLOT_STRUCT_PAR.subplot_width = 0.13;
-            PLOT_STRUCT_PAR.subplot_height = 0.16;
-            PLOT_STRUCT_PAR.horiz_shift_amnt = 0.17;
-            PLOT_STRUCT_PAR.vert_shift_amnt = 0.22;
-            PLOT_STRUCT_PAR.alltitles = alltitles;
-            PLOT_STRUCT_PAR.clim = GPM_CLIM;
-            [fig] = plot_txf_mask_contourf(clust_ersp,alltimes,allfreqs,clust_maskedersp,clust_maskedersp,{},...
-                'PLOT_STRUCT',PLOT_STRUCT_PAR);
-            drawnow;
-            exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_%s_bootstraps_ersp_sb.tiff',cl_i,des_i,groups{groups_ind(group_i)})],'Resolution',1000);
-            % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_sb.jpg',cl_i,des_i)],'Resolution',300);
-            close(fig);
         end
+        par_save(clust_maskedersp,save_dir,sprintf('cl%i_des%i_%s_bootstraps_ersp_sb.tiff',cl_i,des_i))
+        PLOT_STRUCT_PAR.subplot_width = 0.13;
+        PLOT_STRUCT_PAR.subplot_height = 0.16;
+        PLOT_STRUCT_PAR.horiz_shift_amnt = 0.17;
+        PLOT_STRUCT_PAR.vert_shift_amnt = 0.22;
+        PLOT_STRUCT_PAR.alltitles = alltitles;
+        PLOT_STRUCT_PAR.clim = GPM_CLIM;
+        PLOT_STRUCT_PAR.group_titles = {groups{groups_ind},'Group Stats'};
+        [fig] = plot_txf_mask_contourf(clust_ersp,alltimes,allfreqs,clust_maskedersp,clust_maskedersp,{},...
+            'PLOT_STRUCT',PLOT_STRUCT_PAR);
+        drawnow;
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_group_bootstraps_ersp_sb.tiff',cl_i,des_i],'Resolution',1000);
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_sb.jpg',cl_i,des_i)],'Resolution',300);
+        close(fig);
+        PLOT_STRUCT_PAR = PLOT_STRUCT;
         %% NO BASELINE
         [pcond_ersp_crop,pgroup_ersp_crop, ~] = ersp_stats_conds(TMP_STUDY,allersp,allfreqs,alltimes);
         [pcond_gpm_crop,pgroup_gpm_crop, ~] = ersp_stats_conds(TMP_STUDY,allgpm,allfreqs,alltimes);

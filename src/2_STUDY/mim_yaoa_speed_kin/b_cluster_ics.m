@@ -16,7 +16,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR%#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -105,7 +105,7 @@ ERSP_PARAMS = struct('subbaseline','off',...
 MIN_ICS_SUBJ = [5]; %[2,3,4,5,6,7,8]; % iterative clustering
 % K_RANGE = [10,22];
 MAX_REPEATED_ITERATIONS = 1;
-CLUSTER_SWEEP_VALS = [5,6,13,14]; %[10,13,14,19,20]; %K_RANGE(1):K_RANGE(2);
+CLUSTER_SWEEP_VALS = [12]; %[10,13,14,19,20]; %K_RANGE(1):K_RANGE(2);
 % DO_K_DISTPRUNE = false;
 DO_K_ICPRUNE = true;
 % DO_K_SWEEPING = false;
@@ -358,7 +358,29 @@ if DO_K_ICPRUNE
             % end
             %## REMOVE BASED ON RV
             % [cluster_update] = evaluate_cluster(STUDY,ALLEEG,clustering_solutions,'min_rv');
-            [TMP_STUDY,~,~] = cluster_rv_reduce(TMP_STUDY,TMP_ALLEEG);
+            % [TMP_STUDY,~,~] = cluster_rv_reduce(TMP_STUDY,TMP_ALLEEG);
+            for subj_i = 1:length(TMP_ALLEEG)
+                EEG = eeg_checkset(TMP_ALLEEG(subj_i),'loaddata');
+                if isempty(EEG.icaact)
+                    fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+                    EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+                    EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
+                end
+                TMP_ALLEEG(subj_i) = EEG;
+            end
+            try
+                [TMP_STUDY,TMP_ALLEEG,~] = cluster_pca_reduce(TMP_STUDY,TMP_ALLEEG);
+            catch e
+                fprintf('%s',getReport(e));
+                error('cluster_pca_reduce error.');
+            end
+            for subj_i = 1:length(TMP_ALLEEG)
+                TMP_ALLEEG(subj_i).filename = sprintf('%s_pcareduced_comps.set',TMP_ALLEEG(subj_i).subject);
+                TMP_ALLEEG(subj_i) = pop_saveset(TMP_ALLEEG(subj_i),...
+                    'filename',TMP_ALLEEG(subj_i).filename,...
+                    'filepath',TMP_ALLEEG(subj_i).filepath);
+
+            end
             cluster_update = TMP_STUDY.cluster;
             %- get cluster centroid and residual variance
             cluster_update = cluster_comp_dipole(TMP_ALLEEG, cluster_update);

@@ -84,11 +84,11 @@ SUBJ_PICS = cell(1,length(GROUP_NAMES));
 SUBJ_ITERS = cell(1,length(GROUP_NAMES));
 for i = 1:length(STUDY.datasetinfo)
     gi = find(strcmp(STUDY.datasetinfo(i).group,GROUP_NAMES));
-    SUBJ_PICS{gi} = [SUBJ_PICS{gi}, {ALLEEG(i).subject}];
-    if isempty(SUBJ_ITERS{gi})
-        SUBJ_ITERS{gi} = 1;
+    SUBJ_PICS{1,gi} = [SUBJ_PICS{1,gi}, {STUDY.datasetinfo(i).subject}];
+    if isempty(SUBJ_ITERS{1,gi})
+        SUBJ_ITERS{1,gi} = 1;
     else
-        SUBJ_ITERS{gi} = [SUBJ_ITERS{gi}, SUBJ_ITERS{gi}(end)+1];
+        SUBJ_ITERS{1,gi} = [SUBJ_ITERS{1,gi}, SUBJ_ITERS{1,gi}(end)+1];
     end
 end
 %%
@@ -1055,7 +1055,7 @@ VIOLIN_WIDTH_GROUP = 0.1;
 % meas_ylabel = {'Duration','Coefficient of Variation','Coefficient of Variation','Duration'};
 % YLIMS = {[0,2],[0,27.5],[0,30],[0,4]};
 % meas_names = {'nanmean_StepDur','nanmean_StepDur_cov'};
-meas_names = {'mean_StepDur','mean_StepDur_cov'};
+meas_names = {'mean_StepDur','mean_StepDur_cov','mean_StanceDur','mean_SwingDur'};
 meas_units = {'s','%'};
 meas_titles = {'Step Duration',{'Step Duration';'Coefficient of Variation'}};
 meas_ylabel = {'Duration','Coefficient of Variation'};

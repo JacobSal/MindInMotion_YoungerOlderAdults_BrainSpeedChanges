@@ -73,8 +73,9 @@ COLOR_PALETTE = {[1 1 1],...        % White
             [0 0 1],...             % Blue
             [0 0 0.5],...           % Navy
             [0.8 0.8 0.8]};          % Gray
-% Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-% Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+% Choosing and sorting 13 colors for clusters: 1white, 2yellow, 3pink, 4Red, 5orange, 6purple, 
+% 7olive, 8purple, 9maroon, 10aqua, 11lime, 12teal, 13green, 14blue, 15navy, 16gray
+% 1red, 2lime, 3blue, 4yellow, 5green, 6aqua, 7
 COLOR_PALETTE = COLOR_PALETTE([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
 %-
 DEFAULT_DIPPLOT_STRUCT = struct('rvrange',[0,15],... % this is a value from 0 to 100 (e.g., rv = 0.15 is 15)

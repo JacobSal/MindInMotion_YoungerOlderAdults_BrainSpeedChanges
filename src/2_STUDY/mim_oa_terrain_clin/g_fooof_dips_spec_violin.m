@@ -548,7 +548,7 @@ VIOLIN_BOTTOM = 0.7;
 AX_H  = 0.2;
 AX_W = 0.25;
 for k_i = 1:length(clusters)
-    %
+    %-
     atlas_name = atlas_name_store{k_i};
     fig = figure('color','white','renderer','Painters');
     sgtitle(atlas_name,'FontName',PLOT_STRUCT.font_name,'FontSize',14,'FontWeight','bold','Interpreter','none');
@@ -560,7 +560,7 @@ for k_i = 1:length(clusters)
     %## violin plot's theta/alpha/beta (speed)
     %-
     max_val = zeros(length(measure_name_plot),length(designs));
-    STATS_STRUCT = struct('anova',{{}},...
+    EMPTY_STATS_STRUCT = struct('anova',{{}},...
                           'anova_grp',{{}},...
                           'pvals',{{}},...
                           'pvals_pairs',{{}},...
@@ -568,13 +568,15 @@ for k_i = 1:length(clusters)
                           'pvals_grp_pairs',{{}},...
                           'regress_pval',{{}},...
                           'regress_line',{{}},...
-                          'r2_coeff',{{}},...
+                          'r2_coeff',{[]},...
                           'regress_xvals',0);
+    STATS_STRUCT = EMPTY_STATS_STRUCT;
     %
     %##
     cnt = 1;
     for des_i = 1:length(designs)
         for i = 1:length(measure_name_plot)
+            STATS_STRUCT(cnt) = EMPTY_STATS_STRUCT;
             measure_name = measure_name_plot{i};
             inds = FOOOF_TABLE.design_id == num2str(des_i) & FOOOF_TABLE.cluster_id == num2str(cl_i);
             T_plot = FOOOF_TABLE(inds,:);
@@ -591,7 +593,9 @@ for k_i = 1:length(clusters)
                         rs = T_stats_plot.Th_num_pval;
                         rls = [T_stats_plot.Th_intercept T_stats_plot.Th_slope]; 
                         r2 = T_stats_plot.Th_num_R2;
-                        norm_p = T_stats_plot.theta_lilnorm_p;
+                        if  ~T_stats_plot.theta_lilnorm_h
+                            aa = 1;
+                        end
                     case 2
                         aa = T_stats_plot.alpha_anova;
                         c2s = T_stats_plot.alpha_cond2_pval;
@@ -600,7 +604,9 @@ for k_i = 1:length(clusters)
                         rs = T_stats_plot.A_num_pval;
                         rls = [T_stats_plot.A_intercept T_stats_plot.A_slope];
                         r2 = T_stats_plot.A_num_R2;
-                        norm_p = T_stats_plot.alpha_lilnorm_p;
+                        if  ~T_stats_plot.alpha_lilnorm_h
+                            aa = 1;
+                        end
                     case 3
                         aa = T_stats_plot.beta_anova;
                         c2s = T_stats_plot.beta_cond2_pval;
@@ -609,7 +615,9 @@ for k_i = 1:length(clusters)
                         rs = T_stats_plot.B_num_pval;
                         rls = [T_stats_plot.B_intercept T_stats_plot.B_slope];
                         r2 = T_stats_plot.B_num_R2;
-                        norm_p = T_stats_plot.beta_lilnorm_p;
+                        if ~T_stats_plot.beta_lilnorm_h
+                            aa = 1;
+                        end
                 end
                 if des_i == 1
                     STATS_STRUCT(cnt).anova{k}=aa;
@@ -672,12 +680,13 @@ for k_i = 1:length(clusters)
                 'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
                 'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
             PLOT_STRUCT = struct('color_map',color_dark,...
-                'cond_labels',unique(T_plot.cond_char),'group_labels',unique(T_plot.group_char),...
+                'cond_labels',unique(T_plot.cond_char),'group_labels',categorical({''}),...
                 'cond_offsets',cond_offsets,...
                 'group_offsets',[0.125,0.475,0.812],...
                 'y_label','10*log_{10}(Flattened PSD)',...
-                'title',title_plot{i},'font_size',7,'ylim',[min(T_plot.(measure_name))-0.3,max_vals(i)],...
-                'font_name','Arial','x_label',x_label,'do_combine_groups',false);
+                'title',title_plot{i},'font_size',12,'ylim',[min(T_plot.(measure_name))-0.3,max_vals(i)],...
+                'font_name','Arial','x_label',x_label,'do_combine_groups',false,...
+                'regresslab_txt_size',10);
             % ax = axes();
             % figfig = figure();
             axax = group_violin(T_plot,measure_name,'cond_id','group_id',...
@@ -697,7 +706,7 @@ for k_i = 1:length(clusters)
             'String',string(design_chars{des_i}),'HorizontalAlignment','center',...
             'VerticalAlignment','middle','LineStyle','none','FontName',PLOT_STRUCT.font_name,...
             'FontSize',14,'FontWeight','Bold','Units','normalized');
-        vert_shift = vert_shift - (0.1+0.225*im_resize);
+        vert_shift = vert_shift - (0.15+0.225*im_resize);
     end
     hold off;
     exportgraphics(fig,[save_dir filesep sprintf('Group_Violins_cl%i.tiff',cl_i)],'Resolution',1000)
@@ -1001,8 +1010,7 @@ for k_i = 1:length(CLUSTERS_TO_PLOT)
                         rs = T_stats_plot.Th_num_pval;
                         rls = [T_stats_plot.Th_intercept T_stats_plot.Th_slope]; 
                         r2 = T_stats_plot.Th_num_R2;
-                        norm_p = T_stats_plot.theta_lilnorm_p;
-                        if norm_p > 0.05
+                        if ~T_stats_plot.theta_lilnorm_h
                             aa = 1;
                         end
                     case 2
@@ -1013,8 +1021,7 @@ for k_i = 1:length(CLUSTERS_TO_PLOT)
                         rs = T_stats_plot.A_num_pval;
                         rls = [T_stats_plot.A_intercept T_stats_plot.A_slope];
                         r2 = T_stats_plot.A_num_R2;
-                        norm_p = T_stats_plot.alpha_lilnorm_p;
-                        if norm_p > 0.05
+                        if ~T_stats_plot.alpha_lilnorm_h
                             aa = 1;
                         end
                     case 3
@@ -1025,8 +1032,7 @@ for k_i = 1:length(CLUSTERS_TO_PLOT)
                         rs = T_stats_plot.B_num_pval;
                         rls = [T_stats_plot.B_intercept T_stats_plot.B_slope];
                         r2 = T_stats_plot.B_num_R2;
-                        norm_p = T_stats_plot.beta_lilnorm_p;
-                        if norm_p > 0.05
+                        if ~T_stats_plot.beta_lilnorm_h
                             aa = 1;
                         end
                 end

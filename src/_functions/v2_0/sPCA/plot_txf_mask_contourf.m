@@ -15,12 +15,10 @@ function [fig] = plot_txf_mask_contourf(allersp,alltimes,allfreqs,...
 % Copyright (C) Chang Liu, liu.chang1@ufl.edu
 cat_logo();
 %-
+DISPLAY_BAND_MARKS = true;
 SUBPLOT_BOTTOM = 0.70;
 SUBPLOT_INIT_SHIFT = 0.06;
-% COLOR_LIM_INTERVALS = [0.6,0.8,1,1.2,1.5,2,2.5];
-% COLOR_LIM_MINORS = [0.2,0.2,0.5,0.5,0.5,0.5];
-% COLOR_LIM_ERR = 0.0;
-ALPHA_MULTIPLE = 0.5;
+ALPHA_MULTIPLE = 0.6; % NOTE: 1 == mask is opaque, 0 == mask does nothing
 CONTOURF_GRAIN = 200;
 % COLORBAR_SHIFT = 0.08;
 COLORBAR_SHIFT = 0.085;
@@ -138,7 +136,7 @@ for i = 1:size(allersp,2)
         set(ax,'LineWidth',1)
         set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
         set(ax,'OuterPosition',[0 0 1 1]);
-        set(ax,'Position',[SUBPLOT_INIT_SHIFT+horiz_shift,SUBPLOT_BOTTOM,PLOT_STRUCT.subplot_width,PLOT_STRUCT.subplot_height]);  %[left bottom width height]
+        set(ax,'Position',[SUBPLOT_INIT_SHIFT+horiz_shift,SUBPLOT_BOTTOM+vert_shift,PLOT_STRUCT.subplot_width,PLOT_STRUCT.subplot_height]);  %[left bottom width height]
 
         %- adjust subplot position and height
         set(ax,'LineWidth',1)
@@ -222,7 +220,28 @@ for i = 1:size(allersp,2)
             'FontName',PLOT_STRUCT.font_name,'FontSize',10,'FontWeight','bold',...
             'HorizontalAlignment','center','VerticalAlignment','top');
     end
-    supb_cnt = supb_cnt + 1;
+    if DISPLAY_BAND_MARKS
+        FONT_SIZE = 8;
+        xx = SUBPLOT_INIT_SHIFT-0.03;
+        yy = PLOT_STRUCT.subplot_height+SUBPLOT_BOTTOM+vert_shift-0.03;
+        a = annotation(fig,'textbox',[xx,yy-PLOT_STRUCT.subplot_height*1.22,0.1,0.1],...
+                'String','\theta','LineStyle','none',...
+                'FontName',PLOT_STRUCT.font_name,'FontSize',FONT_SIZE,'FontWeight','bold',...
+                'HorizontalAlignment','left','VerticalAlignment','top','Units','normalized');
+        a = annotation(fig,'textbox',[xx,yy-PLOT_STRUCT.subplot_height*1,0.1,0.1],...
+                'String','\alpha','LineStyle','none',...
+                'FontName',PLOT_STRUCT.font_name,'FontSize',FONT_SIZE,'FontWeight','bold',...
+                'HorizontalAlignment','left','VerticalAlignment','top','Units','normalized');
+        a = annotation(fig,'textbox',[xx,yy-PLOT_STRUCT.subplot_height*.75,0.1,0.1],...
+                'String','\beta','LineStyle','none',...
+                'FontName',PLOT_STRUCT.font_name,'FontSize',FONT_SIZE,'FontWeight','bold',...
+                'HorizontalAlignment','left','VerticalAlignment','top','Units','normalized');
+        a = annotation(fig,'textbox',[xx,yy-PLOT_STRUCT.subplot_height*.5,0.1,0.1],...
+                'String','\gamma','LineStyle','none',...
+                'FontName',PLOT_STRUCT.font_name,'FontSize',FONT_SIZE,'FontWeight','bold',...
+                'HorizontalAlignment','left','VerticalAlignment','top','Units','normalized');
+    end
+    % supb_cnt = supb_cnt + 1;
     vert_shift = vert_shift - PLOT_STRUCT.vert_shift_amnt;
 end
 
@@ -232,45 +251,4 @@ end
 hold off;
 drawnow;
 fig = get(groot,'CurrentFigure');
-end
-%% ===================================================================== %%
-function [b] = validate_struct(x,DEFAULT_STRUCT)
-    b = false;
-    struct_name = inputname(2);
-    %##
-    fs1 = fields(x);
-    fs2 = fields(DEFAULT_STRUCT);
-    vals1 = struct2cell(x);
-    vals2 = struct2cell(DEFAULT_STRUCT);
-    %- check field names
-    chk = cellfun(@(x) any(strcmp(x,fs2)),fs1);
-    if ~all(chk)
-        fprintf(2,'\nFields for struct do not match for %s\n',struct_name);
-        return
-    end
-    %- check field value's class type
-    for f = 1:length(fs2)
-        ind = strcmp(fs2{f},fs1);
-        chk = strcmp(class(vals2{f}),class(vals1{ind}));
-        if ~chk
-            fprintf(2,'\nStruct.%s must be type %s, but is type %s\n',fs2{f},class(vals2{f}),class(vals1{ind}));
-            return
-        end
-    end
-    b = true;
-end
-%% ===================================================================== %%
-function [struct_out] = set_defaults_struct(x,DEFAULT_STRUCT)
-    struct_out = x;
-    %##
-    fs1 = fields(x);
-    fs2 = fields(DEFAULT_STRUCT);
-    vals1 = struct2cell(x);
-    %- check field value's class type
-    for f = 1:length(fs2)
-        ind = strcmp(fs2{f},fs1);
-        if isempty(vals1{ind})
-            struct_out.(fs1{ind}) = DEFAULT_STRUCT.(fs2{ind});
-        end
-    end
 end

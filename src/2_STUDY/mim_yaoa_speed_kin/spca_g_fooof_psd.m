@@ -91,13 +91,15 @@ DATA_SET = 'MIM_dataset';
 % study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+spca_study_dir = '03232024_spca_analysis_OA';
 %- study info
 % SUB_GROUP_FNAME = 'all_spec';
 SUB_GROUP_FNAME = 'group_spec';
 %- study group and saving
+spca_dir = [studies_fpath filesep sprintf('%s',spca_study_dir)];
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
-CLUSTER_K =13;
+CLUSTER_K = 13;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
@@ -249,11 +251,18 @@ FOOOF_TABLE = table(speed_ms,subj_id,subj_cl_ind,subj_char,comp_id,design_id,con
     central_freq,power,r_squared,theta_avg_power,alpha_avg_power,beta_avg_power,...
     theta,alpha,beta,theta_center,alpha_center,beta_center);
 %%
-%%
-spca_table = par_load(cluster_study_fpath,'spca_cluster_table.mat');
+condition_gait = unique({STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
+subj_i = 35;
+cond_i = 1;
+tmpd = dir([spca_dir filesep STUDY.datasetinfo(subj_i).subject filesep 'GAIT_EPOCHED' filesep '*' filesep sprintf('cond%s_spca_ersp.mat',condition_gait{cond_i})]);
+gait_epoch_subf = strsplit(tmpd.folder,filesep);
+gait_epoch_subf = gait_epoch_subf{end};
+spca_fpath = [spca_dir filesep STUDY.datasetinfo(subj_i).subject filesep 'GAIT_EPOCHED' filesep gait_epoch_subf];
 rest_psd = par_load(spca_fpath,sprintf('gait_psd_spca.mat'));
 freqs = rest_psd.icatimefopts.freqs;
 %-
+spca_table = par_load(cluster_study_fpath,'spca_cluster_table_psd.mat');
+%%
 fooof_results = cell(length(DESIGN_INDS),1);
 fooof_diff_store = cell(length(DESIGN_INDS),1);
 fooof_apfit_store = cell(length(DESIGN_INDS),1);
@@ -263,22 +272,8 @@ subj_chk = {};
 cnt = 1;
 for dd = 1:length(DESIGN_INDS)
     des_i = DESIGN_INDS(dd);
-    for i = 1:length(CLUSTER_PICKS)
-        cl_i = CLUSTER_PICKS(i);
-        %## load 
-        ind_cl = [STUDY.etc.mim_gen_ersp_data.clust_ind_cl] == cl_i;
-        ind_des = [STUDY.etc.mim_gen_ersp_data.des_ind] == des_i;
-        ind = ind_cl & ind_des;
-        file_mat = STUDY.etc.mim_gen_ersp_data(ind).spec_ss_fpaths;
-        tmp = par_load(file_mat,[]);   
-        %- get cluster & condition indices
-        inds_cl = cellfun(@(x) ff(x,cl_i),spca_table.cluster_c);
-        inds_cond = strcmp(spca_table.cond_c,condition_gait{con_con(cond_i)});
-        trial_order{cond_i} = condition_gait{con_con(cond_i)};
-        inds = inds_cl & inds_cond;
-        fprintf('True subjects in cluster: %i, Alg subjects in cluster: %i\n',length(TMP_STUDY.cluster(cl_i).sets),sum(inds))
-        
-        %## RUN FOOOF
+    for cc = 1:length(CLUSTER_PICKS)
+        cl_i = CLUSTER_PICKS(cc);
         %- get subjects in cluster
         s_chars = {STUDY.datasetinfo(STUDY.cluster(cl_i).sets).subject};
         for i = 1:length(STUDY.design(des_i).variable)
@@ -288,27 +283,31 @@ for dd = 1:length(DESIGN_INDS)
                 g_chars = STUDY.design(des_i).variable(i).value;
             end
         end
-        try
-            if isnan(g_chars)
-                specdata = cell(size(tmp,1),1);
-                specfreqs = cell(size(tmp,1),1);
-                for k = 1:size(tmp,1) % cond
-                    specdata{k,1} = tmp(k,1).specdata;
-                    specfreqs{k,1} = tmp(k,1).specfreqs;
-                end
-            else
-                fprintf('g_chars has some weird value in it\n')
-            end
-        catch
-            specdata = cell(size(tmp,2),size(tmp,1));
-            specfreqs = cell(size(tmp,2),size(tmp,1));
-            for j = 1:size(tmp,1) % group
-                for k = 1:size(tmp,2) % cond
-                    specdata{k,j} = tmp(j,k).specdata;
-                    specfreqs{k,j} = tmp(j,k).specfreqs;
-                end
+        
+        %- get cluster  & condition indices
+        if ~isempty(g_chars)
+            specdata = cell(length(c_chars),length(g_chars));
+            specdata_crop = cell(length(c_chars),length(g_chars));
+        else
+            specdata = cell(length(c_chars),1);
+            specdata_crop = cell(length(c_chars),1);
+        end
+        
+        for cond_i = 1:length(c_chars)
+            for group_i = 1:length(g_chars)
+                inds_cl = cellfun(@(x) chk_cell(x,cl_i),spca_table.cluster_c);
+                inds_cond = strcmp(spca_table.cond_c,c_chars{cond_i});
+                % inds_grp = cellfun(@(x) x==group_i,spca_table.group_c);
+                inds = inds_cl & inds_cond;
+                fprintf('True subjects in cluster: %i, Alg subjects in cluster: %i\n',length(STUDY.cluster(cl_i).sets),sum(inds));
+                tmp = cat(3,spca_table.psdcorr_c{inds});
+                tmp = permute(tmp,[2,1,3]);
+                specdata{cond_i,group_i} = squeeze(tmp);
+                % specdata_crop{cond_i,group_i} = squeeze(mean(tmp(freq_crop,:),1));
+                specfreqs{cond_i,group_i} = freqs;
             end
         end
+        %## RUN FOOOF
         %-
         iif = (specfreqs{cond_i,group_i} < f_range(2) & specfreqs{cond_i,group_i} > f_range(1));
         fooof_frequencies = specfreqs{cond_i,group_i}(iif);

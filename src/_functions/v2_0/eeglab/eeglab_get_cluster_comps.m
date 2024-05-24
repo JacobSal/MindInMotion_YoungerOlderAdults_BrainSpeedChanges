@@ -56,7 +56,7 @@ end
 nonzero_cl_inds = find(nonzero_cl_inds);
 main_cl_inds = find(main_cl_inds);
 %- clusters with >50% of the subjects
-valid_clusters = find(tmp(3:end)>=0.5*(length(subj_inds)));
+valid_clusters = find(tmp(1:end)>=0.5*floor(length(subj_inds)));
 tmp = setdiff(valid_clusters,main_cl_inds);
 valid_clusters = setdiff(valid_clusters,[1,tmp]);
 %- remove all outlier cluster components

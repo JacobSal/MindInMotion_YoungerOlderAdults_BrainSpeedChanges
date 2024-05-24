@@ -222,7 +222,8 @@ spca_table = par_load(cluster_study_fpath,'spca_cluster_table.mat');
 paramsersp = timef_params; 
 alltimes = hardcode_times(time_crop);
 allfreqs = hardcode_freqs(freq_crop);
-CLUSTER_PICKS = main_cl_inds(2:end);
+% CLUSTER_PICKS = main_cl_inds(2:end);
+CLUSTER_PICKS = [6,9,12,13,14];
 %%
 parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
 % for ii = 1:length(CLUSTER_PICKS)
@@ -383,6 +384,8 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         STORAGE{des_i,19} = allgpm_sb_f;
     end
     %% CLIM
+    HIGH = 99.99;
+    LOW = 100-HIGH;
     %## GPM PLOTS
     INT=5;
     data = [];
@@ -391,8 +394,9 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         tmp = cellfun(@(x) mean(x,3),tmp,'UniformOutput',false);
         data = cat(3,data,tmp{:});
     end
-    bound = max([abs(prctile([data],5,'all')),abs(prctile([data],95,'all'))]);
-    GPM_CLIM = sort([-round(bound,1),round(bound,1)]);
+    bound = max([abs(prctile([data],LOW,'all')),abs(prctile([data],HIGH,'all'))]);
+    % GPM_CLIM = sort([-round(bound,1),round(bound,1)]);
+    GPM_CLIM = [-1,1]; % MOBI 2024 OVERRIDE
     %## ERSP PLOTS
     INT=12;
     data = [];
@@ -401,8 +405,9 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         tmp = cellfun(@(x) mean(x,3),tmp,'UniformOutput',false);
         data = cat(3,data,tmp{:});
     end
-    bound = max([abs(prctile([data],5,'all')),abs(prctile([data],95,'all'))]);
-    ERSP_CLIM = sort([-round(bound,1),round(bound,1)]);
+    bound = max([abs(prctile([data],LOW,'all')),abs(prctile([data],HIGH,'all'))]);
+    % ERSP_CLIM = sort([-round(bound,1),round(bound,1)]);
+    ERSP_CLIM = [-0.5,0.5]; % MOBI 2024 OVERRIDE
     %%
     for des_i = 1:length(cond_iters)
         %## VARS

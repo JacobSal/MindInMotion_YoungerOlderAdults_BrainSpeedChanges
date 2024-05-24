@@ -358,7 +358,15 @@ if DO_K_ICPRUNE
             % end
             %## REMOVE BASED ON RV
             % [cluster_update] = evaluate_cluster(STUDY,ALLEEG,clustering_solutions,'min_rv');
-            [TMP_STUDY,~,~] = cluster_rv_reduce(TMP_STUDY,TMP_ALLEEG);
+            % [TMP_STUDY,~,~] = cluster_rv_reduce(TMP_STUDY,TMP_ALLEEG);
+            [TMP_STUDY,TMP_ALLEEG,~,~] = cluster_pca_reduce(TMP_STUDY,TMP_ALLEEG);
+            for subj_i = 1:length(TMP_ALLEEG)
+                TMP_ALLEEG(subj_i).filename = sprintf('%s_pcareduced_comps.set',TMP_ALLEEG(subj_i).subject);
+                TMP_ALLEEG(subj_i) = pop_saveset(TMP_ALLEEG(subj_i),...
+                    'filename',TMP_ALLEEG(subj_i).filename,...
+                    'filepath',TMP_ALLEEG(subj_i).filepath);
+
+            end
             cluster_update = TMP_STUDY.cluster;
             %- get cluster centroid and residual variance
             cluster_update = cluster_comp_dipole(TMP_ALLEEG, cluster_update);

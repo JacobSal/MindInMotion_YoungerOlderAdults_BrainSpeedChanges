@@ -115,11 +115,22 @@ if ~ispc
 else
     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',cluster_study_fpath);
 end
+%## LOAD STUDY
+%{
+if ~ispc
+    tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
+    STUDY = tmp.STUDY;
+else
+    tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s.study',CLUSTER_STUDY_NAME)]);
+    STUDY = tmp.STUDY;
+end
+%}
 cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
-[comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
+[comps_out,main_cl_inds,outlier_cl_inds,valid_clusters] = eeglab_get_cluster_comps(STUDY);
 % CLUSTER_PICKS = main_cl_inds(2:end);
-CLUSTER_PICKS = [6,9,12,13,14];
+CLUSTER_PICKS = valid_clusters;
+% CLUSTER_PICKS = [6,9,12,13,14];
 AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
 %% TOPO PLOTS
 tmp_study = STUDY;
@@ -261,18 +272,18 @@ for i = 1:length(CLUSTER_PICKS)
 %     pause(2);
 %     close(fig);
     %## GROUPWISE DIPOLE PLOTS
-    % cluster_i = CLUSTER_PICKS(i);
-    % [fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_i,...
-    %     'PLOT_TYPE','all_group',...
-    %     'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
-    % pause(2);
-    % exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.tiff',cluster_i)],'Resolution',1000);
-    % view([45,0,0])
-    % exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.tiff',cluster_i)],'Resolution',1000);
-    % view([0,-45,0])
-    % exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cluster_i)],'Resolution',1000);
-    % pause(2);
-    % close(fig);
+    cluster_i = CLUSTER_PICKS(i);
+    [fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_i,...
+        'PLOT_TYPE','all_group',...
+        'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
+    pause(2);
+    exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.tiff',cluster_i)],'Resolution',1000);
+    view([45,0,0])
+    exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.tiff',cluster_i)],'Resolution',1000);
+    view([0,-45,0])
+    exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cluster_i)],'Resolution',1000);
+    pause(2);
+    close(fig);
     %% ===================================================================== %%
     cluster_i = CLUSTER_PICKS(i);
     %## AXES LIMITS

@@ -83,12 +83,12 @@ end
 cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 TMP_STUDY.cluster = cl_struct;
 [comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(TMP_STUDY);
-condition_gait = unique({TMP_STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
 subject_chars = {TMP_STUDY.datasetinfo.subject};
 %-
 fPaths = {TMP_STUDY.datasetinfo.filepath};
 fNames = {TMP_STUDY.datasetinfo.filename};
 %%
+condition_gait = unique({TMP_STUDY.datasetinfo(1).trialinfo.cond});
 CLUSTER_PICKS = main_cl_inds(2:end);
 subj_i = 35;
 cond_i = 1;
@@ -111,10 +111,10 @@ parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
     group_c         = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
     cluster_c       = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
     comp_c          = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    psdcorr_c   = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    psdorig_rest_c = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
+    psdcorr_c       = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
+    psdorig_rest_c  = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
     % tf_gpmcorr_c    = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    psdorig_c   = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
+    psdorig_c       = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
     % tf_gpmorig_c    = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
     tf_pc1_c        = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
     tf_coeff_c      = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
@@ -171,7 +171,7 @@ parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
         % spca_ersp = par_load(spca_fpath,sprintf('cond%s_spca_ersp.mat',condition_gait{1}));
         spca_psd = par_load(spca_fpath,sprintf('cond%s_spca_psd.mat',condition_gait{1}));
         chk = size(spca_psd.psd_corr,2) == (length([ic_keep,ic_rej])-length(bad_eye_ics));
-        chk2 = (length(ic_keep)==length(TMP_STUDY.datasetinfo(subj_i).comps))
+        chk2 = (length(ic_keep)==length(TMP_STUDY.datasetinfo(subj_i).comps));
         fprintf('IC numbers check: %i\n',chk2&&chk);
         fprintf('IC''s in clusters:\n'); fprintf('ICs: '); fprintf('%i,',subj_ics); fprintf('\n');
         fprintf('Clusters:\t'); fprintf('%i,',subj_cls); fprintf('\n');
@@ -195,7 +195,7 @@ parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
                     psdorig_c{cnt} = squeeze(spca_psd.apply_spca_cond.erds_orig(:,tmp_c,:))+squeeze(rest_psd(:,tmp_c,:));
                     psdorig_rest_c{cnt} = squeeze(rest_psd(:,tmp_c,:));
                     tf_pc1_c{cnt} = squeeze(spca_psd.apply_spca_cond.psc1(:,tmp_c,:));
-                    tf_coeff_c{cnt} = spca_psd.coeffs;
+                    % tf_coeff_c{cnt} = spca_psd.coeffs;
                     %- validation
                     % figure;
                     % hold on;
