@@ -15,12 +15,13 @@ function [fig] = plot_txf_conds_tftopo(allersp,alltimes,allfreqs,...
 % Copyright (C) Chang Liu, liu.chang1@ufl.edu
 cat_logo();
 %-
-SUBPLOT_BOTTOM = 0.70;
-SUBPLOT_INIT_SHIFT = 0.06;
+AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
+% SUBPLOT_BOTTOM = 0.70;
+% SUBPLOT_INIT_SHIFT = 0.06;
 % COLOR_LIM_INTERVALS = [0.6,1.2,1.5,2];
 % COLOR_LIM_ERR = 0.05;
-COLORBAR_SHIFT = 0.08; %(02/17/2024) was 0.06
-DISPLAY_BAND_MARKS = true;
+% PLOT_STRUCT.colorbar_shift = 0.08; %(02/17/2024) was 0.06
+% DISPLAY_BAND_MARKS = true;
 %-
 allpcond = [];
 allpgroup = [];
@@ -44,9 +45,13 @@ DEFAULT_PLOT_STRUCT = struct('figure_position_inch',[0.5,0.5,6.5,9],...
     'subplot_height',0.16,... %(02/17/2024) was 0.2
     'horiz_shift_amnt',0.17,...
     'vert_shift_amnt',0.22,...
+    'subplot_init_bot_pos',0.7,...
+    'subplot_init_horiz_pos',0.06,...
+    'colorbar_shift',0.08,...
     'group_titles',{{}},...
     'stats_title','F Statistic Mask',...
-    'figure_title','');
+    'figure_title','',...
+    'do_display_bandmarks',true);
 %## Define Parser
 p = inputParser;
 %## REQUIRED
@@ -84,6 +89,7 @@ INTERVALS = round(linspace(PLOT_STRUCT.clim(1),PLOT_STRUCT.clim(2),7),2);
 fig = figure('color','white','renderer','Painters');
 set(fig,'Units','inches','Position',PLOT_STRUCT.figure_position_inch)
 set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+set(gca,AXES_DEFAULT_PROPS{:})
 vert_shift = 0;
 subp_dim1 = size(allersp,2)+double(~isempty(allpgroup));
 supb_cnt = 1;
@@ -91,11 +97,12 @@ hold on;
 for i = 1:size(allersp,2)
     horiz_shift = 0;
     for j = 1:size(allersp,1)
-        if ~isempty(allpcond)
-            subplot(subp_dim1,size(allersp,1)+double(~isempty(allpcond{1,i})),supb_cnt);
-        else
-            subplot(subp_dim1,size(allersp,1),supb_cnt);
-        end
+        % if ~isempty(allpcond)
+        %     subplot(subp_dim1,size(allersp,1)+double(~isempty(allpcond{1,i})),supb_cnt);
+        % else
+        %     subplot(subp_dim1,size(allersp,1),supb_cnt);
+        % end
+        axes();
         tftopo(allersp{j,i},alltimes,allfreqs,'limits',... 
         [PLOT_STRUCT.time_lims PLOT_STRUCT.freq_lims PLOT_STRUCT.clim],...
         'logfreq','native');
@@ -107,7 +114,7 @@ for i = 1:size(allersp,2)
         set(ax,'LineWidth',1)
         set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
         set(ax,'OuterPosition',[0 0 1 1]);
-        set(ax,'Position',[SUBPLOT_INIT_SHIFT+horiz_shift,SUBPLOT_BOTTOM+vert_shift,PLOT_STRUCT.subplot_width,PLOT_STRUCT.subplot_height]);  %[left bottom width height]
+        set(ax,'Position',[PLOT_STRUCT.subplot_init_horiz_pos+horiz_shift,PLOT_STRUCT.subplot_init_bot_pos+vert_shift,PLOT_STRUCT.subplot_width,PLOT_STRUCT.subplot_height]);  %[left bottom width height]
 
         %- adjust subplot position and height
         set(ax,'LineWidth',1)
@@ -125,6 +132,13 @@ for i = 1:size(allersp,2)
             freqs = log([4.01,8,13,30,50,99.4843]);
             set(ax,'YTick',freqs); 
             set(ax,'YTickLabel',{'4','8','13','30','50','100'},'Fontsize',PLOT_STRUCT.font_size);
+            for k = 1:length(freqs)
+                yline(ax,freqs(k),'k:');
+            end
+        elseif PLOT_STRUCT.freq_lims(2) <= 200
+            freqs = log([4.01,8,13,30,50,99.4843,195.5]);
+            set(ax,'YTick',freqs); 
+            set(ax,'YTickLabel',{'4','8','13','30','50','100','200'},'Fontsize',PLOT_STRUCT.font_size);
             for k = 1:length(freqs)
                 yline(ax,freqs(k),'k:');
             end
@@ -180,7 +194,7 @@ for i = 1:size(allersp,2)
         set(ax,'LineWidth',1)
         set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
         set(ax,'OuterPosition',[0 0 1 1]);
-        set(ax,'Position',[SUBPLOT_INIT_SHIFT+horiz_shift,SUBPLOT_BOTTOM+vert_shift,PLOT_STRUCT.subplot_width,PLOT_STRUCT.subplot_height]);  %[left bottom width height]
+        set(ax,'Position',[PLOT_STRUCT.subplot_init_horiz_pos+horiz_shift,PLOT_STRUCT.subplot_init_bot_pos+vert_shift,PLOT_STRUCT.subplot_width,PLOT_STRUCT.subplot_height]);  %[left bottom width height]
 
         %- adjust subplot position and height
         set(ax,'LineWidth',1)
@@ -236,45 +250,56 @@ for i = 1:size(allersp,2)
         end
         %- set color bar
         c = colorbar();
-        c.Position(1) = c.Position(1)+COLORBAR_SHIFT;
+        c.Position(1) = c.Position(1)+PLOT_STRUCT.colorbar_shift;
         c.Limits = PLOT_STRUCT.clim;
         c.XTick = INTERVALS;
         %- color bar label
     %     hL = ylabel(c,[{'\Delta Power'};{'(dB)'}],'fontweight',...
     %         'bold','FontName',PLOT_STRUCT.font_name,'FontSize',8);
-        hL = ylabel(c,[{'\Delta Power (dB)'}],'fontweight',...
-            'bold','FontName',PLOT_STRUCT.font_name,'FontSize',8);
+        % hL = ylabel(c,[{'\Delta Power (dB)'}],'fontweight',...
+        %     'bold','FontName',PLOT_STRUCT.font_name,'FontSize',8);
     %     set(hL,'Rotation',0);
-        set(hL,'Rotation',270);
-        hL.Units = 'Inches';
-        hL.Position = [SUBPLOT_INIT_SHIFT+horiz_shift-0.175,SUBPLOT_BOTTOM+0.0925,0];
+        % set(hL,'Rotation',270);
+        % hL.Units = 'normalized';
+        % hL.Position = [PLOT_STRUCT.subplot_init_horiz_pos+horiz_shift-0.175,PLOT_STRUCT.subplot_init_bot_pos+0.0925,0];
+        hL = text(ax,PLOT_STRUCT.subplot_init_horiz_pos+horiz_shift+1.4,PLOT_STRUCT.subplot_init_bot_pos-.2,...
+            sprintf('\\Delta Power\n(dB)'),'FontWeight',...
+            'bold','FontName',PLOT_STRUCT.font_name,'FontSize',8,...
+            'Units','normalized','HorizontalAlignment','center',...
+            'Rotation',270);
         title(PLOT_STRUCT.stats_title,'FontSize',8,'FontWeight','bold');
         supb_cnt = supb_cnt+1;
     else
         %- set color bar
         c = colorbar();
-        c.Position(1) = c.Position(1)+COLORBAR_SHIFT;
+        c.Position(1) = c.Position(1)+PLOT_STRUCT.colorbar_shift;
         c.Limits = PLOT_STRUCT.clim;
         c.XTick = INTERVALS;
+        
         %- color bar label
-        hL = ylabel(c,[{'\Delta Power'};{'(dB)'}],'fontweight',...
-            'bold','FontName',PLOT_STRUCT.font_name,'FontSize',8);
-        set(hL,'Rotation',270);
-        hL.Units = 'Inches';
-        hL.Position = [SUBPLOT_INIT_SHIFT+horiz_shift-0.175,SUBPLOT_BOTTOM+0.0925,0];
+        % hL = ylabel(c,[{'\Delta Power (dB)'}],'fontweight',...
+        %     'bold','FontName',PLOT_STRUCT.font_name,'FontSize',8);
+        hL = text(ax,PLOT_STRUCT.subplot_init_horiz_pos+horiz_shift+1.4,PLOT_STRUCT.subplot_init_bot_pos-.2,...
+            sprintf('\\Delta Power\n(dB)'),'FontWeight',...
+            'bold','FontName',PLOT_STRUCT.font_name,'FontSize',8,...
+            'Units','normalized','HorizontalAlignment','center',...
+            'Rotation',270);
+        % set(hL,'Rotation',270);
+        % hL.Units = 'normalized';
+        % hL.Position = [PLOT_STRUCT.subplot_init_horiz_pos+horiz_shift-0.7,PLOT_STRUCT.subplot_init_bot_pos-0.15,0];
     end
     if ~isempty(PLOT_STRUCT.group_titles)
         xx = PLOT_STRUCT.figure_position_inch(3)/2/PLOT_STRUCT.figure_position_inch(3);
-        yy = PLOT_STRUCT.subplot_height+SUBPLOT_BOTTOM+vert_shift;
+        yy = PLOT_STRUCT.subplot_height+PLOT_STRUCT.subplot_init_bot_pos+vert_shift;
         a = annotation(fig,'textbox',[xx-0.05,yy-0.05,0.1,0.1],...
             'String',PLOT_STRUCT.group_titles{i},'LineStyle','none',...
             'FontName',PLOT_STRUCT.font_name,'FontSize',10,'FontWeight','bold',...
             'HorizontalAlignment','center','VerticalAlignment','top');
     end
-    if DISPLAY_BAND_MARKS
+    if PLOT_STRUCT.do_display_bandmarks
         FONT_SIZE = 8;
-        xx = SUBPLOT_INIT_SHIFT-0.03;
-        yy = PLOT_STRUCT.subplot_height+SUBPLOT_BOTTOM+vert_shift-0.03;
+        xx = PLOT_STRUCT.subplot_init_horiz_pos-0.03;
+        yy = PLOT_STRUCT.subplot_height+PLOT_STRUCT.subplot_init_bot_pos+vert_shift-0.03;
         a = annotation(fig,'textbox',[xx,yy-PLOT_STRUCT.subplot_height*1.22,0.1,0.1],...
                 'String','\theta','LineStyle','none',...
                 'FontName',PLOT_STRUCT.font_name,'FontSize',FONT_SIZE,'FontWeight','bold',...
@@ -314,7 +339,7 @@ if ~isempty(allpgroup)
         set(ax,'LineWidth',1)
         set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
         set(ax,'OuterPosition',[0 0 1 1]);
-        set(ax,'Position',[SUBPLOT_INIT_SHIFT+horiz_shift,SUBPLOT_BOTTOM+vert_shift,PLOT_STRUCT.subplot_width,PLOT_STRUCT.subplot_height]);  %[left bottom width height]
+        set(ax,'Position',[PLOT_STRUCT.subplot_init_horiz_pos+horiz_shift,PLOT_STRUCT.subplot_init_bot_pos+vert_shift,PLOT_STRUCT.subplot_width,PLOT_STRUCT.subplot_height]);  %[left bottom width height]
 
         %- adjust subplot position and height
         set(ax,'LineWidth',1)
@@ -374,7 +399,7 @@ if ~isempty(allpgroup)
     end
     if ~isempty(PLOT_STRUCT.group_titles)
         xx = PLOT_STRUCT.figure_position_inch(3)/2/PLOT_STRUCT.figure_position_inch(3);
-        yy = PLOT_STRUCT.subplot_height+SUBPLOT_BOTTOM+vert_shift;
+        yy = PLOT_STRUCT.subplot_height+PLOT_STRUCT.subplot_init_bot_pos+vert_shift;
         a = annotation(fig,'textbox',[xx-0.05,yy-0.05,0.1,0.1],...
             'String',PLOT_STRUCT.group_titles{i},'LineStyle','none',...
             'FontName',PLOT_STRUCT.font_name,'FontSize',10,'FontWeight','bold',...

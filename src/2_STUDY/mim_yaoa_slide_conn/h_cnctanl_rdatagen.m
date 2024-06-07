@@ -49,7 +49,7 @@ set_workspace
 %% (PARAMETERS) ======================================================== %%
 %## PATHS
 %-
-ATLAS_PATH = [PATH_ROOT filesep 'par_EEGProcessing' filesep 'submodules',...
+ATLAS_PATH = [PATHS.src_dir filesep 'par_EEGProcessing' filesep 'submodules',...
     filesep 'fieldtrip' filesep 'template' filesep 'atlas'];
 % see. https://www.fieldtriptoolbox.org/template/atlas/
 ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI atalst
@@ -62,23 +62,21 @@ DATA_SET = 'MIM_dataset';
 TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 CONN_METHODS = {'dDTF08','S'};
 %- datetime override
-study_dir_fname = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
+% study_dir_name = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
+study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 %## soft define
-%- path for local data
-% study_fName_1 = sprintf('%s_EPOCH_study',[EVENT_COND_COMBOS{:}]);
-study_fName_1 = 'epoch_study';
-DATA_DIR = [source_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_fname) filesep '_figs' filesep 'conn'];
-load_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_fname)];
+studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
+conn_fig_dir = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'conn_valid_slide'];
+%- load study file
+STUDY_FNAME_LOAD = 'slide_conn_study';
+study_fpath = [studies_fpath filesep sprintf('%s',study_dir_name)];
 %- load cluster
-CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',study_dir_fname) filesep 'cluster'];
-CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
-CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
 CLUSTER_K = 12;
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %- create new study directory
-if ~exist(save_dir,'dir')
-    mkdir(save_dir);
+if ~exist(conn_fig_dir,'dir')
+    mkdir(conn_fig_dir);
 end
 if ~ispc
     addpath(convertPath2UNIX('M:\jsalminen\GitHub\par_EEGProcessing\submodules\groupSIFT'));
@@ -86,30 +84,38 @@ else
     addpath(convertPath2Drive('M:\jsalminen\GitHub\par_EEGProcessing\submodules\groupSIFT'));
 end
 
-%% LOAD STUDIES && ALLEEGS
-
+%% LOAD EPOCH STUDY
 %- Create STUDY & ALLEEG structs
-if ~exist([load_dir filesep study_fName_1 '.study'],'file')
-    error('ERROR. study file does not exist');
+%## LOAD STUDY
+if ~ispc
+    [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_LOAD '_UNIX.study'],'filepath',study_fpath);
 else
-    if ~ispc
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',load_dir);
-    else
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',load_dir);
-    end
-    cl_struct = par_load([CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
-    MAIN_STUDY.cluster = cl_struct;
-    [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
-    condition_gait = unique({MAIN_STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
-    subject_chars = {MAIN_STUDY.datasetinfo.subject};
-    %## CUT OUT NON VALID CLUSTERS
-    inds = setdiff(1:length(comps_out),valid_cls);
-    comps_out(inds,:) = 0;
-    clusters = valid_cls;
-    %-
-    fPaths = {MAIN_STUDY.datasetinfo.filepath};
-    fNames = {MAIN_STUDY.datasetinfo.filename};
+    [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_LOAD '.study'],'filepath',study_fpath);
 end
+cl_struct = par_load([CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+MAIN_STUDY.cluster = cl_struct;
+[comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
+
+%## LOAD STUDY
+% if ~ispc
+%     tmp = load('-mat',[study_fpath filesep sprintf('%s_UNIX.study',STUDY_FNAME_LOAD)]);
+%     MAIN_STUDY = tmp.STUDY;
+% else
+%     tmp = load('-mat',[study_fpath filesep sprintf('%s.study',STUDY_FNAME_LOAD)]);
+%     MAIN_STUDY = tmp.STUDY;
+% end
+% cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+% MAIN_STUDY.cluster = cl_struct;
+% [comps_out,~,~,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
+%## CUT OUT NON VALID CLUSTERS
+inds = setdiff(1:length(comps_out),valid_cls);
+comps_out(inds,:) = 0;
+clusters = valid_cls;
+%-
+fPaths = {MAIN_STUDY.datasetinfo.filepath};
+fNames = {MAIN_STUDY.datasetinfo.filename};
+% condition_gait = unique({MAIN_STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
+subject_chars = {MAIN_STUDY.datasetinfo.subject};
 %% ===================================================================== %%
 [MAIN_STUDY,centroid] = std_centroid(MAIN_STUDY,MAIN_ALLEEG,double(string(clusters)),'dipole');
 txt_store = cell(length(clusters),1);
@@ -178,10 +184,62 @@ for k_i = 1:length(clusters)
 end
 cellfun(@(x) disp(x),txt_store);
 %% ===================================================================== %%
-destination_folder = save_dir;  %change as appropriate
-if ~exist(destination_folder,'dir')
-    mkdir(destination_folder);
+%## SEPERATE REST AND GAIT SECTIONS
+condition_base = 'rest';
+CONN_MEAS = 'dDTF08';
+condition_gait = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+for subj_i = 1:length(MAIN_ALLEEG)
+    EEG_full = MAIN_ALLEEG(subj_i);
+    %- get rest indicies
+    inds1 = logical(strcmp({EEG_full.event.cond}, condition_base));
+    inds2 = logical(strcmp({EEG_full.event.type}, 'boundary'));
+    val_inds = find(inds1 & ~inds2);
+    FROM = [EEG_full.event(val_inds(1)).latency];
+    TO = [EEG_full.event(val_inds(end)).latency];
+    fprintf('%s) Rest length is %0.2fs\n',EEG_full.subject,(TO-FROM)/1000);
+    %- generate EEG set
+    % EEG_BASE = pop_select(EEG_full, 'point', [FROM; TO]');
+    % tmp = strsplit(EEG_full.filename,'.');
+    % tmp{1} = [tmp{1},'_rest'];
+    % tmp = strjoin(tmp,'.');
+    % pop_saveset(EEG_BASE,'filepath',EEG_full.filepath,'filename',tmp);
+    %- extract connectivity
+    winstarts = EEG_full.etc.COND_CAT.Conn.winCenterTimes;
+    inds = winstarts > (FROM/1000) & winstarts < (TO/1000);
+    tmp_conn = EEG_full.etc.COND_CAT.Conn.(CONN_MEAS);
+    rest_conn = tmp_conn(:,:,:,inds);
+    par_save(rest_conn,EEG_full.filepath,sprintf('rest_conn_%s',CONN_MEAS));
+    %## get gait EEG
+    EEG_GAIT = cell(length(condition_gait),1);
+    TO = zeros(length(condition_gait),1);
+    FROM = zeros(length(condition_gait),1);
+    for cond_i = 1:length(condition_gait)
+        inds1 = logical(strcmp({EEG_full.event.cond}, condition_gait{cond_i}));
+        inds2 = logical(strcmp({EEG_full.event.type}, 'boundary'));
+        val_inds = find(inds1 & ~inds2);
+        FROM(cond_i) = [EEG_full.event(val_inds(1)).latency];
+        TO(cond_i) = [EEG_full.event(val_inds(end)).latency];
+        % EEG_GAIT{cond_i} = pop_select(EEG_full, 'point', [FROM; TO]');
+        % print
+        fprintf('\n%s) Condition %s''s length is %0.2fs\n',EEG_full.subject,...
+            condition_gait{cond_i},(TO-FROM)/1000);
+    end
+    % EEG_GAIT =  cellfun(@(x) [[]; x], EEG_GAIT);
+    % EEG_GAIT = pop_mergeset(EEG_GAIT,1:length(EEG_GAIT),1);
+    % tmp = strsplit(EEG_full.filename,'.');
+    % tmp{1} = [tmp{1},'_gait'];
+    % tmp = strjoin(tmp,'.');
+    % pop_saveset(EEG_GAIT,'filepath',EEG_full.filepath,'filename',tmp);
+    FROM = min(FROM);
+    TO = max(TO);
+    winstarts = EEG_full.etc.COND_CAT.Conn.winCenterTimes;
+    inds = winstarts > (FROM/1000) & winstarts < (TO/1000);
+    tmp_conn = EEG_full.etc.COND_CAT.Conn.(CONN_MEAS);
+    gait_conn = tmp_conn(:,:,:,inds);
+    par_save(gait_conn,EEG_full.filepath,sprintf('gait_conn_%s',CONN_MEAS));
 end
+%% ===================================================================== %%
+%% ===================================================================== %%
 %##
 % CONN_MEASURES = {'S'}; %{'dDTF08','S'};
 CONN_MEASURES = {'dDTF08'}; %{'dDTF08','S'};
@@ -272,7 +330,7 @@ trial_counts = zeros(length(subj_inds),length(conditions));
 subj_cl_ics=zeros(length(cluster_struct),length(cluster_struct));
 for cond_i = 1:length(conditions)
     for subj_i=1:length(subj_inds)
-        fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep conditions{cond_i}];
+        fpath = [conn_fig_dir filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep conditions{cond_i}];
         if ~exist(fpath,'dir')
             mkdir(fpath);
         end
@@ -323,7 +381,7 @@ conn_vals = cell(length(conditions),1);
 conn_i = 1;
 trial_nums = zeros(length(subj_inds),length(conditions));
 for cond_i=1:length(conditions)
-    fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep conditions{cond_i}];
+    fpath = [conn_fig_dir filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep conditions{cond_i}];
     if ~exist(fpath,'dir')
         mkdir(fpath);
     end
@@ -364,9 +422,9 @@ for cond_i=1:length(conditions)
 end
 %%
 for cond_i = 1:length(conditions)
-    fpath = [destination_folder filesep CONN_MEASURES{1} filesep 'R_data' filesep conditions{4}];
+    fpath = [conn_fig_dir filesep CONN_MEASURES{1} filesep 'R_data' filesep conditions{4}];
     base_conn = par_load(fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{1}));
-    fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep conditions{cond_i}];
+    fpath = [conn_fig_dir filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep conditions{cond_i}];
     connStruct_boot = par_load(fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
     for j=1:length(cluster_ints)
         for k=1:length(cluster_ints)
@@ -380,7 +438,7 @@ end
 % fpath = [destination_folder filesep CONN_MEASURES{1} filesep 'R_data' filesep COND_NAMES{4}];
 % base_conn = par_load(fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{1}));
 for cond_i = 1:length(conditions)
-    fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep conditions{cond_i}];
+    fpath = [conn_fig_dir filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep conditions{cond_i}];
 %     connStruct_boot = par_load(fpath,sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
     connStruct_boot = par_load(fpath,sprintf('connStruct%s_basecorr.mat',CONN_MEASURES{conn_i}));
     baselines=[];
@@ -540,7 +598,7 @@ kt = [];
 % baseconn_boot = par_load([fpath filesep COND_NAMES{4}],sprintf('connStruct%s_boot.mat',CONN_MEASURES{1}));
 % baseconn = par_load([fpath filesep COND_NAMES{4}],sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{1}));
 for conn_i = 1:length(CONN_MEASURES)
-    fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data'];
+    fpath = [conn_fig_dir filesep CONN_MEASURES{conn_i} filesep 'R_data'];
     if ~exist(fpath,'dir')
         mkdir(fpath);
     end
@@ -720,7 +778,7 @@ for cond_i = 1:length(conditions)
         hnd.NodeChildren(3).Title.Interpreter = 'none';
         fig_i = get(groot,'CurrentFigure');
         set(fig_i,'Position',[10,100,720,620])
-        exportgraphics(fig_i,[destination_folder filesep sprintf('%s_condheatmap_%s.jpg',conditions{cond_i},fn{i})],'Resolution',300);
+        exportgraphics(fig_i,[conn_fig_dir filesep sprintf('%s_condheatmap_%s.jpg',conditions{cond_i},fn{i})],'Resolution',300);
         close(fig_i);
     end
 end
@@ -760,7 +818,7 @@ for data_i = 1:length(fn)
         hnd.NodeChildren(3).Title.Interpreter = 'none';
         fig_i = get(groot,'CurrentFigure');
         set(fig_i,'Position',[10,100,720,620])
-        exportgraphics(fig_i,[destination_folder filesep sprintf('%s_condheatmap_%s.jpg',conditions{cond_i},fn{data_i})],'Resolution',300);
+        exportgraphics(fig_i,[conn_fig_dir filesep sprintf('%s_condheatmap_%s.jpg',conditions{cond_i},fn{data_i})],'Resolution',300);
         close(fig_i);
         pause(1);
     end

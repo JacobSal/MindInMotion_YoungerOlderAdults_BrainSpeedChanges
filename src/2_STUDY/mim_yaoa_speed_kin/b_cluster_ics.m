@@ -105,7 +105,7 @@ ERSP_PARAMS = struct('subbaseline','off',...
 MIN_ICS_SUBJ = [5]; %[2,3,4,5,6,7,8]; % iterative clustering
 % K_RANGE = [10,22];
 MAX_REPEATED_ITERATIONS = 1;
-CLUSTER_SWEEP_VALS = [12]; %[10,13,14,19,20]; %K_RANGE(1):K_RANGE(2);
+CLUSTER_SWEEP_VALS = [11]; %[10,13,14,19,20]; %K_RANGE(1):K_RANGE(2);
 % DO_K_DISTPRUNE = false;
 DO_K_ICPRUNE = true;
 % DO_K_SWEEPING = false;
@@ -118,7 +118,7 @@ CLUSTER_PARAMS = struct('algorithm','kmeans',...
     'filename',[],...
     'filepath',[],...
     'outliers',inf(),...
-    'maxiter',200);
+    'maxiter',1000);
 %- custom params
 STD_PRECLUST_COMMAND = {'dipoles','weight',1};
 %- datetime override
@@ -132,7 +132,8 @@ STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 % study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 study_fName_1 = 'epoch_study';
 % TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
+% save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 load_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name)];
 %- create new study directory
 if ~exist(save_dir,'dir')
@@ -359,6 +360,10 @@ if DO_K_ICPRUNE
             %## REMOVE BASED ON RV
             % [cluster_update] = evaluate_cluster(STUDY,ALLEEG,clustering_solutions,'min_rv');
             % [TMP_STUDY,~,~] = cluster_rv_reduce(TMP_STUDY,TMP_ALLEEG);
+            %## REMOVE BASED ON ICLABEL
+            [TMP_STUDY,~,~] = cluster_iclabel_reduce(TMP_STUDY,TMP_ALLEEG);
+            %## REMOVE BASED ON PCA ALG
+            %{
             for subj_i = 1:length(TMP_ALLEEG)
                 EEG = eeg_checkset(TMP_ALLEEG(subj_i),'loaddata');
                 if isempty(EEG.icaact)
@@ -381,6 +386,7 @@ if DO_K_ICPRUNE
                     'filepath',TMP_ALLEEG(subj_i).filepath);
 
             end
+            %}
             cluster_update = TMP_STUDY.cluster;
             %- get cluster centroid and residual variance
             cluster_update = cluster_comp_dipole(TMP_ALLEEG, cluster_update);

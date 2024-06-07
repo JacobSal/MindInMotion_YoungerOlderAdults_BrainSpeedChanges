@@ -43,6 +43,7 @@ fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
 
 % SUBJ_PICS = {ALLEEG.subject};
 %% (PARAMETERS) ======================================================== %%
@@ -55,7 +56,9 @@ colormap(linspecer);
 % study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
-study_dir_name = '04232024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+% study_dir_name = '04232024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+
 %## soft define
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 save_dir = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'raw_data_vis'];
@@ -78,7 +81,7 @@ else
     STUDY = tmp.STUDY;
 end
 %##
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa_spca');
+% [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
 %- override with already processed ALLEEG set
 SUBJ_PICS = cell(1,length(GROUP_NAMES));
 SUBJ_ITERS = cell(1,length(GROUP_NAMES));
@@ -441,7 +444,8 @@ end
 writetable(table_new_imu,[save_dir filesep 'imu_table_meantrial.xlsx']);
 writetable(table_new_ls,[save_dir filesep 'ls_table_meantrial.xlsx']);
 %%
-loadtable([save_dir filesep 'imu_table_meantrial.xlsx'])
+table_new_imu = loadtable([save_dir filesep 'imu_table_meantrial.xlsx']);
+table_new_ls = loadtable([save_dir filesep 'ls_table_meantrial.xlsx']);
 %% VIOLIN PLOT IMU
 % FIG_POSITION = [100,100,1480,520];
 FIG_POSITION = [100,100,420,420];

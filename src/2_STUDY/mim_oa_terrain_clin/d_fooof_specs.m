@@ -670,6 +670,23 @@ for i = 1:length(designs)
             %     newOut = fitglme(t1,mod,'Distribution','Gamma');
             %     waitforbuttonpress;
             % end
+            if theta_h
+                % fitglme(t1,mod)
+                kw_theta_p = kruskalwallis(t1.theta_avg_power,t1.cond);
+                close(gcf);
+                tmpconds = unique(t1.cond);
+                rs_theta_p = zeros(length(tmpconds),1);
+                iters = 2:length(tmpconds);
+                for ii = 1:length(iters)
+                    fprintf('ranksum test %i-%i\n',1,ii);
+                    cond_i = iters(ii);
+                    inds = t1.cond == tmpconds(1);
+                    tmp1 = t1.theta_avg_power(inds);
+                    inds = t1.cond == tmpconds(cond_i);
+                    tmp2 = t1.theta_avg_power(inds);
+                    rs_theta_p(cond_i) = ranksum(tmp1,tmp2);
+                end
+            end
             %## alpha
             %- test linear model
             lme_alpha_avg_power = fitlme(t1,'alpha_avg_power ~ cond + (1|subj_id)');
@@ -678,13 +695,55 @@ for i = 1:length(designs)
             alpha_anova = anova(lme_alpha_avg_power); 
             %- test normality
             [alpha_h,alpha_p] = lillietest(lme_alpha_avg_power.residuals);
+            if alpha_h
+                % fitglme(t1,mod)
+                kw_alpha_p = kruskalwallis(t1.theta_avg_power,t1.cond);
+                close(gcf);
+                tmpconds = unique(t1.cond);
+                rs_theta_p = zeros(length(tmpconds),1);
+                iters = 2:length(tmpconds);
+                for ii = 1:length(iters)
+                    fprintf('ranksum test %i-%i\n',1,ii);
+                    cond_i = iters(ii);
+                    inds = t1.cond == tmpconds(1);
+                    tmp1 = t1.theta_avg_power(inds);
+                    inds = t1.cond == tmpconds(cond_i);
+                    tmp2 = t1.theta_avg_power(inds);
+                    rs_theta_p(cond_i) = ranksum(tmp1,tmp2);
+                end
+            end
             %## beta
             lme_beta_avg_power = fitlme(t1,'beta_avg_power ~ cond + (1|subj_id)');
     %         lme_beta_avg_power = fitlme(t1,'beta_avg_power ~ cond + (1|speed_ms)');
             %-
             beta_anova = anova(lme_beta_avg_power); 
             %- test normality
+            figure;
+            histogram(t1.beta_avg_power);
+            figure;
+            histogram(lme_beta_avg_power.residuals);
+            figure;
+            qqplot(t1.beta_avg_power)
+            figure;
+            qqplot(lme_beta_avg_power.residuals)
             [beta_h,beta_p] = lillietest(lme_beta_avg_power.residuals);
+            if beta_h
+                % fitglme(t1,mod)
+                kw_beta_p = kruskalwallis(t1.beta_avg_power,t1.cond);
+                close(gcf);
+                tmpconds = unique(t1.cond);
+                rs_beta_p = zeros(length(tmpconds),1);
+                iters = 2:length(tmpconds);
+                for ii = 1:length(iters)
+                    fprintf('ranksum test %i-%i\n',1,ii);
+                    cond_i = iters(ii);
+                    inds = t1.cond == tmpconds(1);
+                    tmp1 = t1.beta_avg_power(inds);
+                    inds = t1.cond == tmpconds(cond_i);
+                    tmp2 = t1.beta_avg_power(inds);
+                    rs_beta_p(cond_i) = ranksum(tmp1,tmp2);
+                end
+            end
             %## LOG stats
     %         lme_log_theta_avg_power = fitlme(t1,'log_theta_avg_power ~ cond + (1|subID)');
     %         log_Th = anova(lme_log_theta_avg_power);[h,p] = lillietest(lme_log_theta_avg_power.residuals)

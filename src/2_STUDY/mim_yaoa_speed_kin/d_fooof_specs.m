@@ -92,8 +92,8 @@ DATA_SET = 'MIM_dataset';
 % study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 %- study info
-% SUB_GROUP_FNAME = 'all_spec';
-SUB_GROUP_FNAME = 'group_spec';
+SUB_GROUP_FNAME = 'all_spec';
+% SUB_GROUP_FNAME = 'group_spec';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster

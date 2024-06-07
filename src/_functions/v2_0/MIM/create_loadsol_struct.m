@@ -86,6 +86,11 @@ left_heel_strike=find(diff(left_logical)>0); %finds the indices when GRF exceeds
 right_heel_strike=find(diff(right_logical)>0);
 left_toe_off=find(diff(left_logical)<0); %finds the indices when GRF exceeds threshold
 right_toe_off=find(diff(right_logical)<0);
+%- recording grf at event
+left_grf_hs=LeftFP_Fz((diff(left_logical)>0));
+right_grf_hs=RightFP_Fz(diff(right_logical)>0);
+left_grf_to=LeftFP_Fz(diff(left_logical)<0);
+right_grf_to=RightFP_Fz(diff(right_logical)<0);
 
 %## PLOT
 cMaps = linspecer(4);
@@ -103,7 +108,8 @@ xlabel('Time (s)')
 ylabel('Ground Reaction Force (N)')
 hold off;
 legend();
-
+drawnow;
+saveas(gcf,fullfile(save_dir, 'validation_figure_ls.jpg'))
 %% Reject Bad Foot Strikes
 diff_rightHS=diff(right_heel_strike);
 diff_leftHS=diff(left_heel_strike);
@@ -143,16 +149,21 @@ LHS=left_heel_strike(~isnan(left_heel_strike));
 RHS=right_heel_strike(~isnan(right_heel_strike));
 LTO=left_toe_off(~isnan(left_toe_off));
 RTO=right_toe_off(~isnan(right_toe_off));
+GRF_LHS = left_grf_hs(~isnan(left_heel_strike));
+GRF_RHS = right_grf_hs(~isnan(right_heel_strike));
+GRF_LTO = left_grf_to(~isnan(left_toe_off));
+GRF_RTO = right_grf_to(~isnan(right_toe_off));
 badsteps=[length(badsteps_rightHS) length(badsteps_leftHS) length(badsteps_rightTO) length(badsteps_leftTO)];
 badstepsname=['badsteps_rightHS, ', 'badsteps_leftHS, ', 'badsteps_rightTO, ', 'badsteps_leftTO '];
 
 %% update EEG structure with gait events
 eventStrings = {'LHS','LTO','RHS','RTO'};
 eventSamples = {LHS, LTO, RHS, RTO};
-
+eventGRF = {GRF_LHS, GRF_LTO, GRF_RHS, GRF_RTO};
 for eventType_i = 1:length(eventStrings)
     eventStr = eventStrings{eventType_i};
     tempEvents_sample = eventSamples{eventType_i};
+    tempGrf = eventGRF{eventType_i};
     for event_j = 1:length(tempEvents_sample)
         EEG_LS.event(end+1).latency = tempEvents_sample(event_j);
         EEG_LS.event(end).duration = 1;
@@ -161,6 +172,7 @@ for eventType_i = 1:length(eventStrings)
         EEG_LS.event(end).type = eventStr;
         EEG_LS.event(end).code = eventStr;
         EEG_LS.event(end).datetime = loadsol_table.datetime(tempEvents_sample(event_j));
+        EEG_LS.event(end).grf = tempGrf(event_j);
     end
 end
 
@@ -215,6 +227,8 @@ plot([1,length(event_ind)-1], median(diff(event_ind/sample_rate))*ones(1,2));
 title('Relative time between events');
 xlabel('Event num');
 ylabel('Duration (s)');
+hold off;
+drawnow;
 saveas(myfig,fullfile(save_dir, 'timeBetweenSyncEvents.fig'));
 disp(['Median diff between events = ',num2str(median(diff(event_ind))/sample_rate)]);
 
@@ -226,6 +240,8 @@ stem(time(event_ind),max(sync_foot_data)*ones(size(event_ind)),'Color',[252 174 
 title('Events plotted on top of analog sync signal');
 xlabel('Local time (s)');
 ylabel('Fake foot force (N)');
+hold off;
+drawnow;
 saveas(myfig,fullfile(save_dir, 'syncEventsMarked.fig'));
 
 syncEvents_samp = event_ind;

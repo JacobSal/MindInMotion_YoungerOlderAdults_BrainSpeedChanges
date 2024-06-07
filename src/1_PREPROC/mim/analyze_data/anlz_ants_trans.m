@@ -65,8 +65,9 @@ mri = load(hires_mri);
 MNI_MRI = mri.mri;
 MNI_VOL = hires_mesh;
 %% (DEBUG) DIPOLE CONFIRMATION 
-subj_i = 81;
+subj_i = 15;
 dip_i = 1;
+disp(subj_names{subj_i});
 empty_dip_struct = struct('posxyz',[nan(),nan(),nan()],...
     'momxyz',[nan(),nan(),nan()],...
     'rv',nan(),...
@@ -104,8 +105,6 @@ tmp = load([in_fpath filesep 'dipfit_struct']);
 dipfit_fem = tmp.SAVEVAR;
 norm_chan = par_load(in_fpath, 'dip_pos.mat');
 %-
-inds = randi(size(norm_chan,1),5,1);
-%-
 DIPPLOT_STRUCT = struct('rvrange',[0,30],... % this is a value from 0 to 100 (e.g., rv = 0.15 is 15)
         'summary','off',...
         'mri',orig_mri,...
@@ -117,7 +116,7 @@ DIPPLOT_STRUCT = struct('rvrange',[0,30],... % this is a value from 0 to 100 (e.
         'view',[1,1,1],...
         'mesh','off',...
         'meshdata',MNI_VOL,...
-        'axistight','on',... % display the closest MRI slice to distribution
+        'axistight','off',... % display the closest MRI slice to distribution
         'gui','off',...
         'num','off',...
         'cornermri','on',...
@@ -141,13 +140,16 @@ DIPPLOT_STRUCT = struct('rvrange',[0,30],... % this is a value from 0 to 100 (e.
 modout = loadmodout15(out_fpath);
 fname = dir([out_fpath filesep '*.set']);
 [~,EEG,~] = eeglab_loadICA(fname(1).name,out_fpath);
+% X = zeros([ length(comps) size(tmp) ]);
+% X = zeros(1,1,1,1);
+%%
+%-
+inds = randi(size(norm_chan,1),5,1);
 chanlocs = EEG.chanlocs(EEG.icachansind);
 topo_struct = struct('grid',[],...
     'x',[],...
     'y',[]);
 option = 'none';
-% X = zeros([ length(comps) size(tmp) ]);
-X = zeros(1,1,1,1);
 for i = 1:size(EEG.icawinv,2)
     [~, grid, ~, Xi, Yi] = topoplot(EEG.icawinv(:,i), chanlocs, ...
                                                       'verbose', 'off',...
@@ -157,19 +159,20 @@ for i = 1:size(EEG.icawinv,2)
     topo_struct(i).grid = grid;
     topo_struct(i).x = Xi;
     topo_struct(i).y = Yi;
-    X(i,:,:,:) = grid;
+    % X(i,:,:,:) = grid;
     %-
 end
 %##
+inds = 14;
 AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
-X = squeeze(X);
-h = figure;
+% X = squeeze(X);
+fig = figure;
 set(gca,AXES_DEFAULT_PROPS{:})
 hold on;
 for i = 1:length(inds)
     dip_i = inds(i);
     if dipfit_fem(norm_chan.chan(dip_i)).dip.rv < 0.15
-        figure(h);
+        figure(fig);
         sbplot(ceil(length(inds)/5),5,i)
         Xi = topo_struct(i).x;
         Yi = topo_struct(i).y;
@@ -180,9 +183,13 @@ for i = 1:length(inds)
 end
 hold off;
 exportgraphics(fig,[mri_path filesep sprintf('scalpmaps_test.jpg')],'Resolution',200);
-
+%%
+% leadf = par_load(mri_path, 'leadfield_fem.mat');
+% hmod_tr = par_load(mri_path, 'headmodel_fem_tr.mat');
 %% NON-NORM MRI, ORIGNAL DIP
 %- reformat to eeglab style...
+% inds = randi(size(norm_chan,1),5,1);
+inds = 14;
 mri = [];
 mri.dim = orig_mri.dim;
 mri.xgrid = 1:orig_mri.dim(1);
@@ -193,6 +200,8 @@ mri.transform = orig_mri.transform;
 mri.hdr = orig_mri.hdr;
 DIPPLOT_STRUCT.mri = mri;
 DIPPLOT_STRUCT.meshdata = [mri_path filesep 'vol.mat'];
+DIPPLOT_STRUCT.dipolelength = 1;
+DIPPLOT_STRUCT.normlen= 'on';
 fig = figure;
 hold on;
 for i = 1:length(inds)
@@ -212,11 +221,11 @@ end
 %     'rv',dipfit_fem(norm_chan.chan(dip_i)).dip.rv);
 % dipplot(dip_in,DIPPLOT_STRUCT);
 hold off;
-exportgraphics(fig,[mri_path filesep sprintf('dipplot_origdip_top.jpg')],'Resolution',1000);
+exportgraphics(fig,[mri_path filesep sprintf('dipplot_origdip_top.tiff')],'Resolution',1000);
 view([45,0,0])
-exportgraphics(fig,[mri_path filesep sprintf('dipplot_origdip_coronal.jpg')],'Resolution',1000);
+exportgraphics(fig,[mri_path filesep sprintf('dipplot_origdip_coronal.tiff')],'Resolution',1000);
 view([0,-45,0])
-exportgraphics(fig,[mri_path filesep sprintf('dipplot_origdip_sagittal.jpg')],'Resolution',1000);
+exportgraphics(fig,[mri_path filesep sprintf('dipplot_origdip_sagittal.tiff')],'Resolution',1000);
 
 %% NORM MRI, NORM DIP
 ants_mri = ft_read_mri([mri_path filesep 'antsWarped.nii.gz']);
