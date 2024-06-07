@@ -56,10 +56,10 @@ for cluster_i = 2:length(STUDY.cluster)
             % [val,idx] = min([ALLEEG(subj_i).dipfit.model(comps_clust).rv]); %min(comps_clust);
             chc = comps_clust(idx);
             %- prints % stores
-            fprintf('Cluster %i) Subject %s''s choice component (%i) ICLabel Brain%%: %0.2f\n',cluster_i,ALLEEG(subj).subject,chc,val*100);
+            fprintf('Cluster %i) Subject %s''s choice component (%i) ICLabel Brain%%: %0.2f\n',cluster_i,ALLEEG(subj_i).subject,chc,val*100);
             comps_store(cluster_i,subj_i) = chc;
             comps_rej{cluster_i,subj_i} = comps_clust(comps_clust ~= chc);
-            fprintf('Cluster %i) Subject %s''s outlier components:',cluster_i,ALLEEG(subj).subject); fprintf('%i, ',comps_rej{cluster_i,subj_i}); fprintf('\n');
+            fprintf('Cluster %i) Subject %s''s outlier components:',cluster_i,ALLEEG(subj_i).subject); fprintf('%i, ',comps_rej{cluster_i,subj_i}); fprintf('\n');
             tmps = [tmps, repmat(subj_i,1,length([comps_rej{cluster_i,subj_i}]))];
             tmpc = [tmpc, comps_rej{cluster_i,subj_i}];
         else

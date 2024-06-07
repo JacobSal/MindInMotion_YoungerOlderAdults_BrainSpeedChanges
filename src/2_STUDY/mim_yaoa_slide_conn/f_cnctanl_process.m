@@ -127,7 +127,7 @@ STUDY_FNAME_LOAD = 'all_comps_study';
 STUDY_FNAME_SAVE = 'slide_conn_study';
 study_fpath = [studies_fpath filesep sprintf('%s',study_dir_name)];
 %- load cluster
-CLUSTER_K = 12;
+CLUSTER_K = 11;
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %- create new study directory
@@ -175,8 +175,8 @@ fprintf('Computing Connectivity\n');
 pop_editoptions('option_computeica', 1);
 %## PARFOR LOOP
 EEG = [];
-% parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
-for subj_i = 1:length(LOOP_VAR)
+parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
+% for subj_i = 1:length(LOOP_VAR)
     %- Parse out components
     components = comps_out(:,subj_i);
     components = sort(components(components ~= 0));
@@ -194,6 +194,7 @@ for subj_i = 1:length(LOOP_VAR)
             EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
             EEG.icaact = reshape(EEG.icaact,size(EEG.icaact,1),EEG.pnts,EEG.trials);
         end
+        %- for some reason need to pop this for every loop?
         pop_editoptions('option_computeica', 1);
         %## RESAMPLE
         %- (04/24/2024) JS, the rationale for resampling is majorly based

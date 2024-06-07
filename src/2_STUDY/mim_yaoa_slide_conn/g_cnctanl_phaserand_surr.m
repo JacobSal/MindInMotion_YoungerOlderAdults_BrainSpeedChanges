@@ -21,40 +21,33 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
     STUDY_DIR = getenv('STUDY_DIR');
     SCRIPT_DIR = getenv('SCRIPT_DIR');
+    SRC_DIR = getenv('SRC_DIR');
 else
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
-        STUDY_DIR = SCRIPT_DIR;
     catch e
         fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
-        STUDY_DIR = SCRIPT_DIR;
     end
+    STUDY_DIR = SCRIPT_DIR;
+    SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
 %## Add Study & Script Paths
 addpath(STUDY_DIR);
-cd(SCRIPT_DIR);
+addpath(SRC_DIR);
+cd(SRC_DIR);
 fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (PARAMETERS) ======================================================== %%
-%## hard define
-%- datset name
-DATA_SET = 'MIM_dataset';
-%- connecitivty modeling
-CONN_FREQS = (1:64);
-% (01/19/2024) JS, trying 4:50 from 1:100(see. Steven Peterson 2019 NeuroImage)
-FREQ_BANDS = {CONN_FREQS;4:8;8:13;13:28};
-TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-CONN_METHODS = {'dDTF08','S'}; %{'dDTF','GGC','dDTF08'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
 %## HIGH LEVEL VARS
 %- connectivity statistics & surrogates params
 %* boolean for model bootstrap distribution
@@ -64,104 +57,85 @@ ASSIGN_BOOTSTRAP_MEAN = true;
 %* boolean for phase randomization generation
 DO_PHASE_RND = true;
 FORCE_PHASECALC = false;
-%*
-% conn_components = (1:size(ALLEEG(1).icaweights,1))';
-% conn_estimators = {'dDTF08','dDTF','GGC'}; % Options: 'S', 'dDTF08', 'GGC', 'mCoh', 'iCoh'
-WINDOW_LENGTH = 0.5; % time (s)
-WINDOW_STEP_SIZE = 0.025; % time (s)
-N_PERMS_PHASE_RND = 200; % number of null distribution samples to draw
-N_PERMS_BOOTSRAP = 200;
-
+%## SURROGATE STATISTICS PARAMS
 %- BOOTSTRAP
-STAT_BOOTSTRAP_CFG = [];
-STAT_BOOTSTRAP_CFG.verb = 1;
-STAT_BOOTSTRAP_CFG.mode = {'Bootstrap','nperms',N_PERMS_BOOTSRAP,'saveTrialIdx',false};
+DEF_STAT_BS_CFG = struct('mode',struct('arg_direct',1,...
+                                        'nperms',200,...
+                                        'arg_selection','Bootstrap',...
+                                        'saveTrialIdx',false),...
+                           'modelingApproach',[],...
+                           'connectivityModeling',[],...
+                           'verb',1);
 %- PHASE RANDOMIZATION
-STAT_PHASERND_CFG = [];
-STAT_PHASERND_CFG.mode.arg_direct = 1;
-STAT_PHASERND_CFG.mode.nperms = N_PERMS_PHASE_RND;
-STAT_PHASERND_CFG.mode.arg_selection = 'PhaseRand';
-STAT_PHASERND_CFG.modelingApproach = [];%ALLEEG(trial_i).CAT.configs.est_fitMVAR;
-STAT_PHASERND_CFG.connectivityModeling = [];%ALLEEG(trial_i).CAT.configs.est_mvarConnectivity;
-STAT_PHASERND_CFG.verb = 1;
-
+DEF_STAT_PR_CFG = struct('mode',struct('arg_direct',1,...
+                                        'nperms',200,...
+                                        'arg_selection','PhaseRand'),...
+                           'modelingApproach',[],...
+                           'connectivityModeling',[],...
+                           'verb',1);
 % (01/29/2024) changing these to 200 to save on computation time, but 2000
 % iterations may be more robust.
-MORDER = [];
-%- datetime override
-study_fname_1 = 'epoch_study';
-study_dir_fname = '01232023_MIM_YAN32_antsnormalize_iccREMG0p4_powpow0p3_conn';
-%- Subject Directory information
-DATA_DIR = [source_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-study_load_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_fname)];
-save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_fname)];
-conn_save_dir = [study_load_dir filesep 'conn_data'];
+%## DATASET & CLUSTER INFO
+DATA_SET = 'MIM_dataset';
+study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+%## soft define
+studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
+%- load study file
+STUDY_FNAME_LOAD = 'slide_conn_study';
+study_fpath = [studies_fpath filesep sprintf('%s',study_dir_name)];
 %- load cluster
-CLUSTER_DIR = [STUDIES_DIR filesep sprintf('%s',study_dir_fname) filesep 'cluster'];
-CLUSTER_STUDY_FNAME = 'temp_study_rejics5';
-CLUSTER_STUDY_DIR = [CLUSTER_DIR filesep 'icrej_5'];
-%- create new study directory
-if ~exist(save_dir,'dir')
-    mkdir(save_dir);
-end
-if ~exist(conn_save_dir,'dir')
-    mkdir(conn_save_dir);
-end
+CLUSTER_K = 12;
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% LOAD EPOCH STUDY
 %- Create STUDY & ALLEEG structs
-if ~exist([CLUSTER_STUDY_DIR filesep CLUSTER_STUDY_FNAME '.study'],'file')
-    error('ERROR. study file does not exist');
-    exit(); %#ok<UNRCH>
-else
+% if ~exist([STUDY_FPATH filesep STUDY_FNAME '.study'],'file')
+%     error('ERROR. study file does not exist');
+%     exit(); %#ok<UNRCH>
+% else
+%     %## LOAD STUDY
 %     if ~ispc
-%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',study_load_dir);
+%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME '_UNIX.study'],'filepath',STUDY_FPATH);
 %     else
-%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',study_load_dir);
+%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME '.study'],'filepath',STUDY_FPATH);
 %     end
-    %## LOAD STUDY
-    if ~ispc
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAME '_UNIX.study'],'filepath',CLUSTER_STUDY_DIR);
-    else
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_FNAME '.study'],'filepath',CLUSTER_STUDY_DIR);
-    end
-    [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
+%     cl_struct = par_load([CLUSTER_STUDY_DIR filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+%     MAIN_STUDY.cluster = cl_struct;
+%     [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
+% end
+%## LOAD STUDY
+if ~ispc
+    tmp = load('-mat',[study_fpath filesep sprintf('%s_UNIX.study',STUDY_FNAME_LOAD)]);
+    STUDY = tmp.STUDY;
+else
+    tmp = load('-mat',[study_fpath filesep sprintf('%s.study',STUDY_FNAME_LOAD)]);
+    STUDY = tmp.STUDY;
 end
+cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+STUDY.cluster = cl_struct;
+[comps_out,~,~,valid_cls] = eeglab_get_cluster_comps(STUDY);
 %% INITIALIZE PARFOR LOOP VARS
-fPaths = {MAIN_ALLEEG.filepath};
-fNames = {MAIN_ALLEEG.filename};
-LOOP_VAR = 1:length(MAIN_ALLEEG);
-tmp = cell(1,length(MAIN_ALLEEG));
-rmv_subj = zeros(1,length(MAIN_ALLEEG));
+fPaths = {STUDY.datasetinfo.filepath};
+fNames = {STUDY.datasetinfo.filename};
+LOOP_VAR = 1:length(STUDY.datasetinfo);
+tmp = cell(1,length(STUDY.datasetinfo));
+rmv_subj = zeros(1,length(STUDY.datasetinfo));
 %## CUT OUT NON VALID CLUSTERS
 inds = setdiff(1:length(comps_out),valid_cls);
 comps_out(inds,:) = 0;
 %% CONNECTIVITY MAIN FUNC
 fprintf('Computing Connectivity\n');
-pop_editoptions('option_computeica', 1);
 %## PARFOR LOOP
 EEG = [];
 parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
 % for subj_i = LOOP_VAR
     %## PARAMS
-    stat_pr_cfg = STAT_PHASERND_CFG;
+    pop_editoptions('option_computeica', 1);
+    stat_pr_cfg = DEF_STAT_PR_CFG;
     %## LOAD EEG DATA
-    EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
-    ALLEEG = cell(length(EEG.etc.cond_files),1);
-    %- re-epoch
-    for cond_i = 1:length(EEG.etc.cond_files)
-        if ispc
-            fPath = convertPath2Drive(EEG.etc.cond_files(cond_i).fPath);
-        else
-            fPath = convertPath2UNIX(EEG.etc.cond_files(cond_i).fPath);
-        end
-        fName = EEG.etc.cond_files(cond_i).fName;
-        ALLEEG{cond_i} = pop_loadset('filepath',fPath,'filename',fName);
-        ALLEEG{cond_i}.CAT = EEG.etc.COND_CAT(cond_i);
-        fprintf('done.\n')
-    end
-    ALLEEG = cellfun(@(x) [[],x],ALLEEG);
-    
+    ALLEEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
+    %- reassign cat structure
+    ALLEEG.CAT = ALLEEG.etc.COND_CAT;
     try
         %% ===================================================================== %%
         %## STEP 5.a) (BOOTSTRAPPING) GROUP STATISTICS 
@@ -172,16 +146,20 @@ parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
         % (12/7/2022), JS, need to update this boostrapping to include ALLEEG
         if DO_BOOTSTRAP
             fprintf('\n==== CALCULATING BOOTSTRAP MEASURES ====\n')
+            tt = tic();
             for cond_i=1:length(ALLEEG)
                 %- clear PConn
                 ALLEEG(cond_i).CAT.PConn  = [];
                 fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
                 chk = ~exist([ALLEEG(cond_i).filepath filesep fName,'_BootStrap.mat'],'file') || FORCE_BOOTCALC
                 if chk
-                    [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(cond_i),STAT_BOOTSTRAP_CFG);
+                    % [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(cond_i),DEF_STAT_BS_CFG);
+                    cfg = struct2args(STAT_BS_CFG);
+                    [PConn,~] = stat_surrogateGen('ALLEEG',ALLEEG(cond_i),cfg{:});
                     ALLEEG(cond_i).CAT.PConn = PConn;
                     %- save BootStrap distribution 
                     bootstrap_dist = ALLEEG(cond_i).CAT.PConn;
+                    fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
                     par_save(bootstrap_dist,ALLEEG(cond_i).filepath,fName,'_BootStrap');
                 else
                     ALLEEG(cond_i).CAT.PConn = par_load(ALLEEG(cond_i).filepath,fName,'_BootStrap.mat');
@@ -197,45 +175,47 @@ parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
                 %- clear bootstrap calculation
                 ALLEEG(cond_i).CAT.PConn = [];
             end
-            fprintf('done.\n');
+            fprintf('%s) Bootstrap Calculation Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
         end
         %% ===================================================================== %%
         %## STEP 5.b) GENERATE PHASE RANDOMIZED DISTRIBUTION    
         % see. stat_surrogateGen
         % see. stat_surrogateStats
         if DO_PHASE_RND
-            %## (1) ALTERNATIVE CODE 
+            fprintf(1,'\n==== GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
+            tt = tic();
             for cond_i=1:length(ALLEEG)
                 %- Generate Phase Randomized Distribution
                 fprintf('\n==== PHASE RANDOMIZING CONNECTIVITY MEASURES ====\n')
                 %- clear PConn
                 ALLEEG(cond_i).CAT.PConn  = [];
                 fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
-                chk = ~exist([ALLEEG(cond_i).filepath filesep fName,'_BootStrap.mat'],'file') || FORCE_PHASECALC
+                chk = ~exist([ALLEEG(cond_i).filepath filesep fName,'_PhaseRnd.mat'],'file') || FORCE_PHASECALC
                 if chk
+                    %- clear PConn
+                    ALLEEG(cond_i).CAT.PConn  = [];
                     stat_pr_cfg.modelingApproach = ALLEEG(cond_i).CAT.configs.est_fitMVAR;
                     stat_pr_cfg.connectivityModeling = ALLEEG(cond_i).CAT.configs.est_mvarConnectivity;
+                    cfg = struct2args(stat_pr_cfg);
                     %- FEVAL
-                    [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(cond_i),stat_pr_cfg);
+                    [PConn,~] = stat_surrogateGen('ALLEEG',ALLEEG(cond_i),cfg{:});
                     ALLEEG(cond_i).CAT.PConn = PConn;
                     %- Save Phase randomized distribution
                     phasernd_dist = ALLEEG(cond_i).CAT.PConn;
-                    
+                    fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
                     par_save(phasernd_dist,ALLEEG(cond_i).filepath,fName,'_PhaseRnd');
                     fprintf('done.\n')
                 else
                     ALLEEG(cond_i).CAT.PConn = par_load(ALLEEG(cond_i).filepath,fName,'_PhaseRnd.mat');
                 end
             end
+            fprintf('%s) Phase Randomization Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
         end
     catch e
-        rmv_subj(subj_i) = 1;
-        EEG.CAT = struct([]);
-        tmp{subj_i} = EEG;
         fprintf(['error. identifier: %s\n',...
                  'error. %s\n',...
                  'error. on subject %s\n',...
-                 'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
+                 'stack. %s\n'],e.identifier,e.message,ALLEEG(1).subject,getReport(e));
         disp(e);
     end
 end
