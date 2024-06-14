@@ -98,7 +98,7 @@ if PLOT_STRUCT.do_combine_groups
     table_tmp.(group_char) = categorical(ones(height(table_tmp),1));
     PLOT_STRUCT.group_offsets = [0.5];
     groups = unique(table_tmp.(group_char));
-    PLOT_STRUCT.group_labels = {[sprintf('%s',PLOT_STRUCT.group_labels(1)), sprintf(' & %s',PLOT_STRUCT.group_labels(2:end))]};
+    PLOT_STRUCT.group_labels = categorical({[sprintf('%s',PLOT_STRUCT.group_labels(1)), sprintf(' & %s',PLOT_STRUCT.group_labels(2:end))]});
 end
 %%
 if isempty(parent_axes)

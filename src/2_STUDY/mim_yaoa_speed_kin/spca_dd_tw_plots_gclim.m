@@ -238,7 +238,8 @@ PLOT_STRUCT = struct('figure_position_inch',[],...
     'figure_title','');
 SAVE_STATS = false;
 %%
-spca_table = par_load(cluster_study_fpath,'spca_cluster_table.mat');
+% spca_table = par_load(cluster_study_fpath,'spca_cluster_table.mat');
+spca_table = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],'spca_cluster_table.mat');
 spca_table = spca_table(~all(cellfun(@isempty,spca_table{:,:}),2),:);
 paramsersp = timef_params; 
 alltimes = hardcode_times(time_crop);

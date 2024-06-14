@@ -7,7 +7,7 @@
 %   Previous Version: n/a
 %   Summary: 
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/MIM_YA/run_e_cnctanl_phaserand_surr.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_slide_conn/run_g_cnctanl_surro.sh
 
 %{
 %## RESTORE MATLAB
@@ -84,7 +84,7 @@ studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studie
 STUDY_FNAME_LOAD = 'slide_conn_study';
 study_fpath = [studies_fpath filesep sprintf('%s',study_dir_name)];
 %- load cluster
-CLUSTER_K = 12;
+CLUSTER_K = 11;
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% LOAD EPOCH STUDY
@@ -130,8 +130,9 @@ EEG = [];
 parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
 % for subj_i = LOOP_VAR
     %## PARAMS
-    pop_editoptions('option_computeica', 1);
+    pop_editoptions('option_computeica', 1); % this is needed or SIFT will bug out
     stat_pr_cfg = DEF_STAT_PR_CFG;
+    stat_bs_cfg = DEF_STAT_BS_CFG;
     %## LOAD EEG DATA
     ALLEEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
     %- reassign cat structure
@@ -154,7 +155,7 @@ parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
                 chk = ~exist([ALLEEG(cond_i).filepath filesep fName,'_BootStrap.mat'],'file') || FORCE_BOOTCALC
                 if chk
                     % [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(cond_i),DEF_STAT_BS_CFG);
-                    cfg = struct2args(STAT_BS_CFG);
+                    cfg = struct2args(stat_bs_cfg);
                     [PConn,~] = stat_surrogateGen('ALLEEG',ALLEEG(cond_i),cfg{:});
                     ALLEEG(cond_i).CAT.PConn = PConn;
                     %- save BootStrap distribution 

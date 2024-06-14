@@ -63,9 +63,15 @@ for trial_i = 1:length(unique({EEG_IMU.event.trialName}))
     [~,idx_end] = regexp(EEG_IMU.event(trial_i).trialName,sprintf('%s_',EEG_IMU.subject));
     trial_name = EEG_IMU.event(trial_i).trialName; trial_name = trial_name(idx_end+1:end);
     num_check = regexp(trial_name,'\d');
-    trial_num = str2double(trial_name(num_check(end)));
+    if ~isempty(num_check)
+        trial_num = str2double(trial_name(num_check(end)));
+    else
+        trial_num = 1;
+    end
     if trial_num <= 2
         [ do_crop{trial_i}, crop_idxs{trial_i}, ~, ~ ] = mim_check_trials(EEG_IMU.subject,trial_name,TRIAL_CROPPING_XLSX); %grabbing cropping times if needed
+        % do_crop{trial_i} = false;
+        % crop_idxs{trial_i} = [];
         if do_crop{trial_i}
             fprintf('Cropping data for subject %s and trial %s',EEG_IMU.subject,trial_name);
         end
@@ -83,11 +89,11 @@ mag_chan = regexp({EEG_IMU.chanlocs.labels},'mag'); mag_chan = cellfun(@(x) ~ise
 orient_chan = regexp({EEG_IMU.chanlocs.labels},'ori'); orient_chan = cellfun(@(x) ~isempty(x),orient_chan);
 
 %- converting to column data FYI
-sensor_frame_gyro = EEG_IMU.data(gyro_chan,:)'; 
-sensor_frame_mag = EEG_IMU.data(mag_chan,:)'; 
-sensor_frame_acc = EEG_IMU.data(acc_chan,:)'; 
+sensor_frame_gyro = EEG_IMU.data(gyro_chan,:)'; % 3xtime_pnts 
+sensor_frame_mag = EEG_IMU.data(mag_chan,:)'; % 3xtime_pnts
+sensor_frame_acc = EEG_IMU.data(acc_chan,:)'; % 3xtime_pnts
 %- Dataset containing the orientation quaternio
-sensor_frame_ori = EEG_IMU.data(orient_chan,:)'; 
+sensor_frame_ori = EEG_IMU.data(orient_chan,:)'; % 4xtime_pnts
 %% convert acc data to world frame with quaternions
 world_frame_acc = zeros(size(sensor_frame_acc));
 %- go through each time point
@@ -156,7 +162,8 @@ w_velZ = world_frame_vel(ind_1:ind_2,3);
 w_posX = world_frame_pos(ind_1:ind_2,1);
 w_posY = world_frame_pos(ind_1:ind_2,2);
 w_posZ = world_frame_pos(ind_1:ind_2,3);
-%- graph for gyroscope and accelerometer
+%## graph for gyroscope and accelerometer
+%{
 figure('Position', [9 39 900 600], 'NumberTitle', 'off', 'Name', sprintf('Sensor Data: %s',trial_name));
 ax(1) = subplot(2,1,1);
     hold on;
@@ -184,7 +191,7 @@ ax(2) = subplot(2,1,2);
     hold off;
 linkaxes(ax,'x');
 fig_i = get(groot,'CurrentFigure');
-saveas(fig_i,[save_dir filesep sprintf('accValidation_%s.fig',trial_name)]);
+% saveas(fig_i,[save_dir filesep sprintf('accValidation_%s.fig',trial_name)]);
 saveas(fig_i,[save_dir filesep sprintf('accValidation_%s.jpg',trial_name)]);
 %-
 figure('Position', [9 39 900 600], 'NumberTitle', 'off', 'Name', sprintf('Sensor Estimates: %s',trial_name));
@@ -210,8 +217,9 @@ ax(2) = subplot(2,1,2);
     hold off;
 linkaxes(ax,'x');
 fig_i = get(groot,'CurrentFigure');
-saveas(fig_i,[save_dir filesep sprintf('velposValidation_%s.fig',trial_name)]);
+% saveas(fig_i,[save_dir filesep sprintf('velposValidation_%s.fig',trial_name)]);
 saveas(fig_i,[save_dir filesep sprintf('velposValidation_%s.jpg',trial_name)]);
+%}
 %% find avg  body frame directions (front/left/up) in world frame and then rotate all data to avg body frame of reference
 %smartest dummy method
 imu_to_world_trans = mean(sensor_frame_ori); %goes from IMU to world from
@@ -237,6 +245,7 @@ vel_est_VAF = world_frame_vel*tempRotMat; %Front, Left, Up
 acc_est_VAF = world_frame_accNoGrav*tempRotMat; %Front, Left, Up
 
 %% make static image of entire timecourse of trial from 3 orthogonal angles
+%{
 cnt = 1;
 for trial_i = 1:length(unique({EEG_IMU.event.trialName}))
     trial_idxs = [EEG_IMU.event(cnt).latency, EEG_IMU.event(cnt+1).latency];
@@ -259,12 +268,14 @@ for trial_i = 1:length(unique({EEG_IMU.event.trialName}))
     end
     hold off;
     fig_i = get(groot,'CurrentFigure');
-    saveas(fig_i,[save_dir filesep sprintf('stateSpaceValid_%s.fig',EEG_IMU.event(cnt).trialName)]);
+    % saveas(fig_i,[save_dir filesep sprintf('stateSpaceValid_%s.fig',EEG_IMU.event(cnt).trialName)]);
     saveas(fig_i,[save_dir filesep sprintf('stateSpaceValid_%s.jpg',EEG_IMU.event(cnt).trialName)]);
     cnt = cnt + 2;
 end
 close all;
+%}
 %% IMU 6DOF MOVIE (takes a lot of time to render)
+%{
 TRIAL_CHAR_TO_TEST = 'low'; % flat, low, med, high, 0p25, 0p5, 0p75, 1p0
 % SAMPLES_TO_PLOT = 500;
 %- prep
@@ -276,30 +287,41 @@ trial_name = EEG_IMU.event(TRIAL_IND).trialName;
 pos_in = pos_est_VAF(trial_idxs(1):trial_idxs(2),:);
 rot_in = quatern2rotMat(quaternConj(sensor_frame_ori(trial_idxs(1):trial_idxs(2),:)));
 disp_imu_movie(pos_in,rot_in,[save_dir filesep sprintf('6DOF_movie_%s',trial_name)]);
+%}
 %% make new EEG set with A/P M/L vert positions
+% chans_keep = {'gyro','mag','barom','acc'};
 NEW_EEG_IMU = EEG_IMU;
-NEW_EEG_IMU.data = world_frame_pos';
+n_chans = size(EEG_IMU.data,1);
 NEW_EEG_IMU.pnts = size(NEW_EEG_IMU.data,2);
-NEW_EEG_IMU.etc.sensor_frame_ori = sensor_frame_ori;
-%no fancy pca. use estimate of average Front, Left, Up frame 
-NEW_EEG_IMU.data(1:3,:) = pos_est_VAF';
-NEW_EEG_IMU.data(4:6,:) = vel_est_VAF';
-NEW_EEG_IMU.data(7:9,:) = acc_est_VAF';
-NEW_EEG_IMU.data(10:13,:) = (sensor_frame_ori)'; %nan([3, size(sensor_frame_ori,1)]); %fill with nan for now because I don't know what this would be. We probably don't need it anyway
-% quatern2rotMat(sensor_frame_ori)';
-NEW_EEG_IMU.chanlocs(1).labels  = 'xPos';
-NEW_EEG_IMU.chanlocs(2).labels  = 'yPos';
-NEW_EEG_IMU.chanlocs(3).labels  = 'zPos';
-NEW_EEG_IMU.chanlocs(4).labels  = 'xVel';
-NEW_EEG_IMU.chanlocs(5).labels  = 'yVel';
-NEW_EEG_IMU.chanlocs(6).labels  = 'zVel';
-NEW_EEG_IMU.chanlocs(7).labels  = 'xAcc';
-NEW_EEG_IMU.chanlocs(8).labels  = 'yAcc';
-NEW_EEG_IMU.chanlocs(9).labels  = 'zAcc';
-NEW_EEG_IMU.chanlocs(10).labels = 'q1';
-NEW_EEG_IMU.chanlocs(11).labels = 'qi';
-NEW_EEG_IMU.chanlocs(12).labels = 'qj';
-NEW_EEG_IMU.chanlocs(12).labels = 'qk';
+NEW_EEG_IMU.etc.imu_to_world_trans = imu_to_world_trans;
+NEW_EEG_IMU.etc.world_to_ap_trans = tempRotMat;
+%no fancy pca. use estimate of average Front, Left, Up frame
+data = cat(1,EEG_IMU.data,pos_est_VAF',vel_est_VAF',acc_est_VAF',world_frame_pos',(sensor_frame_ori)');
+NEW_EEG_IMU.data = data;
+NEW_EEG_IMU.chanlocs(n_chans+1).labels  = 'body_xPos';
+NEW_EEG_IMU.chanlocs(n_chans+2).labels  = 'body_yPos';
+NEW_EEG_IMU.chanlocs(n_chans+3).labels  = 'body_zPos';
+NEW_EEG_IMU.chanlocs(n_chans+4).labels  = 'body_xVel';
+NEW_EEG_IMU.chanlocs(n_chans+5).labels  = 'body_yVel';
+NEW_EEG_IMU.chanlocs(n_chans+6).labels  = 'body_zVel';
+NEW_EEG_IMU.chanlocs(n_chans+7).labels  = 'body_xAcc';
+NEW_EEG_IMU.chanlocs(n_chans+8).labels  = 'body_yAcc';
+NEW_EEG_IMU.chanlocs(n_chans+9).labels  = 'body_zAcc';
+NEW_EEG_IMU.chanlocs(n_chans+10).labels  = 'world_xPos';
+NEW_EEG_IMU.chanlocs(n_chans+11).labels  = 'world_yPos';
+NEW_EEG_IMU.chanlocs(n_chans+12).labels  = 'world_zPos';
+NEW_EEG_IMU.chanlocs(n_chans+13).labels = 'q1';
+NEW_EEG_IMU.chanlocs(n_chans+14).labels = 'qi';
+NEW_EEG_IMU.chanlocs(n_chans+15).labels = 'qj';
+NEW_EEG_IMU.chanlocs(n_chans+16).labels = 'qk';
+for i = 1:length(NEW_EEG_IMU.chanlocs)
+    if contains(NEW_EEG_IMU.chanlocs(i).labels,'Back')
+        out = strsplit(NEW_EEG_IMU.chanlocs(i).labels,'_');
+        out = strjoin(['orig',out(2:end)],'_');
+        NEW_EEG_IMU.chanlocs(i).labels = out;
+    end
+    NEW_EEG_IMU.chanlocs(i).type = 'IMU_Opal';
+end
 %##
 toc
 end

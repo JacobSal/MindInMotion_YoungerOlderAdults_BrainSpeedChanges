@@ -47,12 +47,30 @@ persistent LoadsolTable
 if isempty(input_dir)
     disp('couldn''t find the excel doc so the function can''t work')
 end
+
 if isempty(MasterTable)
+    %## (FIX) for non-windows OS problems
+    MasterTable = readcell(input_dir,'FileType','spreadsheet','sheet','trialCrop');
+    MasterTable =MasterTable(2:end,1:21);
+    tbl_sz = size(MasterTable);
+    inds = cellfun(@(x) ismissing(x),MasterTable,'UniformOutput',false);
+    inds = cellfun(@(x) chk_inds(x),inds);
+    MasterTable(inds) = {''};
+    MasterTable = reshape(MasterTable,tbl_sz);
+    MasterTable = cell2table(MasterTable);
+    MasterTable.Properties.VariableNames(1:21) = {'SortingNum','SubjCode','SP_0p5_1',...
+        'SP_0p5_2',	'SP_0p25_1','SP_0p25_2','SP_0p75_1','SP_0p75_2','SP_1p0_1','SP_1p0_2',	...
+        'TM_flat_1','TM_flat_2','TM_high_1','TM_high_2','TM_low_1','TM_low_2','TM_med_1',...
+        'TM_med_2','Rest','MotorImagery_1','MotorImagery_2'};
+    
+    %## (MORE RELIABLE && MORE BUGGY) Not neccessary?
+    %{
     MasterTable = readtable(input_dir,'Sheet','trialCrop'); %loads it up
     MasterTable.Properties.VariableNames(1:21) = {'SortingNum','SubjCode','SP_0p5_1',...
         'SP_0p5_2',	'SP_0p25_1','SP_0p25_2','SP_0p75_1','SP_0p75_2','SP_1p0_1','SP_1p0_2',	...
         'TM_flat_1','TM_flat_2','TM_high_1','TM_high_2','TM_low_1','TM_low_2','TM_med_1',...
         'TM_med_2','Rest','MotorImagery_1','MotorImagery_2'};
+    %}
 end
 SubjectMatch = strcmp(MasterTable{:,'SubjCode'},subject_name);
 % (08/22/2023) JS, changing from contains to strcmp to handle subjects that
@@ -84,11 +102,27 @@ else
 end
 %% 
 if isempty(LoadsolTable)
+    %## (FIX) for non-windows OS problems
+    LoadsolTable = readcell(input_dir,'FileType','spreadsheet','sheet','trialCrop');
+    LoadsolTable =LoadsolTable(2:end,1:21);
+    tbl_sz = size(LoadsolTable);
+    inds = cellfun(@(x) ismissing(x),LoadsolTable,'UniformOutput',false);
+    inds = cellfun(@(x) chk_inds(x),inds);
+    LoadsolTable(inds) = {''};
+    LoadsolTable = reshape(LoadsolTable,tbl_sz);
+    LoadsolTable = cell2table(LoadsolTable);
+    LoadsolTable.Properties.VariableNames(1:21) = {'SortingNum','SubjCode','SP_0p5_1',...
+        'SP_0p5_2',	'SP_0p25_1','SP_0p25_2','SP_0p75_1','SP_0p75_2','SP_1p0_1','SP_1p0_2',	...
+        'TM_flat_1','TM_flat_2','TM_high_1','TM_high_2','TM_low_1','TM_low_2','TM_med_1',...
+        'TM_med_2','Rest','MotorImagery_1','MotorImagery_2'};
+    %## (MORE RELIABLE && MORE BUGGY) Not neccessary?
+    %{
     LoadsolTable = readtable(input_dir,'Sheet','loadsolCrop'); %loads it up
     LoadsolTable.Properties.VariableNames(1:21) = {'SortingNum','SubjCode','SP_0p5_1',...
         'SP_0p5_2',	'SP_0p25_1','SP_0p25_2','SP_0p75_1','SP_0p75_2','SP_1p0_1',	'SP_1p0_2',	...
         'TM_flat_1','TM_flat_2','TM_high_1','TM_high_2','TM_low_1',	'TM_low_2',...
         'TM_med_1','TM_med_2','Rest','MotorImagery_1','MotorImagery_2'};
+    %}
 end
 %- look thru the subj to find match
 % SubjectMatch = contains(LoadsolTable{:,'SubjCode'},subject_name);
@@ -123,3 +157,10 @@ else
 end
 end
 
+function out = chk_inds(x)
+    if any(x)
+        out = true;
+    else
+        out = false;
+    end
+end

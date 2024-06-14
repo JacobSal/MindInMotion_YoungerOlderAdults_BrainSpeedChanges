@@ -221,7 +221,8 @@ PLOT_STRUCT = struct('figure_position_inch',[0.5,0.5,6.5,9],...
     'figure_title','');
 SAVE_STATS = false;
 %%
-spca_table = par_load(cluster_study_fpath,'spca_cluster_table.mat');
+% spca_table = par_load(cluster_study_fpath,'spca_cluster_table.mat');
+spca_table = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],'spca_cluster_table.mat');
 paramsersp = timef_params; 
 alltimes = hardcode_times(time_crop);
 allfreqs = hardcode_freqs(freq_crop);

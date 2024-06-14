@@ -63,7 +63,7 @@ save_dir = [studies_fpath filesep sprintf('%s',study_dir_name)];
 load_dir = [studies_fpath filesep sprintf('%s',spca_study_dir)];
 OUTSIDE_DATA_DIR = [studies_fpath filesep ica_orig_dir]; % JACOB,SAL(02/23/2023)
 %- load cluster
-CLUSTER_K = 12;
+CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
@@ -228,4 +228,4 @@ end
 % tt = table(subj_c,group_c,cluster_c,cond_c,tf_erspcorr_c,tf_gpmcorr_c,tf_erporig_c,tf_gpmorig_c,tf_pc1_c,tf_coeff_c);
 tt = cat(1,loop_store{:});
 tt = tt(~all(cellfun(@isempty,tt{:,:}),2),:);
-par_save(tt,cluster_study_fpath,'spca_cluster_table_psd.mat');
+par_save(tt,[cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],'spca_cluster_table_psd.mat');

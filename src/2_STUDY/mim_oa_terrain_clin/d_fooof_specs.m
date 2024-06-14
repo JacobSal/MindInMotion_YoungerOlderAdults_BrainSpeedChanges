@@ -718,14 +718,14 @@ for i = 1:length(designs)
             %-
             beta_anova = anova(lme_beta_avg_power); 
             %- test normality
-            figure;
-            histogram(t1.beta_avg_power);
-            figure;
-            histogram(lme_beta_avg_power.residuals);
-            figure;
-            qqplot(t1.beta_avg_power)
-            figure;
-            qqplot(lme_beta_avg_power.residuals)
+            % figure;
+            % histogram(t1.beta_avg_power);
+            % figure;
+            % histogram(lme_beta_avg_power.residuals);
+            % figure;
+            % qqplot(t1.beta_avg_power)
+            % figure;
+            % qqplot(lme_beta_avg_power.residuals)
             [beta_h,beta_p] = lillietest(lme_beta_avg_power.residuals);
             if beta_h
                 % fitglme(t1,mod)

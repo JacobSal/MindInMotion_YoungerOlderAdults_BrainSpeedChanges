@@ -17,7 +17,7 @@ clearvars
 %## TIME
 tic
 global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
-ADD_CLEANING_SUBMODS = false;
+ADD_CLEANING_SUBMODS = true;
 %## Determine Working Directories
 if ~ispc
     STUDY_DIR = getenv('STUDY_DIR');
@@ -33,7 +33,7 @@ else
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
     STUDY_DIR = fileparts(SCRIPT_DIR);
-    SRC_DIR = fileparts(fileparts(STUDY_DIR));
+    SRC_DIR = fileparts(STUDY_DIR);
 end
 %% Add Study & Script Paths
 addpath(STUDY_DIR);
@@ -51,14 +51,14 @@ set_workspace
 dt = 'test_ls_alg';
 study_fName = sprintf('copy_study');
 %- soft define
-save_dir = [STUDIES_DIR filesep sprintf('%s',dt)];
-load_dir = [STUDIES_DIR filesep '%s'];
+save_dir = [PATHS.src_dir filesep '_data' filesep 'MIM_dataset' filesep '_studies' filesep sprintf('%s',dt)];
+load_dir = [PATHS.src_dir filesep '_data' filesep 'MIM_dataset'];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
 %% ASSIGN FILE PATHS
-M_MIND_IN_MOTION_DIR    = [DATA_DIR filesep DATA_SET]; %'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset'
+M_MIND_IN_MOTION_DIR    = load_dir; %'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset'
 files_loadsol           = cell(1,length([SUBJ_ITERS{:}]));
 subj_save_ls            = cell(1,length([SUBJ_ITERS{:}]));
 files_imu               = cell(1,length([SUBJ_ITERS{:}]));
@@ -125,15 +125,20 @@ for cnt = 1:length([SUBJ_ITERS{:}])
     end
 end
 %% CONVERT IMU TXT TO EVENT
-imu_save_dir = [save_dir filesep '_figs' filesep 'IMU'];
+%- change these variables
+% imu_save_dir = ['/path/where/to/save/outputfiles'];
+% subj_name = {'H1030','H2039','H3107'};
+% files_imu = {'/path/to/H1030','/path/to/H2039','/path/to/H3107'};
+imu_save_dir = [save_dir filesep 'IMU'];
 if ~exist(imu_save_dir,'dir')
     mkdir(imu_save_dir);
 end
+%- don't change these variables (unless you want to).
 ALLEEG_IMU = [];
 SENSORS_TO_ANALYZE = {'Back'};
 TRIALS_CHANGE = {'rest','SP_1p0_1'};
 TRIALS_NEW_NAMES = {'Rest','SP_1p0_1'};
-for cnt = 1:length([SUBJ_ITERS{:}])
+for cnt = 1:length(subj_name)
     [imu_table,rec_start_struct] =  convert_imu_to_table(files_imu{cnt});
     for f_i = 1:length(imu_table)
         %- required fields for rec_start_struct(f_i)
@@ -150,16 +155,19 @@ for cnt = 1:length([SUBJ_ITERS{:}])
     %- turn imu_table into EEGLAB compatible structure
     EEG_IMU = create_imu_struct(imu_table,rec_start_struct,SENSORS_TO_ANALYZE);
     %- save set
-    [EEG_IMU] = pop_saveset( EEG_IMU, 'filepath', rec_start_struct(1).filepath, 'filename', sprintf('%s_allTrials_IMU.set',subj_name{cnt}));
+    % [EEG_IMU] = pop_saveset( EEG_IMU, 'filepath', rec_start_struct(1).filepath, 'filename', sprintf('%s_allTrials_IMU.set',subj_name{cnt}));
 %     par_save(loadsol_events,subj_save_imu{cnt},sprintf('%s_LS_%i',subj_name{cnt},f_i));
     %## Convert Accelerometer Frame to Body Frame using Quanternions
     %-  NOTE: You'll need this toolbox to run this function: https://github.com/xioTechnologies/Gait-Tracking-With-x-IMU.git
     if ~exist([imu_save_dir filesep EEG_IMU.subject],'dir')
         mkdir([imu_save_dir filesep EEG_IMU.subject])
     end
-    EEG_IMU = imu_get_body_frame(EEG_IMU, [imu_save_dir filesep EEG_IMU.subject]);
+    EEG_IMU = imu_get_body_frame(EEG_IMU, [imu_save_dir filesep EEG_IMU.subject],...
+        'TRIAL_CROPPING_XLSX',[load_dir filesep '_studies' filesep 'subject_mgmt' filesep 'Trial_Cropping_V2_test.xlsx']);
     %-
-    ALLEEG_IMU = [ALLEEG_IMU; EEG_IMU];
+    [EEG_IMU] = pop_saveset(EEG_IMU, 'filepath', subj_save_ls{cnt}, 'filename', sprintf('%s_allTrials_LS.set',subj_name{cnt}));
+    %- 
+    % ALLEEG_IMU = [ALLEEG_IMU; EEG_IMU];
 end
 %% USE IMU & Loadsol to get time locked gait events
 

@@ -107,7 +107,7 @@ SUB_GROUP_FNAME = 'group_spec';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
-CLUSTER_K = 6;
+CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];

@@ -22,7 +22,7 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS %#ok<GVMIS>
+global ADD_CLEANING_SUBMODS SCRIPT_DIR STUDY_DIR%#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -71,12 +71,14 @@ conn_fig_dir = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'conn
 STUDY_FNAME_LOAD = 'slide_conn_study';
 study_fpath = [studies_fpath filesep sprintf('%s',study_dir_name)];
 %- load cluster
-CLUSTER_K = 12;
+CLUSTER_K = 11;
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
+%- 
+save_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K) filesep 'conn_figs'];
 %- create new study directory
-if ~exist(conn_fig_dir,'dir')
-    mkdir(conn_fig_dir);
+if ~exist(save_dir,'dir')
+    mkdir(save_dir);
 end
 if ~ispc
     addpath(convertPath2UNIX('M:\jsalminen\GitHub\par_EEGProcessing\submodules\groupSIFT'));
@@ -87,26 +89,26 @@ end
 %% LOAD EPOCH STUDY
 %- Create STUDY & ALLEEG structs
 %## LOAD STUDY
-if ~ispc
-    [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_LOAD '_UNIX.study'],'filepath',study_fpath);
-else
-    [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_LOAD '.study'],'filepath',study_fpath);
-end
-cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
-MAIN_STUDY.cluster = cl_struct;
-[comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
-
-%## LOAD STUDY
 % if ~ispc
-%     tmp = load('-mat',[study_fpath filesep sprintf('%s_UNIX.study',STUDY_FNAME_LOAD)]);
-%     MAIN_STUDY = tmp.STUDY;
+%     [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_LOAD '_UNIX.study'],'filepath',study_fpath);
 % else
-%     tmp = load('-mat',[study_fpath filesep sprintf('%s.study',STUDY_FNAME_LOAD)]);
-%     MAIN_STUDY = tmp.STUDY;
+%     [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_LOAD '.study'],'filepath',study_fpath);
 % end
 % cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 % MAIN_STUDY.cluster = cl_struct;
-% [comps_out,~,~,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
+% [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
+
+%## LOAD STUDY
+if ~ispc
+    tmp = load('-mat',[study_fpath filesep sprintf('%s_UNIX.study',STUDY_FNAME_LOAD)]);
+    MAIN_STUDY = tmp.STUDY;
+else
+    tmp = load('-mat',[study_fpath filesep sprintf('%s.study',STUDY_FNAME_LOAD)]);
+    MAIN_STUDY = tmp.STUDY;
+end
+cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
+MAIN_STUDY.cluster = cl_struct;
+[comps_out,~,~,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
 %## CUT OUT NON VALID CLUSTERS
 inds = setdiff(1:length(comps_out),valid_cls);
 comps_out(inds,:) = 0;
@@ -116,6 +118,27 @@ fPaths = {MAIN_STUDY.datasetinfo.filepath};
 fNames = {MAIN_STUDY.datasetinfo.filename};
 % condition_gait = unique({MAIN_STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
 % subject_chars = {MAIN_STUDY.datasetinfo.subject};
+%% MODEL ORDER & VALIDATION DATA
+%{
+% [tbl_out,tbl_summary_out] = cnctanl_valfigs_to_table(save_dir,COND_CHARS);
+[tbl_out,tbl_summary_out] = cnctanl_valfigs_to_table([STUDIES_DIR filesep sprintf('%s',study_dir_fname) filesep 'conn_data'],conditions);
+
+%-
+fprintf('HQ median information crit model order: %0.2f\n',median(tbl_summary_out.min_modorder_info_crit_hq_line));
+fprintf('HQ iqr information crit model order: %0.2f\n',iqr(tbl_summary_out.min_modorder_info_crit_hq_line));
+%-
+fprintf('AIC minimum information crit model order: %0.2f\n',mean(tbl_summary_out.min_modorder_info_crit_aic_line));
+fprintf('HQ mean histogram model order: %0.2f\n',mean(tbl_summary_out.mean_hist_hq_amnts));
+fprintf('AIC mean histogram model order: %0.2f\n',mean(tbl_summary_out.mean_hist_aic_amnts));
+%-
+fprintf('Consistency: %0.2f\n',mean(tbl_summary_out.mean_perc_cons))
+fprintf('ACF Whiteness: %0.2f\n',mean(tbl_summary_out.mean_white_sig_acf))
+fprintf('LJB Whiteness: %0.2f\n',mean(tbl_summary_out.mean_white_sig_ljb))
+fprintf('BOXP Whiteness: %0.2f\n',mean(tbl_summary_out.mean_white_sig_boxp))
+fprintf('LIMCL Whiteness: %0.2f\n',mean(tbl_summary_out.mean_white_sig_limcl))
+fprintf('Stability: %0.2f\n',mean(tbl_summary_out.mean_stability_ind))
+writetable(tbl_summary_out,[save_dir filesep 'model_crit_summary.xlsx']);
+%}
 %% ===================================================================== %%
 [MAIN_STUDY,centroid] = std_centroid(MAIN_STUDY,MAIN_ALLEEG,double(string(clusters)),'dipole');
 txt_store = cell(length(clusters),1);
@@ -184,10 +207,11 @@ for k_i = 1:length(clusters)
 end
 cellfun(@(x) disp(x),txt_store);
 %% ===================================================================== %%
-tmp = load([MAIN_STUDY.datasetinfo(subj_i).filepath filesep MAIN_STUDY.datasetinfo(subj_i).filename],'-mat');
+tmp = load([MAIN_STUDY.datasetinfo(1).filepath filesep MAIN_STUDY.datasetinfo(1).filename],'-mat');
 FREQ_BOUND = [4,60];
 TIME_BOUNDS = [0,3000]; % in seconds
 FREQ_INDS = tmp.etc.COND_CAT.Conn.freqs >= FREQ_BOUND(1) & tmp.etc.COND_CAT.Conn.freqs <= FREQ_BOUND(2);
+conn_freqs = tmp.etc.COND_CAT.Conn.freqs(FREQ_INDS);
 TIME_INDS = tmp.etc.COND_CAT.Conn.winCenterTimes >= TIME_BOUNDS(1) & tmp.etc.COND_CAT.Conn.winCenterTimes <= TIME_BOUNDS(2);
 BOOT_ACCU_N = 2000;
 %## SEPERATE REST AND GAIT SECTIONS
@@ -196,12 +220,17 @@ CONN_MEAS = 'dDTF08';
 subject_chars = {MAIN_STUDY.datasetinfo.subject};
 condition_gait = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 all_conds = {condition_base,condition_gait{:}};
-comps_c = cell(length(MAIN_STUDY.datasetinfo),1);
-rest_conn_c = cell(length(MAIN_STUDY.datasetinfo),1);
-gait_conn_c = cell(length(MAIN_STUDY.datasetinfo),length(condition_gait));
-gait_conn_all_c = cell(length(MAIN_STUDY.datasetinfo),1);
-comps_char_c = cell(length(MAIN_STUDY.datasetinfo),1);
-win_times_c = cell(length(MAIN_STUDY.datasetinfo),1);
+%-
+subj_c = cell(length(MAIN_STUDY.datasetinfo)*length(condition_gait),1);
+cond_c = cell(length(MAIN_STUDY.datasetinfo)*length(condition_gait),1);
+comps_c = cell(length(MAIN_STUDY.datasetinfo)*length(condition_gait),1);
+conn_cond_c = cell(length(MAIN_STUDY.datasetinfo)*length(condition_gait),1);
+% gait_conn_c = cell(length(MAIN_STUDY.datasetinfo)*length(condition_gait),1);
+gait_conn_all_c = cell(length(MAIN_STUDY.datasetinfo)*length(condition_gait),1);
+comps_char_c = cell(length(MAIN_STUDY.datasetinfo)*length(condition_gait),1);
+win_times_c = cell(length(MAIN_STUDY.datasetinfo)*length(condition_gait),1);
+group_c = cell(length(MAIN_STUDY.datasetinfo)*length(condition_gait),1);
+cnt = 1;
 for subj_i = 1:length(MAIN_STUDY.datasetinfo)
     %-
     % EEG_full = MAIN_ALLEEG(subj_i);
@@ -209,10 +238,6 @@ for subj_i = 1:length(MAIN_STUDY.datasetinfo)
     %     exist([MAIN_STUDY.datasetinfo(subj_i).filepath filesep sprintf('gait_conn_%s',CONN_MEAS)],'file');
     %-
     EEG_full = load([MAIN_STUDY.datasetinfo(subj_i).filepath filesep MAIN_STUDY.datasetinfo(subj_i).filename],'-mat');
-    %-
-    win_times_c{subj_i} = EEG_full.etc.COND_CAT.Conn.winCenterTimes;
-    comps_c{subj_i} = EEG_full.etc.COND_CAT.curComps;
-    comps_char_c{subj_i} = EEG_full.etc.COND_CAT.curComponentNames;
     %- get rest indicies
     inds1 = logical(strcmp({EEG_full.event.cond}, condition_base));
     inds2 = logical(strcmp({EEG_full.event.type}, 'boundary'));
@@ -231,12 +256,12 @@ for subj_i = 1:length(MAIN_STUDY.datasetinfo)
     inds = winstarts > (FROM/1000) & winstarts < (TO/1000);
     tmp_conn = EEG_full.etc.COND_CAT.Conn.(CONN_MEAS);
     rest_conn = tmp_conn(:,:,:,inds);
-    rest_conn_c{subj_i} = rest_conn;
-    par_save(rest_conn,EEG_full.filepath,sprintf('rest_conn_%s',CONN_MEAS));
+    % par_save(rest_conn,MAIN_STUDY.datasetinfo(subj_i).filepath,sprintf('rest_conn_%s',CONN_MEAS));
     %## get gait EEG
     EEG_GAIT = cell(length(condition_gait),1);
     TO = zeros(length(condition_gait),1);
     FROM = zeros(length(condition_gait),1);
+    tmp_gait_conn = cell(length(condition_gait),1);
     for cond_i = 1:length(condition_gait)
         inds1 = logical(strcmp({EEG_full.event.cond}, condition_gait{cond_i}));
         inds2 = logical(strcmp({EEG_full.event.type}, 'boundary'));
@@ -249,9 +274,10 @@ for subj_i = 1:length(MAIN_STUDY.datasetinfo)
         inds = winstarts > (FROM(cond_i)/1000) & winstarts < (TO(cond_i)/1000);
         tmp_conn = EEG_full.etc.COND_CAT.Conn.(CONN_MEAS);
         gait_conn = tmp_conn(:,:,:,inds);
-        gait_conn_c{subj_i,cond_i} = gait_conn;
+        tmp_gait_conn{cond_i} = gait_conn;
+        %-
         fprintf('\n%s) Condition %s''s length is %0.2fs\n',subject_chars{subj_i},...
-            condition_gait{cond_i},(TO-FROM)/1000);
+            condition_gait{cond_i},(TO(cond_i)-FROM(cond_i))/1000);
     end
     % EEG_GAIT =  cellfun(@(x) [[]; x], EEG_GAIT);
     % EEG_GAIT = pop_mergeset(EEG_GAIT,1:length(EEG_GAIT),1);
@@ -265,25 +291,71 @@ for subj_i = 1:length(MAIN_STUDY.datasetinfo)
     inds = winstarts > (FROM/1000) & winstarts < (TO/1000);
     tmp_conn = EEG_full.etc.COND_CAT.Conn.(CONN_MEAS);
     gait_conn = tmp_conn(:,:,:,inds);
-    gait_conn_all_c{subj_i} = mean(gait_conn,4);
-    par_save(gait_conn,EEG_full.filepath,sprintf('gait_conn_%s',CONN_MEAS));
+    
+    % par_save(gait_conn,MAIN_STUDY.datasetinfo(subj_i).filepath,sprintf('gait_conn_%s',CONN_MEAS));
+    %## STORE
+    cond_c{cnt} = 'rest';
+    subj_c{cnt} = MAIN_STUDY.datasetinfo(subj_i).subject;
+    win_times_c{cnt} = EEG_full.etc.COND_CAT.Conn.winCenterTimes;
+    comps_c{cnt} = EEG_full.etc.COND_CAT.curComps;
+    comps_char_c{cnt} = EEG_full.etc.COND_CAT.curComponentNames;
+    conn_cond_c{cnt} = rest_conn;
+    group_c{cnt} = EEG_full.group;
+    cnt = cnt+1;
+    %-
+    cond_c{cnt} = 'all_gait_median';
+    subj_c{cnt} = MAIN_STUDY.datasetinfo(subj_i).subject;
+    win_times_c{cnt} = EEG_full.etc.COND_CAT.Conn.winCenterTimes;
+    comps_c{cnt} = EEG_full.etc.COND_CAT.curComps;
+    comps_char_c{cnt} = EEG_full.etc.COND_CAT.curComponentNames;
+    conn_cond_c{cnt} = median(gait_conn,4);
+    group_c{cnt} = EEG_full.group;
+    cnt = cnt+1;
+    %-
+    cond_c{cnt} = 'all_gait_mean';
+    subj_c{cnt} = MAIN_STUDY.datasetinfo(subj_i).subject;
+    win_times_c{cnt} = EEG_full.etc.COND_CAT.Conn.winCenterTimes;
+    comps_c{cnt} = EEG_full.etc.COND_CAT.curComps;
+    comps_char_c{cnt} = EEG_full.etc.COND_CAT.curComponentNames;
+    conn_cond_c{cnt} = mean(gait_conn,4);
+    group_c{cnt} = EEG_full.group;
+    cnt = cnt+1;
+    %-
+    for cond_i = 1:length(condition_gait)
+        subj_c{cnt} = MAIN_STUDY.datasetinfo(subj_i).subject;
+        cond_c{cnt} = condition_gait{cond_i};
+        conn_cond_c{cnt} = tmp_gait_conn{cond_i};
+        win_times_c{cnt} = EEG_full.etc.COND_CAT.Conn.winCenterTimes;
+        comps_c{cnt} = EEG_full.etc.COND_CAT.curComps;
+        comps_char_c{cnt} = EEG_full.etc.COND_CAT.curComponentNames;
+        group_c{cnt} = EEG_full.group;
+        cnt = cnt+1;
+    end
 end
 %-
-conn_table = table(subject_chars',comps_c,rest_conn_c,gait_conn_c(:,1),gait_conn_c(:,2),gait_conn_c(:,3),...
-    gait_conn_c(:,4),gait_conn_c(:,5),gait_conn_c(:,6),gait_conn_c(:,7),gait_conn_c(:,8),...
-    gait_conn_all_c,comps_char_c,win_times_c,...
-    'VariableNames',{'subj_char','comps_d',condition_base,condition_gait{:},'all_gait','comps_ch','win_times'});
-par_save(conn_table,conn_fig_dir,'conn_table.mat');
+conn_table = table(subj_c,comps_c,conn_cond_c,...
+    cond_c,comps_char_c,win_times_c);
+par_save(conn_table,save_dir,'conn_table.mat');
 % clear MAIN_ALLEEG
-
 %% ===================================================================== %%
+%## TERRAIN vs SPEED vs REST
+conds_test = {'rest',{'0p25','0p5','0p75','1p0'},{'flat','low','med','high'}};
 cluster_struct = MAIN_STUDY.cluster;
-conn_clust_mat = cell(length(cluster_struct),length(cluster_struct),length(all_conds));
-subj_cl_ics = zeros(length(cluster_struct),length(cluster_struct));
-for cond_i = 1:length(all_conds)
+conn_clust_mat = cell(length(cluster_struct),length(cluster_struct),length(conds_test));
+subj_clust_mat = cell(length(cluster_struct),length(cluster_struct),length(conds_test));
+% subj_cl_ics = zeros(length(cluster_struct),length(cluster_struct));
+for cond_i = 1:length(conds_test)
+    subj_cl_ics = zeros(length(cluster_struct),length(cluster_struct));
     for subj_i = 1:length(subject_chars)
-        subj_ind_t = strcmp(subject_chars{subj_i},conn_table.subj_char);
-        ic_nums = str2double(conn_table.comps_ch{subj_ind_t});
+        if length(conds_test{cond_i}) > 1 && iscell(conds_test{cond_i})
+            out = cellfun(@(x) strcmp(conn_table.cond_c,x) & strcmp(subject_chars{subj_i},conn_table.subj_c),conds_test{cond_i},'UniformOutput',false);
+            subj_ind_t = logical(sum(cat(2,out{:}),2));
+        else
+            subj_ind_t = strcmp(conn_table.cond_c,conds_test{cond_i}) & strcmp(subject_chars{subj_i},conn_table.subj_c);
+            ic_nums = str2double(conn_table.comps_char_c{subj_ind_t});
+        end
+        tmp = find(subj_ind_t);
+        ic_nums = str2double(conn_table.comps_char_c{tmp(1)});
         cl_nums = zeros(length(ic_nums),1);
         for ic_i = 1:length(ic_nums)
             for cc = 2:length(cluster_struct)  % exclude parent cluster
@@ -299,13 +371,85 @@ for cond_i = 1:length(all_conds)
             for k=1:length(cl_nums)
                 fprintf('\tAssiging edge %i->%i\n',cl_nums(j),cl_nums(k))
                 % conn_clust_mat{cl_nums(j),cl_nums(k),cond_i}(subj_cl_ics(cl_nums(j),cl_nums(k)),:,:)=real(squeeze(CAT.Conn.(CONN_MEASURES{conn_i})(j,k,fAllInds,tInds)));
-                tmp = conn_table.(all_conds{cond_i});
+                tmp = conn_table.conn_cond_c(subj_ind_t);
+                if length(tmp)>1
+                    tmp = {cat(4,tmp{:})};
+                end
+                subj_clust_mat{cl_nums(j),cl_nums(k),cond_i}(subj_cl_ics(cl_nums(j),cl_nums(k)),:,:) = {subject_chars{subj_i}};
                 % conn_clust_mat{cl_nums(j),cl_nums(k),cond_i}(subj_cl_ics(cl_nums(j),cl_nums(k)),:,:)=squeeze(mean(tmp{subj_ind_t}(j,k,FREQ_INDS,:),4));
-                conn_clust_mat{cl_nums(j),cl_nums(k),cond_i}(subj_cl_ics(cl_nums(j),cl_nums(k)),:,:)=squeeze(median(tmp{subj_ind_t}(j,k,FREQ_INDS,:),4));
+                conn_clust_mat{cl_nums(j),cl_nums(k),cond_i}(subj_cl_ics(cl_nums(j),cl_nums(k)),:,:)=squeeze(median(tmp{1}(j,k,FREQ_INDS,:),4));
             end
         end
     end
 end
+%% ===================================================================== %%
+%## ALL GAIT vs REST
+conds_test = {'all_gait_median','rest'};
+cluster_struct = MAIN_STUDY.cluster;
+conn_clust_mat = cell(length(cluster_struct),length(cluster_struct),length(conds_test));
+% subj_cl_ics = zeros(length(cluster_struct),length(cluster_struct));
+for cond_i = 1:length(conds_test)
+    subj_cl_ics = zeros(length(cluster_struct),length(cluster_struct));
+    for subj_i = 1:length(subject_chars)
+        subj_ind_t = strcmp(conn_table.cond_c,conds_test{cond_i}) & strcmp(subject_chars{subj_i},conn_table.subj_c);
+        ic_nums = str2double(conn_table.comps_char_c{subj_ind_t});
+        cl_nums = zeros(length(ic_nums),1);
+        for ic_i = 1:length(ic_nums)
+            for cc = 2:length(cluster_struct)  % exclude parent cluster
+                ind = cluster_struct(cc).sets == subj_i & cluster_struct(cc).comps == ic_nums(ic_i);
+                if any(ind)
+                    cl_nums(ic_i) = cc;
+                end
+            end
+        end
+        %- assign data to cells and save
+        subj_cl_ics(cl_nums,cl_nums)=subj_cl_ics(cl_nums,cl_nums)+1;
+        for j=1:length(cl_nums)
+            for k=1:length(cl_nums)
+                fprintf('\tAssiging edge %i->%i\n',cl_nums(j),cl_nums(k))
+                % conn_clust_mat{cl_nums(j),cl_nums(k),cond_i}(subj_cl_ics(cl_nums(j),cl_nums(k)),:,:)=real(squeeze(CAT.Conn.(CONN_MEASURES{conn_i})(j,k,fAllInds,tInds)));
+                tmp = conn_table.conn_cond_c(subj_ind_t);
+                % conn_clust_mat{cl_nums(j),cl_nums(k),cond_i}(subj_cl_ics(cl_nums(j),cl_nums(k)),:,:)=squeeze(mean(tmp{subj_ind_t}(j,k,FREQ_INDS,:),4));
+                conn_clust_mat{cl_nums(j),cl_nums(k),cond_i}(subj_cl_ics(cl_nums(j),cl_nums(k)),:,:)=squeeze(median(tmp{1}(j,k,FREQ_INDS,:),4));
+            end
+        end
+    end
+end
+%% ===================================================================== %%
+%{
+%## EACH GAIT CONDITION SEPERATED
+conds_test = all_conds;
+cluster_struct = MAIN_STUDY.cluster;
+conn_clust_mat = cell(length(cluster_struct),length(cluster_struct),length(all_conds));
+% subj_cl_ics = zeros(length(cluster_struct),length(cluster_struct));
+for cond_i = 1:length(all_conds)
+    subj_cl_ics = zeros(length(cluster_struct),length(cluster_struct));
+    for subj_i = 1:length(subject_chars)
+        subj_ind_t = strcmp(conn_table.cond_c,all_conds{cond_i}) & strcmp(subject_chars{subj_i},conn_table.subj_c);
+        ic_nums = str2double(conn_table.comps_char_c{subj_ind_t});
+        cl_nums = zeros(length(ic_nums),1);
+        for ic_i = 1:length(ic_nums)
+            for cc = 2:length(cluster_struct)  % exclude parent cluster
+                ind = cluster_struct(cc).sets == subj_i & cluster_struct(cc).comps == ic_nums(ic_i);
+                if any(ind)
+                    cl_nums(ic_i) = cc;
+                end
+            end
+        end
+        %- assign data to cells and save
+        subj_cl_ics(cl_nums,cl_nums)=subj_cl_ics(cl_nums,cl_nums)+1;
+        for j=1:length(cl_nums)
+            for k=1:length(cl_nums)
+                fprintf('\tAssiging edge %i->%i\n',cl_nums(j),cl_nums(k))
+                % conn_clust_mat{cl_nums(j),cl_nums(k),cond_i}(subj_cl_ics(cl_nums(j),cl_nums(k)),:,:)=real(squeeze(CAT.Conn.(CONN_MEASURES{conn_i})(j,k,fAllInds,tInds)));
+                tmp = conn_table.conn_cond_c(subj_ind_t);
+                % conn_clust_mat{cl_nums(j),cl_nums(k),cond_i}(subj_cl_ics(cl_nums(j),cl_nums(k)),:,:)=squeeze(mean(tmp{subj_ind_t}(j,k,FREQ_INDS,:),4));
+                conn_clust_mat{cl_nums(j),cl_nums(k),cond_i}(subj_cl_ics(cl_nums(j),cl_nums(k)),:,:)=squeeze(median(tmp{1}(j,k,FREQ_INDS,:),4));
+            end
+        end
+    end
+end
+%}
 %%
 %## (OPTION 1) could potentially sub sample each cluster connection,
 %calculate a median then do that a bunch and compare our data to that
@@ -352,9 +496,6 @@ for cond_i = 1:length(all_conds)
 end
 %}
 %%
-REPEATED_MEAS = 200;
-NUM_ITERS = 200;
-
 ttest_pairs = zeros(length(cluster_struct)^2,2);
 cnt = 1;
 for i = 1:length(cluster_struct)
@@ -376,173 +517,250 @@ for i = 1:length(cluster_struct)
 end
 ttest_pairs = ttest_pairs(~all(ttest_pairs == 0,2),:);
 %%
-ttest_pairs = [1,2;3,4;5,6];
+% ttest_pairs = [1,2;3,4;5,6];
+% cond_ttest = [1,2;1,3;1,4;2,3;2,4;3,4];
+% cond_ttest = [1,2];
+cond_ttest = [1,2;1,3;2,3];
+REPEATED_MEAS = true;
+ALPHA = 0.05;
+NUM_ITERS = 500;
+pval_clust_mat = cell(size(conn_clust_mat,1),size(conn_clust_mat,2),length(cond_ttest));
 for i = 1:length(ttest_pairs)
-
-    in_1 = conn_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),1};
-    in_2 = cat(3,conn_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),2:end});
-
-    [mask,tscore,pval] = clusterLevelPermutationTest(in_1,curr_ersp_compare,...
-                        REPEATED_MEAS,ALPHA,NUM_ITERS); 
-    pval_fdr = fdr(pval);
-    fprintf('\nPercent un-masked: %0.1f%%\n',100*(sum(pval_fdr<ALPHA,[1,2])/(size(pval_fdr,1)*size(pval_fdr,2))));
-    curr_ersp = permute(curr_ersp,[2,1,3]);
-    curr_ersp = median(curr_ersp,3);
-    curr_maskedersp = curr_ersp;
-    curr_maskedersp(pval_fdr>=ALPHA) = 0;
-end
-%%
-%## (OPTION 2) use cluster based permutation tests for each edge?
-for cond_i = 1:length(conditions)
-    fpath = [conn_fig_dir filesep CONN_MEASURES{conn_i} filesep 'R_data' filesep conditions{cond_i}];
-    for j=1:length(cluster_ints)
-        for k=1:length(cluster_ints)
-            if ~isempty(conn_clust_mat{j,k}) && ~isempty()
-            %## BASELINE
-            %- Calculate and subtract baseline
-            baseidx=find(alltimes>=BASELINE_TIME(1) & alltimes<=BASELINE_TIME(2));
-            baseVals = median(connStruct_boot{j,k}(:,:,baseidx),3);
-%             baseVals = median(base_conn{j,k}(:,:,:),3);
-%                 baseVals = mean(connStruct_boot{j,k}(:,:,baseidx),3);
-            if DO_FDR_BOOTSTAT
-                %## GROUPSIFT BASELINE TEST (SUBTRACTION PERM)
-%                 curr_ersp_compare = connStruct_boot{j,k};
-                curr_ersp_compare = repmat(baseVals, [1, 1, length(alltimes)]);
-                curr_ersp_compare = permute(curr_ersp_compare,[3 2 1]);
-                curr_ersp = connStruct_boot{j,k}; %-repmat(baseVals, [1, 1, length(alltimes)]);
-                curr_ersp = permute(curr_ersp,[3 2 1]);
-%                 [mask,tscore,pval] = clusterLevelPermutationTest(curr_ersp(tInds_ave,:,:),curr_ersp_orig(tInds_ave,:,:),...
-%                                     1,ALPHA,NUM_ITERS); 
-                [mask,tscore,pval] = clusterLevelPermutationTest(curr_ersp,curr_ersp_compare,...
-                                    REPEATED_MEAS,ALPHA,NUM_ITERS); 
-                pval_fdr = fdr(pval);
-                fprintf('\nPercent un-masked: %0.1f%%\n',100*(sum(pval_fdr<ALPHA,[1,2])/(size(pval_fdr,1)*size(pval_fdr,2))));
-                curr_ersp = permute(curr_ersp,[2,1,3]);
-                curr_ersp = median(curr_ersp,3);
-                curr_maskedersp = curr_ersp;
-                curr_maskedersp(pval_fdr>=ALPHA) = 0;
-%                     curr_maskedersp(squeeze(sum(maskStruct_boot{j,k},1))<2) = 0;
-            else
-                curr_ersp = connStruct_boot{j,k}-repmat(baseVals, [1, 1, length(alltimes)]);
-                curr_ersp = permute(curr_ersp,[2 3 1]);
-                %- Use bootstat & bootstrap and significance mask
-                pboot = bootstat(curr_ersp,'median(arg1,3);','boottype','shuffle',...
-                    'label','ERSP','bootside','both','naccu',BOOT_ACCU_N,...
-                    'basevect',baseidx,'alpha',ALPHA,'dimaccu',2);
-                fprintf('\n');
-                curr_ersp = median(curr_ersp,3);
-                curr_maskedersp = curr_ersp;
-                curr_maskedersp(curr_ersp > repmat(pboot(:,1),[1 size(curr_ersp,2)]) & curr_ersp < repmat(pboot(:,2),[1 size(curr_ersp,2)])) = 0;
-            end
-            %- store
-            curr_maskedersp=permute(curr_maskedersp,[3 1 2]);
-            connStruct(j,k,:,:)=squeeze(curr_maskedersp);
-            %## NO BASELINE (SIFT STATS)
-%                 curr_ersp = permute(connStruct_boot{j,k},[2 3 1]);
-%                 %- use SIFT output (either boot, nonz, or both), must be stats!
-% %                 mask_in = permute(connStruct_nonz_pconn{j,k}<ALPHA,[2 3 1]);
-%                 mask_in = permute(connStruct_boot_pconn{j,k}<ALPHA,[2 3 1]);
-%                 fprintf('Significant TxF points: %i\n',sum(mask_in,[1,2,3]));
-%                 curr_maskedersp = curr_ersp;
-%                 for subj_i = 1:size(curr_ersp,3)
-%                     curr_maskedersp(:,:,subj_i) = curr_maskedersp(:,:,subj_i).*mask_in(:,:,subj_i);
-%                 end
-%                 fprintf('TxF masked sum: %i\n',sum(curr_maskedersp,[1,2,3]));
-%                 %- average subjects (median)
-%                 curr_maskedersp = median(curr_maskedersp,3);
-%                 %- store
-%                 curr_maskedersp=permute(curr_maskedersp,[3 1 2]);
-%                 connStruct(j,k,:,:)=squeeze(curr_maskedersp);
-
+    for c_i = 1:size(cond_ttest,1)
+        % in_1 = conn_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),1};
+        % in_2 = cat(3,conn_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),2:end});
+        in_1 = conn_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),cond_ttest(c_i,1)};
+        in_2 = conn_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),cond_ttest(c_i,2)};
+        if size(in_1,1) >1 & size(in_2,1) > 1 && ~isempty(in_1) && ~isempty(in_2)
+            in_1 = permute(in_1,[2,1]);
+            in_1 = reshape(in_1,[1,size(in_1,1),size(in_1,2)]);
+            in_2 = permute(in_2,[2,1]);
+            in_2 = reshape(in_2,[1,size(in_2,1 ),size(in_2,2)]);
+            [mask,tscore,pval] = clusterLevelPermutationTest(in_1,in_2,...
+                                REPEATED_MEAS,ALPHA,NUM_ITERS);
+            pval_fdr = fdr(pval);
+            pval_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),c_i} = pval_fdr;
+            fprintf('\nPercent un-masked: %0.1f%%\n',100*(sum(pval_fdr<ALPHA,[1,2])/(size(pval_fdr,1)*size(pval_fdr,2))));
+            % curr_ersp = permute(curr_ersp,[2,1,3]);
+            % curr_ersp = median(curr_ersp,3);
+            % curr_maskedersp = curr_ersp;
+            % curr_maskedersp(pval_fdr>=ALPHA) = 0;
         end
     end
-    par_save(connStruct,fpath,sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{conn_i}));
-
 end
-%% ===================================================================== %%
+%% AVERAGE BAND POWER
+conds_test = {'rest','speed','terrain'};
+freq_bands.alpha = [9,13];
+freq_bands.theta = [4,8];
+freq_bands.beta = [14,30];
+f_fields =fields(freq_bands);
+table_sz = size(conn_clust_mat,1)*size(conn_clust_mat,2)*length(conds_test)*length(fields(freq_bands));
+% freq_clust_mat = cell();
+freq_band = categorical(repmat({''},table_sz,1));
+freq_band_vals = cell(table_sz,1);
+freq_band_mean = nan(table_sz,1);
+cluster_i = nan(table_sz,1);
+cluster_j = nan(table_sz,1);
+cond_c = categorical(repmat({''},table_sz,1));
+subj_c = categorical(repmat({''},table_sz,1));
+cnt = 1;
+for i = 1:length(ttest_pairs)
+    for freq_i = 1:length(f_fields)
+        freq_inds = conn_freqs >= freq_bands.(f_fields{freq_i})(1) & conn_freqs <= freq_bands.(f_fields{freq_i})(2);
+        for c_i = 1:size(conds_test,2)
+            in_1 = conn_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),c_i};
+            subj_1 = subj_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),c_i};
+            if size(in_1,1) >1 && ~isempty(in_1)
+                for subj_i = 1:length(subj_1)
+                    % freq_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),c_i,freq_i} = mean(median(in_1(:,freq_inds),1));
+                    freq_band(cnt) = categorical(f_fields(freq_i));
+                    freq_band_vals{cnt} = in_1(subj_i,freq_inds);
+                    freq_band_mean(cnt) = mean(in_1(subj_i,freq_inds));
+                    % freq_band_subj_med{cnt} = median(in_1(:,freq_inds),1);
+                    % freq_band_mean(cnt) = mean(median(in_1(:,freq_inds),1));
+                    cluster_i(cnt) = ttest_pairs(i,1);
+                    cluster_j(cnt) = ttest_pairs(i,2);
+                    cond_c(cnt) = categorical(conds_test(c_i));
+                    subj_c(cnt) = categorical(subj_1(subj_i));
+                    cnt = cnt + 1;
+                end
+            end
+        end
+    end
+end
 %##
-% CONN_MEASURES = {'S'}; %{'dDTF08','S'};
-CONN_MEASURES = {'dDTF08'}; %{'dDTF08','S'};
-FREQ_CROP = [4:50];
-FREQ_BANDS = struct('theta',(4:8),...
-    'alpha',(8:13),...
-    'beta',(14:30),...
-    'all',FREQ_CROP);
-nonz_folder = 'nonzero_mat_files';
-% boot_folder = 'bootstrap_baseline_mat_files';
-boot_folder = 'bootstrap_mat_files';
-HAB_BOOT_INDS = [2,1];
-%- clusters to process
-% cluster_names = {'ROc','LPPa','RSupp','LSupp','neck','RPPa','PostCing','LSM','LOc','RSM','AntCing','PreCun'}; % (06/27/2023) JS, unsure on these as of yet.
-% cluster_ints = [3,4,5,6,7,8,9,10,11,12,13,14];
-cluster_names = atlas_name_store';
-cluster_ints = valid_cls;
-[~,ind] = setdiff(cluster_ints,valid_cls);
-cluster_ints(ind) = [];
-% sub_ints = [3,4,5,6,8,9,10,11,12,13,14];
-% [val,ind] = setdiff(cluster_ints,valid_cls);
-% sub_ints(ind) = [];
-%- processing parameters
-DO_FDR_BOOTSTAT = false;
-REPEATED_MEAS = 1;
-ALPHA = 0.05;
-NUM_ITERS = 200;
-SIFT_ALPHA = 0.95;
-% BASELINE_TIME = [-0.75,-0.15];
-% TIME_LIMS=[-0.75 0.75];
-% TIME_LIMS_AVE=[0.15 0.75];
-BASELINE_TIME = [-0.5,0];
-TIME_LIMS=[-0.5 0.5];
-TIME_LIMS_AVE=[0 0.5];
-% do baseline 0 0.64
-% cluster_ints = [3,7,5,4];
-% cluster_names = {'RPPa-Oc','LPPa-Oc','Precuneus','Cuneus'}; % (06/27/2023) JS, unsure on these as of yet.
-% COND_PAIR_ORDER = [1,2];
-% save_dir_bootmats =  [save_dir filesep CONN_MEASURES{1} filesep 'bootstrap_baseline_mat_files'];
-% BOOTSTRAP_STRUCT = par_load(save_dir_bootmats,sprintf('%s_boot_struct.mat',MAIN_ALLEEG(1).subject));
-% CONN_MEAS = BOOTSTRAP_STRUCT.conn_meas;
-% FREQ_BANDS = BOOTSTRAP_STRUCT.FREQ_BAND_INF.FREQ_BANDS;
-% FREQ_NAMES = fieldnames(FREQ_BANDS);
-allfreqs = MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.freqs;
-% alltimes = MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes;
-cluster_struct = MAIN_STUDY.cluster;
-fAllInds=find(allfreqs>=FREQ_CROP(1) & allfreqs<=FREQ_CROP(end));
-tInds=find(MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes>=TIME_LIMS(1) & MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes<=TIME_LIMS(2));
-alltimes = MAIN_ALLEEG(1).etc.COND_CAT(1).Conn.erWinCenterTimes;
-alltimes = alltimes(tInds);
-tInds_ave = find(alltimes>=TIME_LIMS_AVE(1) & alltimes<=TIME_LIMS_AVE(2));
+freq_band_table = table(freq_band,freq_band_vals,freq_band_mean,cluster_i,cluster_j,cond_c,subj_c);
+freq_band_table = rmmissing(freq_band_table);
+%% PLOT VIOLINS & STATS ================================================ %%
+%## LEFT OFF HERE, work on making nice summary figure for these stats. Good
+%direction to go with the analysis?
+% freq_band_table = freq_band_table(all(isempty(freq_band_table{:}),2))
+clusters_i = unique(freq_band_table.cluster_i);
+clusters_j = unique(freq_band_table.cluster_j);
+freqs = unique(freq_band_table.freq_band);
+for i = 1:length(clusters_i)
+    for j = 1:length(clusters_j)
+        inds = freq_band_table.cluster_i == clusters_i(i) & freq_band_table.cluster_j == clusters_j(j);
+        table_in = freq_band_table(inds,:);
+        if ~isempty(table_in)
+            %- test lienar model
+            STATS_STRUCT = struct('anova',{{}},...
+                          'anova_grp',{{}},...
+                          'pvals',{{}},...
+                          'pvals_pairs',{{}},...
+                          'pvals_grp',{{}},...
+                          'pvals_grp_pairs',{{}},...
+                          'regress_pval',{{}},...
+                          'regress_line',{{}},...
+                          'r2_coeff',{[]},...
+                          'regress_xvals',0);
+            for freq_i = 1:length(freqs)
+                inds = table_in.freq_band == freqs(freq_i);
+                sub_table_in = table_in(inds,:);
+                %-
+                % mod = 'freq_band_mean ~ 1 + cond_c + freq_band + cond_c:freq_band';
+                mod = 'freq_band_mean ~ 1 + cond_c';
+                lme_out = fitlme(sub_table_in,mod,'FitMethod','ML');
+                anova_out = anova(lme_out);
+                %- test normality
+                [theta_h,theta_p] = lillietest(lme_out.residuals);
+                %-
+                STATS_STRUCT.anova{freq_i} = anova_out.pValue(2);
+                STATS_STRUCT.pvals{freq_i} = [1,lme_out.Coefficients.pValue(2),lme_out.Coefficients.pValue(3)];
+                STATS_STRUCT.pvals_pairs{freq_i} = {[1,1],[1,2],[1,3]};
+            end
+            %-
+            %## PLOT
+            ax = group_violin(table_in,'freq_band_mean','cond_c','freq_band',...
+                'STATS_STRUCT',STATS_STRUCT);
+            % drawnow;
+            % exportgraphics(ax,[save_dir filesep sprintf('cl%i-cl%i_cond%i-cond%i_spedterrainvsrest_conn_clusterttests.tiff',ttest_pairs(i,1),ttest_pairs(i,2),cond_ttest(c_i,1),cond_ttest(c_i,2))],'Resolution',300)
+            % close(ax);
+        end
+    end
+end
+%% MULTI-CLUSTER PLOT OF ALL SUBJECTS ================================== %%
+%-
+color_dark = linspecer(length(cond_ttest));
+color_light = color_dark*0.5;
+IM_RESIZE = 0.5;
+MAX_VT_DIM = 4;
+VERTICAL_SHIFT =  0.2;
+HORIZONTAL_SHIFT = 0.3;
+HORIZ_START = 0.08;
+VERTICAL_START = 0.75;
+AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
+%##
+vert_shift = 0;
+vt = 1;
+for i = 1:length(ttest_pairs)
+    for c_i = 1:size(cond_ttest,1)
+        horiz_shift = HORIZ_START;
+        %-
+        in_1 = conn_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),cond_ttest(c_i,1)};
+        in_2 = conn_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),cond_ttest(c_i,2)};
+        pvals = pval_clust_mat{ttest_pairs(i,1),ttest_pairs(i,2),c_i};
+        clim = [min([in_1;in_2],[],'all')-std([in_1;in_2],[],'all'),max([in_1;in_2],[],'all')+std([in_1;in_2],[],'all')];
+        if size(in_1,1) >1 & size(in_2,1) > 1 && ~isempty(in_1) && ~isempty(in_2)
+            if vt > MAX_VT_DIM || c_i == 1
+                fig = figure('color','white','renderer','Painters');
+                sgtitle(sprintf('ttest: %i <=> %i',ttest_pairs(i,1),ttest_pairs(i,2)),'FontName','Arial','FontSize',14,'FontWeight','bold','Interpreter','none');
+                set(fig,'Units','inches','Position',[0.5,0.5,6,9.5])
+                set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+                hold on;
+                set(gca,AXES_DEFAULT_PROPS{:})
+                %-
+                vert_shift = 0;
+                vt = 1;
+            end
+            %-
+            axes();
+            hold on;
+            %## IN_1
+            in_1_mean = mean(in_1);
+            in_1_median = median(in_1);
+            subjs = plot(conn_freqs,in_1,'color',[0,0,0,0.15],'linestyle','-','linewidth',2,'displayname','subject conn');
+            mean_plot = plot(conn_freqs,in_1_mean,'color',color_dark(cond_ttest(c_i,1),:),'linestyle','-','linewidth',4,'displayname','mean conn');
+            median_plot = plot(conn_freqs,in_1_median,'color',color_dark(cond_ttest(c_i,1),:),'linestyle','--','linewidth',4,'displayname','median conn');
+            %-
+            ax = gca;
+            plot([0 40],[0 0],'--','color','black');
+            xlim([3 60]);
+            ylim([clim(1) clim(2)]);
+            xlabel('Frequency(Hz)');
+            ylabel('connectivity');
+            set(ax,'FontName','Arial',...
+                'FontSize',12,...
+                'FontWeight','bold');
+            xline(3,'--'); xline(8,'--'); xline(13,'--'); xline(30,'--');
+            set(ax,'FontName','Arial','FontSize',10,...
+                'FontWeight','bold');
+            % title(sprintf('Cond %s',conds_test{cond_ttest(c_i,1)}))
+            title(sprintf('Cond %i',cond_ttest(c_i,1)))
+            set(ax,'OuterPosition',[0,0,1,1]);
+            set(ax,'Position',[horiz_shift,VERTICAL_START-vert_shift,0.4*IM_RESIZE,0.25*IM_RESIZE]);  %[left bottom width height]
+            horiz_shift = horiz_shift + HORIZONTAL_SHIFT;
 
-%## LOAD TEMP EEG DATA
-conditions = MAIN_STUDY.etc.a_epoch_process.epoch_chars; %EVENT_COND_COMBOS; %MAIN_STUDY.etc.a_epoch_process.epoch_chars; %unique(EEG.etc.conn_table.t_fNames);
-% tmp = unique(MAIN_ALLEEG(1).etc.conn_table.t_fNames);
-% COND_NAMES = cell(length(tmp),1);
-% for i = 1:length(tmp)
-%     out = strsplit(tmp{i},'.');
-%     out = strsplit(out{1},'_');
-%     out = strjoin(out(3:end),' ');
-%     COND_NAMES{i} = out;
-% end
-%% MODEL ORDER & VALIDATION DATA
-%{
-% [tbl_out,tbl_summary_out] = cnctanl_valfigs_to_table(save_dir,COND_CHARS);
-[tbl_out,tbl_summary_out] = cnctanl_valfigs_to_table([STUDIES_DIR filesep sprintf('%s',study_dir_fname) filesep 'conn_data'],conditions);
+            %## IN_2
+            axes();
+            hold on;
+            in_2_mean = mean(in_2);
+            in_2_median = median(in_2);
+            subjs = plot(conn_freqs,in_2,'color',[0,0,0,0.15],'linestyle','-','linewidth',2,'displayname','subject conn');
+            mean_plot = plot(conn_freqs,in_2_mean,'color',color_dark(cond_ttest(c_i,2),:),'linestyle','-','linewidth',4,'displayname','mean conn');
+            median_plot = plot(conn_freqs,in_2_median,'color',color_dark(cond_ttest(c_i,2),:),'linestyle','-','linewidth',4,'displayname','median conn');
+            %-
+            ax = gca;
+            plot([0 40],[0 0],'--','color','black');
+            xlim([3 60]);
+            ylim([clim(1) clim(2)]);
+            xlabel('Frequency(Hz)');
+            ylabel('');
+            set(ax,'FontName','Arial',...
+                'FontSize',12,...
+                'FontWeight','bold');
+            xline(3,'--'); xline(8,'--'); xline(13,'--'); xline(30,'--');
+            set(ax,'FontName','Arial','FontSize',10,...
+                'FontWeight','bold');
+            % title(sprintf('Cond %s',conds_test{cond_ttest(c_i,2)}))
+            title(sprintf('Cond %i',cond_ttest(c_i,2)))
+            set(ax,'OuterPosition',[0,0,1,1]);
+            set(ax,'Position',[horiz_shift,VERTICAL_START-vert_shift,0.4*IM_RESIZE,0.25*IM_RESIZE]);  %[left bottom width height]
+            horiz_shift = horiz_shift + HORIZONTAL_SHIFT;
 
-%-
-fprintf('HQ median information crit model order: %0.2f\n',median(tbl_summary_out.min_modorder_info_crit_hq_line));
-fprintf('HQ iqr information crit model order: %0.2f\n',iqr(tbl_summary_out.min_modorder_info_crit_hq_line));
-%-
-fprintf('AIC minimum information crit model order: %0.2f\n',mean(tbl_summary_out.min_modorder_info_crit_aic_line));
-fprintf('HQ mean histogram model order: %0.2f\n',mean(tbl_summary_out.mean_hist_hq_amnts));
-fprintf('AIC mean histogram model order: %0.2f\n',mean(tbl_summary_out.mean_hist_aic_amnts));
-%-
-fprintf('Consistency: %0.2f\n',mean(tbl_summary_out.mean_perc_cons))
-fprintf('ACF Whiteness: %0.2f\n',mean(tbl_summary_out.mean_white_sig_acf))
-fprintf('LJB Whiteness: %0.2f\n',mean(tbl_summary_out.mean_white_sig_ljb))
-fprintf('BOXP Whiteness: %0.2f\n',mean(tbl_summary_out.mean_white_sig_boxp))
-fprintf('LIMCL Whiteness: %0.2f\n',mean(tbl_summary_out.mean_white_sig_limcl))
-fprintf('Stability: %0.2f\n',mean(tbl_summary_out.mean_stability_ind))
-writetable(tbl_summary_out,[save_dir filesep 'model_crit_summary.xlsx']);
-%}
+            %## PVALS
+            axes();
+            hold on;
+            subjs = plot(conn_freqs,pvals<0.05,'color',[0,0,0],'linestyle','-','linewidth',2,'displayname','subject conn');
+            %-
+            ax = gca;
+            plot([0 40],[0 0],'--','color','black');
+            xlim([3 60]);
+            ylim([0 1.5]);
+            xlabel('Frequency(Hz)');
+            ylabel('');
+            set(ax,'FontName','Arial',...
+                'FontSize',12,...
+                'FontWeight','bold');
+            xline(3,'--'); xline(8,'--'); xline(13,'--'); xline(30,'--');
+            set(ax,'FontName','Arial','FontSize',10,...
+                'FontWeight','bold');
+            title(sprintf('Cluster Ttest'));
+            set(ax,'OuterPosition',[0,0,1,1]);
+            set(ax,'Position',[horiz_shift,VERTICAL_START-vert_shift,0.4*IM_RESIZE,0.25*IM_RESIZE]);  %[left bottom width height]
+            horiz_shift = horiz_shift + HORIZONTAL_SHIFT;
+            vert_shift = vert_shift + VERTICAL_SHIFT;
+            vt = vt + 1;
+            if vt > MAX_VT_DIM || c_i == size(cond_ttest,1)
+                hold off;
+                exportgraphics(fig,[save_dir filesep sprintf('cl%i-cl%i_cond%i-cond%i_spedterrainvsrest_conn_clusterttests.tiff',ttest_pairs(i,1),ttest_pairs(i,2),cond_ttest(c_i,1),cond_ttest(c_i,2))],'Resolution',300)
+                close(fig);
+            end
+        end
+    end
+end
+
+
 %%
 %%
 % fpath = [destination_folder filesep CONN_MEASURES{1} filesep 'R_data' filesep COND_NAMES{4}];
@@ -614,41 +832,8 @@ for cond_i = 1:length(conditions)
         end
     end
     par_save(connStruct,fpath,sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{conn_i}));
+end
 
-end
-%% NO BASELINE (Condition Difference Bootstat)
-%{
-for conn_i = 1:length(CONN_MEASURES)
-    fpath = [destination_folder filesep CONN_MEASURES{conn_i} filesep 'R_data'];
-    if ~exist([fpath filesep 'btwn_cond'],'dir')
-        mkdir([fpath filesep 'btwn_cond']);
-    end
-    connStruct = zeros(length(cluster_struct),length(cluster_struct),length(allfreqs),length(alltimes));
-    diff_curr_ersp = cell(length(cluster_struct),length(cluster_struct));
-    connStruct_boot_1 = par_load([fpath filesep COND_NAMES{1}],sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
-    connStruct_boot_2 = par_load([fpath filesep COND_NAMES{2}],sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
-    for j=1:length(cluster_ints)
-        for k=1:length(cluster_ints)
-            %- Calculate and subtract baseline
-            diff_curr_ersp{j,k} = connStruct_boot_1{j,k}-connStruct_boot_2{j,k};
-            curr_ersp = permute(diff_curr_ersp{j,k},[2 3 1]);
-            %- Use bootstat & bootstrap and significance mask
-            pboot = bootstat(curr_ersp,'median(arg1,3);','boottype','shuffle',...
-                'label','ERSP','bootside','both','naccu',200,...
-                'alpha',ALPHA,'dimaccu',2);
-            fprintf('\n');
-            curr_ersp = median(curr_ersp,3);
-            curr_maskedersp = curr_ersp;
-            curr_maskedersp(curr_ersp > repmat(pboot(:,1),[1 size(curr_ersp,2)]) & curr_ersp < repmat(pboot(:,2),[1 size(curr_ersp,2)])) = 0;
-            %- store
-            curr_maskedersp=permute(curr_maskedersp,[3 1 2]);
-            connStruct(j,k,:,:)=squeeze(curr_maskedersp);
-        end
-    end
-    par_save(diff_curr_ersp,[fpath filesep 'btwn_cond'],sprintf('connStruct%s_boot.mat',CONN_MEASURES{conn_i}));
-    par_save(connStruct,[fpath filesep 'btwn_cond'],sprintf('connStruct%s_baseSub.mat',CONN_MEASURES{conn_i}));
-end
-%}
 %%
 %Create theta and alpha band networks (4-8, 8-13 Hz), averaging 1st second
 %of activity; then do statistical testing using bootstrap distributions

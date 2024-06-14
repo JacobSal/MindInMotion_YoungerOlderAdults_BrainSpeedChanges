@@ -99,7 +99,7 @@ SUB_GROUP_FNAME = 'group_spec';
 spca_dir = [studies_fpath filesep sprintf('%s',spca_study_dir)];
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
-CLUSTER_K = 13;
+CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
@@ -261,7 +261,7 @@ spca_fpath = [spca_dir filesep STUDY.datasetinfo(subj_i).subject filesep 'GAIT_E
 rest_psd = par_load(spca_fpath,sprintf('gait_psd_spca.mat'));
 freqs = rest_psd.icatimefopts.freqs;
 %-
-spca_table = par_load(cluster_study_fpath,'spca_cluster_table_psd.mat');
+spca_table = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],'spca_cluster_table_psd.mat');
 %%
 fooof_results = cell(length(DESIGN_INDS),1);
 fooof_diff_store = cell(length(DESIGN_INDS),1);

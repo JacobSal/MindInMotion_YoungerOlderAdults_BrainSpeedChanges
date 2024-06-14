@@ -97,7 +97,7 @@ SUB_GROUP_FNAME = 'all_spec';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
-CLUSTER_K =13;
+CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
@@ -475,7 +475,7 @@ end
 disp(length(unique(subj_chk)));
 disp(length(unique(FOOOF_TABLE.subj_id)));
 save([save_dir filesep 'fooof_results.mat'],'fooof_results');
-%%
+%% MULTI-CLUSTER PLOT OF ALL SUBJECTS ================================== %%
 %-
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);

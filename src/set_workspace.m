@@ -78,8 +78,8 @@ if ADD_CLEANING_SUBMODS
                     'Granger_Geweke_Causality','MindInMotion','bemobil-pipeline-master','bids-matlab-tools5.3.1',...
                     'Cleanline2.00','firfilt','ICLabel','LIMO3.2','PowPowCAT3.0','bva-io1.7',...
                     'EEGLAB-specparam-master','iCanClean','Viewprops1.5.4',...
-                    'trimOutlier-master'};
-    SUBMODULES_GENPATH = {'Cleanline2.00'};
+                    'trimOutlier-master','Gait Tracking With x-IMU'};
+    SUBMODULES_GENPATH = {'Cleanline2.00','Gait Tracking With x-IMU'};
     SUBMODULES_ITERS = (1:length(SUBMODULES));
 elseif ADD_DIPFIT_COMPILE_SUBMODS
     SUBMODULES = {'fieldtrip','eeglab','postAmicaUtility'};
