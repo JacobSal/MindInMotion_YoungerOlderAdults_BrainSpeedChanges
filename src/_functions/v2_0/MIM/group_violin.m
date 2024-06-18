@@ -55,7 +55,9 @@ DEFAULT_STATS_STRUCT = struct('anova',{{}},...
                           'regress_pval',{{}},...
                           'regress_line',{{}},...
                           'r2_coeff',{[]},...
-                          'regress_xvals',0);
+                          'regress_xvals',0,...
+                          'subject_char',[],... % this option when filled prints removal of nan() info
+                          'group_order',categorical({''})); 
 %- STATS_STRUCT EXAMPLE:
 % STATS_STRUCT = struct('anova',{0.02,0.1},...
 %                       'pvals',{[0.001,0.002,0.01],[0.2,0.3,0.05,0.1]},...
@@ -92,14 +94,23 @@ STATS_STRUCT = set_defaults_struct(STATS_STRUCT,DEFAULT_STATS_STRUCT);
 %##
 table_tmp = table_in;
 %##
-groups = unique(table_tmp.(group_char));
-conds = unique(table_tmp.(cond_char));
+%- set groups
+if any(isempty(STATS_STRUCT.group_order)) || any(isundefined(STATS_STRUCT.group_order))
+    groups = unique(table_tmp.(group_char));
+else
+    warning('STATS_STRUCT.group_order is being used, make sure to change PLOT_STRUCT.group_labels to match...')
+    groups = STATS_STRUCT.group_order;
+end
 if PLOT_STRUCT.do_combine_groups
     table_tmp.(group_char) = categorical(ones(height(table_tmp),1));
-    PLOT_STRUCT.group_offsets = [0.5];
+    PLOT_STRUCT.group_offsets = 0.5;
     groups = unique(table_tmp.(group_char));
     PLOT_STRUCT.group_labels = categorical({[sprintf('%s',PLOT_STRUCT.group_labels(1)), sprintf(' & %s',PLOT_STRUCT.group_labels(2:end))]});
+else
+    fprintf('Plotting groups seperately...\n')
 end
+%- set conditions
+conds = unique(table_tmp.(cond_char));
 %%
 if isempty(parent_axes)
     ax = axes(figure);
@@ -124,6 +135,16 @@ for i=1:length(groups)
         tt = table_tmp(inds,:);
         vals = tt.(measure_char);
         sigline_ymax(i,j) = max(tt.(measure_char));
+        chk = isnan(vals);
+        %- remove NaNs from vals
+        if any(chk)
+            if ~isempty(STATS_STRUCT.subject_char)
+                fprintf('\nRemoving NaN''s from data for subjects: \n');
+                fprintf('%s, ',tt.(STATS_STRUCT.subject_char)(logical(chk)))
+            end
+            vals = vals(~chk);
+        end
+        %- calculate mean and std and crop out data beyond limits
         data_mean = mean(vals);
         data_std = std(vals);
         ind_crop = tt.(measure_char)>data_mean-STD_CUTOFF*data_std & tt.(measure_char)<data_mean+STD_CUTOFF*data_std;
@@ -133,7 +154,7 @@ for i=1:length(groups)
         offset = PLOT_STRUCT.cond_offsets(j)+g_offset;
         %- check input types
         if ~isnumscalar(g_i)
-            tmp_gi = double(g_i); %double(string(g_i));
+            tmp_gi = i; %double(g_i); %double(string(g_i));
         else
             tmp_gi = g_i;
         end
@@ -237,7 +258,7 @@ for i=1:length(groups)
                         bx1(tt) = violins{bx1(tt)}.MedianPlot.XData;
                         bx2(tt) = violins{bx2(tt)}.MedianPlot.XData;
                     end     
-                    pp = cus_sigbracket('+',STATS_STRUCT.pvals{i}(j),bx1,bx2,by1,by2);
+                    pp = cus_sigbracket('+',STATS_STRUCT.pvals_grp{i},bx1,bx2,by1,by2);
                     y = gety(pp);
                     set_y = false;
                 end
@@ -380,7 +401,7 @@ function pp = cus_sigbracket(lbl,pVal,bx1,bx2,by1,by2)
         end
         text(mean(bxconn)*1, max(byconn)*1.05, lbl) % the sig star sign
     end
-    hold off;
+    hold on;
 end
 %% ================================================================== %%
 function pp = cus_sigline(xs,lbl,h,yv,pVal)
@@ -422,7 +443,7 @@ function pp = cus_sigline(xs,lbl,h,yv,pVal)
     end
     % plot([1;1]*xs(1),[y*1.05,y*1.1],'-k', 'LineWidth',1);%left edge drop
     % plot([1;1]*xs(2),[y*1.05,y*1.1],'-k', 'LineWidth',1);%right edge drop
-    hold off
+    hold on;
 end
 %--------------------------------------------------------------------------
 % Helper function that Returns the largest single value of ydata in a given
