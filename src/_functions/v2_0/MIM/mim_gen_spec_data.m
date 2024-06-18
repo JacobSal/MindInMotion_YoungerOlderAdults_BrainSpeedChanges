@@ -1,5 +1,5 @@
 function [STUDY,spec_savef,spec_subjcorr_savef] = mim_gen_spec_data(STUDY,ALLEEG,...
-    warping_times,des_i,cluster_i,design_char,save_dir,varargin)
+    des_i,cluster_i,design_char,save_dir,varargin)
 % CAT CODE
 %  _._     _,-'""`-._
 % (,-.`._,'(       |\`-/|
@@ -32,7 +32,6 @@ p = inputParser;
 %## REQUIRED
 addRequired(p,'STUDY',@isstruct);
 addRequired(p,'ALLEEG',@isstruct);
-addRequired(p,'warping_times',@isnumeric);
 addRequired(p,'des_i',@isnumeric);
 addRequired(p,'cluster_i',@isnumeric);
 addRequired(p,'design_char',@ischar);
@@ -41,7 +40,7 @@ addRequired(p,'save_dir',@ischar);
 %## PARAMETER
 addParameter(p,'SPEC_PARAMS',SPEC_PARAMS,@isstruct);
 addParameter(p,'STAT_PARAMS',STAT_PARAMS,@isstruct);
-parse(p,STUDY,ALLEEG,warping_times,des_i,cluster_i,...
+parse(p,STUDY,ALLEEG,des_i,cluster_i,...
     design_char,save_dir,varargin{:});
 %## SET DEFAULTS
 %- OPTIONALS

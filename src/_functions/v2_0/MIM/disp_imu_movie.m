@@ -26,7 +26,6 @@ function [] = disp_imu_movie(pos_in,rot_mat,save_fpath)
 % You should have received a copy of the GNU General Public License
 % along with this program; If not, see <http://www.gnu.org/licenses/>.
 %%
-global XLIM YLIM ZLIM MAKE_VIDEO
 SAMPLE_PERIOD = 128;
 SAMPLE_PLOT_FREQ = 1; %128/4; %
 START_ANGX = 45;
@@ -51,7 +50,7 @@ spinMat = [ROTX,ROTY,ROTZ];
 %## Create 6 DOF animation
 %- note trail could be 'Off' 'DotsOnly' or 'All'
 if DO_VIDEOWRITER
-    SixDofAnimation(pos_in, rot_mat,... %quatern2rotMat(quat_in), ...
+    local_6df_animation_mov(XLIM,YLIM,ZLIM,MAKE_VIDEO,pos_in, rot_mat,... %quatern2rotMat(quat_in), ...
         'SamplePlotFreq', SAMPLE_PLOT_FREQ,...
         'Trail', 'DotsOnly',... % 'All',... %'DotsOnly', ...
         'Position', [30,30,1280,920],...
@@ -66,7 +65,7 @@ if DO_VIDEOWRITER
         'AVIfps', (1/SAMPLE_PLOT_FREQ)*(SAMPLE_PERIOD),... %
         'AVIfileName',save_fpath);
 else
-    SixDofAnimation(pos_in, rot_mat,... %quatern2rotMat(quat_in), ...
+    local_6df_animation_mov(XLIM,YLIM,ZLIM,MAKE_VIDEO,pos_in,rot_mat,... %quatern2rotMat(quat_in), ...
         'SamplePlotFreq', GIF_CONVERSION_PLOTFREQ,...
         'Trail', 'DotsOnly',... % 'All',... %'DotsOnly', ...
         'Position', [30,30,1280,920],...
@@ -83,9 +82,7 @@ else
 end
 end
 %%
-function fig = SixDofAnimation(varargin)
-    %% GLOBABLS
-    global XLIM YLIM ZLIM MAKE_VIDEO
+function fig = local_6df_animation_mov(XLIM,YLIM,ZLIM,MAKE_VIDEO,varargin)
     %% Create local variables
 
     % Required arguments
@@ -97,7 +94,7 @@ function fig = SixDofAnimation(varargin)
     SamplePlotFreq = 1;
     Trail = 'Off';
     LimitRatio = 1;
-    Position = [];
+    Position = [720,480];
     FullScreen = false;
     View = [30 20];
     AxisLength = 1;
@@ -135,7 +132,7 @@ function fig = SixDofAnimation(varargin)
         elseif  strcmp(varargin{i}, 'AVIfileName'), AVIfileName = varargin{i+1};
         elseif  strcmp(varargin{i}, 'AVIfileNameEnum'), AVIfileNameEnum = varargin{i+1};
         elseif  strcmp(varargin{i}, 'AVIfps'), AVIfps = varargin{i+1};
-        else error('Invalid argument.');
+        else error('\nInvalid argument.');
         end
     end
 

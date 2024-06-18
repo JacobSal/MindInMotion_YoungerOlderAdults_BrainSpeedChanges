@@ -1,0 +1,774 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={lme\_mods},
+  pdfauthor={Jacob Salminen},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{lme\_mods}
+\author{Jacob Salminen}
+\date{2024-04-19}
+
+\begin{document}
+\maketitle
+
+\hypertarget{packages-setup}{%
+\section{Packages \& Setup}\label{packages-setup}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# install.packages(c("tidyverse","purrr","R.matlab","readxl","dplyr"))}
+\FunctionTok{library}\NormalTok{(readxl);}
+\FunctionTok{library}\NormalTok{(purrr)}
+\FunctionTok{library}\NormalTok{(tidyverse);}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## -- Attaching core tidyverse packages ------------------------ tidyverse 2.0.0 --
+## v dplyr     1.1.4     v readr     2.1.5
+## v forcats   1.0.0     v stringr   1.5.1
+## v ggplot2   3.5.0     v tibble    3.2.1
+## v lubridate 1.9.3     v tidyr     1.3.1
+## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()
+## i Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(tibble)}
+\FunctionTok{library}\NormalTok{(knitr);}
+\FunctionTok{library}\NormalTok{(gtsummary)}
+\FunctionTok{library}\NormalTok{(kableExtra)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Attaching package: 'kableExtra'
+## 
+## The following object is masked from 'package:dplyr':
+## 
+##     group_rows
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(lme4)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Loading required package: Matrix
+## 
+## Attaching package: 'Matrix'
+## 
+## The following objects are masked from 'package:tidyr':
+## 
+##     expand, pack, unpack
+\end{verbatim}
+
+\hypertarget{gtsummary-theme}{%
+\subsection{GTSUMMARY THEME}\label{gtsummary-theme}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# my\_theme \textless{}{-}}
+\CommentTok{\#   list(}
+\CommentTok{\#     "tbl\_summary{-}str:default\_con\_type" = "continuous2",}
+\CommentTok{\#     "tbl\_summary{-}str:continuous\_stat" = c(}
+\CommentTok{\#       "\{median\} (\{p25\} {-} \{p75\})",}
+\CommentTok{\#       "\{mean\} (\{sd\})",}
+\CommentTok{\#       "\{min\} {-} \{max\}"}
+\CommentTok{\#     ),}
+\CommentTok{\#     "tbl\_summary{-}str:categorical\_stat" = "\{n\} / \{N\} (\{p\}\%)",}
+\CommentTok{\#     "style\_number{-}arg:big.mark" = "",}
+\CommentTok{\#     "tbl\_summary{-}fn:percent\_fun" = function(x) style\_percent(x, digits = 3)}
+\CommentTok{\#   )}
+\CommentTok{\# my\_theme \textless{}{-}}
+\CommentTok{\#   list()}
+\CommentTok{\# gtsummary::set\_gtsummary\_theme(my\_theme)}
+\NormalTok{gtsummary}\SpecialCharTok{::}\FunctionTok{set\_gtsummary\_theme}\NormalTok{(}\FunctionTok{theme\_gtsummary\_journal}\NormalTok{(}\StringTok{"jama"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Setting theme `JAMA`
+## Setting theme `JAMA`
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# reset\_gtsummary\_theme()}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{load-table}{%
+\subsection{load table}\label{load-table}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# excel\_dir \textless{}{-}"M:/jsalminen/GitHub/par\_EEGProcessing/src/\_data/MIM\_dataset/\_studies/04162024\_MIM\_YAOAN89\_antsnormalize\_iccREMG0p4\_powpow0p3\_skull0p01/cluster/icrej\_5/12/spec\_data/group\_spec/psd\_calcs/fooof\_kinematics\_table.xlsx";}
+\NormalTok{excel\_dir }\OtherTok{\textless{}{-}}\StringTok{"M:/jsalminen/GitHub/par\_EEGProcessing/src/\_data/MIM\_dataset/\_studies/04232024\_MIM\_YAOAN89\_antsnorm\_dipfix\_iccREMG0p4\_powpow0p3\_skull0p01\_15mmrej/cluster/icrej\_5/12/spec\_data/group\_spec/psd\_calcs/fooof\_kinematics\_table.xlsx"}\NormalTok{;}
+\NormalTok{eegt }\OtherTok{\textless{}{-}} \FunctionTok{read\_excel}\NormalTok{(excel\_dir,}\AttributeTok{sheet=}\StringTok{"Sheet1"}\NormalTok{) }
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{get-unique-entries}{%
+\subsection{get unique entries}\label{get-unique-entries}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{clusters }\OtherTok{=} \FunctionTok{unique}\NormalTok{(eegt}\SpecialCharTok{$}\NormalTok{cluster\_id);}
+\NormalTok{subjects }\OtherTok{=} \FunctionTok{unique}\NormalTok{(eegt}\SpecialCharTok{$}\NormalTok{subj\_char);}
+\NormalTok{groups }\OtherTok{=} \FunctionTok{unique}\NormalTok{(eegt}\SpecialCharTok{$}\NormalTok{group\_char);}
+\NormalTok{kin\_measures }\OtherTok{=} \FunctionTok{c}\NormalTok{(}\StringTok{\textquotesingle{}mean\_APexc\_COV\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}mean\_APexc\_mean\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}mean\_MLexc\_COV\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}mean\_MLexc\_mean\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}mean\_StepDur\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}mean\_UDexc\_COV\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}mean\_UDexc\_mean\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}mean\_StanceDur\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}mean\_GaitCycleDur\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}mean\_PeakUpDownVel\_mean\textquotesingle{}}\NormalTok{);}
+\NormalTok{eeg\_measures }\OtherTok{=} \FunctionTok{c}\NormalTok{(}\StringTok{\textquotesingle{}theta\_avg\_power\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}alpha\_avg\_power\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}beta\_avg\_power\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}aperiodic\_exp\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}aperiodic\_offset\textquotesingle{}}\NormalTok{);}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{get-speeds-only}{%
+\subsection{get speeds only}\label{get-speeds-only}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{eegt }\OtherTok{\textless{}{-}} \FunctionTok{filter\_at}\NormalTok{(eegt,}\FunctionTok{vars}\NormalTok{(}\StringTok{\textquotesingle{}cond\_char\textquotesingle{}}\NormalTok{), }\FunctionTok{any\_vars}\NormalTok{(. }\SpecialCharTok{\%in\%} \FunctionTok{c}\NormalTok{(}\StringTok{\textquotesingle{}0.25\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}0.5\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}0.75\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}1.0\textquotesingle{}}\NormalTok{)))}
+\NormalTok{flat\_speeds }\OtherTok{=} \FunctionTok{unique}\NormalTok{(eegt}\SpecialCharTok{$}\NormalTok{cond\_char)}
+\NormalTok{eegt}\SpecialCharTok{$}\NormalTok{cond\_char }\OtherTok{\textless{}{-}} \FunctionTok{as.numeric}\NormalTok{(eegt}\SpecialCharTok{$}\NormalTok{cond\_char)}
+\NormalTok{eegt}\SpecialCharTok{$}\NormalTok{speed\_cond\_num }\OtherTok{\textless{}{-}} \FunctionTok{as.numeric}\NormalTok{(eegt}\SpecialCharTok{$}\NormalTok{cond\_char)}
+\NormalTok{eegt }\OtherTok{\textless{}{-}} \FunctionTok{mutate}\NormalTok{(eegt,}\FunctionTok{across}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{\textquotesingle{}subj\_char\textquotesingle{}}\NormalTok{), factor))}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{get-terrains-only-if-applicable}{%
+\subsection{get terrains only (if
+applicable)}\label{get-terrains-only-if-applicable}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# eegt \textless{}{-} filter\_at(eegt,vars(\textquotesingle{}cond\_char\textquotesingle{}), any\_vars(. \%in\% c(\textquotesingle{}flat\textquotesingle{},\textquotesingle{}low\textquotesingle{},\textquotesingle{}med\textquotesingle{},\textquotesingle{}high\textquotesingle{})))}
+\CommentTok{\# eegt \textless{}{-} filter\_at(eegt,vars(\textquotesingle{}cond\_char\textquotesingle{}), any\_vars(. \%in\% c(\textquotesingle{}high\textquotesingle{})))}
+\CommentTok{\# eegt$terr\_ord\_speed \textless{}{-} cut(eegt$speed\_ms, 4, ordered = TRUE)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{convert-speeds-to-ordered-groups-to-factors}{%
+\subsection{convert speeds to ordered \& groups to
+factors}\label{convert-speeds-to-ordered-groups-to-factors}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{eegt }\OtherTok{\textless{}{-}} \FunctionTok{mutate}\NormalTok{(eegt,}\FunctionTok{across}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{\textquotesingle{}group\_char\textquotesingle{}}\NormalTok{), factor))}
+\NormalTok{eegt}\SpecialCharTok{$}\NormalTok{speed\_ord }\OtherTok{\textless{}{-}} \FunctionTok{cut}\NormalTok{(eegt}\SpecialCharTok{$}\NormalTok{cond\_char, }\DecValTok{4}\NormalTok{, }\AttributeTok{ordered =} \ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{eegt }\OtherTok{\textless{}{-}} \FunctionTok{mutate}\NormalTok{(eegt,}\FunctionTok{across}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{\textquotesingle{}cond\_char\textquotesingle{}}\NormalTok{), factor))}
+\FunctionTok{head}\NormalTok{(eegt)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 6 x 139
+##   speed_ms subj_id subj_cl_ind subj_char comp_id design_id cond_id cond_char
+##      <dbl> <chr>         <dbl> <fct>       <dbl> <chr>     <chr>   <fct>    
+## 1     1.2  5                 1 H1011           4 2         1       0.25     
+## 2     0.69 8                 2 H1017           3 2         1       0.25     
+## 3     0.51 10                3 H1019           4 2         1       0.25     
+## 4     0.76 11                4 H1020           6 2         1       0.25     
+## 5     0.59 12                5 H1022           6 2         1       0.25     
+## 6     0.8  15                6 H1027           3 2         1       0.25     
+## # i 131 more variables: group_id <chr>, cluster_id <chr>, aperiodic_exp <dbl>,
+## #   aperiodic_offset <dbl>, central_freq_1 <dbl>, central_freq_2 <dbl>,
+## #   central_freq_3 <dbl>, power_1 <dbl>, power_2 <dbl>, power_3 <dbl>,
+## #   r_squared <dbl>, theta_avg_power <dbl>, alpha_avg_power <dbl>,
+## #   beta_avg_power <dbl>, theta_1 <dbl>, theta_2 <dbl>, theta_3 <dbl>,
+## #   theta_4 <dbl>, theta_5 <dbl>, theta_6 <dbl>, theta_7 <dbl>, theta_8 <dbl>,
+## #   `alpha_ 1` <dbl>, `alpha_ 2` <dbl>, `alpha_ 3` <dbl>, `alpha_ 4` <dbl>, ...
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{eegt}\SpecialCharTok{$}\NormalTok{group\_speed\_code }\OtherTok{=} \FunctionTok{paste}\NormalTok{(eegt}\SpecialCharTok{$}\NormalTok{group\_char,eegt}\SpecialCharTok{$}\NormalTok{cond\_char,}\AttributeTok{sep=}\StringTok{"\_"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{lme-eeg-1speedgroupspeedgroup}{%
+\section{LME EEG \textasciitilde{}
+1+speed+group+speed:group}\label{lme-eeg-1speedgroupspeedgroup}}
+
+\begin{table}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}{l|c|c|c|c|c|c|c|c|c}
+\hline
+\multicolumn{1}{c|}{Cluster: } & \multicolumn{1}{c}{3} \\
+\cline{1-1} \cline{2-2}
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{\textbf{EEG Theta}} & \multicolumn{3}{c|}{\textbf{EEG Alpha}} & \multicolumn{3}{c}{\textbf{EEG Beta}} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+\textbf{Characteristic} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value}\\
+\hline
+(Intercept) & 0.63 (0.35 to 0.90) & <0.001 & <0.001 & 1.4 (0.57 to 2.2) & <0.001 & 0.004 & 1.1 (0.66 to 1.6) & <0.001 & <0.001\\
+\hline
+speed\_cond\_num & 0.16 (-0.03 to 0.34) & 0.092 & 0.12 & -0.24 (-0.52 to 0.05) & 0.11 & 0.21 & -0.24 (-0.41 to -0.07) & 0.006 & 0.012\\
+\hline
+group\_char &  & 0.086 & 0.12 &  & 0.81 & >0.99 &  & 0.52 & 0.52\\
+\hline
+\hspace{1em}H1000's & — &  &  & — &  &  & — &  & \\
+\hline
+\hspace{1em}H2000's & -0.46 (-0.87 to -0.05) &  &  & 0.38 (-0.84 to 1.6) &  &  & 0.38 (-0.30 to 1.0) &  & \\
+\hline
+\hspace{1em}H3000's & -0.22 (-0.63 to 0.19) &  &  & 0.29 (-0.94 to 1.5) &  &  & 0.07 (-0.60 to 0.74) &  & \\
+\hline
+speed\_cond\_num * group\_char &  & 0.64 & 0.64 &  & >0.99 & >0.99 &  & 0.43 & 0.52\\
+\hline
+\hspace{1em}speed\_cond\_num * H2000's & -0.07 (-0.34 to 0.20) &  &  & -0.02 (-0.45 to 0.40) &  &  & -0.02 (-0.26 to 0.23) &  & \\
+\hline
+\hspace{1em}speed\_cond\_num * H3000's & 0.06 (-0.21 to 0.33) &  &  & 0.00 (-0.42 to 0.42) &  &  & -0.15 (-0.40 to 0.10) &  & \\
+\hline
+subj\_char.sd\_\_(Intercept) & 0.56 (NA to NA) &  &  & 1.8 (NA to NA) &  &  & 1.0 (NA to NA) &  & \\
+\hline
+Residual.sd\_\_Observation & 0.23 (NA to NA) &  &  & 0.37 (NA to NA) &  &  & 0.21 (NA to NA) &  & \\
+\hline
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{1} CI = Confidence Interval}\\
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{2} False discovery rate correction for multiple testing}\\
+\end{tabular}}
+\end{table}
+
+\begin{table}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}{l|c|c|c|c|c|c|c|c|c}
+\hline
+\multicolumn{1}{c|}{Cluster: } & \multicolumn{1}{c}{4} \\
+\cline{1-1} \cline{2-2}
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{\textbf{EEG Theta}} & \multicolumn{3}{c|}{\textbf{EEG Alpha}} & \multicolumn{3}{c}{\textbf{EEG Beta}} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+\textbf{Characteristic} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value}\\
+\hline
+(Intercept) & 0.46 (0.11 to 0.81) & 0.010 & 0.041 & 4.1 (3.1 to 5.2) & <0.001 & <0.001 & 2.5 (1.9 to 3.1) & <0.001 & <0.001\\
+\hline
+speed\_cond\_num & 0.00 (-0.17 to 0.17) & 0.99 & 0.99 & -0.61 (-1.1 to -0.16) & 0.007 & 0.015 & -0.22 (-0.45 to 0.02) & 0.067 & 0.067\\
+\hline
+group\_char &  & 0.42 & 0.84 &  & 0.74 & 0.88 &  & 0.062 & 0.067\\
+\hline
+\hspace{1em}H1000's & — &  &  & — &  &  & — &  & \\
+\hline
+\hspace{1em}H2000's & -0.38 (-0.95 to 0.19) &  &  & -0.15 (-1.9 to 1.6) &  &  & 0.95 (0.02 to 1.9) &  & \\
+\hline
+\hspace{1em}H3000's & -0.19 (-0.70 to 0.31) &  &  & -0.60 (-2.2 to 0.95) &  &  & 0.84 (0.01 to 1.7) &  & \\
+\hline
+speed\_cond\_num * group\_char &  & 0.78 & 0.99 &  & 0.88 & 0.88 &  & 0.011 & 0.023\\
+\hline
+\hspace{1em}speed\_cond\_num * H2000's & 0.10 (-0.18 to 0.38) &  &  & -0.03 (-0.76 to 0.70) &  &  & -0.21 (-0.59 to 0.17) &  & \\
+\hline
+\hspace{1em}speed\_cond\_num * H3000's & 0.05 (-0.20 to 0.30) &  &  & -0.16 (-0.81 to 0.49) &  &  & -0.52 (-0.85 to -0.18) &  & \\
+\hline
+subj\_char.sd\_\_(Intercept) & 0.81 (NA to NA) &  &  & 2.5 (NA to NA) &  &  & 1.4 (NA to NA) &  & \\
+\hline
+Residual.sd\_\_Observation & 0.24 (NA to NA) &  &  & 0.62 (NA to NA) &  &  & 0.32 (NA to NA) &  & \\
+\hline
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{1} CI = Confidence Interval}\\
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{2} False discovery rate correction for multiple testing}\\
+\end{tabular}}
+\end{table}
+
+\begin{table}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}{l|c|c|c|c|c|c|c|c|c}
+\hline
+\multicolumn{1}{c|}{Cluster: } & \multicolumn{1}{c}{5} \\
+\cline{1-1} \cline{2-2}
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{\textbf{EEG Theta}} & \multicolumn{3}{c|}{\textbf{EEG Alpha}} & \multicolumn{3}{c}{\textbf{EEG Beta}} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+\textbf{Characteristic} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value}\\
+\hline
+(Intercept) & 0.68 (0.32 to 1.0) & <0.001 & <0.001 & 2.5 (1.5 to 3.6) & <0.001 & <0.001 & 2.1 (1.3 to 3.0) & <0.001 & <0.001\\
+\hline
+speed\_cond\_num & 0.23 (0.01 to 0.45) & 0.039 & 0.078 & -0.30 (-0.69 to 0.09) & 0.13 & 0.26 & -0.16 (-0.41 to 0.10) & 0.23 & 0.23\\
+\hline
+group\_char &  & 0.092 & 0.12 &  & 0.48 & 0.57 &  & 0.024 & 0.048\\
+\hline
+\hspace{1em}H1000's & — &  &  & — &  &  & — &  & \\
+\hline
+\hspace{1em}H2000's & -0.53 (-1.1 to 0.02) &  &  & -0.97 (-2.6 to 0.65) &  &  & 0.56 (-0.71 to 1.8) &  & \\
+\hline
+\hspace{1em}H3000's & -0.47 (-0.97 to 0.03) &  &  & -0.20 (-1.7 to 1.3) &  &  & 1.6 (0.44 to 2.8) &  & \\
+\hline
+speed\_cond\_num * group\_char &  & 0.87 & 0.87 &  & 0.57 & 0.57 &  & 0.054 & 0.072\\
+\hline
+\hspace{1em}speed\_cond\_num * H2000's & 0.05 (-0.28 to 0.39) &  &  & 0.22 (-0.38 to 0.83) &  &  & -0.04 (-0.43 to 0.35) &  & \\
+\hline
+\hspace{1em}speed\_cond\_num * H3000's & -0.04 (-0.35 to 0.27) &  &  & -0.10 (-0.65 to 0.45) &  &  & -0.41 (-0.77 to -0.05) &  & \\
+\hline
+subj\_char.sd\_\_(Intercept) & 0.75 (NA to NA) &  &  & 2.4 (NA to NA) &  &  & 1.9 (NA to NA) &  & \\
+\hline
+Residual.sd\_\_Observation & 0.29 (NA to NA) &  &  & 0.51 (NA to NA) &  &  & 0.33 (NA to NA) &  & \\
+\hline
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{1} CI = Confidence Interval}\\
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{2} False discovery rate correction for multiple testing}\\
+\end{tabular}}
+\end{table}
+
+\begin{table}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}{l|c|c|c|c|c|c|c|c|c}
+\hline
+\multicolumn{1}{c|}{Cluster: } & \multicolumn{1}{c}{6} \\
+\cline{1-1} \cline{2-2}
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{\textbf{EEG Theta}} & \multicolumn{3}{c|}{\textbf{EEG Alpha}} & \multicolumn{3}{c}{\textbf{EEG Beta}} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+\textbf{Characteristic} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value}\\
+\hline
+(Intercept) & 0.35 (-0.03 to 0.72) & 0.070 & 0.093 & 4.7 (3.9 to 5.5) & <0.001 & <0.001 & 2.6 (2.2 to 3.0) & <0.001 & <0.001\\
+\hline
+speed\_cond\_num & 0.05 (-0.21 to 0.32) & 0.69 & 0.69 & -0.41 (-0.85 to 0.03) & 0.065 & 0.13 & -0.10 (-0.32 to 0.13) & 0.41 & 0.41\\
+\hline
+group\_char &  & <0.001 & <0.001 &  & 0.13 & 0.18 &  & 0.029 & 0.059\\
+\hline
+\hspace{1em}H1000's & — &  &  & — &  &  & — &  & \\
+\hline
+\hspace{1em}H2000's & 0.68 (0.12 to 1.2) &  &  & -1.2 (-2.4 to 0.04) &  &  & -0.52 (-1.2 to 0.13) &  & \\
+\hline
+\hspace{1em}H3000's & 1.5 (1.0 to 2.1) &  &  & -0.86 (-2.0 to 0.28) &  &  & -0.82 (-1.4 to -0.21) &  & \\
+\hline
+speed\_cond\_num * group\_char &  & 0.028 & 0.057 &  & 0.59 & 0.59 &  & 0.38 & 0.41\\
+\hline
+\hspace{1em}speed\_cond\_num * H2000's & -0.03 (-0.43 to 0.37) &  &  & -0.03 (-0.69 to 0.62) &  &  & -0.23 (-0.57 to 0.10) &  & \\
+\hline
+\hspace{1em}speed\_cond\_num * H3000's & -0.46 (-0.83 to -0.08) &  &  & -0.30 (-0.91 to 0.32) &  &  & -0.15 (-0.47 to 0.17) &  & \\
+\hline
+subj\_char.sd\_\_(Intercept) & 0.85 (NA to NA) &  &  & 2.0 (NA to NA) &  &  & 1.1 (NA to NA) &  & \\
+\hline
+Residual.sd\_\_Observation & 0.39 (NA to NA) &  &  & 0.64 (NA to NA) &  &  & 0.33 (NA to NA) &  & \\
+\hline
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{1} CI = Confidence Interval}\\
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{2} False discovery rate correction for multiple testing}\\
+\end{tabular}}
+\end{table}
+
+\begin{table}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}{l|c|c|c|c|c|c|c|c|c}
+\hline
+\multicolumn{1}{c|}{Cluster: } & \multicolumn{1}{c}{7} \\
+\cline{1-1} \cline{2-2}
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{\textbf{EEG Theta}} & \multicolumn{3}{c|}{\textbf{EEG Alpha}} & \multicolumn{3}{c}{\textbf{EEG Beta}} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+\textbf{Characteristic} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value}\\
+\hline
+(Intercept) & 0.35 (0.08 to 0.62) & 0.010 & 0.042 & 3.2 (2.1 to 4.4) & <0.001 & <0.001 & 3.0 (2.4 to 3.7) & <0.001 & <0.001\\
+\hline
+speed\_cond\_num & 0.07 (-0.09 to 0.22) & 0.40 & 0.40 & -0.17 (-0.67 to 0.34) & 0.52 & 0.69 & -0.39 (-0.66 to -0.12) & 0.004 & 0.009\\
+\hline
+group\_char &  & 0.033 & 0.066 &  & 0.83 & 0.83 &  & 0.019 & 0.025\\
+\hline
+\hspace{1em}H1000's & — &  &  & — &  &  & — &  & \\
+\hline
+\hspace{1em}H2000's & -0.57 (-1.0 to -0.13) &  &  & -0.52 (-2.4 to 1.3) &  &  & 1.0 (-0.01 to 2.1) &  & \\
+\hline
+\hspace{1em}H3000's & -0.31 (-0.70 to 0.07) &  &  & 0.01 (-1.6 to 1.6) &  &  & 1.3 (0.34 to 2.2) &  & \\
+\hline
+speed\_cond\_num * group\_char &  & 0.24 & 0.32 &  & 0.21 & 0.42 &  & 0.48 & 0.48\\
+\hline
+\hspace{1em}speed\_cond\_num * H2000's & 0.20 (-0.04 to 0.45) &  &  & -0.57 (-1.4 to 0.26) &  &  & -0.26 (-0.70 to 0.18) &  & \\
+\hline
+\hspace{1em}speed\_cond\_num * H3000's & 0.13 (-0.09 to 0.35) &  &  & -0.60 (-1.3 to 0.13) &  &  & -0.15 (-0.54 to 0.24) &  & \\
+\hline
+subj\_char.sd\_\_(Intercept) & 0.63 (NA to NA) &  &  & 2.7 (NA to NA) &  &  & 1.6 (NA to NA) &  & \\
+\hline
+Residual.sd\_\_Observation & 0.22 (NA to NA) &  &  & 0.72 (NA to NA) &  &  & 0.38 (NA to NA) &  & \\
+\hline
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{1} CI = Confidence Interval}\\
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{2} False discovery rate correction for multiple testing}\\
+\end{tabular}}
+\end{table}
+
+\begin{table}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}{l|c|c|c|c|c|c|c|c|c}
+\hline
+\multicolumn{1}{c|}{Cluster: } & \multicolumn{1}{c}{8} \\
+\cline{1-1} \cline{2-2}
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{\textbf{EEG Theta}} & \multicolumn{3}{c|}{\textbf{EEG Alpha}} & \multicolumn{3}{c}{\textbf{EEG Beta}} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+\textbf{Characteristic} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value}\\
+\hline
+(Intercept) & 0.83 (0.42 to 1.2) & <0.001 & <0.001 & 1.4 (0.76 to 2.0) & <0.001 & <0.001 & 0.74 (0.22 to 1.3) & 0.005 & 0.021\\
+\hline
+speed\_cond\_num & 0.43 (0.19 to 0.67) & <0.001 & <0.001 & -0.19 (-0.60 to 0.23) & 0.38 & 0.51 & -0.06 (-0.25 to 0.13) & 0.55 & 0.55\\
+\hline
+group\_char &  & 0.14 & 0.18 &  & 0.091 & 0.18 &  & 0.024 & 0.047\\
+\hline
+\hspace{1em}H1000's & — &  &  & — &  &  & — &  & \\
+\hline
+\hspace{1em}H2000's & -0.58 (-1.2 to 0.01) &  &  & -0.31 (-1.2 to 0.60) &  &  & 0.69 (-0.05 to 1.4) &  & \\
+\hline
+\hspace{1em}H3000's & -0.44 (-1.0 to 0.17) &  &  & 0.74 (-0.21 to 1.7) &  &  & 1.0 (0.27 to 1.8) &  & \\
+\hline
+speed\_cond\_num * group\_char &  & 0.90 & 0.90 &  & >0.99 & >0.99 &  & 0.12 & 0.16\\
+\hline
+\hspace{1em}speed\_cond\_num * H2000's & -0.08 (-0.42 to 0.26) &  &  & -0.01 (-0.61 to 0.58) &  &  & -0.28 (-0.56 to -0.01) &  & \\
+\hline
+\hspace{1em}speed\_cond\_num * H3000's & -0.06 (-0.41 to 0.29) &  &  & 0.01 (-0.61 to 0.63) &  &  & -0.13 (-0.41 to 0.15) &  & \\
+\hline
+subj\_char.sd\_\_(Intercept) & 0.84 (NA to NA) &  &  & 1.3 (NA to NA) &  &  & 1.1 (NA to NA) &  & \\
+\hline
+Residual.sd\_\_Observation & 0.29 (NA to NA) &  &  & 0.52 (NA to NA) &  &  & 0.23 (NA to NA) &  & \\
+\hline
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{1} CI = Confidence Interval}\\
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{2} False discovery rate correction for multiple testing}\\
+\end{tabular}}
+\end{table}
+
+\begin{table}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}{l|c|c|c|c|c|c|c|c|c}
+\hline
+\multicolumn{1}{c|}{Cluster: } & \multicolumn{1}{c}{9} \\
+\cline{1-1} \cline{2-2}
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{\textbf{EEG Theta}} & \multicolumn{3}{c|}{\textbf{EEG Alpha}} & \multicolumn{3}{c}{\textbf{EEG Beta}} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+\textbf{Characteristic} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value}\\
+\hline
+(Intercept) & 0.54 (0.25 to 0.83) & <0.001 & 0.001 & 2.8 (1.8 to 3.9) & <0.001 & <0.001 & 1.6 (0.98 to 2.2) & <0.001 & <0.001\\
+\hline
+speed\_cond\_num & 0.18 (-0.05 to 0.41) & 0.12 & 0.25 & -0.28 (-0.69 to 0.13) & 0.18 & 0.25 & -0.15 (-0.35 to 0.05) & 0.14 & 0.22\\
+\hline
+group\_char &  & 0.30 & 0.41 &  & 0.13 & 0.25 &  & 0.16 & 0.22\\
+\hline
+\hspace{1em}H1000's & — &  &  & — &  &  & — &  & \\
+\hline
+\hspace{1em}H2000's & -0.29 (-0.74 to 0.15) &  &  & 0.13 (-1.4 to 1.7) &  &  & 0.86 (-0.03 to 1.8) &  & \\
+\hline
+\hspace{1em}H3000's & -0.30 (-0.76 to 0.15) &  &  & -1.5 (-3.1 to 0.17) &  &  & 0.25 (-0.67 to 1.2) &  & \\
+\hline
+speed\_cond\_num * group\_char &  & 0.74 & 0.74 &  & 0.88 & 0.88 &  & 0.45 & 0.45\\
+\hline
+\hspace{1em}speed\_cond\_num * H2000's & 0.11 (-0.23 to 0.46) &  &  & 0.08 (-0.54 to 0.70) &  &  & -0.19 (-0.49 to 0.11) &  & \\
+\hline
+\hspace{1em}speed\_cond\_num * H3000's & 0.12 (-0.24 to 0.47) &  &  & 0.16 (-0.48 to 0.81) &  &  & -0.10 (-0.41 to 0.20) &  & \\
+\hline
+subj\_char.sd\_\_(Intercept) & 0.61 (NA to NA) &  &  & 2.5 (NA to NA) &  &  & 1.4 (NA to NA) &  & \\
+\hline
+Residual.sd\_\_Observation & 0.31 (NA to NA) &  &  & 0.57 (NA to NA) &  &  & 0.27 (NA to NA) &  & \\
+\hline
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{1} CI = Confidence Interval}\\
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{2} False discovery rate correction for multiple testing}\\
+\end{tabular}}
+\end{table}
+
+\begin{table}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}{l|c|c|c|c|c|c|c|c|c}
+\hline
+\multicolumn{1}{c|}{Cluster: } & \multicolumn{1}{c}{10} \\
+\cline{1-1} \cline{2-2}
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{\textbf{EEG Theta}} & \multicolumn{3}{c|}{\textbf{EEG Alpha}} & \multicolumn{3}{c}{\textbf{EEG Beta}} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+\textbf{Characteristic} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value}\\
+\hline
+(Intercept) & 1.4 (0.99 to 1.8) & <0.001 & <0.001 & 0.76 (0.35 to 1.2) & <0.001 & 0.001 & 1.4 (0.91 to 1.8) & <0.001 & <0.001\\
+\hline
+speed\_cond\_num & 0.12 (-0.12 to 0.37) & 0.33 & 0.33 & -0.10 (-0.35 to 0.14) & 0.40 & 0.63 & -0.19 (-0.34 to -0.05) & 0.011 & 0.021\\
+\hline
+group\_char &  & 0.026 & 0.052 &  & 0.79 & 0.79 &  & 0.65 & 0.74\\
+\hline
+\hspace{1em}H1000's & — &  &  & — &  &  & — &  & \\
+\hline
+\hspace{1em}H2000's & -0.83 (-1.4 to -0.21) &  &  & -0.02 (-0.64 to 0.60) &  &  & 0.31 (-0.37 to 0.99) &  & \\
+\hline
+\hspace{1em}H3000's & -0.54 (-1.2 to 0.12) &  &  & -0.22 (-0.88 to 0.44) &  &  & 0.21 (-0.52 to 0.93) &  & \\
+\hline
+speed\_cond\_num * group\_char &  & 0.20 & 0.26 &  & 0.47 & 0.63 &  & 0.74 & 0.74\\
+\hline
+\hspace{1em}speed\_cond\_num * H2000's & 0.34 (-0.03 to 0.70) &  &  & 0.22 (-0.14 to 0.58) &  &  & -0.04 (-0.26 to 0.19) &  & \\
+\hline
+\hspace{1em}speed\_cond\_num * H3000's & 0.11 (-0.29 to 0.50) &  &  & 0.15 (-0.24 to 0.54) &  &  & -0.09 (-0.33 to 0.15) &  & \\
+\hline
+subj\_char.sd\_\_(Intercept) & 0.96 (NA to NA) &  &  & 0.97 (NA to NA) &  &  & 1.1 (NA to NA) &  & \\
+\hline
+Residual.sd\_\_Observation & 0.35 (NA to NA) &  &  & 0.35 (NA to NA) &  &  & 0.21 (NA to NA) &  & \\
+\hline
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{1} CI = Confidence Interval}\\
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{2} False discovery rate correction for multiple testing}\\
+\end{tabular}}
+\end{table}
+
+\begin{table}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}{l|c|c|c|c|c|c|c|c|c}
+\hline
+\multicolumn{1}{c|}{Cluster: } & \multicolumn{1}{c}{11} \\
+\cline{1-1} \cline{2-2}
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{\textbf{EEG Theta}} & \multicolumn{3}{c|}{\textbf{EEG Alpha}} & \multicolumn{3}{c}{\textbf{EEG Beta}} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+\textbf{Characteristic} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value}\\
+\hline
+(Intercept) & 0.43 (-0.02 to 0.89) & 0.062 & 0.25 & 3.4 (2.3 to 4.6) & <0.001 & <0.001 & 1.9 (1.3 to 2.4) & <0.001 & <0.001\\
+\hline
+speed\_cond\_num & 0.08 (-0.14 to 0.29) & 0.50 & 0.65 & -0.06 (-0.54 to 0.43) & 0.82 & 0.82 & -0.12 (-0.40 to 0.16) & 0.41 & 0.54\\
+\hline
+group\_char &  & 0.13 & 0.26 &  & 0.15 & 0.20 &  & 0.68 & 0.68\\
+\hline
+\hspace{1em}H1000's & — &  &  & — &  &  & — &  & \\
+\hline
+\hspace{1em}H2000's & -0.23 (-0.92 to 0.46) &  &  & -1.1 (-2.9 to 0.69) &  &  & -0.37 (-1.2 to 0.47) &  & \\
+\hline
+\hspace{1em}H3000's & 0.48 (-0.19 to 1.1) &  &  & 0.73 (-0.98 to 2.4) &  &  & -0.22 (-1.0 to 0.58) &  & \\
+\hline
+speed\_cond\_num * group\_char &  & 0.65 & 0.65 &  & 0.002 & 0.003 &  & 0.063 & 0.13\\
+\hline
+\hspace{1em}speed\_cond\_num * H2000's & 0.05 (-0.29 to 0.38) &  &  & 0.05 (-0.69 to 0.80) &  &  & 0.05 (-0.38 to 0.48) &  & \\
+\hline
+\hspace{1em}speed\_cond\_num * H3000's & -0.11 (-0.43 to 0.21) &  &  & -1.1 (-1.8 to -0.42) &  &  & -0.42 (-0.83 to 0.00) &  & \\
+\hline
+subj\_char.sd\_\_(Intercept) & 0.90 (NA to NA) &  &  & 2.4 (NA to NA) &  &  & 1.1 (NA to NA) &  & \\
+\hline
+Residual.sd\_\_Observation & 0.26 (NA to NA) &  &  & 0.57 (NA to NA) &  &  & 0.33 (NA to NA) &  & \\
+\hline
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{1} CI = Confidence Interval}\\
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{2} False discovery rate correction for multiple testing}\\
+\end{tabular}}
+\end{table}
+
+\begin{table}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}{l|c|c|c|c|c|c|c|c|c}
+\hline
+\multicolumn{1}{c|}{Cluster: } & \multicolumn{1}{c}{12} \\
+\cline{1-1} \cline{2-2}
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{\textbf{EEG Theta}} & \multicolumn{3}{c|}{\textbf{EEG Alpha}} & \multicolumn{3}{c}{\textbf{EEG Beta}} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+\textbf{Characteristic} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value}\\
+\hline
+(Intercept) & 0.65 (0.32 to 0.99) & <0.001 & <0.001 & 1.9 (0.92 to 2.9) & <0.001 & <0.001 & 0.99 (0.53 to 1.4) & <0.001 & <0.001\\
+\hline
+speed\_cond\_num & -0.14 (-0.36 to 0.09) & 0.23 & 0.31 & -0.41 (-0.81 to -0.01) & 0.042 & 0.085 & -0.16 (-0.33 to 0.01) & 0.064 & 0.085\\
+\hline
+group\_char &  & 0.78 & 0.78 &  & 0.079 & 0.11 &  & 0.85 & 0.85\\
+\hline
+\hspace{1em}H1000's & — &  &  & — &  &  & — &  & \\
+\hline
+\hspace{1em}H2000's & -0.19 (-0.72 to 0.35) &  &  & 1.6 (0.04 to 3.1) &  &  & -0.17 (-0.90 to 0.57) &  & \\
+\hline
+\hspace{1em}H3000's & -0.04 (-0.52 to 0.44) &  &  & 1.3 (-0.13 to 2.7) &  &  & -0.17 (-0.83 to 0.49) &  & \\
+\hline
+speed\_cond\_num * group\_char &  & 0.037 & 0.074 &  & 0.93 & 0.93 &  & 0.034 & 0.068\\
+\hline
+\hspace{1em}speed\_cond\_num * H2000's & 0.46 (0.10 to 0.82) &  &  & 0.09 (-0.55 to 0.72) &  &  & 0.24 (-0.03 to 0.51) &  & \\
+\hline
+\hspace{1em}speed\_cond\_num * H3000's & 0.10 (-0.22 to 0.42) &  &  & 0.10 (-0.47 to 0.67) &  &  & -0.12 (-0.37 to 0.12) &  & \\
+\hline
+subj\_char.sd\_\_(Intercept) & 0.63 (NA to NA) &  &  & 2.0 (NA to NA) &  &  & 0.94 (NA to NA) &  & \\
+\hline
+Residual.sd\_\_Observation & 0.26 (NA to NA) &  &  & 0.47 (NA to NA) &  &  & 0.20 (NA to NA) &  & \\
+\hline
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{1} CI = Confidence Interval}\\
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{2} False discovery rate correction for multiple testing}\\
+\end{tabular}}
+\end{table}
+
+\begin{table}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}{l|c|c|c|c|c|c|c|c|c}
+\hline
+\multicolumn{1}{c|}{Cluster: } & \multicolumn{1}{c}{13} \\
+\cline{1-1} \cline{2-2}
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{\textbf{EEG Theta}} & \multicolumn{3}{c|}{\textbf{EEG Alpha}} & \multicolumn{3}{c}{\textbf{EEG Beta}} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+\textbf{Characteristic} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value}\\
+\hline
+(Intercept) & 0.05 (-0.26 to 0.36) & 0.75 & 0.75 & 2.6 (1.6 to 3.6) & <0.001 & <0.001 & 1.2 (0.79 to 1.7) & <0.001 & <0.001\\
+\hline
+speed\_cond\_num & 0.27 (0.05 to 0.49) & 0.015 & 0.062 & -0.07 (-0.51 to 0.37) & 0.75 & 0.78 & -0.05 (-0.29 to 0.19) & 0.69 & 0.69\\
+\hline
+group\_char &  & 0.21 & 0.27 &  & 0.78 & 0.78 &  & 0.30 & 0.49\\
+\hline
+\hspace{1em}H1000's & — &  &  & — &  &  & — &  & \\
+\hline
+\hspace{1em}H2000's & 0.54 (-0.09 to 1.2) &  &  & -0.53 (-2.6 to 1.5) &  &  & 0.18 (-0.71 to 1.1) &  & \\
+\hline
+\hspace{1em}H3000's & 0.26 (-0.23 to 0.75) &  &  & -0.51 (-2.1 to 1.1) &  &  & -0.47 (-1.2 to 0.24) &  & \\
+\hline
+speed\_cond\_num * group\_char &  & 0.085 & 0.17 &  & 0.20 & 0.41 &  & 0.36 & 0.49\\
+\hline
+\hspace{1em}speed\_cond\_num * H2000's & -0.21 (-0.66 to 0.24) &  &  & -0.51 (-1.4 to 0.39) &  &  & -0.28 (-0.77 to 0.20) &  & \\
+\hline
+\hspace{1em}speed\_cond\_num * H3000's & 0.30 (-0.06 to 0.65) &  &  & -0.60 (-1.3 to 0.10) &  &  & -0.22 (-0.60 to 0.16) &  & \\
+\hline
+subj\_char.sd\_\_(Intercept) & 0.64 (NA to NA) &  &  & 2.3 (NA to NA) &  &  & 0.97 (NA to NA) &  & \\
+\hline
+Residual.sd\_\_Observation & 0.30 (NA to NA) &  &  & 0.59 (NA to NA) &  &  & 0.32 (NA to NA) &  & \\
+\hline
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{1} CI = Confidence Interval}\\
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{2} False discovery rate correction for multiple testing}\\
+\end{tabular}}
+\end{table}
+
+\begin{table}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}{l|c|c|c|c|c|c|c|c|c}
+\hline
+\multicolumn{1}{c|}{Cluster: } & \multicolumn{1}{c}{14} \\
+\cline{1-1} \cline{2-2}
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{\textbf{EEG Theta}} & \multicolumn{3}{c|}{\textbf{EEG Alpha}} & \multicolumn{3}{c}{\textbf{EEG Beta}} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+\textbf{Characteristic} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value} & \textbf{Beta} \textbf{(95\% CI)} & \textbf{p-value} & \textbf{q-value}\\
+\hline
+(Intercept) & 0.45 (0.12 to 0.78) & 0.008 & 0.033 & 4.3 (3.4 to 5.3) & <0.001 & <0.001 & 2.7 (2.2 to 3.2) & <0.001 & <0.001\\
+\hline
+speed\_cond\_num & 0.04 (-0.09 to 0.17) & 0.53 & 0.53 & -0.19 (-0.57 to 0.19) & 0.32 & 0.65 & -0.09 (-0.31 to 0.12) & 0.40 & 0.72\\
+\hline
+group\_char &  & 0.46 & 0.53 &  & 0.53 & 0.70 &  & 0.72 & 0.72\\
+\hline
+\hspace{1em}H1000's & — &  &  & — &  &  & — &  & \\
+\hline
+\hspace{1em}H2000's & -0.27 (-0.79 to 0.25) &  &  & -0.83 (-2.3 to 0.66) &  &  & -0.15 (-0.97 to 0.67) &  & \\
+\hline
+\hspace{1em}H3000's & 0.05 (-0.45 to 0.55) &  &  & -0.54 (-2.0 to 0.90) &  &  & 0.21 (-0.59 to 1.0) &  & \\
+\hline
+speed\_cond\_num * group\_char &  & 0.51 & 0.53 &  & 0.80 & 0.80 &  & 0.56 & 0.72\\
+\hline
+\hspace{1em}speed\_cond\_num * H2000's & 0.12 (-0.08 to 0.32) &  &  & -0.12 (-0.71 to 0.47) &  &  & -0.13 (-0.46 to 0.21) &  & \\
+\hline
+\hspace{1em}speed\_cond\_num * H3000's & 0.05 (-0.15 to 0.24) &  &  & -0.19 (-0.76 to 0.38) &  &  & -0.17 (-0.50 to 0.15) &  & \\
+\hline
+subj\_char.sd\_\_(Intercept) & 0.84 (NA to NA) &  &  & 2.4 (NA to NA) &  &  & 1.3 (NA to NA) &  & \\
+\hline
+Residual.sd\_\_Observation & 0.18 (NA to NA) &  &  & 0.55 (NA to NA) &  &  & 0.31 (NA to NA) &  & \\
+\hline
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{1} CI = Confidence Interval}\\
+\multicolumn{10}{l}{\rule{0pt}{1em}\textsuperscript{2} False discovery rate correction for multiple testing}\\
+\end{tabular}}
+\end{table}
+
+\n\n') --\textgreater{}
+
+\n\n') --\textgreater{}
+
+\end{document}

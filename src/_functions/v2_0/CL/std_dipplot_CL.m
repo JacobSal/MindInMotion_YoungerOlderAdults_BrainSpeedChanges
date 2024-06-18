@@ -90,6 +90,28 @@ STUDY = pop_dipparams(STUDY, 'default');
 
 opt_dipplot = {'projlines',STUDY.etc.dipparams.projlines, 'axistight', STUDY.etc.dipparams.axistight, 'projimg', STUDY.etc.dipparams.projimg, 'spheres', 'on', 'dipolelength', 0, 'density', STUDY.etc.dipparams.density};
 
+colors{1}  = [1 1 1];            % White
+colors{2}  = [1 1 0];            % Yellow
+colors{3}  = [221,52,151]/255;            % Pink
+colors{4}  = [1 0 0];            % Red
+%       colors{5}  = [0.875 0.875 0.875]; % Silver
+%       colors{6}  = [0.5 0.5 0.5];      % Gray
+colors{5}  = [250 140 0]/255;    % oragne
+colors{6}  = [210 173 255]/255;   % purple
+colors{7}  = [0.5 0.5 0];        % Olive
+colors{8}  = [0.5 0 0.5];        % Purple
+colors{9}  = [0.5 0 0];          % Maroon
+colors{10} = [0 1 1];            % Aqua
+colors{11} = [0 1 0];            % Lime
+colors{12} = [0 0.5 0.5];        % Teal
+colors{13} = [0 0.5 0];          % Green
+colors{14} = [0 0 1];            % Blue
+colors{15} = [0 0 0.5];          % Navy
+colors{16} = [0.8 0.8 0.8];            % Gray
+% Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+% Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+color_override = colors;
 dipcolor = [];
 dipsize = [];
 %, 'spheres', 'on'
@@ -135,6 +157,8 @@ for k = 3:2:nargin
         dipcolor = varargin{k-1};
       case 'dipsize'
         dipsize = varargin{k-1};
+      case 'color_override'
+        color_override = varargin{k-1};
     end
 end
 
@@ -623,27 +647,28 @@ if strcmpi(mode, 'multicolor')
   % This color list was developped for std_envtopo
   % modified from dipgroups below
   % Young Adult Color - update by 20231231 
-  colors{1}  = [1 1 1];            % White
-  colors{2}  = [1 1 0];            % Yellow
-  colors{3}  = [221,52,151]/255;            % Pink
-  colors{4}  = [1 0 0];            % Red
-%       colors{5}  = [0.875 0.875 0.875]; % Silver
-%       colors{6}  = [0.5 0.5 0.5];      % Gray
-  colors{5}  = [250 140 0]/255;    % oragne
-  colors{6}  = [210 173 255]/255;   % purple
-  colors{7}  = [0.5 0.5 0];        % Olive
-  colors{8}  = [0.5 0 0.5];        % Purple
-  colors{9}  = [0.5 0 0];          % Maroon
-  colors{10} = [0 1 1];            % Aqua
-  colors{11} = [0 1 0];            % Lime
-  colors{12} = [0 0.5 0.5];        % Teal
-  colors{13} = [0 0.5 0];          % Green
-  colors{14} = [0 0 1];            % Blue
-  colors{15} = [0 0 0.5];          % Navy
-  colors{16} = [0.8 0.8 0.8];            % Gray
-  % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-  % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-  colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+%   colors{1}  = [1 1 1];            % White
+%   colors{2}  = [1 1 0];            % Yellow
+%   colors{3}  = [221,52,151]/255;            % Pink
+%   colors{4}  = [1 0 0];            % Red
+% %       colors{5}  = [0.875 0.875 0.875]; % Silver
+% %       colors{6}  = [0.5 0.5 0.5];      % Gray
+%   colors{5}  = [250 140 0]/255;    % oragne
+%   colors{6}  = [210 173 255]/255;   % purple
+%   colors{7}  = [0.5 0.5 0];        % Olive
+%   colors{8}  = [0.5 0 0.5];        % Purple
+%   colors{9}  = [0.5 0 0];          % Maroon
+%   colors{10} = [0 1 1];            % Aqua
+%   colors{11} = [0 1 0];            % Lime
+%   colors{12} = [0 0.5 0.5];        % Teal
+%   colors{13} = [0 0.5 0];          % Green
+%   colors{14} = [0 0 1];            % Blue
+%   colors{15} = [0 0 0.5];          % Navy
+%   colors{16} = [0.8 0.8 0.8];            % Gray
+%   % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+%   % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+%   colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+    colors = color_override;
 fig_h = figure;
   orient tall
   set(fig_h,'Color', 'black');
@@ -774,27 +799,28 @@ if strcmpi(mode,'together_averaged_multicolor')
       % This color list was developped for std_envtopo
       % modified from dipgroups below
       % Young Adult Color - update by 20231231 
-      colors{1}  = [1 1 1];            % White
-      colors{2}  = [1 1 0];            % Yellow
-      colors{3}  = [221,52,151]/255;            % Pink
-      colors{4}  = [1 0 0];            % Red
-%       colors{5}  = [0.875 0.875 0.875]; % Silver
-%       colors{6}  = [0.5 0.5 0.5];      % Gray
-      colors{5}  = [250 140 0]/255;    % oragne
-      colors{6}  = [210 173 255]/255;   % purple
-      colors{7}  = [0.5 0.5 0];        % Olive
-      colors{8}  = [0.5 0 0.5];        % Purple
-      colors{9}  = [0.5 0 0];          % Maroon
-      colors{10} = [0 1 1];            % Aqua
-      colors{11} = [0 1 0];            % Lime
-      colors{12} = [0 0.5 0.5];        % Teal
-      colors{13} = [0 0.5 0];          % Green
-      colors{14} = [0 0 1];            % Blue
-      colors{15} = [0 0 0.5];          % Navy
-      colors{16} = [0.8 0.8 0.8];            % Gray
-      % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-      % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-      colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+%       colors{1}  = [1 1 1];            % White
+%       colors{2}  = [1 1 0];            % Yellow
+%       colors{3}  = [221,52,151]/255;            % Pink
+%       colors{4}  = [1 0 0];            % Red
+% %       colors{5}  = [0.875 0.875 0.875]; % Silver
+% %       colors{6}  = [0.5 0.5 0.5];      % Gray
+%       colors{5}  = [250 140 0]/255;    % oragne
+%       colors{6}  = [210 173 255]/255;   % purple
+%       colors{7}  = [0.5 0.5 0];        % Olive
+%       colors{8}  = [0.5 0 0.5];        % Purple
+%       colors{9}  = [0.5 0 0];          % Maroon
+%       colors{10} = [0 1 1];            % Aqua
+%       colors{11} = [0 1 0];            % Lime
+%       colors{12} = [0 0.5 0.5];        % Teal
+%       colors{13} = [0 0.5 0];          % Green
+%       colors{14} = [0 0 1];            % Blue
+%       colors{15} = [0 0 0.5];          % Navy
+%       colors{16} = [0.8 0.8 0.8];            % Gray
+%       % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+%       % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+%       colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+    colors = color_override;
     N = length(cls);
     rowcols(2) = ceil(sqrt(N)); % Number of rows in the subplot figure.
     rowcols(1) = ceil(N/rowcols(2));
@@ -948,27 +974,28 @@ if strcmpi(mode,'together_averaged_multicolor_separate')
       % This color list was developped for std_envtopo
       % modified from dipgroups below
       % Young Adult Color - update by 20231231 
-      colors{1}  = [1 1 1];            % White
-      colors{2}  = [1 1 0];            % Yellow
-      colors{3}  = [221,52,151]/255;            % Pink
-      colors{4}  = [1 0 0];            % Red
-%       colors{5}  = [0.875 0.875 0.875]; % Silver
-%       colors{6}  = [0.5 0.5 0.5];      % Gray
-      colors{5}  = [250 140 0]/255;    % oragne
-      colors{6}  = [210 173 255]/255;   % purple
-      colors{7}  = [0.5 0.5 0];        % Olive
-      colors{8}  = [0.5 0 0.5];        % Purple
-      colors{9}  = [0.5 0 0];          % Maroon
-      colors{10} = [0 1 1];            % Aqua
-      colors{11} = [0 1 0];            % Lime
-      colors{12} = [0 0.5 0.5];        % Teal
-      colors{13} = [0 0.5 0];          % Green
-      colors{14} = [0 0 1];            % Blue
-      colors{15} = [0 0 0.5];          % Navy
-      colors{16} = [0.8 0.8 0.8];            % Gray
-      % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-      % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-      colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+%       colors{1}  = [1 1 1];            % White
+%       colors{2}  = [1 1 0];            % Yellow
+%       colors{3}  = [221,52,151]/255;            % Pink
+%       colors{4}  = [1 0 0];            % Red
+% %       colors{5}  = [0.875 0.875 0.875]; % Silver
+% %       colors{6}  = [0.5 0.5 0.5];      % Gray
+%       colors{5}  = [250 140 0]/255;    % oragne
+%       colors{6}  = [210 173 255]/255;   % purple
+%       colors{7}  = [0.5 0.5 0];        % Olive
+%       colors{8}  = [0.5 0 0.5];        % Purple
+%       colors{9}  = [0.5 0 0];          % Maroon
+%       colors{10} = [0 1 1];            % Aqua
+%       colors{11} = [0 1 0];            % Lime
+%       colors{12} = [0 0.5 0.5];        % Teal
+%       colors{13} = [0 0.5 0];          % Green
+%       colors{14} = [0 0 1];            % Blue
+%       colors{15} = [0 0 0.5];          % Navy
+%       colors{16} = [0.8 0.8 0.8];            % Gray
+%       % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+%       % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+%       colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+    colors = color_override;
     N = length(cls);
     rowcols(2) = ceil(sqrt(N)); % Number of rows in the subplot figure.
     rowcols(1) = ceil(N/rowcols(2));
@@ -1119,28 +1146,28 @@ if strcmpi(mode,'together_averaged_multicolor_separate_groups')
       % modified from dipgroups below
       
       % Young Adult Color
-      colors{1}  = [1 1 1];            % White
-      colors{2}  = [1 1 0];            % Yellow
-      colors{3}  = [221,52,151]/255;            % Pink
-      colors{4}  = [1 0 0];            % Red
-%       colors{5}  = [0.875 0.875 0.875]; % Silver
-%       colors{6}  = [0.5 0.5 0.5];      % Gray
-      colors{5}  = [250 140 0]/255;    % oragne
-      colors{6}  = [210 173 255]/255;   % purple
-      colors{7}  = [0.5 0.5 0];        % Olive
-      colors{8}  = [0.5 0 0.5];        % Purple
-      colors{9}  = [0.5 0 0];          % Maroon
-      colors{10} = [0 1 1];            % Aqua
-      colors{11} = [0 1 0];            % Lime
-      colors{12} = [0 0.5 0.5];        % Teal
-      colors{13} = [0 0.5 0];          % Green
-      colors{14} = [0 0 1];            % Blue
-      colors{15} = [0 0 0.5];          % Navy
-      colors{16} = [0.8 0.8 0.8];            % Gray
-      % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-      % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-      colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
-      
+%       colors{1}  = [1 1 1];            % White
+%       colors{2}  = [1 1 0];            % Yellow
+%       colors{3}  = [221,52,151]/255;            % Pink
+%       colors{4}  = [1 0 0];            % Red
+% %       colors{5}  = [0.875 0.875 0.875]; % Silver
+% %       colors{6}  = [0.5 0.5 0.5];      % Gray
+%       colors{5}  = [250 140 0]/255;    % oragne
+%       colors{6}  = [210 173 255]/255;   % purple
+%       colors{7}  = [0.5 0.5 0];        % Olive
+%       colors{8}  = [0.5 0 0.5];        % Purple
+%       colors{9}  = [0.5 0 0];          % Maroon
+%       colors{10} = [0 1 1];            % Aqua
+%       colors{11} = [0 1 0];            % Lime
+%       colors{12} = [0 0.5 0.5];        % Teal
+%       colors{13} = [0 0.5 0];          % Green
+%       colors{14} = [0 0 1];            % Blue
+%       colors{15} = [0 0 0.5];          % Navy
+%       colors{16} = [0.8 0.8 0.8];            % Gray
+%       % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+%       % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+%       colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+      colors = color_override;
       % Older Adult Color
       colors_OA{1}  = [0.8 0.8 0.8];            % White
       colors_OA{2}  = [254,224,139]/255;            % Yellow
@@ -1313,27 +1340,28 @@ if strcmpi(mode,'together_averaged_only')
       % This color list was developped for std_envtopo
       % modified from dipgroups below
       % Young Adult Color - update by 20231231 
-      colors{1}  = [1 1 1];            % White
-      colors{2}  = [1 1 0];            % Yellow
-      colors{3}  = [221,52,151]/255;            % Pink
-      colors{4}  = [1 0 0];            % Red
-%       colors{5}  = [0.875 0.875 0.875]; % Silver
-%       colors{6}  = [0.5 0.5 0.5];      % Gray
-      colors{5}  = [250 140 0]/255;    % oragne
-      colors{6}  = [210 173 255]/255;   % purple
-      colors{7}  = [0.5 0.5 0];        % Olive
-      colors{8}  = [0.5 0 0.5];        % Purple
-      colors{9}  = [0.5 0 0];          % Maroon
-      colors{10} = [0 1 1];            % Aqua
-      colors{11} = [0 1 0];            % Lime
-      colors{12} = [0 0.5 0.5];        % Teal
-      colors{13} = [0 0.5 0];          % Green
-      colors{14} = [0 0 1];            % Blue
-      colors{15} = [0 0 0.5];          % Navy
-      colors{16} = [0.8 0.8 0.8];            % Gray
-      % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
-      % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
-      colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+%       colors{1}  = [1 1 1];            % White
+%       colors{2}  = [1 1 0];            % Yellow
+%       colors{3}  = [221,52,151]/255;            % Pink
+%       colors{4}  = [1 0 0];            % Red
+% %       colors{5}  = [0.875 0.875 0.875]; % Silver
+% %       colors{6}  = [0.5 0.5 0.5];      % Gray
+%       colors{5}  = [250 140 0]/255;    % oragne
+%       colors{6}  = [210 173 255]/255;   % purple
+%       colors{7}  = [0.5 0.5 0];        % Olive
+%       colors{8}  = [0.5 0 0.5];        % Purple
+%       colors{9}  = [0.5 0 0];          % Maroon
+%       colors{10} = [0 1 1];            % Aqua
+%       colors{11} = [0 1 0];            % Lime
+%       colors{12} = [0 0.5 0.5];        % Teal
+%       colors{13} = [0 0.5 0];          % Green
+%       colors{14} = [0 0 1];            % Blue
+%       colors{15} = [0 0 0.5];          % Navy
+%       colors{16} = [0.8 0.8 0.8];            % Gray
+%       % Choosing and sorting 13 colors for clusters: Red, Green, Blue,
+%       % Fuchsia, Lime, Aqua, Maroon, Olive, Purple, Teal, Navy, Gray, and White
+%       colors = colors([4 11 14 2 13 10 5 6 15 16 1 7 9 3]);
+    colors = color_override;
     N = length(cls);
     rowcols(2) = ceil(sqrt(N)); % Number of rows in the subplot figure.
     rowcols(1) = ceil(N/rowcols(2));

@@ -1,13 +1,8 @@
-%   Project Title: Run a graph analysis for multiple subjects
+%   Project Title: MIM YOUNGER AND OLDER ADULTS KINEMATICS-EEG ANALYSIS
 %
 %   Code Designer: Jacob salminen
-%
-%   Version History --> See details at the end of the script.
-%   Current Version:  v1.0.20220103.0
-%   Previous Version: n/a
-%   Summary: 
-
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_GLOBAL_BATCH/gamma/MIM_proc/run_conn_process.sh
+%## SBATCH (SLURM KICKOFF SCRIPT)
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/.sh
 
 %{
 %## RESTORE MATLAB
@@ -17,100 +12,74 @@ clc;
 close all;
 clearvars
 %}
-%% Initialization
+%% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-%% (REQUIRED SETUP 4 ALL SCRIPTS) ====================================== %%
-%- DATE TIME
-dt = datetime;
-dt.Format = 'MMddyyyy';
-%- VARS
-USER_NAME = 'jsalminen'; %getenv('username');
-fprintf(1,'Current User: %s\n',USER_NAME);
-%- CD
-% cfname_path    = mfilename('fullpath');
-% cfpath = strsplit(cfname_path,filesep);
-% cd(cfpath);
-%% (EDIT: PATH TO YOUR GITHUB REPO) ==================================== %%
-%- GLOBAL VARS
-REPO_NAME = 'par_EEGProcessing';
-%- determine OS
-if strncmp(computer,'PC',2)
-    PATH_ROOT = ['M:' filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
-else  % isunix
-    PATH_ROOT = [filesep 'blue' filesep 'dferris',...
-        filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
-end
-%- define the directory to the src folder
-source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep '2_GLOBAL_BATCH' filesep 'MIM_OA_YA'];
-%% CD ================================================================== %%
-%- cd to run directory
-cd(run_dir)
-%- addpath for local folder
-addpath(source_dir)
-addpath(run_dir)
-%% SET WORKSPACE ======================================================= %%
-global ADD_CLEANING_SUBMODS
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
-setWorkspace
-%% PARPOOL SETUP ======================================================= %%
+%## Determine Working Directories
 if ~ispc
-    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
-    'option_single', 1, 'option_memmapdata', 0, ...
-    'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
-    disp(['SLURM_JOB_ID: ', getenv('SLURM_JOB_ID')]);
-    disp(['SLURM_CPUS_ON_NODE: ', getenv('SLURM_CPUS_ON_NODE')]);
-    %## allocate slurm resources to parpool in matlab
-    %- get cpu's on node and remove a few for parent script.
-    SLURM_POOL_SIZE = str2double(getenv('SLURM_CPUS_ON_NODE'));
-    %- create cluster
-    pp = parcluster('local');
-    %- Number of workers for processing (NOTE: this number should be higher
-    %then the number of iterations in your for loop)
-    fprintf('Number of workers: %i\n',pp.NumWorkers);
-    fprintf('Number of threads: %i\n',pp.NumThreads);
-    %- make meta data dire1ory for slurm
-    mkdir([run_dir filesep getenv('SLURM_JOB_ID')])
-    pp.JobStorageLocation = strcat([run_dir filesep], getenv('SLURM_JOB_ID'));
-    %- create your p-pool (NOTE: gross!!)
-    pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', 1440);
+    STUDY_DIR = getenv('STUDY_DIR');
+    SCRIPT_DIR = getenv('SCRIPT_DIR');
+    SRC_DIR = getenv('SRC_DIR');
 else
-    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
-    'option_single', 1, 'option_memmapdata', 0, ...
-    'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
-    SLURM_POOL_SIZE = 1;
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        SCRIPT_DIR = dir(['.' filesep]);
+        SCRIPT_DIR = SCRIPT_DIR(1).folder;
+    end
+    STUDY_DIR = SCRIPT_DIR;
+    SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
+%## Add Study & Script Paths
+addpath(STUDY_DIR);
+addpath(SRC_DIR);
+cd(SRC_DIR);
+fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
+%## Set PWD_DIR, EEGLAB path, _functions path, and others...
+set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-% [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa_spca');
+%- override with already processed ALLEEG set
+SUBJ_PICS = cell(1,length(GROUP_NAMES));
+SUBJ_ITERS = cell(1,length(GROUP_NAMES));
+for i = 1:length(ALLEEG)
+    gi = find(strcmp(ALLEEG(i).group,GROUP_NAMES));
+    SUBJ_PICS{gi} = [SUBJ_PICS{gi}, {ALLEEG(i).subject}];
+    if isempty(SUBJ_ITERS{gi})
+        SUBJ_ITERS{gi} = 1;
+    else
+        SUBJ_ITERS{gi} = [SUBJ_ITERS{gi}, SUBJ_ITERS{gi}(end)+1];
+    end
+end
+% SUBJ_PICS = {ALLEEG.subject};
 %% (PARAMETERS) ======================================================== %%
 %## hard define
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- datetime override
 colormap(linspecer);
-% dt = '07222023_MIM_OAN79_subset_prep_verified_gait_conn';
-% dt = '10252023_MIM_OAN70_noslowwalkers_gait_powpow0p20';
-% dt = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
-dt = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
-%- Subject Directory information
-% OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
+% study_dir_name = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
+% study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+study_dir_name = '04232024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 %## soft define
-DATA_DIR = [source_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-% OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
-% TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',dt) filesep 'raw_data_vis'];
+STUDIES_DIR = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
+save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'raw_data_vis'];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
 %%
+% CATEGORIES = {'YoungAdult','HF_OlderAdult','LF_OlderAdult'};
 CATEGORIES = {'YoungAdult','HF_OlderAdult','LF_OlderAdult'};
 R_MIND_IN_MOTION_DIR = 'R:\Ferris-Lab\share\MindInMotion\Data';
-M_MIND_IN_MOTION_DIR = [DATA_DIR filesep DATA_SET];%'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset'
+M_MIND_IN_MOTION_DIR = [PATHS.src_dir filesep '_data' filesep DATA_SET];%'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset'
 N_TRIALS = 16;
 %- Loop through directory
 table_imu_meas = zeros(length([SUBJ_PICS{:}])*N_TRIALS,12); % 12 measures
@@ -365,16 +334,16 @@ writetable(table_ls_out,[save_dir filesep 'ls_table_out.xlsx']);
 %- rearrange headers
 % table_ls_out = [table_ls_out(:,end-1), table_ls_out(:,end), table_ls_out(:,1:end-2)];
 %% IMU TABLE CONDITIONS (PRECALCULATED)
-rej = ~any(table_imu_meas_conds == 0,2);
-table_imu_meas_conds = table_imu_meas_conds(rej,:);
-table_subj_vec_conds = table_subj_vec_conds(rej);
-table_trial_vec_conds = table_trial_vec_conds(rej);
-table_subj_cat_vec_conds = table_subj_cat_vec_conds(rej);
-table_imu_out_conds = array2table(table_imu_meas,'VariableNames',table_header_names_conds{1});
-table_imu_out_conds.SubjectName = categorical(table_subj_vec_conds);
-table_imu_out_conds.TrialName = categorical(table_trial_vec_conds);
-table_imu_out_conds.SubjectCategory = categorical(table_subj_cat_vec_conds);
-writetable(table_imu_out_conds,[save_dir filesep 'imu_table_out.xlsx']);
+% rej = ~any(table_imu_meas_conds == 0,2);
+% table_imu_meas_conds = table_imu_meas_conds(rej,:);
+% table_subj_vec_conds = table_subj_vec_conds(rej);
+% table_trial_vec_conds = table_trial_vec_conds(rej);
+% table_subj_cat_vec_conds = table_subj_cat_vec_conds(rej);
+% table_imu_out_conds = array2table(table_imu_meas_conds,'VariableNames',table_header_names_conds{1});
+% table_imu_out_conds.SubjectName = categorical(table_subj_vec_conds);
+% table_imu_out_conds.TrialName = categorical(table_trial_vec_conds);
+% table_imu_out_conds.SubjectCategory = categorical(table_subj_cat_vec_conds);
+% writetable(table_imu_out_conds,[save_dir filesep 'imu_table_out.xlsx']);
 %- rearrange headers
 % table_imu_out = [table_ls_out(:,end-1), table_ls_out(:,end), table_ls_out(:,1:end-2)];
 % table_imu_out = table(categorical(table_subj_vec),categorical(table_trial_vec),table_imu_meas(:,1),table_imu_meas(:,2),...
@@ -382,16 +351,16 @@ writetable(table_imu_out_conds,[save_dir filesep 'imu_table_out.xlsx']);
 %     table_imu_meas(:,7),table_imu_meas(:,8),table_imu_meas(:,9),table_imu_meas(:,10),...
 %     table_imu_meas(:,11),table_imu_meas(:,12),'VariableNames',[{'Subject'},{'TrialName'},table_header_names{1}']);
 %% LOADSOL TABLE CONDITIONS (PRECALCULATED)
-rej = ~any(table_ls_meas_conds == 0,2);
-table_ls_meas_conds = table_ls_meas_conds(rej,:);
-table_subj_ls_conds = table_subj_ls_conds(rej);
-table_trial_ls_conds = table_trial_ls_conds(rej);
-table_subj_cat_ls_conds = table_subj_cat_ls_conds(rej);
-table_ls_out_conds = array2table(table_ls_meas_conds,'VariableNames',table_header_names_ls_conds{1});
-table_ls_out_conds.SubjectName = categorical(table_subj_ls_conds);
-table_ls_out_conds.TrialName = categorical(table_trial_ls_conds);
-table_ls_out_conds.SubjectCategory = categorical(table_subj_cat_ls_conds);
-writetable(table_ls_out_conds,[save_dir filesep 'ls_table_out.xlsx']);
+% rej = ~any(table_ls_meas_conds == 0,2);
+% table_ls_meas_conds = table_ls_meas_conds(rej,:);
+% table_subj_ls_conds = table_subj_ls_conds(rej);
+% table_trial_ls_conds = table_trial_ls_conds(rej);
+% table_subj_cat_ls_conds = table_subj_cat_ls_conds(rej);
+% table_ls_out_conds = array2table(table_ls_meas_conds,'VariableNames',table_header_names_ls_conds{1});
+% table_ls_out_conds.SubjectName = categorical(table_subj_ls_conds);
+% table_ls_out_conds.TrialName = categorical(table_trial_ls_conds);
+% table_ls_out_conds.SubjectCategory = categorical(table_subj_cat_ls_conds);
+% writetable(table_ls_out_conds,[save_dir filesep 'ls_table_out.xlsx']);
 %- rearrange headers
 % table_ls_out = [table_ls_out(:,end-1), table_ls_out(:,end), table_ls_out(:,1:end-2)];
 %% average across trials
@@ -581,6 +550,8 @@ for meas_i = 1:length(meas_names)
     [stats] = anova(mdl_speed_mixc);
     speed_mixc_f = stats{2,5};
 %     comp = multcompare(stats);
+    modelspec = 'meas_in~1';
+    mdl_comp = fitlme(tmp_t,modelspec);
     disp(mdl_speed_mixc)
     disp(anova(mdl_speed_mixc));
     fid = fopen([save_dir filesep sprintf('%s_across_mixspeed_all_mdl.txt',meas_names{meas_i})],'wt');
@@ -616,7 +587,7 @@ for meas_i = 1:length(meas_names)
 %     out = mes1way(tmp_t.meas_in,'eta2','group',double(tmp_t.cat_1));
 %     R2 = mdl_terrain_mixc.Rsquared.Ordinary;
     R21 = mdl_comp.SSR/mdl_comp.SST;
-    R22 = mdl_terrain_mixc.SSR/mdl_terrain_mixc.SST; %mdl_terrain_mixc.Rsquared.Ordinary; %mdl_terrain_mixc.Rsquared.Adjusted;
+    R22 = mdl_speed_mixc.SSR/mdl_speed_mixc.SST; %mdl_terrain_mixc.Rsquared.Ordinary; %mdl_terrain_mixc.Rsquared.Adjusted;
 % 	R2 = mdl_terrain_mixc.Rsquared.Adjusted;
     cohens_f2 = (R22-R21)/(1-R22);
     fprintf(fid,'cohens f2: %0.4f\n',cohens_f2);
@@ -771,8 +742,9 @@ for meas_i = 1:length(meas_names)
     title(meas_titles{meas_i});
     ylim(YLIMS{meas_i});
     hold off;
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.pdf',meas_names{meas_i})],'ContentType','vector','Resolution',300);
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.tiff',meas_names{meas_i})],'Resolution',900);
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.pdf',meas_names{meas_i})],'ContentType','vector','Resolution',300);
     %% By trial plot
     figure;
 %     title(sprintf('%s Across Trials',meas_names{meas_i}));
@@ -842,8 +814,9 @@ for meas_i = 1:length(meas_names)
     ylim(YLIMS{meas_i});
     set(ax,'FontName','Arial','FontSize',14,'FontWeight','bold')
     hold off;
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.pdf',meas_names{meas_i})],'ContentType','vector','Resolution',300);
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.tiff',meas_names{meas_i})],'Resolution',900);
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.pdf',meas_names{meas_i})],'ContentType','vector','Resolution',300);
     %% (PLOT) Trial & Subject Category Plot for High vs Low function OA
     vals = cat(1,cond_1{1,:});
     bandwidth = range(vals)*0.1;
@@ -951,8 +924,9 @@ for meas_i = 1:length(meas_names)
     hold off;
 %     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
 %     saveas(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.hdf',save_lab,meas_names{meas_i})]);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'ContentType','vector','Resolution',300);
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.tiff',save_lab,meas_names{meas_i})],'Resolution',900);
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'ContentType','vector','Resolution',300);
     %% (PLOT) Trial & Subject Category Plot for High vs Low function OA
     vals = cat(1,cond_2{1,:});
     bandwidth = range(vals)*0.1;
@@ -1047,8 +1021,9 @@ for meas_i = 1:length(meas_names)
     title(meas_titles{meas_i});
     ylim(YLIMS{meas_i});
     hold off;
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'ContentType','vector','Resolution',300);
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.tiff',save_lab,meas_names{meas_i})],'Resolution',900);
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'ContentType','vector','Resolution',300);
     
 end
 %% VIOLIN PLOT LOADSOL
@@ -1358,8 +1333,9 @@ for meas_i = 1:length(meas_names)
     ylim(YLIMS{meas_i});
     set(ax,'FontName','Arial','FontSize',14,'FontWeight','bold')
     hold off;
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300,'ContentType','vector'); 
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.pdf',meas_names{meas_i})],'ContentType','vector','Resolution',300,'ContentType','vector'); 
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300); 
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.tiff',meas_names{meas_i})],'Resolution',900); 
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terrain_Trials_Fig_%s.pdf',meas_names{meas_i})],'ContentType','vector','Resolution',300,'ContentType','vector'); 
     %% By trial plot
     figure;
     hold on;
@@ -1427,8 +1403,9 @@ for meas_i = 1:length(meas_names)
     set(ax,'FontName','Arial','FontSize',14,'FontWeight','bold')
     set(ax, 'box', 'off')
     hold off;
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300); 
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.pdf',meas_names{meas_i})],'ContentType','vector','Resolution',300); 
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.jpg',meas_names{meas_i})],'Resolution',300); 
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.tiff',meas_names{meas_i})],'Resolution',900); 
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_Trials_Fig_%s.pdf',meas_names{meas_i})],'ContentType','vector','Resolution',300); 
     
     %% (PLOT) Trial & Subject Category Plot for High vs Low function OA
     vals = cat(1,cond_1{1,:});
@@ -1586,8 +1563,9 @@ for meas_i = 1:length(meas_names)
     hold off;
 %     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
 %     saveas(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})]);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300); 
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'ContentType','vector','Resolution',300); 
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.tiff',save_lab,meas_names{meas_i})],'Resolution',900);
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_speed_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'ContentType','vector','Resolution',300); 
     %% (PLOT) Trial & Subject Category Plot for High vs Low function OA
     vals = cat(1,cond_2{1,:});
     bandwidth = range(vals)*0.1;
@@ -1771,8 +1749,9 @@ for meas_i = 1:length(meas_names)
     hold off;
 %     saveas(fig_i,[save_dir filesep sprintf('Across_Trials_Fig_%s.fig',meas_names{meas_i})]);
 %     saveas(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})]);
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300); 
-    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'ContentType','vector','Resolution',300); 
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.jpg',save_lab,meas_names{meas_i})],'Resolution',300);
+    exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.tiff',save_lab,meas_names{meas_i})],'Resolution',900);
+%     exportgraphics(fig_i,[save_dir filesep sprintf('Across_terran_TrialsSubjCat_Fig_%s_%s.pdf',save_lab,meas_names{meas_i})],'ContentType','vector','Resolution',300); 
     
 end
 %% OLD CODE SNIPETS

@@ -1,0 +1,14 @@
+{
+    "EPOCH_PARAMS": {
+		"percent_overlap": 0,
+		"epoch_event_char": "RHS",
+		"epoch_time_lims": [-0.5,4.5],
+		"tw_stdev": 3,
+		"tw_events": ["RHS","LTO","LHS","RTO","RHS"],
+		"path_ext": "gait_epoched",
+		"gait_trial_chars": ["0p25","0p5","0p75","1p0","flat","low","med","high"],
+		"rest_trial_char": [],
+		"do_recalc_epoch": true
+	},
+	"SUBJ_CHARS": null
+}

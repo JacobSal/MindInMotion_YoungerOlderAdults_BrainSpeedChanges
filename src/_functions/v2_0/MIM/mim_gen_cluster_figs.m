@@ -13,7 +13,7 @@ function [] = mim_gen_cluster_figs(STUDY,ALLEEG,save_dir,varargin)
 % Code Date: 04/28/2023, MATLAB R2020b
 % Copyright (C) Jacob Salminen, jsalminen@ufl.edu
 % Copyright (C) Chang Liu, liu.chang1@ufl.edu
-
+cat_logo();
 %## TIME
 tic
 %## DEFINE DEFAULTS
@@ -113,24 +113,29 @@ saveas(fig_i,fullfile(save_dir,'Cluster_topo_avg.fig'));
 % saveas(fig_i,[save_dir filesep 'Cluster_dipole_seperatepanes_avg.jpg']);
 %% (DIPOLE) Plot dipole clusters 
 STUDY.etc.dipparams.centrline = 'off';
-std_dipplot_CL(STUDY,ALLEEG,'clusters',CLUSTERS_TO_PLOT,'figure','off','mode','together_averaged_only','spheres','off','projlines','off');
+std_dipplot_CL(STUDY,ALLEEG,'clusters',CLUSTERS_TO_PLOT,'figure','off',...
+    'mode','together_averaged_only','spheres','off','projlines','off',...
+    'color_override',colors);
 fig_i = get(groot,'CurrentFigure');
 set(fig_i,'position',DIP_SING_POS,'color','w')
-camzoom(1.2^2);
+camzoom(1.1);
 % camzoom(1.2^2);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.jpg')],'Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.tiff')],'Resolution',900);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.pdf')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.eps')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.svg')],'ContentType','vector','Resolution',300);
 saveas(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_top.fig')]);
 view([45,0,0])
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.jpg')],'Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.tiff')],'Resolution',900);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.eps')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_coronal.svg')],'ContentType','vector','Resolution',300);
 view([0,-45,0])
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.jpg')],'Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.tiff')],'Resolution',900);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.eps')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.svg')],'ContentType','vector','Resolution',300);
 %{
@@ -150,21 +155,24 @@ STUDY.etc.dipparams.centrline = 'off';
 std_dipplot_CL(STUDY,ALLEEG,'clusters',CLUSTERS_TO_PLOT,'figure','off','mode','together_averaged_multicolor','spheres','off','projlines','off');
 fig_i = get(groot,'CurrentFigure');
 set(fig_i,'position',DIP_SING_POS,'color','w')
-camzoom(1);
-% camzoom(1.2^2);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.jpg')],'Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.pdf')],'ContentType','vector','Resolution',300);
+% camzoom(1);
+camzoom(1.2^2);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.tiff')],'Resolution',900);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.pdf')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.eps')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.svg')],'ContentType','vector','Resolution',300);
 saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_top.fig')]);
 view([45,0,0])
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.jpg')],'Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.tiff')],'Resolution',900);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.pdf')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.eps')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_coronal.svg')],'ContentType','vector','Resolution',300);
 view([0,-45,0])
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.jpg')],'Resolution',300);
-exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.jpg')],'Resolution',300);
+exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.tiff')],'Resolution',900);
+% exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.pdf')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.eps')],'ContentType','vector','Resolution',300);
 % exportgraphics(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.svg')],'ContentType','vector','Resolution',300);
 %{
@@ -204,11 +212,11 @@ saveas(fig_i,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.jpg')]);
 %% (SINGLE CLUSTSER PLOTS)
 if DO_SINGLE_CLUSTER_PLOTS
     
-    COLOR_OPTS = colors; %linspecer(length(CLUSTERS_TO_PLOT)+1);
-    colors = cell(1,size(COLOR_OPTS,1));
-    for i = 1:size(COLOR_OPTS,1)
-        colors{i} = COLOR_OPTS(i,:);
-    end
+%     COLOR_OPTS = colors; %linspecer(length(CLUSTERS_TO_PLOT)+1);
+%     colors = cell(1,size(COLOR_OPTS,1));
+%     for i = 1:size(COLOR_OPTS,1)
+%         colors{i} = COLOR_OPTS(i,:);
+%     end
     for i = 1:length(CLUSTERS_TO_PLOT)
         cluster_i = CLUSTERS_TO_PLOT(i);
         STUDY.etc.dipparams.centrline = 'off';
@@ -223,17 +231,20 @@ if DO_SINGLE_CLUSTER_PLOTS
             end
         end
         camzoom(1.2^2);
-        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.jpg',cluster_i)],'Resolution',300);
-        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+%         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.jpg',cluster_i)],'Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.tiff',cluster_i)],'Resolution',900);
+%         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.pdf',cluster_i)],'ContentType','vector','Resolution',300);
 %         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.svg',cluster_i)],'ContentType','vector','Resolution',300);
     %     saveas(fig_i,[save_dir filesep sprintf('new_dipplot_alldipspc_top.fig')]);
         view([45,0,0])
-        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.jpg',cluster_i)],'Resolution',300);
-        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+%         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.jpg',cluster_i)],'Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.tiff',cluster_i)],'Resolution',900);
+%         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
 %         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.svg',cluster_i)],'ContentType','vector','Resolution',300);
         view([0,-45,0])
-        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.jpg',cluster_i)],'Resolution',300);
-        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+%         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.jpg',cluster_i)],'Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cluster_i)],'Resolution',900);
+%         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.pdf',cluster_i)],'ContentType','vector','Resolution',300);
 %         exportgraphics(fig_i,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.svg',cluster_i)],'ContentType','vector','Resolution',300);
         %- 
         %## TOPO PLOTS
@@ -257,8 +268,9 @@ if DO_SINGLE_CLUSTER_PLOTS
             fig_i.Children(c).FontSize = 13;
             fig_i.Children(c).FontName = 'Arial';
         end
-        exportgraphics(fig_i,[save_dir filesep sprintf('%i_cluster_topo_avg.jpg',cluster_i)],'Resolution',300);
-        exportgraphics(fig_i,[save_dir filesep sprintf('%i_cluster_topo_avg.pdf',cluster_i)],'ContentType','vector','Resolution',300);
+%         exportgraphics(fig_i,[save_dir filesep sprintf('%i_cluster_topo_avg.jpg',cluster_i)],'Resolution',300);
+        exportgraphics(fig_i,[save_dir filesep sprintf('%i_cluster_topo_avg.tiff',cluster_i)],'Resolution',900);
+%         exportgraphics(fig_i,[save_dir filesep sprintf('%i_cluster_topo_avg.pdf',cluster_i)],'ContentType','vector','Resolution',300);
 %         exportgraphics(fig_i,[save_dir filesep sprintf('%i_cluster_topo_avg.svg',cluster_i)],'ContentType','vector','Resolution',300);
     end
     %     saveas(fig_i,fullfile(save_dir,sprintf('%i_cluster_topo_avg.fig',cluster_i)));
