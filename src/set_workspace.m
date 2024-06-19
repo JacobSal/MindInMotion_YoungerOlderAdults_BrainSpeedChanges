@@ -8,7 +8,6 @@
 %   Summary: this script is an initializer and workspace variable setup for
 %   all scripts in this repository
 
-
 %% FLEXIBLE HANDLING OF SRC FOLDER
 %## TIME
 TT = tic;
