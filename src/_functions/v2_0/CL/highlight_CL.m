@@ -2,8 +2,12 @@
 % highlight regions
 % Function extracted from EEGLab
 % -----------------
-function axsignif = highlight_CL(ax, times, regions, highlightmode, myxlabel);
-color1 = [0.75 0.75 0.75];
+function [axsignif,tmph] = highlight_CL(ax, times, regions, highlightmode, myxlabel)
+% if isempty(patchcolor)
+%     patchcolor = [0.75 0.75 0.75];
+% end
+tmph = [];
+patchcolor = [0.75 0.75 0.75];
 color2 = [0 0 0];
 orig_yl = ax.YLim;
 yl  = ax.YLim; 
@@ -42,8 +46,8 @@ if ~isempty(regions)
             in_a_region = 0;
             if strcmpi(highlightmode, 'background') %indicate significance in the background
                 tmph = patch([tmpreg(1) tmpreg(2) tmpreg(2) tmpreg(1)], ...
-                    [yl(1) yl(1) yl(2) yl(2)], color1); hold on;
-                set(tmph, 'edgecolor', 'none','facealpha',0.3,'edgealpha',0.2);
+                    [yl(1) yl(1) yl(2) yl(2)], patchcolor); hold on;
+                set(tmph, 'edgecolor', 'none','facealpha',0.5,'edgealpha',0.2);
             else
                 oldax = ax;
                 axes(axsignif);

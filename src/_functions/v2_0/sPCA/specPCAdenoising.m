@@ -36,14 +36,19 @@ function [ERSP_corr, GPM_corr, ERSP_psc1, PSC, V] = specPCAdenoising(ERSP, varar
 % v1.0 last changed May-30-2022
 
 if isempty(varargin) % check whether eigenvalues are provided, if not calculate from data
-
-% PCA of ERSP --> dim = num freqs
-CC = cov(squeeze(mean(ERSP))); %covariance matrix: freq x freq
-[v, d] = eig(CC); % obtain eigenvalues
-
-% find component with greatest eigenvalue
-[D, sort_ix] = sort(diag(d),'descend');
-V = v(:,sort_ix);
+    % PCA of ERSP --> dim = num freqs
+    if size(ERSP,1) == 1
+        ERSP_cc = squeeze(ERSP);
+        % ERSP_cc = permute(ERSP_cc,[2,1]);
+        CC = cov(squeeze(ERSP_cc)); %covariance matrix: freq x freq
+    else
+        CC = cov(squeeze(mean(ERSP))); %covariance matrix: freq x freq
+    end
+    [v, d] = eig(CC); % obtain eigenvalues
+    
+    % find component with greatest eigenvalue
+    [D, sort_ix] = sort(diag(d),'descend');
+    V = v(:,sort_ix);
 else
     V = varargin{1};
 end
@@ -59,7 +64,7 @@ PSC = cell(1,length(V));
 % loop through all samples and correct them
 for t_cnt = 1:size(ERSP,1)
     F_psc = squeeze(ERSP(t_cnt,:,:)) * V;
-    ERSP_psc1(t_cnt,:,:) = F_psc(:,1) * Ai(1,:);
+    ERSP_psc1(t_cnt,:,:) = F_psc(:,1) * Ai(1,:); % times x chans x freqs
     ERSP_corr(t_cnt,:,:) = F_psc(:,2:end) * Ai(2:end,:);
     for p_cnt = 1:size(F_psc,2)
         if t_cnt==1

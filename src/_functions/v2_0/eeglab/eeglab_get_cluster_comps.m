@@ -54,11 +54,12 @@ for clus_i = 2:length(STUDY.cluster)
     nonzero_cl_inds(clus_i) = ~isempty(STUDY.cluster(clus_i).comps);
 end
 nonzero_cl_inds = find(nonzero_cl_inds);
-%- clusters with >50% of the subjects
-valid_clusters = find(tmp(3:end)>=0.5*(length(subj_inds)))+2;
-%- remove all outlier cluster components
-% comps_out = comps_out(logical(main_cl_inds),:);
 main_cl_inds = find(main_cl_inds);
+%- clusters with >50% of the subjects
+valid_clusters = find(tmp(1:end)>=0.5*floor(length(subj_inds)));
+tmp = setdiff(valid_clusters,main_cl_inds);
+valid_clusters = setdiff(valid_clusters,[1,tmp]);
+%- remove all outlier cluster components
 outlier_cl_inds = find(outlier_cl_inds);
 if isfield(STUDY.cluster,'analabel')
     main_cl_anat = {STUDY.cluster.analabel};

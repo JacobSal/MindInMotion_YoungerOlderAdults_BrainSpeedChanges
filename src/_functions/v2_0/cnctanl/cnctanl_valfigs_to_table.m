@@ -149,5 +149,6 @@ function [cond_n] = cond_subj_regexp(str)
 end
 %##
 function [subj_name] = subj_name_regexp(str)
-    subj_name = regexp(str,'Pilot[\d+]*','match');
+    % subj_name = regexp(str,'Pilot[\d+]*','match');
+    subj_name = regexp(str,'H[\d+]*','match');
 end

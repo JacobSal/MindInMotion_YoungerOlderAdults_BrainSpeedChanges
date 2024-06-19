@@ -1,5 +1,5 @@
 % This code adapted from std_topoplot
-function STUDY = std_topoplot_CL(STUDY,cls,mode)
+function [STUDY] = std_topoplot_CL(STUDY,cls,mode)
 
 icadefs;
 if isempty(cls)
