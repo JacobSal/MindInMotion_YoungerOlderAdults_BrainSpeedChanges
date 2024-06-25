@@ -2,7 +2,9 @@
 title: "lme_mods"
 author: "Jacob Salminen"
 date: "2024-04-19"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -46,7 +48,7 @@ gtsummary::set_gtsummary_theme(theme_gtsummary_journal("jama"))
 ## load table 
 ```{r} 
 # excel_dir <-"M:/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01/cluster/icrej_5/12/spec_data/group_spec/psd_calcs/fooof_kinematics_table.xlsx";
-excel_dir <-"M:/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej/cluster/icrej_5/12/spec_data/group_spec/psd_calcs/fooof_kinematics_table.xlsx";
+excel_dir <-"M:/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej/cluster/icrej_5/11/spec_data/group_spec/psd_calcs/fooof_kinematics_table_nans.xlsx";
 eegt <- read_excel(excel_dir,sheet="Sheet1") 
 ```
 
@@ -56,7 +58,11 @@ clusters = unique(eegt$cluster_id);
 subjects = unique(eegt$subj_char);
 groups = unique(eegt$group_char);
 kin_measures = c('mean_APexc_COV','mean_APexc_mean','mean_MLexc_COV','mean_MLexc_mean','mean_StepDur','mean_UDexc_COV','mean_UDexc_mean','mean_StanceDur','mean_GaitCycleDur','mean_PeakUpDownVel_mean');
-eeg_measures = c('theta_avg_power','alpha_avg_power','beta_avg_power','aperiodic_exp','aperiodic_offset');
+kin_title_chars = c("AP Exc. COV","AP Exc. Mean","ML Exc. COV","ML Exc. Mean","Step Dur.","UD Exc. COV","UD Exc Mean","Stance Dur.","Gait Cycle Dur.","Peak UD Vel. Mean")
+kin_inds_plot = c(1:length(kin_measures));
+eeg_measures = c('theta_avg_power','alpha_avg_power','beta_avg_power','beta_div_theta','theta_div_beta','log_beta_div_theta','log_theta_div_beta','aperiodic_exp','aperiodic_offset');
+eeg_title_chars = c("**THETA**","**ALPHA**","**BETA**","**BETA/THETA**","**THETA/BETA**","**log10(BETA/THETA)**","**log10(THETA/BETA)**","**AP exp**","**AP offset**");
+eeg_inds_plot = c(4:7);
 ```
 
 ## get speeds only 
@@ -66,31 +72,49 @@ flat_speeds = unique(eegt$cond_char)
 eegt$cond_char <- as.numeric(eegt$cond_char)
 eegt$speed_cond_num <- as.numeric(eegt$cond_char)
 eegt <- mutate(eegt,across(c('subj_char'), factor))
-```
-
-## get terrains only (if applicable)
-``` {r}
-# eegt <- filter_at(eegt,vars('cond_char'), any_vars(. %in% c('flat','low','med','high')))
-# eegt <- filter_at(eegt,vars('cond_char'), any_vars(. %in% c('high')))
-# eegt$terr_ord_speed <- cut(eegt$speed_ms, 4, ordered = TRUE)
-```
-
-## convert speeds to ordered & groups to factors 
-```{r conversions}
 eegt <- mutate(eegt,across(c('group_char'), factor))
 eegt$speed_ord <- cut(eegt$cond_char, 4, ordered = TRUE)
 eegt <- mutate(eegt,across(c('cond_char'), factor))
-head(eegt)
 eegt$group_speed_code = paste(eegt$group_char,eegt$cond_char,sep="_")
+head(eegt)
+```
+
+
+## create ratios 
+```{r conversions}
+Log <- function(x, base = exp(1)) {
+  LOG <- base::log(as.complex(x), base = base)
+  if (all(Im(LOG) == 0)) { LOG <- Re(LOG) }
+  LOG }
+#%% CALCS
+eegt <- eegt%>%
+  mutate(beta_div_theta=beta_avg_power/theta_avg_power)
+eegt <- eegt%>%
+  mutate(theta_div_beta=theta_avg_power/beta_avg_power)
+eegt <- eegt%>%
+  mutate(log_beta_div_theta=log10(beta_avg_power/theta_avg_power+max(abs(beta_avg_power/theta_avg_power))))
+eegt <- eegt%>%
+  mutate(log_theta_div_beta=log10(theta_avg_power/beta_avg_power+max(abs(theta_avg_power/beta_avg_power))))
+# eegt <- eegt%>%
+#   mutate(log_beta_div_theta=log10(beta_avg_power/theta_avg_power+mean(abs(beta_avg_power/theta_avg_power))/(mean(abs(beta_avg_power/theta_avg_power))+3*sd(abs(beta_avg_power/theta_avg_power)))));
+# eegt <- eegt%>%
+#   mutate(log_theta_div_beta=log10(theta_avg_power/beta_avg_power+mean(abs(theta_avg_power/beta_avg_power))/(mean(abs(theta_avg_power/beta_avg_power))+3*sd(abs(theta_avg_power/beta_avg_power)))));
+# eegt <- eegt%>%
+#   mutate(log_beta_div_theta=log10((beta_avg_power/theta_avg_power)+abs(min((beta_avg_power/theta_avg_power)))));
+# eegt <- eegt%>%
+#   mutate(log_theta_div_beta=log10((theta_avg_power/beta_avg_power)+abs(min((theta_avg_power/beta_avg_power)))));
+eegt <- eegt%>%
+  mutate(log_beta_div_theta=Re(Log((beta_avg_power/theta_avg_power),10)*Conj(Log((theta_avg_power/beta_avg_power),10))));
+eegt <- eegt%>%
+  mutate(log_theta_div_beta=Re(Log((theta_avg_power/beta_avg_power),10)*Conj(Log((theta_avg_power/beta_avg_power),10))));
 ```
 <!-- \clearpage -->
 # LME KIN ~ 1+speed+group
 ```{r KIN ~ 1+speed+group, echo=FALSE, message=FALSE, results="asis"}
 library(gtsummary)
-cat('\n\n<!-- -->\n\n')
 for (ci in 1:length(clusters)) {
   tmpt <- filter_at(eegt,vars('cluster_id'), any_vars(. %in% clusters[ci]));
-  tbl <- tibble(outcome=kin_measures) %>%
+  tbl <- tibble(outcome=kin_measures[kin_inds_plot]) %>%
     rowwise() %>%
     mutate(
       tbl = 
@@ -103,20 +127,20 @@ for (ci in 1:length(clusters)) {
         list()
       ) %>%
     pull(tbl) %>%
-    tbl_merge(tab_spanner=c("APexc COV","APexc","MLexc COV","MLexc","Step Dur","UDexc COV","UDexc","Stance Dur","GaitCycle Dur","Peak UpDown Vel"))
-    # tbl_merge(tab_spanner=c("**EEG Theta**","**EEG Alpha**","**EEG Beta**","**Aperiodic Exp.**","**Aperiodic Offset**"))
-  # t_out <- as_gt(tbl) %>%
-  #   gt::tab_header(title=c("Cluster: ",clusters[ci])) %>%
-  #   gt::tab_options(table.layout = "fixed") %>%
-  #   gt::as_latex()
+    tbl_merge(tab_spanner=kin_title_chars[kin_inds_plot])
   
-  t_out <- as_kable_extra(tbl, format = "latex") %>%
-    add_header_above(c("Cluster: ",clusters[ci])) %>%
-    kable_styling(latex_options="scale_down")
-  # tbl
+  t_out <- as_gt(tbl) %>%
+    gt::tab_header(title=c("Cluster: ",clusters[ci])) %>%
+    gt::tab_options(table.layout = "fixed") %>%
+    gt::as_raw_html()
+  print(t_out)
   
-  # print(t_out)
-  cat(knitr::knit_print(t_out));
-  cat('\n\n<!-- -->\n\n')
+  # t_out <- as_kable_extra(tbl, format = "latex") %>%
+  #   add_header_above(c("Cluster: ",clusters[ci])) %>%
+  #   kable_styling(latex_options="scale_down")
+  # cat(knitr::knit_print(t_out));
+  # if (ci%%2 == 0){
+  #   cat('\\clearpage');
+  # }
 }
 ```
