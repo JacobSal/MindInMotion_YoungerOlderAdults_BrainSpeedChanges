@@ -531,9 +531,9 @@ cntsts = 1;
 %-
 % MEASURES_ANALYZE = {'theta_avg_power','tbr_avg_power','logtbr_norm_avg_power'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
 % MEASURE_NAME_LABS = {'Mean \theta','(\theta/\beta)','conj(log_{10}(\theta/\beta))'};
-MEASURES_ANALYZE = {'theta_avg_power','beta_avg_power','tbr_avg_power',...
+MEASURES_ANALYZE = {'theta_avg_power','alpha_avg_power','beta_avg_power','tbr_avg_power',...
     'logtbr_avg_power','logtbr_norm_avg_power'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
-MEASURE_NAME_LABS = {'Mean \theta','Mean \beta','\theta/\beta',...
+MEASURE_NAME_LABS = {'Mean \theta','Mean \alpha','Mean \beta','\theta/\beta',...
     'Re(log(\theta/\beta))','conj(log_{10}(\theta/\beta))'};
 %## HARDCODED VARIABLES OF INTEREST
 varnames = {'mean_APexc_COV','mean_APexc_mean','mean_MLexc_COV',...
@@ -557,7 +557,7 @@ AX_MAX = 3;
 tmp_savedir = [save_dir filesep 'lme-Pspeed-Reeg-linearity'];
 mkdir(tmp_savedir);
 for cl_i = 1:length(clusters)
-    %%
+    %##
     atlas_name = atlas_name_store{cl_i};
     fig = figure('color','white','renderer','Painters');
     sgtitle(atlas_name,'FontName',PLOT_STRUCT.font_name,'FontSize',14,'FontWeight','bold','Interpreter','none');
@@ -753,9 +753,12 @@ for cl_i = 1:length(clusters)
         'VariableNames',{measure_name,'cond_char','group_char','subj_char'});
         %## LINEAR MODEL
         mod_lme = sprintf('%s ~ 1 + cond_char',measure_name);
-        stats_out = fitlme(T_vals_plot,mod_lme,'DummyVarCoding','effects');
+        stats_out = fitlme(T_vals_plot,mod_lme); %,'DummyVarCoding','effects');
         anova_out = anova(stats_out);
-        %-
+        %- intercept only model
+        % altmod_lme = sprintf('%s ~ 1',measure_name);
+        % altstats_out = fitlme(T_vals_plot,altmod_lme,'DummyVarCoding','effects');
+        % R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
         R2 = stats_out.Rsquared.Adjusted;
         %## GRAB COEFFICIENTS & PVALUES
         anova_p_cond = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
@@ -769,7 +772,7 @@ for cl_i = 1:length(clusters)
         %## GATHER STATS
         [norm_h,norm_p] = lillietest(stats_out.residuals);
         [b,bnames,fetable] = stats_out.fixedEffects();
-        [br,brnames,fretable] = stats_out.randomEffects();
+        [br,brnames,bretable] = stats_out.randomEffects();
         STATS_TRACK_STRUCT(cntsts).stat_test_mod = {mod_lme};
         STATS_TRACK_STRUCT(cntsts).resp_terms = {measure_name};
         STATS_TRACK_STRUCT(cntsts).pred_terms = bnames.Name;
@@ -783,7 +786,7 @@ for cl_i = 1:length(clusters)
         %-
         STATS_TRACK_STRUCT(cntsts).lme_speed_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char'));
         STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
-        STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {fretable};
+        STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {bretable};
         STATS_TRACK_STRUCT(cntsts).norm_test_h = norm_h;
         STATS_TRACK_STRUCT(cntsts).norm_test_p = norm_p;
         STATS_TRACK_STRUCT(cntsts).R2 = R2;
@@ -921,10 +924,14 @@ for var_i = 1:length(varnames)
        'VariableNames',{'cond_char',varnames{var_i},'group_char','subj_char'});
     %## FIT MODEL
     mod_lme = sprintf('%s ~ 1 + %s',varnames{var_i},'cond_char');
-    stats_out = fitlme(T_vals_plot,mod_lme,'DummyVarCoding','effects');
+    stats_out = fitlme(T_vals_plot,mod_lme); %,'DummyVarCoding','effects');
     anova_out = anova(stats_out);
+    %- intercept only model
+    altmod_lme = sprintf('%s ~ 1',varnames{var_i});
+    altstats_out = fitlme(T_vals_plot,altmod_lme); %,'DummyVarCoding','effects');
+    R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+    % R2 = stats_out.Rsquared.Adjusted;
     %## GET COEFFICIENTS & PVALUES
-    R2 = stats_out.Rsquared.Adjusted;
     anova_p_cond = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
     pval_inter = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
     pval_cond = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_char'));
@@ -933,7 +940,7 @@ for var_i = 1:length(varnames)
     %## GATHER STATS
     [norm_h,norm_p] = lillietest(stats_out.residuals);
     [b,bnames,fetable] = stats_out.fixedEffects();
-    [br,brnames,fretable] = stats_out.randomEffects();
+    [br,brnames,bretable] = stats_out.randomEffects();
     STATS_TRACK_STRUCT(cntsts).stat_test_mod = {mod_lme};
     STATS_TRACK_STRUCT(cntsts).resp_terms = {varnames{var_i}};
     STATS_TRACK_STRUCT(cntsts).pred_terms = bnames.Name;
@@ -944,7 +951,7 @@ for var_i = 1:length(varnames)
     STATS_TRACK_STRUCT(cntsts).lme_inter_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
     STATS_TRACK_STRUCT(cntsts).lme_speed_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char'));
     STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
-    STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {fretable};
+    STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {bretable};
     STATS_TRACK_STRUCT(cntsts).norm_test_h = norm_h;
     STATS_TRACK_STRUCT(cntsts).norm_test_p = norm_p;
     STATS_TRACK_STRUCT(cntsts).R2 = R2;
@@ -1002,8 +1009,11 @@ for var_i = 1:length(varnames)
     set(axax,'OuterPosition',[0,0,1,1]);
     set(axax,'Position',[AX_INIT_SHIFT+horiz_shift,VIOLIN_BOTTOM+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE]);  %[left bottom width height]
     hold off;
-    exportgraphics(fig,[tmp_savedir filesep sprintf('%s_kinematics-speed_grouped.tiff',varnames{var_i})],'Resolution',300)
-    % exportgraphics(fig,[tmp_savedir filesep sprintf('%s_kinematics-speed-contin_grouped.tiff',varnames{var_i})],'Resolution',300)
+    if DO_PLOT_GROUPS
+        exportgraphics(fig,[tmp_savedir filesep sprintf('%s_kinematics-speed_all.tiff',varnames{var_i})],'Resolution',300)
+    else
+        exportgraphics(fig,[tmp_savedir filesep sprintf('%s_kinematics-speed-groups.tiff',varnames{var_i})],'Resolution',300)
+    end
     close(fig)
     %- iterate
 end
@@ -1091,8 +1101,11 @@ for var_i = 1:length(varnames)
             mod_lme = sprintf('%s ~ 1 + cond_char + %s',measure_name,varnames{var_i});
             stats_out = fitlme(T_vals_plot,mod_lme,'DummyVarCoding','effects');
             anova_out = anova(stats_out);
-            %-
-            R2 = stats_out.Rsquared.Adjusted;
+            %- intercept only model
+            altmod_lme = sprintf('%s ~ 1',varnames{var_i});
+            altstats_out = fitlme(T_vals_plot,altmod_lme); %,'DummyVarCoding','effects');
+            R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+            % R2 = stats_out.Rsquared.Adjusted;
             %## GRAB COEFFICIENTS & PVALUES
             anova_p_cond = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
             anova_p_var = anova_out.pValue(strcmp(anova_out.Term,sprintf('%s',varnames{var_i})));
@@ -1107,7 +1120,7 @@ for var_i = 1:length(varnames)
             %## GATHER STATS
             [norm_h,norm_p] = lillietest(stats_out.residuals);
             [b,bnames,fetable] = stats_out.fixedEffects();
-            [br,brnames,fretable] = stats_out.randomEffects();
+            [br,brnames,bretable] = stats_out.randomEffects();
             STATS_TRACK_STRUCT(cntsts).stat_test_mod = {mod_lme};
             STATS_TRACK_STRUCT(cntsts).resp_terms = {measure_name};
             STATS_TRACK_STRUCT(cntsts).pred_terms = bnames.Name;
@@ -1124,7 +1137,7 @@ for var_i = 1:length(varnames)
             STATS_TRACK_STRUCT(cntsts).lme_speed_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char'));
             STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
             STATS_TRACK_STRUCT(cntsts).lme_kin_coeff  = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,sprintf('%s',varnames{var_i})));
-            STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {fretable};
+            STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {bretable};
             STATS_TRACK_STRUCT(cntsts).norm_test_h = norm_h;
             STATS_TRACK_STRUCT(cntsts).norm_test_p = norm_p;
             STATS_TRACK_STRUCT(cntsts).R2 = R2;
@@ -1234,7 +1247,7 @@ for var_i = 1:length(varnames)
         end
         %##
         exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_kin%s-speed-eeg.tiff',string(clusters(cl_i)),varnames{var_i})],'Resolution',300)
-        % close(fig)
+        close(fig)
     end
 end
 
@@ -1303,10 +1316,15 @@ for var_i = 1:length(varnames)
        'VariableNames',{'cond_char',varnames{var_i},'group_char','subj_char'});
     %## FIT MODEL
     mod_lme = sprintf('%s ~ 1 + %s + (1|subj_char)',varnames{var_i},'cond_char');
-    stats_out = fitlme(T_vals_plot,mod_lme,'DummyVarCoding','effects');
+    stats_out = fitlme(T_vals_plot,mod_lme); %,'DummyVarCoding','effects');
     anova_out = anova(stats_out);
+    %- intercept only model
+    altmod_lme = sprintf('%s ~ 1+ (1|subj_char)',varnames{var_i});
+    altstats_out = fitlme(T_vals_plot,altmod_lme); %,'DummyVarCoding','effects');
+    R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+    % R2 = stats_out.Rsquared.Adjusted;
+    %## GET GROUPS
     %## GET COEFFICIENTS & PVALUES
-    R2 = stats_out.Rsquared.Adjusted;
     anova_p_cond = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
     pval_inter = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
     pval_cond = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_char'));
@@ -1315,7 +1333,7 @@ for var_i = 1:length(varnames)
     %## GATHER STATS
     [norm_h,norm_p] = lillietest(stats_out.residuals);
     [b,bnames,fetable] = stats_out.fixedEffects();
-    [br,brnames,fretable] = stats_out.randomEffects();
+    [br,brnames,bretable] = stats_out.randomEffects();
     STATS_TRACK_STRUCT(cntsts).stat_test_mod = {mod_lme};
     STATS_TRACK_STRUCT(cntsts).resp_terms = {varnames{var_i}};
     STATS_TRACK_STRUCT(cntsts).pred_terms = bnames.Name;
@@ -1326,7 +1344,7 @@ for var_i = 1:length(varnames)
     STATS_TRACK_STRUCT(cntsts).lme_inter_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
     STATS_TRACK_STRUCT(cntsts).lme_speed_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char'));
     STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
-    STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {fretable};
+    STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {bretable};
     STATS_TRACK_STRUCT(cntsts).norm_test_h = norm_h;
     STATS_TRACK_STRUCT(cntsts).norm_test_p = norm_p;
     STATS_TRACK_STRUCT(cntsts).R2 = R2;
@@ -1343,7 +1361,8 @@ for var_i = 1:length(varnames)
                   'regress_pval',{{}},...
                   'regress_line',{{}},...
                   'r2_coeff',{[]},...
-                  'regress_xvals',0);
+                  'regress_xvals',0,...
+                  'do_include_intercept',true);
     if DO_PLOT_GROUPS
         for gg = 1:length(groups)
             STATS_STRUCT.anova{gg}=anova_p_cond;
@@ -1372,7 +1391,7 @@ for var_i = 1:length(varnames)
     PLOT_STRUCT = struct('color_map',color_dark,...
         'cond_labels',unique(T_vals_plot.cond_char),'group_labels',unique(T_vals_plot.group_char),...
         'cond_offsets',VIOLIN_COND_OFFSETS,'y_label',varnames_labs{var_i},...
-        'title',varnames_labs{var_i},'font_size',10,'group_offsets',[0.125,0.475,0.812],...
+        'title',varnames_labs{var_i},'font_size',8,'group_offsets',[0.125,0.475,0.812],...
         'ylim',[min(T_vals_plot.(varnames{var_i}))-std(T_vals_plot.(varnames{var_i})),max(T_vals_plot.(varnames{var_i}))+3*std(T_vals_plot.(varnames{var_i}))],...
         'font_name','Arial','x_label','speed','do_combine_groups',~DO_PLOT_GROUPS);
     fig = figure('color','white','renderer','Painters');
@@ -1398,7 +1417,7 @@ end
 IM_RESIZE = 0.7;
 AX_W = 0.35;
 AX_H = 0.25;
-DO_PLOT_GROUPS = false;
+DO_PLOT_GROUPS = true;
 VIOLIN_BOTTOM = 0.7;
 % REG_TXT_SIZE = 8;
 % REG_HORIZ_SHIFT = 0.05;
@@ -1418,194 +1437,270 @@ VIOLIN_COND_OFFSETS = [-0.35,-0.1,0.15,0.40];
 tmp_savedir = [save_dir filesep 'lme_Pspeed-Pgroup-Pinter-Rkin'];
 mkdir(tmp_savedir);
 %##
-for var_i = 1:length(varnames)
-    vert_shift = 0;
-    des_i = 2; %## JUST SPEED
-    %##
-    horiz_shift = 0;
-    switch des_i
-        case 1
-            color_dark = COLORS_MAPS_TERRAIN;
-            color_light = COLORS_MAPS_TERRAIN;
-            GROUP_CMAP_OFFSET = [0,0.1,0.1];
-            xtick_label_g = {'flat','low','med','high'};
-        case 2
-            color_dark = COLOR_MAPS_SPEED;
-            color_light = COLOR_MAPS_SPEED+0.15;
-            GROUP_CMAP_OFFSET = [0.15,0,0];
-            xtick_label_g = {'0.25','0.50','0.75','1.0'};
-    end
-    inds = TMP_FOOOF_T.design_id == designs(des_i);
-    T_vals_plot = TMP_FOOOF_T(inds,:);
-    subjects = unique(T_vals_plot.subj_char);
-    conds = unique(T_vals_plot.cond_char);
-    % groups = unique(T_vals_plot.group_id);
-    t_tmp = [];
-    for i = 1:length(subjects)
-        ii = find(T_vals_plot.subj_char == subjects(i));
-        tt = T_vals_plot(ii,:);
-        for j = 1:length(conds)
-            jj = find(tt.cond_char == conds(j));
-            t_tmp = [t_tmp; tt(jj(1),:)];
+for cl_i = 1:length(clusters)
+    for var_i = 1:length(varnames)
+        vert_shift = 0;
+        des_i = 2; %## JUST SPEED
+        %##
+        horiz_shift = 0;
+        switch des_i
+            case 1
+                color_dark = COLORS_MAPS_TERRAIN;
+                color_light = COLORS_MAPS_TERRAIN;
+                GROUP_CMAP_OFFSET = [0,0.1,0.1];
+                xtick_label_g = {'flat','low','med','high'};
+            case 2
+                color_dark = COLOR_MAPS_SPEED;
+                color_light = COLOR_MAPS_SPEED+0.15;
+                GROUP_CMAP_OFFSET = [0.15,0,0];
+                xtick_label_g = {'0.25','0.50','0.75','1.0'};
         end
+        % inds = TMP_FOOOF_T.design_id == designs(des_i);
+        inds = TMP_FOOOF_T.design_id == designs(des_i) & TMP_FOOOF_T.cluster_id == clusters(cl_i);
+        T_vals_plot = TMP_FOOOF_T(inds,:);
+        subjects = unique(T_vals_plot.subj_char);
+        conds = unique(T_vals_plot.cond_char);
+        % groups = unique(T_vals_plot.group_id);
+        t_tmp = [];
+        for i = 1:length(subjects)
+            ii = find(T_vals_plot.subj_char == subjects(i));
+            tt = T_vals_plot(ii,:);
+            for j = 1:length(conds)
+                jj = find(tt.cond_char == conds(j));
+                t_tmp = [t_tmp; tt(jj(1),:)];
+            end
+        end
+        inds = isnan(t_tmp.(varnames{var_i}));
+        if any(inds)
+            t_tmp = t_tmp(~inds,:);
+        end
+        T_vals_plot = table(str2double(string(t_tmp.cond_char)),t_tmp.(varnames{var_i}),t_tmp.group_char,categorical(t_tmp.subj_char),...
+           'VariableNames',{'cond_char',varnames{var_i},'group_char','subj_char'});
+        % T_vals_plot.cond_char = double(string(T_vals_plot.cond_char));
+        %## PERFORM STATS
+        mod_lme = sprintf('%s ~ 1 + cond_char + group_char + cond_char*group_char + (1|subj_char)',varnames{var_i});
+        stats_out = fitlme(T_vals_plot,mod_lme); %,'DummyVarCoding','effects');
+        % mod_lmefx = sprintf('%s ~ 1 + cond_char + group_char + cond_char*group_char',varnames{var_i});
+        % stats_outfx = fitlme(T_vals_plot,mod_lmefx); %,'DummyVarCoding','effects');
+        % mod_lmern = sprintf('%s ~ 1 + (1|subj_char)',varnames{var_i});
+        % stats_outrn = fitlme(T_vals_plot,mod_lmern); %,'DummyVarCoding','effects');
+        anova_out = anova(stats_out);
+        %- intercept only model
+        altmod_lme = sprintf('%s ~ 1 + (1|subj_char)',varnames{var_i});
+        altstats_out = fitlme(T_vals_plot,altmod_lme); %,'DummyVarCoding','effects');
+        R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+        % R2 = stats_out.Rsquared.Adjusted;
+       
+        %## GET GROUPS
+        ind1 = contains(stats_out.Coefficients.Name,'group_char_H1000''s');
+        ind2 = contains(stats_out.Coefficients.Name,'group_char_H2000''s');
+        ind3 = contains(stats_out.Coefficients.Name,'group_char_H3000''s');
+        g2 = [];
+        g3 = [];
+        if any(ind1)
+            g2 = 'group_char_H1000''s';
+        else
+            g1 = 'group_char_H1000''s';
+        end
+        if any(ind2) && isempty(g2)
+            g2 = 'group_char_H2000''s';
+        elseif any(ind2)
+            g3 = 'group_char_H2000''s';
+        else
+            g1 = 'group_char_H2000''s';
+        end
+        if any(ind3) && isempty(g2)
+            g2 = 'group_char_H3000''s';
+        elseif any(ind3)
+            g3 = 'group_char_H3000''s';
+        else
+            g1 = 'group_char_H3000''s';
+        end
+        %## GRAB COEFFICIENTS & PVALUES
+        anova_p_cond = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
+        anova_p_group = anova_out.pValue(strcmp(anova_out.Term,'group_char'));
+        anova_p_inter = anova_out.pValue(strcmp(anova_out.Term,'cond_char:group_char'));
+        %-
+        pval_inter = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
+        pval_cond = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_char'));
+        %-
+        pval_g2 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g2));
+        pval_g3 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g3));
+        %-
+        pval_cond_g2 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g2)));
+        pval_cond_g3 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g3)));
+        %-
+        slope_cond = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char'));
+        slope_g2 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g2));
+        slope_g3 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g3));
+        slope_cond_g2 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g2)));
+        slope_cond_g3 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g3)));
+        inter_mn = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
+    
+        %## R2 TROUBLE
+        %-
+        % [b,bb,btable] = stats_out.fixedEffects();
+        % [br,~,bretable] = stats_out.randomEffects();
+        % fx_preds = zeros(length(bretable),4);
+        % rnd_preds = zeros(length(bretable),4);
+        % rnd_res = zeros(length(bretable),4);
+        % fx_res = zeros(length(bretable),4);
+        % act_vals = zeros(length(bretable),4);
+        % vars = stats_out.Variables;
+        % xvals = unique(double(string(T_vals_plot.cond_char)))';
+        % for subj_i = 1:length(bretable)
+        %     subj_char = char(bretable{subj_i,2});
+        %     act = vars(vars.subj_char==subj_char,:);
+        %     act = act.(varnames{var_i});
+        %     if length(act) ~= length(xvals)
+        %         act = cat(1,act,zeros(length(xvals)-length(act),1));
+        %     end
+        %     act_vals(subj_i,:) = act';
+        %     tmp = regexp(subj_char,'(H\d)\d+','tokens');
+        %     tmp = tmp{1}{1};
+        %     if contains(g1,tmp)
+        %         gg1 = 1;
+        %         gg2 = 0;
+        %         gg3 = 0;
+        %     elseif contains(g2,tmp)
+        %         gg1 = 0;
+        %         gg2 = 1;
+        %         gg3 = 0;
+        %     elseif contains(g3,tmp)
+        %         gg1 = 0;
+        %         gg2 = 0;
+        %         gg3 = 1;
+        %     end
+        %     fx_preds(subj_i,:) = inter_mn + xvals*(slope_cond+slope_cond_g2*gg2+slope_cond_g3*gg3) + slope_g2*gg2 + slope_g3*gg3;
+        %     rnd_preds(subj_i,:) = inter_mn + xvals*(slope_cond+slope_cond_g2*gg2+slope_cond_g3*gg3) + slope_g2*gg2 + slope_g3*gg3 + br(subj_i);
+        %     fx_res(subj_i,:) = (fx_preds(subj_i,:) - act');
+        %     rnd_res(subj_i,:) = (rnd_preds(subj_i,:) - act');
+        % end
+        % var(reshape(fx_res,1,[]))
+        % var(reshape(rnd_res,1,[]))
+        % rr = stats_out.Residuals;
+        % [b,~,btable] = stats_out.fixedEffects();
+        % [br,~,bretable] = stats_out.randomEffects();
+        % Vf = var(predict(stats_out))-var(stats_out.Residuals);
+        % Vf = var(predict(stats_outfx));
+        % var(predict(stats_outrn))
+        % var(predict(stats_outrn)+stats_outrn.Residuals.Raw)
+        % 
+        % var(stats_out.Residuals)
+        % var(stats_outfx.Residuals)
+        % var(stats_outrn.Residuals)
+        % [br,~,bretable] = stats_outrn.randomEffects();
+        % Vr = var(double(bretable(:,4)));
+        % Ve = [];
+        % R2m = Vf / (Vf + Vr + Ve)
+        % R2c = (Vf + Vr) / (Vf + Vr + Ve)
+        %## GATHER STATS
+        [norm_h,norm_p] = lillietest(stats_out.residuals);
+        [b,bnames,fetable] = stats_out.fixedEffects();
+        [br,brnames,bretable] = stats_out.randomEffects();
+        STATS_TRACK_STRUCT(cntsts).stat_test_mod = {mod_lme};
+        STATS_TRACK_STRUCT(cntsts).resp_terms = {varnames{var_i}};
+        STATS_TRACK_STRUCT(cntsts).pred_terms = bnames.Name;
+        STATS_TRACK_STRUCT(cntsts).rnd_terms = {'(1|subj_char)'};
+        %-
+        STATS_TRACK_STRUCT(cntsts).anova_speed_p = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
+        STATS_TRACK_STRUCT(cntsts).anova_grp_p = anova_out.pValue(strcmp(anova_out.Term,'group_char'));
+        STATS_TRACK_STRUCT(cntsts).anova_inter_p = anova_out.pValue(strcmp(anova_out.Term,'(Intercept)'));
+        STATS_TRACK_STRUCT(cntsts).anova_intact_p = anova_out.pValue(strcmp(anova_out.Term,'cond_char:group_char'));
+        %-
+        STATS_TRACK_STRUCT(cntsts).lme_speed_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_char'));
+        STATS_TRACK_STRUCT(cntsts).lme_grp_p = [stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g2)),...
+            stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g3))];
+        STATS_TRACK_STRUCT(cntsts).lme_intact_p = [stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g2))),...
+            stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g3)))];
+        STATS_TRACK_STRUCT(cntsts).lme_inter_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
+        %-
+        STATS_TRACK_STRUCT(cntsts).lme_speed_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char'));
+        STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
+        STATS_TRACK_STRUCT(cntsts).lme_intact_coeff = [stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g2))),...
+            stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g3)))];
+        STATS_TRACK_STRUCT(cntsts).lme_grp_coeff = [stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g2)),...
+            stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g3))];
+        STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {bretable};
+        STATS_TRACK_STRUCT(cntsts).norm_test_h = norm_h;
+        STATS_TRACK_STRUCT(cntsts).norm_test_p = norm_p;
+        STATS_TRACK_STRUCT(cntsts).R2 = R2;
+        cntsts = cntsts + 1;
+        STATS_TRACK_STRUCT(cntsts) = DEF_STATS_TRACK_STRUCT;
+        %- end gather stats
+        %## PLOT
+        STATS_STRUCT = struct('anova',{{}},...
+                          'anova_grp',{{}},...
+                          'pvals',{{}},...
+                          'pvals_pairs',{{}},...
+                          'pvals_grp',{{}},...
+                          'pvals_grp_pairs',{{}},...
+                          'regress_pval',{{}},...
+                          'regress_line',{{}},...
+                          'r2_coeff',{[]},...
+                          'regress_xvals',0,...
+                          'do_include_intercept',true);
+        tmp = regexp({g1,g2,g3},'(H\w*''s)','tokens');
+        group_order = categorical([tmp{1}{1},tmp{2}{1},tmp{3}{1}]);
+        STATS_STRUCT.group_order = group_order;
+        STATS_STRUCT.anova_grp = {anova_p_group,anova_p_group,anova_p_group};
+        STATS_STRUCT.pvals_grp_pairs = {[1,1],[1,2],[1,3]};
+        STATS_STRUCT.pvals_grp = {1,pval_cond_g2,pval_cond_g3};
+        STATS_STRUCT.anova={anova_p_inter,anova_p_inter,anova_p_inter};
+        STATS_STRUCT.regress_pval={pval_cond,pval_cond_g2,pval_cond_g3};
+        STATS_STRUCT.regress_line={[inter_mn,slope_cond],[inter_mn+slope_g2,(slope_cond+slope_cond_g2)],[inter_mn+slope_g3,(slope_cond+slope_cond_g3)]};
+        STATS_STRUCT.r2_coeff=[R2,R2,R2];
+        STATS_STRUCT.regress_xvals=[0,unique(double(string(T_vals_plot.cond_char)))',1.25];
+        %- calculate ylim
+        tmp_vals = T_vals_plot.(varnames{var_i});
+        chk = isnan(tmp_vals);
+        %- remove NaNs from vals
+        if any(chk)
+            fprintf('\nRemoving NaN''s from data for subjects: \n');
+            fprintf('%s, ',T_vals_plot.subj_char(logical(chk)))
+            tmp_vals = tmp_vals(~chk);
+        end
+        ylim_in = [min(tmp_vals)-std(tmp_vals),max(tmp_vals)+3*std(tmp_vals)];
+        VIOLIN_PARAMS = {'width',0.1,...
+            'ShowWhiskers',false,'ShowNotches',false,'ShowBox',true,...
+            'ShowMedian',true,'Bandwidth',0.15,'QuartileStyle','shadow',...
+            'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
+            'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
+        PLOT_STRUCT = struct('color_map',color_dark,...
+            'cond_labels',unique(T_vals_plot.cond_char),'group_labels',group_order,...
+            'cond_offsets',VIOLIN_COND_OFFSETS,'y_label',varnames_labs{var_i},'group_offsets',[0.125,0.475,0.812],...
+            'title',varnames_labs{var_i},'font_size',8,'ylim',ylim_in,...
+            'font_name','Arial','x_label','speed','do_combine_groups',~DO_PLOT_GROUPS);
+        % ax = axes();
+        fig = figure('color','white','renderer','Painters');
+        % sgtitle(atlas_name,'FontName',PLOT_STRUCT.font_name,'FontSize',14,'FontWeight','bold','Interpreter','none');
+        set(fig,'Units','inches','Position',[0.5,0.5,6.5,9])
+        set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+        hold on;
+        set(gca,AXES_DEFAULT_PROPS{:})
+        axax = group_violin(T_vals_plot,varnames{var_i},'cond_char','group_char',...
+            fig,...
+            'VIOLIN_PARAMS',VIOLIN_PARAMS,...
+            'PLOT_STRUCT',PLOT_STRUCT,...
+            'STATS_STRUCT',STATS_STRUCT);
+        set(axax,'OuterPosition',[0,0,1,1]);
+        set(axax,'Position',[0.1+horiz_shift,VIOLIN_BOTTOM+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE]);  %[left bottom width height]
+        hold off;
+        if DO_PLOT_GROUPS
+            exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_kinematics-speed-group-interact_groups.tiff',string(clusters(cl_i)),varnames{var_i})],'Resolution',300);
+        else
+            exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_kinematics-speed-group-interact.tiff',string(clusters(cl_i)),varnames{var_i})],'Resolution',300);
+        end
+        close(fig)
+        %- iterate
     end
-    inds = isnan(t_tmp.(varnames{var_i}));
-    if any(inds)
-        t_tmp = t_tmp(~inds,:);
-    end
-    T_vals_plot = table(str2double(string(t_tmp.cond_char)),t_tmp.(varnames{var_i}),t_tmp.group_char,categorical(t_tmp.subj_char),...
-       'VariableNames',{'cond_char',varnames{var_i},'group_char','subj_char'});
-    % T_vals_plot.cond_char = double(string(T_vals_plot.cond_char));
-    %## PERFORM STATS
-    mod_lme = sprintf('%s ~ 1 + cond_char + group_char + cond_char*group_char + (1|subj_char)',varnames{var_i});
-    stats_out = fitlme(T_vals_plot,mod_lme,'DummyVarCoding','effects');
-    anova_out = anova(stats_out);
-    ind1 = contains(stats_out.Coefficients.Name,'group_char_H1000''s');
-    ind2 = contains(stats_out.Coefficients.Name,'group_char_H2000''s');
-    ind3 = contains(stats_out.Coefficients.Name,'group_char_H3000''s');
-    g2 = [];
-    g3 = [];
-    if any(ind1)
-        g2 = 'group_char_H1000''s';
-    else
-        g1 = 'group_char_H1000''s';
-    end
-    if any(ind2) && isempty(g2)
-        g2 = 'group_char_H2000''s';
-    elseif any(ind2)
-        g3 = 'group_char_H2000''s';
-    else
-        g1 = 'group_char_H2000''s';
-    end
-    if any(ind3) && isempty(g2)
-        g2 = 'group_char_H3000''s';
-    elseif any(ind3)
-        g3 = 'group_char_H3000''s';
-    else
-        g1 = 'group_char_H3000''s';
-    end
-    R2 = stats_out.Rsquared.Adjusted;
-    %## GRAB COEFFICIENTS & PVALUES
-    anova_p_cond = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
-    anova_p_group = anova_out.pValue(strcmp(anova_out.Term,'group_char'));
-    anova_p_inter = anova_out.pValue(strcmp(anova_out.Term,'cond_char:group_char'));
-    %-
-    pval_inter = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
-    pval_cond = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_char'));
-    %-
-    pval_g2 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g2));
-    pval_g3 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g3));
-    %-
-    pval_cond_g2 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g2)));
-    pval_cond_g3 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g3)));
-    %-
-    slope_cond = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char'));
-    slope_g2 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g2));
-    slope_g3 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g3));
-    slope_cond_g2 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g2)));
-    slope_cond_g3 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g3)));
-    inter_mn = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
-    %## GATHER STATS
-    [norm_h,norm_p] = lillietest(stats_out.residuals);
-    [b,bnames,fetable] = stats_out.fixedEffects();
-    [br,brnames,fretable] = stats_out.randomEffects();
-    STATS_TRACK_STRUCT(cntsts).stat_test_mod = {mod_lme};
-    STATS_TRACK_STRUCT(cntsts).resp_terms = {varnames{var_i}};
-    STATS_TRACK_STRUCT(cntsts).pred_terms = bnames.Name;
-    STATS_TRACK_STRUCT(cntsts).rnd_terms = {'(1|subj_char)'};
-    %-
-    STATS_TRACK_STRUCT(cntsts).anova_speed_p = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
-    STATS_TRACK_STRUCT(cntsts).anova_grp_p = anova_out.pValue(strcmp(anova_out.Term,'group_char'));
-    STATS_TRACK_STRUCT(cntsts).anova_inter_p = anova_out.pValue(strcmp(anova_out.Term,'(Intercept)'));
-    STATS_TRACK_STRUCT(cntsts).anova_intact_p = anova_out.pValue(strcmp(anova_out.Term,'cond_char:group_char'));
-    %-
-    STATS_TRACK_STRUCT(cntsts).lme_speed_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_char'));
-    STATS_TRACK_STRUCT(cntsts).lme_grp_p = [stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g2)),...
-        stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g3))];
-    STATS_TRACK_STRUCT(cntsts).lme_intact_p = [stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g2))),...
-        stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g3)))];
-    STATS_TRACK_STRUCT(cntsts).lme_inter_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
-    %-
-    STATS_TRACK_STRUCT(cntsts).lme_speed_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char'));
-    STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
-    STATS_TRACK_STRUCT(cntsts).lme_intact_coeff = [stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g2))),...
-        stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g3)))];
-    STATS_TRACK_STRUCT(cntsts).lme_grp_coeff = [stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g2)),...
-        stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g3))];
-    STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {fretable};
-    STATS_TRACK_STRUCT(cntsts).norm_test_h = norm_h;
-    STATS_TRACK_STRUCT(cntsts).norm_test_p = norm_p;
-    STATS_TRACK_STRUCT(cntsts).R2 = R2;
-    cntsts = cntsts + 1;
-    STATS_TRACK_STRUCT(cntsts) = DEF_STATS_TRACK_STRUCT;
-    %- end gather stats
-    %## PLOT
-    STATS_STRUCT = struct('anova',{{}},...
-                      'anova_grp',{{}},...
-                      'pvals',{{}},...
-                      'pvals_pairs',{{}},...
-                      'pvals_grp',{{}},...
-                      'pvals_grp_pairs',{{}},...
-                      'regress_pval',{{}},...
-                      'regress_line',{{}},...
-                      'r2_coeff',{[]},...
-                      'regress_xvals',0);
-    tmp = regexp({g1,g2,g3},'(H\w*''s)','tokens');
-    group_order = categorical([tmp{1}{1},tmp{2}{1},tmp{3}{1}]);
-    STATS_STRUCT.group_order = group_order;
-    STATS_STRUCT.anova_grp = {anova_p_group,anova_p_group,anova_p_group};
-    STATS_STRUCT.pvals_grp_pairs = {[1,1],[1,2],[1,3]};
-    STATS_STRUCT.pvals_grp = {1,pval_g2,pval_g3};
-    STATS_STRUCT.anova={anova_p_cond,anova_p_inter,anova_p_inter};
-    STATS_STRUCT.regress_pval={pval_cond,pval_cond_g2,pval_cond_g3};
-    STATS_STRUCT.regress_line={[inter_mn,slope_cond],[inter_mn,(slope_cond+slope_g2+slope_cond_g2)],[inter_mn,(slope_cond+slope_g3+slope_cond_g3)]};
-    STATS_STRUCT.r2_coeff=[R2,R2,R2];
-    STATS_STRUCT.regress_xvals=[0,unique(double(string(T_vals_plot.cond_char)))',1.25];
-    %- calculate ylim
-    tmp_vals = T_vals_plot.(varnames{var_i});
-    chk = isnan(tmp_vals);
-    %- remove NaNs from vals
-    if any(chk)
-        fprintf('\nRemoving NaN''s from data for subjects: \n');
-        fprintf('%s, ',T_vals_plot.subj_char(logical(chk)))
-        tmp_vals = tmp_vals(~chk);
-    end
-    ylim_in = [min(tmp_vals)-std(tmp_vals),max(tmp_vals)+3*std(tmp_vals)];
-    VIOLIN_PARAMS = {'width',0.1,...
-        'ShowWhiskers',false,'ShowNotches',false,'ShowBox',true,...
-        'ShowMedian',true,'Bandwidth',0.15,'QuartileStyle','shadow',...
-        'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
-        'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
-    PLOT_STRUCT = struct('color_map',color_dark,...
-        'cond_labels',unique(T_vals_plot.cond_char),'group_labels',group_order,...
-        'cond_offsets',VIOLIN_COND_OFFSETS,'y_label',varnames_labs{var_i},'group_offsets',[0.125,0.475,0.812],...
-        'title',varnames_labs{var_i},'font_size',10,'ylim',ylim_in,...
-        'font_name','Arial','x_label','speed','do_combine_groups',~DO_PLOT_GROUPS);
-    % ax = axes();
-    fig = figure('color','white','renderer','Painters');
-    % sgtitle(atlas_name,'FontName',PLOT_STRUCT.font_name,'FontSize',14,'FontWeight','bold','Interpreter','none');
-    set(fig,'Units','inches','Position',[0.5,0.5,6.5,9])
-    set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
-    hold on;
-    set(gca,AXES_DEFAULT_PROPS{:})
-    axax = group_violin(T_vals_plot,varnames{var_i},'cond_char','group_char',...
-        fig,...
-        'VIOLIN_PARAMS',VIOLIN_PARAMS,...
-        'PLOT_STRUCT',PLOT_STRUCT,...
-        'STATS_STRUCT',STATS_STRUCT);
-    set(axax,'OuterPosition',[0,0,1,1]);
-    set(axax,'Position',[0.1+horiz_shift,VIOLIN_BOTTOM+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE]);  %[left bottom width height]
-    hold off;
-    exportgraphics(fig,[tmp_savedir filesep sprintf('%s_kinematics-speed-group-interact.tiff',varnames{var_i})],'Resolution',300)
-    close(fig)
-    %- iterate
 end
 %% PREDICTORS: SPEED, GROUP; RESPONSE: KINEMATICS, STATS TEST
 %## PARAMS
 IM_RESIZE = 0.7;
 AX_W = 0.35;
 AX_H = 0.25;
-DO_PLOT_GROUPS = false;
+DO_PLOT_GROUPS = true;
 VIOLIN_BOTTOM = 0.7;
 % REG_TXT_SIZE = 8;
 % REG_HORIZ_SHIFT = 0.05;
@@ -1625,186 +1720,200 @@ VIOLIN_COND_OFFSETS = [-0.35,-0.1,0.15,0.40];
 tmp_savedir = [save_dir filesep 'lme_Pspeedc-Pgroup-Rkin'];
 mkdir(tmp_savedir);
 %##
-for var_i = 1:length(varnames)
-    vert_shift = 0;
-    des_i = 2; %## JUST SPEED
-    %##
-    horiz_shift = 0;
-    switch des_i
-        case 1
-            color_dark = COLORS_MAPS_TERRAIN;
-            color_light = COLORS_MAPS_TERRAIN;
-            GROUP_CMAP_OFFSET = [0,0.1,0.1];
-            xtick_label_g = {'flat','low','med','high'};
-        case 2
-            color_dark = COLOR_MAPS_SPEED;
-            color_light = COLOR_MAPS_SPEED+0.15;
-            GROUP_CMAP_OFFSET = [0.15,0,0];
-            xtick_label_g = {'0.25','0.50','0.75','1.0'};
-    end
-    inds = TMP_FOOOF_T.design_id == designs(des_i);
-    T_vals_plot = TMP_FOOOF_T(inds,:);
-    subjects = unique(T_vals_plot.subj_char);
-    conds = unique(T_vals_plot.cond_char);
-    % groups = unique(T_vals_plot.group_id);
-    t_tmp = [];
-    for i = 1:length(subjects)
-        ii = find(T_vals_plot.subj_char == subjects(i));
-        tt = T_vals_plot(ii,:);
-        for j = 1:length(conds)
-            jj = find(tt.cond_char == conds(j));
-            t_tmp = [t_tmp; tt(jj(1),:)];
+for cl_i = 1:length(clusters)
+    for var_i = 1:length(varnames)
+        vert_shift = 0;
+        des_i = 2; %## JUST SPEED
+        %##
+        horiz_shift = 0;
+        switch des_i
+            case 1
+                color_dark = COLORS_MAPS_TERRAIN;
+                color_light = COLORS_MAPS_TERRAIN;
+                GROUP_CMAP_OFFSET = [0,0.1,0.1];
+                xtick_label_g = {'flat','low','med','high'};
+            case 2
+                color_dark = COLOR_MAPS_SPEED;
+                color_light = COLOR_MAPS_SPEED+0.15;
+                GROUP_CMAP_OFFSET = [0.15,0,0];
+                xtick_label_g = {'0.25','0.50','0.75','1.0'};
         end
+        % inds = TMP_FOOOF_T.design_id == designs(des_i);
+        inds = TMP_FOOOF_T.design_id == designs(des_i) & TMP_FOOOF_T.cluster_id == clusters(cl_i);
+        T_vals_plot = TMP_FOOOF_T(inds,:);
+        subjects = unique(T_vals_plot.subj_char);
+        conds = unique(T_vals_plot.cond_char);
+        % groups = unique(T_vals_plot.group_id);
+        t_tmp = [];
+        for i = 1:length(subjects)
+            ii = find(T_vals_plot.subj_char == subjects(i));
+            tt = T_vals_plot(ii,:);
+            for j = 1:length(conds)
+                jj = find(tt.cond_char == conds(j));
+                t_tmp = [t_tmp; tt(jj(1),:)];
+            end
+        end
+        inds = isnan(t_tmp.(varnames{var_i}));
+        if any(inds)
+            t_tmp = t_tmp(~inds,:);
+        end
+        T_vals_plot = table(double(string(t_tmp.cond_char)),t_tmp.(varnames{var_i}),categorical(string(t_tmp.group_char)),categorical(t_tmp.subj_char),...
+           'VariableNames',{'cond_char',varnames{var_i},'group_char','subj_char'});
+        %## PERFORM STATS
+        mod_lme = sprintf('%s ~ 1 + cond_char + group_char + (1|subj_char)',varnames{var_i});
+        stats_out = fitlme(T_vals_plot,mod_lme); %,'DummyVarCoding','effects');
+        anova_out = anova(stats_out);
+        %- intercept only model
+        altmod_lme = sprintf('%s ~ 1',varnames{var_i});
+        altstats_out = fitlme(T_vals_plot,altmod_lme); %,'DummyVarCoding','effects');
+        R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+        % R2 = stats_out.Rsquared.Adjusted;
+        
+        %## GET GROUPS
+        ind1 = contains(stats_out.Coefficients.Name,'group_char_H1000''s');
+        ind2 = contains(stats_out.Coefficients.Name,'group_char_H2000''s');
+        ind3 = contains(stats_out.Coefficients.Name,'group_char_H3000''s');
+        g2 = [];
+        g3 = [];
+        if any(ind1)
+            g2 = 'group_char_H1000''s';
+        else
+            g1 = 'group_char_H1000''s';
+        end
+        if any(ind2) && isempty(g2)
+            g2 = 'group_char_H2000''s';
+        elseif any(ind2)
+            g3 = 'group_char_H2000''s';
+        else
+            g1 = 'group_char_H2000''s';
+        end
+        if any(ind3) && isempty(g2)
+            g2 = 'group_char_H3000''s';
+        elseif any(ind3)
+            g3 = 'group_char_H3000''s';
+        else
+            g1 = 'group_char_H3000''s';
+        end
+        %## GRAB COEFFICIENTS & PVALUES
+        anova_p_cond = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
+        anova_p_group = anova_out.pValue(strcmp(anova_out.Term,'group_char'));
+        %-
+        pval_inter = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
+        pval_cond = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_char'));
+        %-
+        pval_g2 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g2));
+        pval_g3 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g3));
+        %-
+        slope_cond = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char')));
+        slope_g2 = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g2)));
+        slope_g3 = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g3)));
+        inter_mn = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
+        %## GATHER STATS
+        [norm_h,norm_p] = lillietest(stats_out.residuals);
+        [b,bnames,fetable] = stats_out.fixedEffects();
+        [br,brnames,bretable] = stats_out.randomEffects();
+        STATS_TRACK_STRUCT(cntsts).stat_test_mod = {mod_lme};
+        STATS_TRACK_STRUCT(cntsts).resp_terms = {varnames{var_i}};
+        STATS_TRACK_STRUCT(cntsts).pred_terms = bnames.Name;
+        STATS_TRACK_STRUCT(cntsts).rnd_terms = {'(1|subj_char)'};
+        %-
+        STATS_TRACK_STRUCT(cntsts).anova_speed_p = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
+        STATS_TRACK_STRUCT(cntsts).anova_grp_p = anova_out.pValue(strcmp(anova_out.Term,'group_char'));
+        STATS_TRACK_STRUCT(cntsts).anova_inter_p = anova_out.pValue(strcmp(anova_out.Term,'(Intercept)'));
+        %-
+        STATS_TRACK_STRUCT(cntsts).lme_speed_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_char'));
+        STATS_TRACK_STRUCT(cntsts).lme_grp_p = [stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g2)),...
+            stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g3))];
+        STATS_TRACK_STRUCT(cntsts).lme_inter_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
+        %-
+        STATS_TRACK_STRUCT(cntsts).lme_speed_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char'));
+        STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
+        STATS_TRACK_STRUCT(cntsts).lme_grp_coeff = [stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g2)),...
+            stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g3))];
+        STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {bretable};
+        STATS_TRACK_STRUCT(cntsts).norm_test_h = norm_h;
+        STATS_TRACK_STRUCT(cntsts).norm_test_p = norm_p;
+        STATS_TRACK_STRUCT(cntsts).R2 = R2;
+        cntsts = cntsts + 1;
+        STATS_TRACK_STRUCT(cntsts) = DEF_STATS_TRACK_STRUCT;
+        %- end gather stats
+        %## PLOT
+        STATS_STRUCT = struct('anova',{{}},...
+                          'anova_grp',{{}},...
+                          'pvals',{{}},...
+                          'pvals_pairs',{{}},...
+                          'pvals_grp',{{}},...
+                          'pvals_grp_pairs',{{}},...
+                          'regress_pval',{{}},...
+                          'regress_line',{{}},...
+                          'r2_coeff',{[]},...
+                          'regress_xvals',0,...
+                          'do_include_intercept',true);
+        tmp = regexp({g1,g2,g3},'(H\w*''s)','tokens');
+        group_order = categorical([tmp{1}{1},tmp{2}{1},tmp{3}{1}]);
+        STATS_STRUCT.group_order = group_order;
+        STATS_STRUCT.anova_grp = {anova_p_group,anova_p_group,anova_p_group};
+        STATS_STRUCT.pvals_grp_pairs = {[1,1],[1,2],[1,3]};
+        STATS_STRUCT.pvals_grp = {1,pval_g2,pval_g3};
+        STATS_STRUCT.anova={anova_p_cond,anova_p_cond,anova_p_cond};
+        STATS_STRUCT.regress_pval={pval_cond,pval_cond,pval_cond};
+        STATS_STRUCT.regress_line={[inter_mn,slope_cond],[inter_mn+slope_g2,(slope_cond)],[inter_mn+slope_g3,(slope_cond)]};
+        STATS_STRUCT.r2_coeff=[R2,R2,R2];
+        STATS_STRUCT.regress_xvals=[0,unique(double(string(T_vals_plot.cond_char)))',1.25];
+        %- calculate ylim
+        tmp_vals = T_vals_plot.(varnames{var_i});
+        chk = isnan(tmp_vals);
+        %- remove NaNs from vals
+        if any(chk)
+            fprintf('\nRemoving NaN''s from data for subjects: \n');
+            fprintf('%s, ',T_vals_plot.subj_char(logical(chk)))
+            tmp_vals = tmp_vals(~chk);
+        end
+        ylim_in = [min(tmp_vals)-std(tmp_vals),max(tmp_vals)+3*std(tmp_vals)];
+        VIOLIN_PARAMS = {'width',0.1,...
+            'ShowWhiskers',false,'ShowNotches',false,'ShowBox',true,...
+            'ShowMedian',true,'Bandwidth',0.15,'QuartileStyle','shadow',...
+            'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
+            'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
+        PLOT_STRUCT = struct('color_map',color_dark,...
+            'cond_labels',unique(T_vals_plot.cond_char),'group_labels',group_order,...
+            'cond_offsets',VIOLIN_COND_OFFSETS,'y_label',varnames_labs{var_i},'group_offsets',[0.125,0.475,0.812],...
+            'title',varnames_labs{var_i},'font_size',10,'ylim',ylim_in,...
+            'font_name','Arial','x_label','speed','do_combine_groups',~DO_PLOT_GROUPS);
+        % ax = axes();
+        fig = figure('color','white','renderer','Painters');
+        % sgtitle(atlas_name,'FontName',PLOT_STRUCT.font_name,'FontSize',14,'FontWeight','bold','Interpreter','none');
+        set(fig,'Units','inches','Position',[0.5,0.5,6.5,9])
+        set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+        hold on;
+        set(gca,AXES_DEFAULT_PROPS{:})
+        axax = group_violin(T_vals_plot,varnames{var_i},'cond_char','group_char',...
+            fig,...
+            'VIOLIN_PARAMS',VIOLIN_PARAMS,...
+            'PLOT_STRUCT',PLOT_STRUCT,...
+            'STATS_STRUCT',STATS_STRUCT);
+        set(axax,'OuterPosition',[0,0,1,1]);
+        set(axax,'Position',[0.1+horiz_shift,VIOLIN_BOTTOM+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE]);  %[left bottom width height]
+        hold off;
+        if DO_PLOT_GROUPS
+            exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_kinematics-speed-group_groups.tiff',string(clusters(cl_i)),varnames{var_i})],'Resolution',300);
+        else
+            exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_kinematics-speed-group_all.tiff',string(clusters(cl_i)),varnames{var_i})],'Resolution',300);
+        end
+        close(fig)
     end
-    inds = isnan(t_tmp.(varnames{var_i}));
-    if any(inds)
-        t_tmp = t_tmp(~inds,:);
-    end
-    T_vals_plot = table(double(string(t_tmp.cond_char)),t_tmp.(varnames{var_i}),categorical(string(t_tmp.group_char)),categorical(t_tmp.subj_char),...
-       'VariableNames',{'cond_char',varnames{var_i},'group_char','subj_char'});
-    %## PERFORM STATS
-    mod_lme = sprintf('%s ~ 1 + cond_char + group_char + (1|subj_char)',varnames{var_i});
-    stats_out = fitlme(T_vals_plot,mod_lme,'DummyVarCoding','effects');
-    anova_out = anova(stats_out);
-    ind1 = contains(stats_out.Coefficients.Name,'group_char_H1000''s');
-    ind2 = contains(stats_out.Coefficients.Name,'group_char_H2000''s');
-    ind3 = contains(stats_out.Coefficients.Name,'group_char_H3000''s');
-    g2 = [];
-    g3 = [];
-    if any(ind1)
-        g2 = 'group_char_H1000''s';
-    else
-        g1 = 'group_char_H1000''s';
-    end
-    if any(ind2) && isempty(g2)
-        g2 = 'group_char_H2000''s';
-    elseif any(ind2)
-        g3 = 'group_char_H2000''s';
-    else
-        g1 = 'group_char_H2000''s';
-    end
-    if any(ind3) && isempty(g2)
-        g2 = 'group_char_H3000''s';
-    elseif any(ind3)
-        g3 = 'group_char_H3000''s';
-    else
-        g1 = 'group_char_H3000''s';
-    end
-    R2 = stats_out.Rsquared.Adjusted;
-    %## GRAB COEFFICIENTS & PVALUES
-    anova_p_cond = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
-    anova_p_group = anova_out.pValue(strcmp(anova_out.Term,'group_char'));
-    %-
-    pval_inter = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
-    pval_cond = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_char'));
-    %-
-    pval_g2 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g2));
-    pval_g3 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g3));
-    %-
-    slope_cond = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char')));
-    slope_g2 = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g2)));
-    slope_g3 = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g3)));
-    inter_mn = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
-    %## GATHER STATS
-    [norm_h,norm_p] = lillietest(stats_out.residuals);
-    [b,bnames,fetable] = stats_out.fixedEffects();
-    [br,brnames,fretable] = stats_out.randomEffects();
-    STATS_TRACK_STRUCT(cntsts).stat_test_mod = {mod_lme};
-    STATS_TRACK_STRUCT(cntsts).resp_terms = {varnames{var_i}};
-    STATS_TRACK_STRUCT(cntsts).pred_terms = bnames.Name;
-    STATS_TRACK_STRUCT(cntsts).rnd_terms = {'(1|subj_char)'};
-    %-
-    STATS_TRACK_STRUCT(cntsts).anova_speed_p = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
-    STATS_TRACK_STRUCT(cntsts).anova_grp_p = anova_out.pValue(strcmp(anova_out.Term,'group_char'));
-    STATS_TRACK_STRUCT(cntsts).anova_inter_p = anova_out.pValue(strcmp(anova_out.Term,'(Intercept)'));
-    %-
-    STATS_TRACK_STRUCT(cntsts).lme_speed_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_char'));
-    STATS_TRACK_STRUCT(cntsts).lme_grp_p = [stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g2)),...
-        stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,g3))];
-    STATS_TRACK_STRUCT(cntsts).lme_inter_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
-    %-
-    STATS_TRACK_STRUCT(cntsts).lme_speed_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char'));
-    STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
-    STATS_TRACK_STRUCT(cntsts).lme_grp_coeff = [stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g2)),...
-        stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g3))];
-    STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {fretable};
-    STATS_TRACK_STRUCT(cntsts).norm_test_h = norm_h;
-    STATS_TRACK_STRUCT(cntsts).norm_test_p = norm_p;
-    STATS_TRACK_STRUCT(cntsts).R2 = R2;
-    cntsts = cntsts + 1;
-    STATS_TRACK_STRUCT(cntsts) = DEF_STATS_TRACK_STRUCT;
-    %- end gather stats
-    %## PLOT
-    STATS_STRUCT = struct('anova',{{}},...
-                      'anova_grp',{{}},...
-                      'pvals',{{}},...
-                      'pvals_pairs',{{}},...
-                      'pvals_grp',{{}},...
-                      'pvals_grp_pairs',{{}},...
-                      'regress_pval',{{}},...
-                      'regress_line',{{}},...
-                      'r2_coeff',{[]},...
-                      'regress_xvals',0);
-    tmp = regexp({g1,g2,g3},'(H\w*''s)','tokens');
-    group_order = categorical([tmp{1}{1},tmp{2}{1},tmp{3}{1}]);
-    STATS_STRUCT.group_order = group_order;
-    STATS_STRUCT.anova_grp = {anova_p_group,anova_p_group,anova_p_group};
-    STATS_STRUCT.pvals_grp_pairs = {[1,1],[1,2],[1,3]};
-    STATS_STRUCT.pvals_grp = {1,pval_g2,pval_g3};
-    STATS_STRUCT.anova={anova_p_cond,anova_p_cond,anova_p_cond};
-    STATS_STRUCT.regress_pval={pval_cond,pval_cond,pval_cond};
-    STATS_STRUCT.regress_line={[inter_mn,slope_cond],[inter_mn,(slope_cond+slope_g2)],[inter_mn,(slope_cond+slope_g3)]};
-    STATS_STRUCT.r2_coeff=[R2,R2,R2];
-    STATS_STRUCT.regress_xvals=[0,unique(double(string(T_vals_plot.cond_char)))',1.25];
-    %- calculate ylim
-    tmp_vals = T_vals_plot.(varnames{var_i});
-    chk = isnan(tmp_vals);
-    %- remove NaNs from vals
-    if any(chk)
-        fprintf('\nRemoving NaN''s from data for subjects: \n');
-        fprintf('%s, ',T_vals_plot.subj_char(logical(chk)))
-        tmp_vals = tmp_vals(~chk);
-    end
-    ylim_in = [min(tmp_vals)-std(tmp_vals),max(tmp_vals)+3*std(tmp_vals)];
-    VIOLIN_PARAMS = {'width',0.1,...
-        'ShowWhiskers',false,'ShowNotches',false,'ShowBox',true,...
-        'ShowMedian',true,'Bandwidth',0.15,'QuartileStyle','shadow',...
-        'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
-        'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
-    PLOT_STRUCT = struct('color_map',color_dark,...
-        'cond_labels',unique(T_vals_plot.cond_char),'group_labels',group_order,...
-        'cond_offsets',VIOLIN_COND_OFFSETS,'y_label',varnames_labs{var_i},'group_offsets',[0.125,0.475,0.812],...
-        'title',varnames_labs{var_i},'font_size',10,'ylim',ylim_in,...
-        'font_name','Arial','x_label','speed','do_combine_groups',~DO_PLOT_GROUPS);
-    % ax = axes();
-    fig = figure('color','white','renderer','Painters');
-    % sgtitle(atlas_name,'FontName',PLOT_STRUCT.font_name,'FontSize',14,'FontWeight','bold','Interpreter','none');
-    set(fig,'Units','inches','Position',[0.5,0.5,6.5,9])
-    set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
-    hold on;
-    set(gca,AXES_DEFAULT_PROPS{:})
-    axax = group_violin(T_vals_plot,varnames{var_i},'cond_char','group_char',...
-        fig,...
-        'VIOLIN_PARAMS',VIOLIN_PARAMS,...
-        'PLOT_STRUCT',PLOT_STRUCT,...
-        'STATS_STRUCT',STATS_STRUCT);
-    set(axax,'OuterPosition',[0,0,1,1]);
-    set(axax,'Position',[0.1+horiz_shift,VIOLIN_BOTTOM+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE]);  %[left bottom width height]
-    hold off;
-    exportgraphics(fig,[tmp_savedir filesep sprintf('%s_kinematics-speed-group-interact.tiff',varnames{var_i})],'Resolution',300)
-    close(fig)
 end
 %% PREDICTORS: SPEED, GROUP, INTERACTION. RESPONSE: BRAIN ACTIVITY, STATS TEST
 %## PARAMS
 IM_RESIZE = 0.7;
 AX_W = 0.35;
 AX_H = 0.25;
-DO_PLOT_GROUPS = false;
+DO_PLOT_GROUPS = true;
 VIOLIN_BOTTOM = 0.7;
 % REG_TXT_SIZE = 8;
 % REG_HORIZ_SHIFT = 0.05;
 % REG_VERT_SHIFT = 0.05;
-AX_HORIZ_SHIFT = 0.1;
+AX_HORIZ_SHIFT = 0.125;
 AX_VERT_SHIFT = 0.1250;
 AX_INIT_SHIFT = 0.07;
 VIOLIN_COND_OFFSETS = [-0.35,-0.1,0.15,0.40];
@@ -1816,7 +1925,7 @@ AX_MAX = 3;
 %         'cond_offsets',VIOLIN_COND_OFFSETS,'y_label',[],...
 %         'title',[],'font_size',10,'ylim',[],...
 %         'font_name','Arial','x_label','speed','do_combine_groups',true);
-tmp_savedir = [save_dir filesep 'lme_Pspeedc-PGroup-Pinter-Reeg'];
+tmp_savedir = [save_dir filesep 'tlme_Pspeedc-PGroup-Pinter-Reeg'];
 mkdir(tmp_savedir);
 %##
 for cl_i = 1:length(clusters)
@@ -1861,8 +1970,14 @@ for cl_i = 1:length(clusters)
         'VariableNames',{measure_name,'cond_char','group_char','subj_char'});
         %## LINEAR MODEL
         mod_lme = sprintf('%s ~ 1 + cond_char + group_char + cond_char*group_char + (1|subj_char)',measure_name);
-        stats_out = fitlme(T_vals_plot,mod_lme,'DummyVarCoding','effects');
+        stats_out = fitlme(T_vals_plot,mod_lme); %,'DummyVarCoding','effects');
         anova_out = anova(stats_out);
+        %- intercept only model
+        altmod_lme = sprintf('%s ~ 1',measure_name);
+        altstats_out = fitlme(T_vals_plot,altmod_lme); %,'DummyVarCoding','effects');
+        R2 = 1-(altstats_out.MSE/stats_out.MSE)^(2/stats_out.NumVariables);
+        % R2 = stats_out.Rsquared.Adjusted;
+        %## GET GROUPS
         ind1 = contains(stats_out.Coefficients.Name,'group_char_H1000''s');
         ind2 = contains(stats_out.Coefficients.Name,'group_char_H2000''s');
         ind3 = contains(stats_out.Coefficients.Name,'group_char_H3000''s');
@@ -1887,7 +2002,6 @@ for cl_i = 1:length(clusters)
         else
             g1 = 'group_char_H3000''s';
         end
-        R2 = stats_out.Rsquared.Adjusted;
         %## GRAB COEFFICIENTS & PVALUES
         anova_p_cond = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
         anova_p_group = anova_out.pValue(strcmp(anova_out.Term,'group_char'));
@@ -1911,7 +2025,7 @@ for cl_i = 1:length(clusters)
         %## GATHER STATS
         [norm_h,norm_p] = lillietest(stats_out.residuals);
         [b,bnames,fetable] = stats_out.fixedEffects();
-        [br,brnames,fretable] = stats_out.randomEffects();
+        [br,brnames,bretable] = stats_out.randomEffects();
         STATS_TRACK_STRUCT(cntsts).stat_test_mod = {mod_lme};
         STATS_TRACK_STRUCT(cntsts).resp_terms = {measure_name};
         STATS_TRACK_STRUCT(cntsts).pred_terms = bnames.Name;
@@ -1935,7 +2049,7 @@ for cl_i = 1:length(clusters)
             stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,sprintf('cond_char:%s',g3)))];
         STATS_TRACK_STRUCT(cntsts).lme_grp_coeff = [stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g2)),...
             stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g3))];
-        STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {fretable};
+        STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {bretable};
         STATS_TRACK_STRUCT(cntsts).norm_test_h = norm_h;
         STATS_TRACK_STRUCT(cntsts).norm_test_p = norm_p;
         STATS_TRACK_STRUCT(cntsts).R2 = R2;
@@ -1952,7 +2066,8 @@ for cl_i = 1:length(clusters)
                           'regress_pval',{{}},...
                           'regress_line',{{}},...
                           'r2_coeff',{[]},...
-                          'regress_xvals',0);
+                          'regress_xvals',0,...
+                          'do_include_intercept',true);
         tmp = regexp({g1,g2,g3},'(H\w*''s)','tokens');
         group_order = categorical([tmp{1}{1},tmp{2}{1},tmp{3}{1}]);
         STATS_STRUCT.group_order = group_order;
@@ -1961,7 +2076,7 @@ for cl_i = 1:length(clusters)
         STATS_STRUCT.pvals_grp = {1,pval_g2,pval_g3};
         STATS_STRUCT.anova={anova_p_cond,anova_p_inter,anova_p_inter};
         STATS_STRUCT.regress_pval={pval_cond,pval_cond_g2,pval_cond_g3};
-        STATS_STRUCT.regress_line={[inter_mn,slope_cond],[inter_mn,(slope_cond+slope_g2+slope_cond_g2)],[inter_mn,(slope_cond+slope_g3+slope_cond_g3)]};
+        STATS_STRUCT.regress_line={[inter_mn,slope_cond],[inter_mn+slope_g2,(slope_cond+slope_cond_g2)],[inter_mn+slope_g3,(slope_cond+slope_cond_g3)]};
         STATS_STRUCT.r2_coeff=[R2,R2,R2];
         STATS_STRUCT.regress_xvals=[0,unique(double(string(T_vals_plot.cond_char)))',1.25];
         %- calculate ylim
@@ -2015,7 +2130,7 @@ VIOLIN_BOTTOM = 0.7;
 % REG_TXT_SIZE = 8;
 % REG_HORIZ_SHIFT = 0.05;
 % REG_VERT_SHIFT = 0.05;
-AX_HORIZ_SHIFT = 0.1;
+AX_HORIZ_SHIFT = 0.125;
 AX_VERT_SHIFT = 0.1250;
 AX_INIT_SHIFT = 0.07;
 VIOLIN_COND_OFFSETS = [-0.35,-0.1,0.15,0.40];
@@ -2074,8 +2189,14 @@ for cl_i = 1:length(clusters)
             'VariableNames',{measure_name,'cond_char','group_char','subj_char'});
             %## LINEAR MODEL
             mod_lme = sprintf('%s ~ 1 + cond_char + group_char + (1|subj_char)',measure_name);
-            stats_out = fitlme(T_vals_plot,mod_lme,'DummyVarCoding','effects');
+            stats_out = fitlme(T_vals_plot,mod_lme); %,'DummyVarCoding','effects');
             anova_out = anova(stats_out);
+            %- intercept only model
+            altmod_lme = sprintf('%s ~ 1+ (1|subj_char)',measure_name);
+            altstats_out = fitlme(T_vals_plot,altmod_lme); %,'DummyVarCoding','effects');
+            R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+            % R2 = stats_out.Rsquared.Adjusted;
+            %## GET GROUPS
             ind1 = contains(stats_out.Coefficients.Name,'group_char_H1000''s');
             ind2 = contains(stats_out.Coefficients.Name,'group_char_H2000''s');
             ind3 = contains(stats_out.Coefficients.Name,'group_char_H3000''s');
@@ -2100,7 +2221,6 @@ for cl_i = 1:length(clusters)
             else
                 g1 = 'group_char_H3000''s';
             end
-            R2 = stats_out.Rsquared.Adjusted;
             %## GRAB COEFFICIENTS & PVALUES
             anova_p_cond = anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
             anova_p_group = anova_out.pValue(strcmp(anova_out.Term,'group_char'));
@@ -2118,7 +2238,7 @@ for cl_i = 1:length(clusters)
             %## GATHER STATS
             [norm_h,norm_p] = lillietest(stats_out.residuals);
             [b,bnames,fetable] = stats_out.fixedEffects();
-            [br,brnames,fretable] = stats_out.randomEffects();
+            [br,brnames,bretable] = stats_out.randomEffects();
             STATS_TRACK_STRUCT(cntsts).stat_test_mod = {mod_lme};
             STATS_TRACK_STRUCT(cntsts).resp_terms = {varnames{var_i}};
             STATS_TRACK_STRUCT(cntsts).pred_terms = bnames.Name;
@@ -2137,7 +2257,7 @@ for cl_i = 1:length(clusters)
             STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
             STATS_TRACK_STRUCT(cntsts).lme_grp_coeff = [stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g2)),...
                 stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g3))];
-            STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {fretable};
+            STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {bretable};
             STATS_TRACK_STRUCT(cntsts).norm_test_h = norm_h;
             STATS_TRACK_STRUCT(cntsts).norm_test_p = norm_p;
             STATS_TRACK_STRUCT(cntsts).R2 = R2;
@@ -2153,7 +2273,8 @@ for cl_i = 1:length(clusters)
                               'regress_pval',{{}},...
                               'regress_line',{{}},...
                               'r2_coeff',{[]},...
-                              'regress_xvals',0);
+                              'regress_xvals',0,...
+                              'do_include_intercept',true);
             tmp = regexp({g1,g2,g3},'(H\w*''s)','tokens');
             group_order = categorical([tmp{1}{1},tmp{2}{1},tmp{3}{1}]);
             STATS_STRUCT.group_order = group_order;
@@ -2222,11 +2343,11 @@ GROUP_MARKS = {'o','x','^'};
 GROUP_LINESTYLES = {'-','-.','--'};
 color_dark = linspecer(3);
 color_light = linspecer(3)*0.6;
-AX_HORIZ_SHIFT = 0.1;
+AX_HORIZ_SHIFT = 0.125;
 AX_VERT_SHIFT = 0.1250;
 AX_INIT_SHIFT = 0.07;
 VIOLIN_COND_OFFSETS = [-0.35,-0.1,0.15,0.40];
-LEG_HORIZ_SHIFT = 0;
+LEG_HORIZ_SHIFT = -0.1;
 LEG_VERT_SHIFT =  0.125;
 AX_MAX = 3;
 des_i = 2;
@@ -2273,8 +2394,13 @@ for cl_i = 1:length(clusters)
             y_txt = max(T_vals_plot.(measure_name))*REG_VERT_SHIFT+std(T_vals_plot.(measure_name));
             %## STATS
             mod_lme = sprintf('%s ~ 1 + %s + group_char + %s*group_char + (1|subj_char)',measure_name,varnames{var_i},varnames{var_i});
-            stats_out = fitlme(T_vals_plot,mod_lme,'DummyVarCoding','effects');
+            stats_out = fitlme(T_vals_plot,mod_lme); %,'DummyVarCoding','effects');
             anova_out = anova(stats_out);
+            %- intercept only model
+            altmod_lme = sprintf('%s ~ 1+ (1|subj_char)',measure_name);
+            altstats_out = fitlme(T_vals_plot,altmod_lme); %,'DummyVarCoding','effects');
+            R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+            % R2 = stats_out.Rsquared.Adjusted;
             %## SORT GROUPS
             ind1 = contains(stats_out.Coefficients.Name,'group_char_H1000''s');
             ind2 = contains(stats_out.Coefficients.Name,'group_char_H2000''s');
@@ -2300,9 +2426,9 @@ for cl_i = 1:length(clusters)
             else
                 g1 = 'group_char_H3000''s';
             end
-            R2 = stats_out.Rsquared.Adjusted;
+            
             %## GRAB COEFFICIENTS & PVALUES
-            anova_p_eeg = anova_out.pValue(strcmp(anova_out.Term,varnames{var_i}));
+            anova_p_var = anova_out.pValue(strcmp(anova_out.Term,varnames{var_i}));
             anova_p_grp = anova_out.pValue(strcmp(anova_out.Term,'group_char'));
             anova_p_inter = anova_out.pValue(strcmp(anova_out.Term,sprintf('group_char:%s',varnames{var_i})));
             %-
@@ -2321,7 +2447,7 @@ for cl_i = 1:length(clusters)
             %## GATHER STATS
             [norm_h,norm_p] = lillietest(stats_out.residuals);
             [b,bnames,fetable] = stats_out.fixedEffects();
-            [br,brnames,fretable] = stats_out.randomEffects();
+            [br,brnames,bretable] = stats_out.randomEffects();
             STATS_TRACK_STRUCT(cntsts).stat_test_mod = {mod_lme};
             STATS_TRACK_STRUCT(cntsts).resp_terms = {measure_name};
             STATS_TRACK_STRUCT(cntsts).pred_terms = bnames.Name;
@@ -2345,7 +2471,7 @@ for cl_i = 1:length(clusters)
                 stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,sprintf('%s:%s',g2,varnames{var_i})))];
             STATS_TRACK_STRUCT(cntsts).lme_grp_coeff = [stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g2)),...
                 stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g3))];
-            STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {fretable};
+            STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {bretable};
             STATS_TRACK_STRUCT(cntsts).norm_test_h = norm_h;
             STATS_TRACK_STRUCT(cntsts).norm_test_p = norm_p;
             STATS_TRACK_STRUCT(cntsts).R2 = R2;
@@ -2356,6 +2482,9 @@ for cl_i = 1:length(clusters)
             %- group order 
             tmp = regexp({g1,g2,g3},'(H\w*''s)','tokens');
             groups = categorical([tmp{1}{1},tmp{2}{1},tmp{3}{1}]);
+            tmp_names = regexp({g1,g2,g3},'(H\d)\w*''s','tokens');
+            tmp_names = {tmp_names{1}{1}{1},tmp_names{2}{1}{1},tmp_names{3}{1}{1}};
+            % group_chars = GROUP_SHORTS{inds};
             %- plot
             axes();
             hold on;
@@ -2364,7 +2493,7 @@ for cl_i = 1:length(clusters)
                 data = T_vals_plot(inds,:);
                 [vals,inds] = sort(data.(varnames{var_i}));
                 data = data(inds,:);
-                ss = scatter(data,varnames{var_i},measure_name,'DisplayName',sprintf('%s',GROUP_SHORTS{group_i}));
+                ss = scatter(data,varnames{var_i},measure_name,'DisplayName',sprintf('%s',tmp_names{group_i}));
                 ss.CData = color_dark(group_i,:);
                 ss.SizeData = 15;
                 ss.Marker = GROUP_MARKS{group_i};
@@ -2449,7 +2578,7 @@ for cl_i = 1:length(clusters)
                     [lg3,~,~,~] = legend('boxoff');
                     set(lg3,'Orientation','horizontal')
                     set(lg3,'FontName','Arial','FontSize',9);
-                    set(lg3,'NumColumns',4);
+                    set(lg3,'NumColumns',3);
                     % set(lg1,'Position',[0.1,SCATTER_BOTTOM+AX_W*im_resize-vert_shift,lg1.Position(3),lg1.Position(4)]);
                     set(lg3,'Position',[AX_INIT_SHIFT+LEG_HORIZ_SHIFT*IM_RESIZE,SCATTER_BOTTOM+AX_H*IM_RESIZE+LEG_VERT_SHIFT*IM_RESIZE-0.05,lg3.Position(3),lg3.Position(4)]);
                     lg3.ItemTokenSize(1) = 18;
@@ -2482,7 +2611,7 @@ VIOLIN_BOTTOM = 0.7;
 REG_TXT_SIZE = 8;
 REG_HORIZ_SHIFT = 0.05;
 REG_VERT_SHIFT = 0.05;
-GROUP_SHORTS = {'YA','HO','FO'};
+% GROUP_SHORTS = {'YA','HO','FO'};
 GROUP_MARKS = {'o','x','^'};
 GROUP_LINESTYLES = {'-','-.','--'};
 color_dark = linspecer(3);
@@ -2491,7 +2620,7 @@ AX_HORIZ_SHIFT = 0.1;
 AX_VERT_SHIFT = 0.1250;
 AX_INIT_SHIFT = 0.07;
 VIOLIN_COND_OFFSETS = [-0.35,-0.1,0.15,0.40];
-LEG_HORIZ_SHIFT = 0;
+LEG_HORIZ_SHIFT = -0.1;
 LEG_VERT_SHIFT =  0.125;
 AX_MAX = 3;
 PLOT_STRUCT = struct('color_map',[],...
@@ -2534,9 +2663,14 @@ for cl_i = 1:length(clusters)
             x_txt = min(T_vals_plot.(varnames{var_i}))*REG_HORIZ_SHIFT+std(T_vals_plot.(varnames{var_i}));
             y_txt = max(T_vals_plot.(measure_name))*REG_VERT_SHIFT+std(T_vals_plot.(measure_name));
             %## FIT MODEL
-            mod_lme = sprintf('%s ~ 1 + %s + group_char',measure_name,varnames{var_i});
-            stats_out = fitlme(T_vals_plot,mod_lme,'DummyVarCoding','effects');
+            mod_lme = sprintf('%s ~ 1 + %s + group_char+ (1|subj_char)',measure_name,varnames{var_i});
+            stats_out = fitlme(T_vals_plot,mod_lme); %,'DummyVarCoding','effects');
             anova_out = anova(stats_out);
+            %- intercept only model
+            altmod_lme = sprintf('%s ~ 1+ (1|subj_char)',measure_name);
+            altstats_out = fitlme(T_vals_plot,altmod_lme); %,'DummyVarCoding','effects');
+            R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+            % R2 = stats_out.Rsquared.Adjusted;
             %## SORT GROUPS
             ind1 = contains(stats_out.Coefficients.Name,'group_char_H1000''s');
             ind2 = contains(stats_out.Coefficients.Name,'group_char_H2000''s');
@@ -2563,7 +2697,6 @@ for cl_i = 1:length(clusters)
                 g1 = 'group_char_H3000''s';
             end
             %## GET COEFFICIENTS & PVALUES
-            R2 = stats_out.Rsquared.Adjusted;
             anova_p_int = anova_out.pValue(strcmp(anova_out.Term,'(Intercept)'));
             anova_p_var = anova_out.pValue(strcmp(anova_out.Term,varnames{var_i}));
             anova_p_grp = anova_out.pValue(strcmp(anova_out.Term,'group_char'));
@@ -2579,7 +2712,7 @@ for cl_i = 1:length(clusters)
             %## GATHER STATS
             [norm_h,norm_p] = lillietest(stats_out.residuals);
             [b,bnames,fetable] = stats_out.fixedEffects();
-            [br,brnames,fretable] = stats_out.randomEffects();
+            [br,brnames,bretable] = stats_out.randomEffects();
             STATS_TRACK_STRUCT(cntsts).stat_test_mod = {mod_lme};
             STATS_TRACK_STRUCT(cntsts).resp_terms = {measure_name};
             STATS_TRACK_STRUCT(cntsts).pred_terms = bnames.Name;
@@ -2598,7 +2731,7 @@ for cl_i = 1:length(clusters)
             STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
             STATS_TRACK_STRUCT(cntsts).lme_grp_coeff = [stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g2)),...
                 stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,g3))];
-            STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {fretable};
+            STATS_TRACK_STRUCT(cntsts).lme_rnd_effects = {bretable};
             STATS_TRACK_STRUCT(cntsts).norm_test_h = norm_h;
             STATS_TRACK_STRUCT(cntsts).norm_test_p = norm_p;
             STATS_TRACK_STRUCT(cntsts).R2 = R2;
@@ -2609,6 +2742,8 @@ for cl_i = 1:length(clusters)
             %- group order 
             tmp = regexp({g1,g2,g3},'(H\w*''s)','tokens');
             groups = categorical([tmp{1}{1},tmp{2}{1},tmp{3}{1}]);
+            tmp_names = regexp({g1,g2,g3},'(H\d)\w*''s','tokens');
+            tmp_names = {tmp_names{1}{1}{1},tmp_names{2}{1}{1},tmp_names{3}{1}{1}};
             %- plot
             axes();
             hold on;
@@ -2617,7 +2752,7 @@ for cl_i = 1:length(clusters)
                 data = T_vals_plot(inds,:);
                 [vals,inds] = sort(data.(varnames{var_i}));
                 data = data(inds,:);
-                ss = scatter(data,varnames{var_i},measure_name,'DisplayName',sprintf('%s',GROUP_SHORTS{group_i}));
+                ss = scatter(data,varnames{var_i},measure_name,'DisplayName',sprintf('%s',tmp_names{group_i}));
                 ss.CData = color_dark(group_i,:);
                 ss.SizeData = 15;
                 ss.Marker = GROUP_MARKS{group_i};
@@ -2705,7 +2840,7 @@ for cl_i = 1:length(clusters)
                     [lg3,~,~,~] = legend('boxoff');
                     set(lg3,'Orientation','horizontal')
                     set(lg3,'FontName','Arial','FontSize',9);
-                    set(lg3,'NumColumns',4);
+                    set(lg3,'NumColumns',3);
                     % set(lg1,'Position',[0.1,SCATTER_BOTTOM+AX_W*im_resize-vert_shift,lg1.Position(3),lg1.Position(4)]);
                     set(lg3,'Position',[AX_INIT_SHIFT+LEG_HORIZ_SHIFT*IM_RESIZE,SCATTER_BOTTOM+AX_H*IM_RESIZE+LEG_VERT_SHIFT*IM_RESIZE-0.05,lg3.Position(3),lg3.Position(4)]);
                     lg3.ItemTokenSize(1) = 18;
@@ -2718,11 +2853,11 @@ for cl_i = 1:length(clusters)
                 vert_shift = vert_shift - AX_H*IM_RESIZE - AX_VERT_SHIFT*IM_RESIZE;
             end
         end
-    end
-    hold off;
-    %##
-    exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_group_kin-eeg.tiff',string(clusters(cl_i)),varnames{var_i})],'Resolution',300)
-    % close(fig)
+        hold off;
+        %##
+        exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_group_kin-eeg.tiff',string(clusters(cl_i)),varnames{var_i})],'Resolution',300)
+        close(fig)
+    end    
 end
 %% WRITE STATISTICS TO MAT & XLSX
 par_save(STATS_TRACK_STRUCT,save_dir,'stats_track_struct.mat');
