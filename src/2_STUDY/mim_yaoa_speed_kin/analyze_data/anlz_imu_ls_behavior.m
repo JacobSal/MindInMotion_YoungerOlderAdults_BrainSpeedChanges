@@ -61,7 +61,8 @@ study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skul
 
 %## soft define
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
-save_dir = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'raw_data_vis'];
+% save_dir = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'raw_data_vis'];
+save_dir = [studies_fpath filesep 'mim_yaoa_mristudy'];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
@@ -82,18 +83,19 @@ else
 end
 %##
 % [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_mri_study');
 %- override with already processed ALLEEG set
-SUBJ_PICS = cell(1,length(GROUP_NAMES));
-SUBJ_ITERS = cell(1,length(GROUP_NAMES));
-for i = 1:length(STUDY.datasetinfo)
-    gi = find(strcmp(STUDY.datasetinfo(i).group,GROUP_NAMES));
-    SUBJ_PICS{1,gi} = [SUBJ_PICS{1,gi}, {STUDY.datasetinfo(i).subject}];
-    if isempty(SUBJ_ITERS{1,gi})
-        SUBJ_ITERS{1,gi} = 1;
-    else
-        SUBJ_ITERS{1,gi} = [SUBJ_ITERS{1,gi}, SUBJ_ITERS{1,gi}(end)+1];
-    end
-end
+% SUBJ_PICS = cell(1,length(GROUP_NAMES));
+% SUBJ_ITERS = cell(1,length(GROUP_NAMES));
+% for i = 1:length(STUDY.datasetinfo)
+%     gi = find(strcmp(STUDY.datasetinfo(i).group,GROUP_NAMES));
+%     SUBJ_PICS{1,gi} = [SUBJ_PICS{1,gi}, {STUDY.datasetinfo(i).subject}];
+%     if isempty(SUBJ_ITERS{1,gi})
+%         SUBJ_ITERS{1,gi} = 1;
+%     else
+%         SUBJ_ITERS{1,gi} = [SUBJ_ITERS{1,gi}, SUBJ_ITERS{1,gi}(end)+1];
+%     end
+% end
 %%
 % CATEGORIES = {'YoungAdult','HF_OlderAdult','LF_OlderAdult'};
 CATEGORIES = {'YoungAdult','HF_OlderAdult','LF_OlderAdult'};
@@ -421,7 +423,8 @@ end
 table_new_ls = table_new;
 
 %% READ IN SUBJECT SPECIFIC SPEEDS FOR TERRAIN
-SPEED_CUTOFF = 0.1;
+% SPEED_CUTOFF = 0.1;
+SPEED_CUTOFF = 0;
 MasterTable = mim_read_master_sheet();
 speed_table = table(categorical(MasterTable.subject_code),MasterTable.terrain_trials_speed_ms);
 table_new_imu.terrain_speed = zeros(size(table_new_imu,1),1);
@@ -439,6 +442,46 @@ for i = 1:size(speed_table,1)
     else
         table_new_imu.terrain_speed(ind) = ss_speed;
         table_new_ls.terrain_speed(ind) = ss_speed;
+    end
+end
+
+%% READ IN SUBJECT STABILITY SCORES
+SPEED_CUTOFF = 0.1;
+MasterTable = mim_read_master_sheet('M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\subject_mgmt\subject_mastersheet_notes.xlsx');
+tmp_table = table(categorical(MasterTable.subject_code),MasterTable.flat_low_med_high_rating_of_stability);
+% table_new_imu.stability_rating = zeros(size(table_new_imu,1),1);
+% table_new_ls.stability_rating = zeros(size(table_new_ls,1),1);
+trials = {'flat','low','med','high'};
+for i = 1:size(tmp_table,1)
+    ss = tmp_table.Var1(i);
+    ss_var = tmp_table.Var2(i);
+    ss_var = strsplit(ss_var{1},';');
+    ss_var = ss_var(~cellfun(@isempty,ss_var));
+%     ss = table_new_imu.SubjectName(i);
+    ind1 = table_new_imu.SubjectName==ss;
+    ind2 = table_new_ls.SubjectName==ss;
+    if any(ind1) & ~isempty(ss_var)
+        for j = 1:length(trials)
+            sub = strsplit(ss_var{j},',');
+            ind11 = table_new_imu.SubjectName==ss & table_new_imu.TrialName==trials{j};
+            ind22 = table_new_ls.SubjectName==ss & table_new_ls.TrialName==trials{j};
+            if ~isempty(sub{1})
+                for k = 1:length(sub)
+                    if any(ind11)
+                        table_new_imu.(sprintf('%s_%i','stability_rating',k))(ind11) = double(string(sub{k}));
+                        table_new_ls.(sprintf('%s_%i','stability_rating',k))(ind22) = double(string(sub{k}));
+                    else
+                        table_new_imu.(sprintf('%s_%i','stability_rating',k))(ind11) = nan();
+                        table_new_ls.(sprintf('%s_%i','stability_rating',k))(ind22) = nan();
+                    end
+                end
+            else
+                for k = 1:2
+                    table_new_imu.(sprintf('%s_%i','stability_rating',k))(ind11) = nan();
+                    table_new_ls.(sprintf('%s_%i','stability_rating',k))(ind22) = nan();
+                end
+            end
+        end
     end
 end
 writetable(table_new_imu,[save_dir filesep 'imu_table_meantrial.xlsx']);
