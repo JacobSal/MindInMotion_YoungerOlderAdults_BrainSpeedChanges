@@ -49,32 +49,11 @@ set_workspace
 %- datset name & 
 DATA_SET = 'MIM_dataset';
 PREPROC_DIR_NAME = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
-% study_dir = '01122024_spca_analysis';
-% study_dir = '02082024_spca_analysis_fix';
 STUDY_DIR_NAME = '03232024_spca_analysis_OA';
-% STUDY_FNAME_REST = 'rest_epoch_study';
-% STUDY_FNAME_GAIT = 'epoch_study';
 STUDY_FNAME_GAIT = 'epoch_study_ya';
 STUDY_FNAME_REST = 'rest_epoch_study_ya';
 %- study group and saving
 SAVE_ALLEEG = false;
-% %- epoching params
-% DO_SLIDING_WINDOW = false;
-% %* sliding window
-% WINDOW_LENGTH = 6; % sliding window length in seconds
-% PERCENT_OVERLAP = 0.0; % percent overlap between epochs
-% %* gai
-% EVENT_CHAR = 'RHS'; %{'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
-% STD_TIMEWARP = 3;
-% EPOCH_TIME_LIMITS = [-0.5,4.5];
-% TIMEWARP_EVENTS = {'RHS', 'LTO', 'LHS', 'RTO', 'RHS'};
-% if DO_SLIDING_WINDOW
-%     SUFFIX_PATH_EPOCHED = 'SLIDING_EPOCHED';
-%     TRIAL_TYPES = {'rest','0p25','0p5','0p75','1p0','flat','low','med','high'};
-% else
-%     SUFFIX_PATH_EPOCHED = 'GAIT_EPOCHED';
-%     TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-% end
 %## EPOCH PARAMS
 DEF_EPOCH_PARAMS = struct('epoch_method','timewarp',...
     'percent_overlap',0,...
@@ -200,13 +179,19 @@ STUDY_REST = pop_specparams(STUDY_REST,'subtractsubjectmean',SPEC_PARAMS.subtrac
 subject_chars = {STUDY_REST.datasetinfo.subject};
 % for subj_i = 1:length(ALLEEG)
 parfor subj_i = 1:length(STUDY_REST.datasetinfo)
+    %- TEMP PARAMS
+    tmp_study_rest = STUDY_REST;
+    tmp_study = STUDY;
+    tmp_spec_params = SPEC_PARAMS;
+    tmp_epoch_params = DEF_EPOCH_PARAMS;
+    %-
     tt = tic;
     base_txf_mean = [];
     % EEG = ALLEEG(subj_i);
     % EEG = pop_loadset('filepath',[save_dir filesep 'GAIT_EPOCHED' filesep [DEF_EPOCH_PARAMS.gait_trial_chars{:}]],...
     %     'filename',sprintf('%s_%s',[DEF_EPOCH_PARAMS.gait_trial_chars{:}]))
-    EEG = pop_loadset('filepath',STUDY.datasetinfo(subj_i).filepath,...
-        'filename',STUDY.datasetinfo(subj_i).filename);
+    EEG = pop_loadset('filepath',tmp_study.datasetinfo(subj_i).filepath,...
+        'filename',tmp_study.datasetinfo(subj_i).filename);
     fprintf('Running Subject %s\n',EEG.subject);
     EEG = eeg_checkset(EEG,'loaddata');
     if isempty(EEG.icaact)
@@ -215,23 +200,23 @@ parfor subj_i = 1:length(STUDY_REST.datasetinfo)
         EEG.icaact = reshape(EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     end
     %##
-    if DO_RECREATE_SPCA || ~all(cellfun(@(x) exist([EEG.filepath filesep sprintf('cond%s_spca_psd.mat',x)],'file'),DEF_EPOCH_PARAMS.gait_trial_chars))
+    if DO_RECREATE_SPCA || ~all(cellfun(@(x) exist([EEG.filepath filesep sprintf('cond%s_spca_psd.mat',x)],'file'),tmp_epoch_params.gait_trial_chars))
         %## GENERATE ERSPS
         icaspec_f = [EEG.filepath filesep sprintf('%s.icaspec',EEG.subject)];
         if ~exist(icaspec_f,'file') || FORCE_RECALC_PSD % || any(strcmp(EEG.subject,FINISHED_ADULTS))
-            TMP_STUDY = STUDY;
+            tmp_study_calc = tmp_study;
             %- overrride datasetinfo to trick std_precomp to run.
-            TMP_STUDY.datasetinfo = TMP_STUDY.datasetinfo(subj_i);
-            TMP_STUDY.datasetinfo(1).index = 1;
-            [~, ~] = std_precomp(TMP_STUDY, EEG,...
+            tmp_study_calc.datasetinfo = tmp_study_calc.datasetinfo(subj_i);
+            tmp_study_calc.datasetinfo(1).index = 1;
+            [~, ~] = std_precomp(tmp_study_calc, EEG,...
                         'components',...
                         'recompute','on',...
                         'spec','on',...
                         'scalp','on',...
                         'savetrials','on',...
                         'specparams',...
-                        {'specmode',SPEC_PARAMS.specmode,'freqfac',SPEC_PARAMS.freqfac,...
-                        'freqrange',SPEC_PARAMS.freqrange,'logtrials',SPEC_PARAMS.logtrials});
+                        {'specmode',tmp_spec_params.specmode,'freqfac',tmp_spec_params.freqfac,...
+                        'freqrange',tmp_spec_params.freqrange,'logtrials',tmp_spec_params.logtrials});
             fprintf('Done calculating PSDs for %s\n',EEG.subject);
         else
             fprintf('PSDs already calculated for %s\n',EEG.subject);
@@ -239,8 +224,8 @@ parfor subj_i = 1:length(STUDY_REST.datasetinfo)
 
         %##
         % EEG = ALLEEG_REST(subj_i);
-        EEG = pop_loadset('filepath',STUDY_REST.datasetinfo(subj_i).filepath,...
-            'filename',STUDY_REST.datasetinfo(subj_i).filename);
+        EEG = pop_loadset('filepath',tmp_study_rest.datasetinfo(subj_i).filepath,...
+            'filename',tmp_study_rest.datasetinfo(subj_i).filename);
         EEG = eeg_checkset(EEG,'loaddata');
         if isempty(EEG.icaact)
             fprintf('%s) Recalculating ICA activations\n',EEG.subject);
@@ -250,19 +235,19 @@ parfor subj_i = 1:length(STUDY_REST.datasetinfo)
         EEG = eeglab_makecontinuous(EEG);
         icaspec_f = [EEG.filepath filesep sprintf('%s.icaspec',EEG.subject)];
         if ~exist(icaspec_f,'file') || FORCE_RECALC_PSD % || any(strcmp(EEG.subject,FINISHED_ADULTS))
-            TMP_STUDY = STUDY_REST;
+            tmp_study_calc = tmp_study_rest;
             %- overrride datasetinfo to trick std_precomp to run.
-            TMP_STUDY.datasetinfo = TMP_STUDY.datasetinfo(subj_i);
-            TMP_STUDY.datasetinfo(1).index = 1;
-            [~, ~] = std_precomp(TMP_STUDY, EEG,...
+            tmp_study_calc.datasetinfo = tmp_study_calc.datasetinfo(subj_i);
+            tmp_study_calc.datasetinfo(1).index = 1;
+            [~, ~] = std_precomp(tmp_study_calc, EEG,...
                         'components',...
                         'recompute','on',...
                         'spec','on',...
                         'scalp','on',...
                         'savetrials','on',...
                         'specparams',...
-                        {'specmode',SPEC_PARAMS.specmode,'freqfac',SPEC_PARAMS.freqfac,...
-                        'freqrange',SPEC_PARAMS.freqrange,'logtrials',SPEC_PARAMS.logtrials});
+                        {'specmode',tmp_spec_params.specmode,'freqfac',tmp_spec_params.freqfac,...
+                        'freqrange',tmp_spec_params.freqrange,'logtrials',tmp_spec_params.logtrials});
             fprintf('Done calculating PSDs for %s\n',EEG.subject);
         else
             fprintf('PSDs already calculated for %s\n',EEG.subject);
@@ -308,7 +293,7 @@ parfor subj_i = 1:length(STUDY_REST.datasetinfo)
             par_save(tmp,fpath,sprintf('rest_avg_psdf.mat'));
             %## (LOAD GAIT TIMEWARP) ======================================= %%
             fprintf('Loading Gait Frequency Data...\n');
-            fpath = [epoched_fPath filesep [DEF_EPOCH_PARAMS.gait_trial_chars{:}]];
+            fpath = [epoched_fPath filesep [tmp_epoch_params.gait_trial_chars{:}]];
     %         fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[TRIAL_TYPES{:}]);
             icaspec_f = [fpath filesep sprintf('%s.icaspec',EEG.subject)];
             %- load .icaspec load-in parameters
@@ -317,21 +302,21 @@ parfor subj_i = 1:length(STUDY_REST.datasetinfo)
             %## (APPLY SPCA) =============================================== %%
             fprintf('Running SPCA on All Conditions\n');
             %- sPCA Algorithm
-            [psd,psd_avg,output_struct] = apply_spca_cond_psd(tmp,base_txf_mean);
-            [psd_corr,based_psd_corr,PSC1,~,COEFFS] = specPCAdenoising(psd);
+            [psd_baselined,psd_avg,output_struct] = apply_spca_cond_psd(tmp,base_txf_mean);
+            [psd_corr_based,based_psd_corr,psd_corr_psc1,psd_psc,coeffs] = specPCAdenoising(psd_baselined);
             
             %## SAVE PCA INFORMATION
             gait_ersp_struct = [];
-            gait_ersp_struct.ID         = EEG.subject;
-            gait_ersp_struct.Noise_cov  = [];% noise cov for kernel computation
-            gait_ersp_struct.F_Rest     = output_struct.baseline_ersp;
-            gait_ersp_struct.psd_avg         = psd_avg;
-            gait_ersp_struct.psd = psd;
-            gait_ersp_struct.psd_corr       = psd_corr;
-            gait_ersp_struct.based_psd_corr        = based_psd_corr;
-            gait_ersp_struct.PSC1       = PSC1;
-            gait_ersp_struct.chanlocs   = EEG.chanlocs;
-            gait_ersp_struct.icatimefopts = tmp_out;
+            gait_ersp_struct.ID             = EEG.subject;
+            gait_ersp_struct.noise_cov      = []; % noise cov for kernel computation
+            % gait_ersp_struct.baseline_psd   = output_struct.baseline_psd;
+            gait_ersp_struct.psd_orig_avg   = psd_avg;
+            gait_ersp_struct.psd_orig_based = psd_baselined;
+            gait_ersp_struct.psd_corr       = psd_corr_based;
+            gait_ersp_struct.based_psd_corr = based_psd_corr;
+            gait_ersp_struct.psdc1          = psd_corr_psc1;
+            gait_ersp_struct.chanlocs       = EEG.chanlocs;
+            gait_ersp_struct.icatimefopts   = tmp_out;
             % gait_ersp_struct.warptimes  = averaged_warpto_events;
             % gait_ersp_struct.ntimes     = TIMEWARP_NTIMES;
             par_save(gait_ersp_struct,fpath,'gait_psd_spca.mat');
@@ -367,15 +352,19 @@ parfor subj_i = 1:length(STUDY_REST.datasetinfo)
             fprintf('\nRunning Denoising with sPCA\n');
             conds = unique({tmp.trialinfo.cond});
             for cond_i = 1:length(conds)
-                COND_STR = conds{cond_i};
-                [psd_corr,psd_avg,output_struct] = apply_spca_cond_psd(tmp,base_txf_mean,...
-                    'COEFFS',COEFFS,...
-                    'COND_STR',COND_STR);
-                struct_out = struct('psd_corr',psd_corr,...
+                % COND_STR = conds{cond_i};
+                [psd_corr_based,psd_avg,output_struct] = apply_spca_cond_psd(tmp,base_txf_mean,...
+                    'COEFFS',coeffs,...
+                    'COND_STR',conds{cond_i});
+                struct_out = struct('condition',conds{cond_i},...
+                    'psd_corr_based',psd_corr_based,...
+                    'psd_orig_avg',psd_avg,...
+                    'baseline_psd',output_struct.baseline_psd,...
+                    'psd_corr_psc1',output_struct.psc1,...
+                    'psd_orig_baselined',output_struct.psd_baselined,...
                     'freqs',tmp.freqs,...
-                    'pc1',psd_avg,...
-                    'coeffs',COEFFS,...
-                    'apply_spca_cond',output_struct);
+                    'pc1',output_struct.psc1,...
+                    'coeffs',coeffs);
                 par_save(struct_out,fpath,sprintf('cond%s_spca_psd.mat',conds{cond_i}));
 
                 %## VALIDATION PLOTS
@@ -410,7 +399,7 @@ parfor subj_i = 1:length(STUDY_REST.datasetinfo)
                 %}
             end
             %## CLEANUP AND FREE UP DRIVE SPACE
-            fpath = [epoched_fPath filesep [DEF_EPOCH_PARAMS.gait_trial_chars{:}]];
+            fpath = [epoched_fPath filesep [tmp_epoch_params.gait_trial_chars{:}]];
             icaspec_f = [fpath filesep sprintf('%s.icaspec',EEG.subject)];
             delete(icaspec_f);
             fpath = [epoched_fPath filesep 'rest'];

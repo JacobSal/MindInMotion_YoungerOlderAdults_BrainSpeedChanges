@@ -610,8 +610,7 @@ tbl <- lmer(str_glue(paste("mean_StanceDur ~ 1 + mean_MLexc_COV + (1|subj_char)"
   add_global_p() %>%
   add_q() %>%
   list() %>%
-  pull(tbl) %>% 
-  tbl_merge(tab_spanner=eeg_title_chars[eeg_inds_plot])
+  tbl_merge(tab_spanner='mean_MLExc_COV')
 
 t_out <- as_gt(tbl) %>%
   gt::tab_header(title=c("Changes in mean_MLexc_COV for Cluster: ",clusters[ci])) %>%
@@ -630,19 +629,17 @@ fitfit <- lmer(str_glue(paste("mean_StanceDur ~ 1 + mean_MLexc_COV + (1|subj_cha
         list()
 
 tmpt <- tmpt %>%
-  mutate(fit.m = predict(fitfit$mod[[1]], re.form = NA),
-         fit.c = predict(fitfit$mod[[1]], re.form = NULL))
+  mutate(fit.m = predict(fitfit[[1]], re.form = NA),
+         fit.c = predict(fitfit[[1]], re.form = NULL))
 
-print(plot_model(fitfit$mod[[modi]], type = 'diag'))
+print(plot_model(fitfit[[1]], type = 'diag'))
 
 print(
   tmpt %>%
       ggplot(aes(x = mean_MLexc_COV, y = mean_StanceDur, col=speed_cond_num, group=subj_char)) +
       geom_point(pch=16, size=2, alpha=0.5) +
-      geom_line(aes(y=fit.c, col = (speed_cond_num), group=subj_char),color="grey", size = .1) +
-      geom_line(aes(y=fit.m,  col = (speed_cond_num), group=subj_char), size = 2) +
-      facet_wrap(~speed_cond_num)+
-      ggtitle(eeg_measures[eegi])
+      geom_line(aes(y=fit.c, group=subj_char),color="grey", size = .1) +
+      geom_line(aes(y=fit.m), size = 2)
 )
 ```
 
@@ -698,11 +695,10 @@ for(modi in 1:length(eeg_measures[eeg_inds_plot])){
   
   print(
     tmpt %>%
-        ggplot(aes(x = mean_MLexc_COV, y = mean_StanceDur, col=speed_cond_num, group=subj_char)) +
+        ggplot(aes(x = mean_MLexc_COV, y = .data[[eeg_measures[eegi]]], col=speed_cond_num, group=subj_char)) +
         geom_point(pch=16, size=2, alpha=0.5) +
-        geom_line(aes(y=fit.c, col = (speed_cond_num), group=subj_char),color="grey", size = .1) +
-        geom_line(aes(y=fit.m,  col = (speed_cond_num), group=subj_char), size = 2) +
-        facet_wrap(~speed_cond_num)+
+        geom_line(aes(y=fit.c, group=subj_char),color="grey", size = .1) +
+        geom_line(aes(y=fit.m,col=(speed_cond_num)), size = 2) +
         ggtitle(eeg_measures[eegi])
   )
 }

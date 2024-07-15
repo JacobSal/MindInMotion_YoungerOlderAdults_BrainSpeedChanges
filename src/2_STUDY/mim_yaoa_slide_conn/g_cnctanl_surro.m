@@ -15,6 +15,8 @@
 restoredefaultpath;
 clc;
 close all;
+
+
 clearvars
 %}
 %% SET WORKSPACE ======================================================= %%
@@ -25,15 +27,23 @@ global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
-    STUDY_DIR = getenv('STUDY_DIR');
-    SCRIPT_DIR = getenv('SCRIPT_DIR');
-    SRC_DIR = getenv('SRC_DIR');
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = SCRIPT_DIR;
+        SRC_DIR = fileparts(fileparts(STUDY_DIR));
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
+        STUDY_DIR = getenv('STUDY_DIR');
+        SCRIPT_DIR = getenv('SCRIPT_DIR');
+        SRC_DIR = getenv('SRC_DIR');
+    end
 else
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
     catch e
-        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
@@ -51,7 +61,7 @@ set_workspace
 %## HIGH LEVEL VARS
 %- connectivity statistics & surrogates params
 %* boolean for model bootstrap distribution
-DO_BOOTSTRAP = true;
+DO_BOOTSTRAP = false;
 FORCE_BOOTCALC = false;
 ASSIGN_BOOTSTRAP_MEAN = true;
 %* boolean for phase randomization generation
@@ -59,20 +69,29 @@ DO_PHASE_RND = true;
 FORCE_PHASECALC = false;
 %## SURROGATE STATISTICS PARAMS
 %- BOOTSTRAP
-DEF_STAT_BS_CFG = struct('mode',struct('arg_direct',1,...
-                                        'nperms',200,...
-                                        'arg_selection','Bootstrap',...
-                                        'saveTrialIdx',false),...
+DEF_STAT_BS_CFG = struct('mode',{{'Bootstrap','nperms',200,'saveTrialIdx',false}},...
                            'modelingApproach',[],...
                            'connectivityModeling',[],...
                            'verb',1);
 %- PHASE RANDOMIZATION
-DEF_STAT_PR_CFG = struct('mode',struct('arg_direct',1,...
-                                        'nperms',200,...
-                                        'arg_selection','PhaseRand'),...
+% DEF_STAT_PR_CFG = struct('mode',struct('arg_direct',1,...
+%                                         'nperms',200,...
+%                                         'arg_selection','PhaseRand'),...
+%                            'modelingApproach',[],...
+%                            'connectivityModeling',[],...
+%                            'verb',1);
+DEF_STAT_PR_CFG = struct('mode',{{'PhaseRand','nperms',200}},...
                            'modelingApproach',[],...
                            'connectivityModeling',[],...
+                           'autosave',[], ...
                            'verb',1);
+CONN_METHODS = {'dDTF08','S'};
+CONN_FREQS = (4:50);
+DEF_ESTFITMVAR = struct('connmethods',{CONN_METHODS}, ...
+            'absvalsq',true,           ...
+            'spectraldecibels',true,   ...
+            'freqs',CONN_FREQS,        ...
+            'verb',1);
 % (01/29/2024) changing these to 200 to save on computation time, but 2000
 % iterations may be more robust.
 %## DATASET & CLUSTER INFO
@@ -128,96 +147,117 @@ fprintf('Computing Connectivity\n');
 %## PARFOR LOOP
 EEG = [];
 parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
+% LOOP_VAR = 1;
 % for subj_i = LOOP_VAR
     %## PARAMS
     pop_editoptions('option_computeica', 1); % this is needed or SIFT will bug out
     stat_pr_cfg = DEF_STAT_PR_CFG;
     stat_bs_cfg = DEF_STAT_BS_CFG;
+    est_fitmvar_cfg = DEF_ESTFITMVAR;
     %## LOAD EEG DATA
     ALLEEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
     %- reassign cat structure
     ALLEEG.CAT = ALLEEG.etc.COND_CAT;
-    try
-        %% ===================================================================== %%
-        %## STEP 5.a) (BOOTSTRAPPING) GROUP STATISTICS 
-        % (09/22/2022), JS, Might want to try and speed up bootstrap by
-        % adapting stat_surrogateGen.m to use parfor for bootstrapping... If
-        % possible? doesn't seem built well in the first place, so maybe?
-        % (10/27/2022), JS, Revist above note again!
-        % (12/7/2022), JS, need to update this boostrapping to include ALLEEG
-        if DO_BOOTSTRAP
-            fprintf('\n==== CALCULATING BOOTSTRAP MEASURES ====\n')
-            tt = tic();
-            for cond_i=1:length(ALLEEG)
-                %- clear PConn
-                ALLEEG(cond_i).CAT.PConn  = [];
+    %% IF NEEDED RECALULATE CONNECTIVITY
+    cfg = struct2args(est_fitmvar_cfg);
+    for cond_i = 1:length(ALLEEG)
+        ALLEEG(cond_i).CAT.configs.est_mvarConnectivity = [];
+        % [ALLEEG(cond_i),cfg] = pop_est_mvarConnectivity(ALLEEG(cond_i),'nogui',...
+        %     cfg{:});
+        [conn,~] = est_mvarConnectivity('ALLEEG',ALLEEG(cond_i),...
+            'MODEL',ALLEEG(cond_i).CAT.MODEL,...
+            cfg{:});
+        ALLEEG(cond_i).CAT.Conn = conn;
+        est_fitmvar_cfg.arg_direct = 0;
+        ALLEEG(cond_i).CAT.configs.est_mvarConnectivity = est_fitmvar_cfg;
+    end
+    %% ===================================================================== %%
+    %## STEP 5.a) (BOOTSTRAPPING) GROUP STATISTICS 
+    % (09/22/2022), JS, Might want to try and speed up bootstrap by
+    % adapting stat_surrogateGen.m to use parfor for bootstrapping... If
+    % possible? doesn't seem built well in the first place, so maybe?
+    % (10/27/2022), JS, Revist above note again!
+    % (12/7/2022), JS, need to update this boostrapping to include ALLEEG
+    if DO_BOOTSTRAP
+        fprintf('\n==== CALCULATING BOOTSTRAP MEASURES ====\n')
+        tt = tic();
+        for cond_i=1:length(ALLEEG)
+            %- clear PConn
+            ALLEEG(cond_i).CAT.PConn  = [];
+            fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
+            chk = ~exist([ALLEEG(cond_i).filepath filesep fName,'_BootStrap.mat'],'file') || FORCE_BOOTCALC;
+            if chk
+
+                % [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(cond_i),DEF_STAT_BS_CFG);
+                cfg = struct2args(stat_bs_cfg);
+                % [PConn,~] = stat_surrogateGen('ALLEEG',ALLEEG(cond_i),cfg{:});
+                [PConn,~] = stat_surrogateGen('EEG',ALLEEG(cond_i),cfg{:});
+                
+                ALLEEG(cond_i).CAT.PConn = PConn;
+                %- save BootStrap distribution 
+                bootstrap_dist = ALLEEG(cond_i).CAT.PConn;
                 fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
-                chk = ~exist([ALLEEG(cond_i).filepath filesep fName,'_BootStrap.mat'],'file') || FORCE_BOOTCALC
-                if chk
-                    % [PConn,~] = feval(@stat_surrogateGen,'ALLEEG',ALLEEG(cond_i),DEF_STAT_BS_CFG);
-                    cfg = struct2args(stat_bs_cfg);
-                    [PConn,~] = stat_surrogateGen('ALLEEG',ALLEEG(cond_i),cfg{:});
-                    ALLEEG(cond_i).CAT.PConn = PConn;
-                    %- save BootStrap distribution 
-                    bootstrap_dist = ALLEEG(cond_i).CAT.PConn;
-                    fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
-                    par_save(bootstrap_dist,ALLEEG(cond_i).filepath,fName,'_BootStrap');
-                else
-                    ALLEEG(cond_i).CAT.PConn = par_load(ALLEEG(cond_i).filepath,fName,'_BootStrap.mat');
-                end
+                par_save(bootstrap_dist,ALLEEG(cond_i).filepath,fName,'_BootStrap');
+            else
+                ALLEEG(cond_i).CAT.PConn = par_load(ALLEEG(cond_i).filepath,fName,'_BootStrap.mat');
             end
-            %- assign mean of bootstrap as Conn value
-            if ASSIGN_BOOTSTRAP_MEAN
-                for cond_i = 1:length(ALLEEG)
-                    ALLEEG(cond_i).CAT.Conn = stat_getDistribMean(ALLEEG(cond_i).CAT.PConn);
-                end
-            end 
+        end
+        %- assign mean of bootstrap as Conn value
+        if ASSIGN_BOOTSTRAP_MEAN
             for cond_i = 1:length(ALLEEG)
-                %- clear bootstrap calculation
-                ALLEEG(cond_i).CAT.PConn = [];
+                ALLEEG(cond_i).CAT.Conn = stat_getDistribMean(ALLEEG(cond_i).CAT.PConn);
             end
-            fprintf('%s) Bootstrap Calculation Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
+        end 
+        for cond_i = 1:length(ALLEEG)
+            %- clear bootstrap calculation
+            ALLEEG(cond_i).CAT.PConn = [];
         end
-        %% ===================================================================== %%
-        %## STEP 5.b) GENERATE PHASE RANDOMIZED DISTRIBUTION    
-        % see. stat_surrogateGen
-        % see. stat_surrogateStats
-        if DO_PHASE_RND
-            fprintf(1,'\n==== GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
-            tt = tic();
-            for cond_i=1:length(ALLEEG)
-                %- Generate Phase Randomized Distribution
-                fprintf('\n==== PHASE RANDOMIZING CONNECTIVITY MEASURES ====\n')
+        fprintf('%s) Bootstrap Calculation Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
+    end
+    %% ===================================================================== %%
+    %## STEP 5.b) GENERATE PHASE RANDOMIZED DISTRIBUTION    
+    % see. stat_surrogateGen
+    % see. stat_surrogateStats
+    if DO_PHASE_RND
+        fprintf(1,'\n==== GENERATING CONNECTIVITY STATISTICS FOR SUBJECT DATA ====\n');
+        tt = tic();
+        for cond_i=1:length(ALLEEG)
+            %- Generate Phase Randomized Distribution
+            fprintf('\n==== PHASE RANDOMIZING CONNECTIVITY MEASURES ====\n')
+            %- clear PConn
+            ALLEEG(cond_i).CAT.PConn  = [];
+            fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
+            chk = ~exist([ALLEEG(cond_i).filepath filesep fName,'_PhaseRnd.mat'],'file') || FORCE_PHASECALC;
+            if chk
                 %- clear PConn
-                ALLEEG(cond_i).CAT.PConn  = [];
+                ALLEEG(cond_i).CAT.PConn  = [];%- FEVAL
+                
+                %-
+                % ALLEEG(cond_i) = pop_stat_surrogateGen(ALLEEG(cond_i),'nogui', ...
+                %     'modelingApproach', ALLEEG(cond_i).CAT.configs.est_fitMVAR, ...
+                %     'connectivityModeling',ALLEEG(cond_i).CAT.configs.est_mvarConnectivity, ...
+                %     'mode',{'PhaseRand','nperms',200}, ...
+                %     'autosave',[], ...
+                %     'verb',1);
+                %-
+                % cfg = struct2args(stat_pr_cfg);
+                % [ALLEEG(cond_i),~] = pop_stat_surrogateGen(ALLEEG(cond_i),'nogui',cfg{:});
+                %-
+                stat_pr_cfg.modelingApproach = ALLEEG(cond_i).CAT.configs.est_fitMVAR;
+                stat_pr_cfg.connectivityModeling = ALLEEG(cond_i).CAT.configs.est_mvarConnectivity;
+                cfg = struct2args(stat_pr_cfg);
+                [PConn,~] = stat_surrogateGen('EEG',ALLEEG(cond_i),cfg{:});
+                ALLEEG(cond_i).CAT.PConn = PConn;
+                %- Save Phase randomized distribution
+                phasernd_dist = ALLEEG(cond_i).CAT.PConn;
                 fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
-                chk = ~exist([ALLEEG(cond_i).filepath filesep fName,'_PhaseRnd.mat'],'file') || FORCE_PHASECALC
-                if chk
-                    %- clear PConn
-                    ALLEEG(cond_i).CAT.PConn  = [];
-                    stat_pr_cfg.modelingApproach = ALLEEG(cond_i).CAT.configs.est_fitMVAR;
-                    stat_pr_cfg.connectivityModeling = ALLEEG(cond_i).CAT.configs.est_mvarConnectivity;
-                    cfg = struct2args(stat_pr_cfg);
-                    %- FEVAL
-                    [PConn,~] = stat_surrogateGen('ALLEEG',ALLEEG(cond_i),cfg{:});
-                    ALLEEG(cond_i).CAT.PConn = PConn;
-                    %- Save Phase randomized distribution
-                    phasernd_dist = ALLEEG(cond_i).CAT.PConn;
-                    fName = strsplit(ALLEEG(cond_i).filename,'.'); fName = [fName{1} '.mat'];
-                    par_save(phasernd_dist,ALLEEG(cond_i).filepath,fName,'_PhaseRnd');
-                    fprintf('done.\n')
-                else
-                    ALLEEG(cond_i).CAT.PConn = par_load(ALLEEG(cond_i).filepath,fName,'_PhaseRnd.mat');
-                end
+                par_save(phasernd_dist,ALLEEG(cond_i).filepath,fName,'_PhaseRnd');
+                fprintf('done.\n')
+            else
+                ALLEEG(cond_i).CAT.PConn = par_load(ALLEEG(cond_i).filepath,fName,'_PhaseRnd.mat');
             end
-            fprintf('%s) Phase Randomization Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
         end
-    catch e
-        fprintf(['error. identifier: %s\n',...
-                 'error. %s\n',...
-                 'error. on subject %s\n',...
-                 'stack. %s\n'],e.identifier,e.message,ALLEEG(1).subject,getReport(e));
-        disp(e);
+        fprintf('%s) Phase Randomization Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
     end
 end
 pop_editoptions('option_computeica',0);

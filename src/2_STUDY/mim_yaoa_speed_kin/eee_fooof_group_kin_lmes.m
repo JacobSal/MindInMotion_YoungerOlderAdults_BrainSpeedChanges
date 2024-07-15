@@ -485,10 +485,15 @@ MEASURE_SYMBOLS = {'\theta','\alpha','\beta'};
 % varnames_labs = {'APexc COV','APexc','MLexc COV','MLexc','Step Dur','UDexc COV','UDexc','Stance Dur','GaitCycle Dur','Peak UpDown Vel'};
 %-
 varnames = {'mean_APexc_COV','mean_MLexc_COV',...
-            'mean_StepDur','mean_UDexc_COV',...
+            'mean_StepDur_cov','mean_StepDur','mean_UDexc_COV',...
             'mean_StanceDur'};
-varnames_labs = {'APexc COV','MLexc COV','Step Dur','UDexc COV','Stance Dur'};
-
+varnames_labs = {'AP Exc. COV','ML Exc. COV','Step Duration COV','Step Duration (s)','UD Exc. COV','Stance Duration (s)'};
+% varnames = {'mean_StepDur','mean_GaitCycleDur','mean_SwingDur',...
+%             'mean_StanceDur','mean_SingleSupport','mean_TotalDS'};
+% varnames_labs = {'mean_StepDur','mean_GaitCycleDur','mean_SwingDur',...
+%             'mean_StanceDur','mean_SingleSupport','mean_TotalDS'};
+%## GROUP VARIABLE?
+group_i = 1;
 %% (SIMPLE MEDIATION MODEL) PREDICTORS: KINEMATIC. RESPONSE: BRAIN ACTIVITY, STATS TEST
 %## PARAMS
 %-
@@ -501,8 +506,9 @@ COLORS = linspecer(2);
 IM_RESIZE = 0.7;
 TITLE_TXT_SIZE = 14;
 ALPHA = 0.05;
-DO_PLOT_RANDOM_VARS = true;
+DO_PLOT_RANDOM_VARS = false;
 %-
+AX_FONT_NAME = 'Arial';
 AX_W = 0.35;
 AX_H = 0.25;
 AX_HORIZ_SHIFT = 0.1;
@@ -545,7 +551,11 @@ for cl_i = 1:length(clusters)
             %##
             cond_plot_store = [];
             group_plot_store = [];
-            inds = TMP_FOOOF_T.design_id == designs(des_i) & TMP_FOOOF_T.cluster_id == clusters(cl_i);
+            if ~isempty(group_i)
+                inds = TMP_FOOOF_T.design_id == designs(des_i) & TMP_FOOOF_T.cluster_id == clusters(cl_i) & TMP_FOOOF_T.cluster_id == groups(group_i);
+            else
+                inds = TMP_FOOOF_T.design_id == designs(des_i) & TMP_FOOOF_T.cluster_id == clusters(cl_i);
+            end
             T_vals_plot = TMP_FOOOF_T(inds,:);
             %-
             y_lim_calc = [min(T_vals_plot.(measure_name))-std(T_vals_plot.(measure_name)),max(T_vals_plot.(measure_name))+std(T_vals_plot.(measure_name))];
@@ -728,7 +738,7 @@ COLORS = linspecer(2);
 IM_RESIZE = 0.7;
 TITLE_TXT_SIZE =14;
 ALPHA = 0.05;
-DO_PLOT_RANDOM_VARS = true;
+DO_PLOT_RANDOM_VARS = false;
 %-
 AX_W = 0.35;
 AX_H = 0.25;
@@ -956,7 +966,7 @@ COLORS = COLOR_MAPS_SPEED;
 IM_RESIZE = 0.7;
 TITLE_TXT_SIZE =14;
 ALPHA = 0.05;
-DO_PLOT_RANDOM_VARS = true;
+DO_PLOT_RANDOM_VARS = false;
 %-
 AX_W = 0.35;
 AX_H = 0.25;
@@ -1220,7 +1230,7 @@ COLORS = COLOR_MAPS_SPEED;
 IM_RESIZE = 0.7;
 TITLE_TXT_SIZE = 14;
 ALPHA = 0.05;
-DO_PLOT_RANDOM_VARS = true;
+DO_PLOT_RANDOM_VARS = false;
 %-
 AX_W = 0.35;
 AX_H = 0.25;
@@ -1265,7 +1275,11 @@ for cl_i = 1:length(clusters)
             %##
             cond_plot_store = [];
             group_plot_store = [];
-            inds = TMP_FOOOF_T.design_id == designs(des_i) & TMP_FOOOF_T.cluster_id == clusters(cl_i);
+            if ~isempty(group_i)
+                inds = TMP_FOOOF_T.design_id == designs(des_i) & TMP_FOOOF_T.cluster_id == clusters(cl_i) & TMP_FOOOF_T.cluster_id == groups(group_i);
+            else
+                inds = TMP_FOOOF_T.design_id == designs(des_i) & TMP_FOOOF_T.cluster_id == clusters(cl_i);
+            end
             T_vals_plot = TMP_FOOOF_T(inds,:);
             %-
             y_lim_calc = [min(T_vals_plot.(measure_name))-std(T_vals_plot.(measure_name)),max(T_vals_plot.(measure_name))+std(T_vals_plot.(measure_name))];

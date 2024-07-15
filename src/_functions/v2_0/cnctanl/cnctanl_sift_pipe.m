@@ -410,7 +410,7 @@ tt = tic();
 %             'verb',1);
 cfg = struct2args(ESTFITMVAR);
 for cond_i = 1:length(ALLEEG)
-    Conn = est_mvarConnectivity('ALLEEG',ALLEEG(cond_i),'MODEL',ALLEEG(cond_i).CAT.MODEL,...
+    [Conn,~] = est_mvarConnectivity('ALLEEG',ALLEEG(cond_i),'MODEL',ALLEEG(cond_i).CAT.MODEL,...
                 cfg{:});
     if ~isempty(Conn)
         ALLEEG(cond_i).CAT.Conn = Conn; 
@@ -424,7 +424,8 @@ for cond_i = 1:length(ALLEEG)
     
     if ~isempty(cfg)
         % store the configuration structure
-        ALLEEG(cond_i).CAT.configs.('est_mvarConnectivity') = cfg;
+        ESTFITMVAR.arg_direct = 0;
+        ALLEEG(cond_i).CAT.configs.('est_mvarConnectivity') = ESTFITMVAR;
     end
 end
 fprintf('%s) Connectivity Estimation  Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
@@ -530,71 +531,3 @@ end
 fprintf(1,'DONE: GENERATING CONNECTIVITY MEASURES FOR SUBJECT %s: %0.1f\n\n',ALLEEG(1).subject,toc(topt));          
 
 end
-
-%% ===================================================================== %%
-function [b] = validate_struct(x,DEFAULT_STRUCT)
-    b = false;
-    struct_name = inputname(2);
-    %##
-    fs1 = fields(x);
-    fs2 = fields(DEFAULT_STRUCT);
-    vals1 = struct2cell(x);
-    vals2 = struct2cell(DEFAULT_STRUCT);
-    %- check field names
-    chk = cellfun(@(x) any(strcmp(x,fs2)),fs1);
-    if ~all(chk)
-        fprintf(2,'\nFields for struct do not match for %s\n',struct_name);
-        return
-    end
-    %- check field value's class type
-    for f = 1:length(fs2)
-        ind = strcmp(fs2{f},fs1);
-        chk = strcmp(class(vals2{f}),class(vals1{ind}));
-        if ~chk
-            fprintf(2,'\nStruct.%s must be type %s, but is type %s\n',fs2{f},class(vals2{f}),class(vals1{ind}));
-            return
-        end
-    end
-    b = true;
-end
-%% ===================================================================== %%
-function [struct_out] = set_defaults_struct(x,DEFAULT_STRUCT)
-    struct_out = x;
-    %##
-    fs1 = fields(x);
-    fs2 = fields(DEFAULT_STRUCT);
-    vals1 = struct2cell(x);
-    %- check field value's class type
-    for f = 1:length(fs2)
-        ind = strcmp(fs2{f},fs1);
-        if isempty(vals1{ind})
-            struct_out.(fs1{ind}) = DEFAULT_STRUCT.(fs2{ind});
-        end
-    end
-end
-%% ===================================================================== %%
-function [args] = struct2args(struct)
-    %EEGLAB_STRUCT2ARGS Summary of this function goes here
-    %   Detailed explanation goes here
-    %## Define Parser
-    p = inputParser;
-    %## REQUIRED
-    addRequired(p,'struct',@isstruct);
-    parse(p,struct);
-    %##
-    fn = fieldnames(struct);
-    sc = struct2cell(struct);
-    args = cell(length(fn)+length(sc),1);
-    cnt = 1;
-    for i = 1:length(fn)
-        args{cnt} = fn{i};
-        if isempty(sc{i})
-            args{cnt+1} = [];
-        else
-            args{cnt+1} = sc{i};
-        end
-        cnt = cnt + 2;
-    end
-end
-
-

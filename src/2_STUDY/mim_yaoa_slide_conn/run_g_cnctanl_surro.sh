@@ -13,7 +13,7 @@
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=hpg-default # cluster to run on, use slurm command 'sinfo -s'
 # sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_slide_conn/run_g_cnctanl_surro.sh
-module load matlab/2023b
+module load matlab/2023a
 
 # set linux workspace
 # check if script is started via SLURM or bash

@@ -3,6 +3,9 @@ function [tbl_out,tbl_summary_out] = cnctanl_valfigs_to_table(fig_dir,cond_order
 %   Detailed explanation goes here
 ORDER_CHAR = 'order';
 VALIDATION_CHAR = 'validation';
+VALID_WHITE_CHARS = {'Ljung-Box','ACF','Box-Pierce','Li-Mcleod'};
+% HNDL_IND_ORDER_LINE = 1;
+% HNDL_IND_ORDER_HIST = 3;
 p = inputParser;
 %## REQUIRED
 addRequired(p,'fig_dir',@ischar)
@@ -41,15 +44,46 @@ for i = 1:length(fdir)
     cond_name{i} = cond_order{cond_n};
     subj_name(i) = feval(@subj_name_regexp,fdir(i).name);
     if contains(fdir(i).name,ORDER_CHAR)
-        %% Line Graph
-        line_X =     file.hgS_070000.children(2).children(1).properties.XData;
-        aic_line_Y = file.hgS_070000.children(2).children(1).properties.YData;
-        hq_line_Y  = file.hgS_070000.children(2).children(2).properties.YData;
-        %% Histograms
-        hist_X     = file.hgS_070000.children(4).children(1).properties.XData;
-        aic_hist_Y = file.hgS_070000.children(4).children(1).properties.YData;
-        hq_hist_Y  = file.hgS_070000.children(5).children(1).properties.YData;
-%         header = ["Model Order", "AIC_BITS", "HQ_BITS", "AIC_HIST", "HQ_HIST"];
+        for ch_i = 1:length(file.hgS_070000.children)
+            if ~isempty(file.hgS_070000.children(ch_i).children)
+                chk1 = any(contains({file.hgS_070000.children(ch_i).children.type},'graph2d.lineseries'));
+                chk2 = any(contains({file.hgS_070000.children(ch_i).children.type},'specgraph.baseline'));
+                chk3 = any(contains({file.hgS_070000.children(ch_i).children.type},'patch'));
+                if chk2 && chk3 && chk1
+                    %## histogram
+                    for ch_j = 1:length(file.hgS_070000.children(ch_i).children)
+                        chk = ~cellfun(@isempty,{file.hgS_070000.children(ch_i).children.children});
+                        try
+                            if contains(file.hgS_070000.children(ch_i).children(ch_j).properties.String,'aic')
+                                aic_hist_Y = file.hgS_070000.children(ch_i).children(chk).properties.YData;
+                                hist_X     = file.hgS_070000.children(ch_i).children(chk).properties.XData;
+                            elseif contains(file.hgS_070000.children(ch_i).children(ch_j).properties.String,'hq')
+                                hq_hist_Y  = file.hgS_070000.children(ch_i).children(chk).properties.YData;
+                            end
+                        catch
+                            % fprintf('Didn''t find valid child\n')
+                        end
+                    end
+                elseif chk1 && ~chk2 && ~chk3
+                    %## Line Graph
+                    for ch_j = 1:length(file.hgS_070000.children(ch_i).children)
+                        try
+                            if contains(file.hgS_070000.children(ch_i).children(ch_j).properties.DisplayName,'aic')
+                                aic_line_Y = file.hgS_070000.children(ch_i).children(ch_j).properties.YData;
+                                %- XData only needs extracting once
+                                line_X =     file.hgS_070000.children(ch_i).children(ch_j).properties.XData;
+                            elseif contains(file.hgS_070000.children(ch_i).children(ch_j).properties.DisplayName,'hq')
+                                hq_line_Y  = file.hgS_070000.children(ch_i).children(ch_j).properties.YData;
+                            end
+                        catch
+                            % fprintf('Didn''t find valid child\n')
+                        end
+                    end
+                else 
+                    warning('No extractable handle for order plot');
+                end
+            end
+        end
         info_crit_modord_x{i} = squeeze(line_X).';
         info_crit_aic_line{i} = squeeze(aic_line_Y).';
         info_crit_hq_line{i} = squeeze(hq_line_Y).';
@@ -57,13 +91,36 @@ for i = 1:length(fdir)
         hist_aic_amnts{i} = squeeze(aic_hist_Y).';
         hist_hq_amnts{i} = squeeze(hq_hist_Y).';
     elseif contains(fdir(i).name,VALIDATION_CHAR)
-        window_num{i} = file.hgS_070000.children(2).children(1).properties.XData;
-        white_sig_ljb{i} = file.hgS_070000.children(2).children(1).properties.YData;
-        white_sig_acf{i} = file.hgS_070000.children(2).children(2).properties.YData;
-        white_sig_boxp{i} = file.hgS_070000.children(2).children(3).properties.YData;
-        white_sig_limcl{i} = file.hgS_070000.children(2).children(4).properties.YData;
-        perc_cons{i} = file.hgS_070000.children(4).children(1).properties.YData;
-        stability_ind{i} = file.hgS_070000.children(5).children(1).properties.YData;
+        for ch_i = 1:length(file.hgS_070000.children)
+            try
+                chk1 = cellfun(@(x) find_hndl_prop(x,'String','Whiteness Significance'),{file.hgS_070000.children(ch_i).children.properties});
+                if any(chk1)
+                    chk_ljb = cellfun(@(x) find_hndl_prop(x,'DisplayName','Ljung-Box'),{file.hgS_070000.children(ch_i).children.properties});
+                    chk_acf = cellfun(@(x) find_hndl_prop(x,'DisplayName','ACF'),{file.hgS_070000.children(ch_i).children.properties});
+                    chk_boxp = cellfun(@(x) find_hndl_prop(x,'DisplayName','Box-Pierce'),{file.hgS_070000.children(ch_i).children.properties});
+                    chk_limcl = cellfun(@(x) find_hndl_prop(x,'DisplayName','Li-McLeod'),{file.hgS_070000.children(ch_i).children.properties});
+                    white_sig_ljb{i} = file.hgS_070000.children(ch_i).children(chk_ljb).properties.YData;
+                    white_sig_acf{i} = file.hgS_070000.children(ch_i).children(chk_acf).properties.YData;
+                    white_sig_boxp{i} = file.hgS_070000.children(ch_i).children(chk_boxp).properties.YData;
+                    white_sig_limcl{i} = file.hgS_070000.children(ch_i).children(chk_limcl).properties.YData;
+                    %- Extract XData Once
+                    window_num{i} = file.hgS_070000.children(ch_i).children(chk_ljb).properties.XData;
+                end
+                chk1 = cellfun(@(x) find_hndl_prop(x,'String','Percent Consistency'),{file.hgS_070000.children(ch_i).children.properties});
+                if any(chk1)
+                    chk2 = cellfun(@(x) contains(x,'graph2d.lineseries'),{file.hgS_070000.children(ch_i).children.type});
+                    perc_cons{i} = file.hgS_070000.children(ch_i).children(chk2).properties.YData;
+                end
+                chk1 = cellfun(@(x) find_hndl_prop(x,'String','Stability Index'),{file.hgS_070000.children(ch_i).children.properties});
+                if any(chk1)
+                    % chk2 = cellfun(@(x) contains(x,'graph2d.lineseries'),{file.hgS_070000.children(ch_i).children.type});
+                    chk3 = cellfun(@(x) find_hndl_prop(x,'Marker','.'),{file.hgS_070000.children(ch_i).children.properties});
+                    perc_cons{i} = file.hgS_070000.children(ch_i).children(chk3).properties.YData;
+                end
+            catch
+                warning('No extractable handle for validation plot');
+            end
+        end
     else
         fprintf('file %s is not an order or validation figure...\n',fdir(i).name)
     end
@@ -151,4 +208,15 @@ end
 function [subj_name] = subj_name_regexp(str)
     % subj_name = regexp(str,'Pilot[\d+]*','match');
     subj_name = regexp(str,'H[\d+]*','match');
+end
+%##
+function [bool] = find_hndl_prop(obj,prop_name,prop_val)
+    try
+        bool = any(contains(obj.(prop_name),prop_val));
+        % if length(obj.(prop_name))
+        %     bool = any(bool);
+        % end
+    catch
+        bool = false;
+    end
 end

@@ -68,7 +68,7 @@ if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
 %- load cluster
-CLUSTER_K = 12;
+CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
@@ -83,19 +83,19 @@ else
 end
 %##
 % [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_mri_study');
+% [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_mri_study');
 %- override with already processed ALLEEG set
-% SUBJ_PICS = cell(1,length(GROUP_NAMES));
-% SUBJ_ITERS = cell(1,length(GROUP_NAMES));
-% for i = 1:length(STUDY.datasetinfo)
-%     gi = find(strcmp(STUDY.datasetinfo(i).group,GROUP_NAMES));
-%     SUBJ_PICS{1,gi} = [SUBJ_PICS{1,gi}, {STUDY.datasetinfo(i).subject}];
-%     if isempty(SUBJ_ITERS{1,gi})
-%         SUBJ_ITERS{1,gi} = 1;
-%     else
-%         SUBJ_ITERS{1,gi} = [SUBJ_ITERS{1,gi}, SUBJ_ITERS{1,gi}(end)+1];
-%     end
-% end
+SUBJ_PICS = cell(1,length(GROUP_NAMES));
+SUBJ_ITERS = cell(1,length(GROUP_NAMES));
+for i = 1:length(STUDY.datasetinfo)
+    gi = find(strcmp(STUDY.datasetinfo(i).group,GROUP_NAMES));
+    SUBJ_PICS{1,gi} = [SUBJ_PICS{1,gi}, {STUDY.datasetinfo(i).subject}];
+    if isempty(SUBJ_ITERS{1,gi})
+        SUBJ_ITERS{1,gi} = 1;
+    else
+        SUBJ_ITERS{1,gi} = [SUBJ_ITERS{1,gi}, SUBJ_ITERS{1,gi}(end)+1];
+    end
+end
 %%
 % CATEGORIES = {'YoungAdult','HF_OlderAdult','LF_OlderAdult'};
 CATEGORIES = {'YoungAdult','HF_OlderAdult','LF_OlderAdult'};
@@ -446,6 +446,7 @@ for i = 1:size(speed_table,1)
 end
 
 %% READ IN SUBJECT STABILITY SCORES
+%{
 SPEED_CUTOFF = 0.1;
 MasterTable = mim_read_master_sheet('M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\subject_mgmt\subject_mastersheet_notes.xlsx');
 tmp_table = table(categorical(MasterTable.subject_code),MasterTable.flat_low_med_high_rating_of_stability);
@@ -486,9 +487,12 @@ for i = 1:size(tmp_table,1)
 end
 writetable(table_new_imu,[save_dir filesep 'imu_table_meantrial.xlsx']);
 writetable(table_new_ls,[save_dir filesep 'ls_table_meantrial.xlsx']);
+%}
 %%
-table_new_imu = loadtable([save_dir filesep 'imu_table_meantrial.xlsx']);
-table_new_ls = loadtable([save_dir filesep 'ls_table_meantrial.xlsx']);
+%{
+table_new_imu = readtable([save_dir filesep 'imu_table_meantrial.xlsx']);
+table_new_ls = readtable([save_dir filesep 'ls_table_meantrial.xlsx']);
+%}
 %% VIOLIN PLOT IMU
 % FIG_POSITION = [100,100,1480,520];
 FIG_POSITION = [100,100,420,420];
@@ -1104,11 +1108,16 @@ VIOLIN_WIDTH_GROUP = 0.1;
 % meas_ylabel = {'Duration','Coefficient of Variation','Coefficient of Variation','Duration'};
 % YLIMS = {[0,2],[0,27.5],[0,30],[0,4]};
 % meas_names = {'nanmean_StepDur','nanmean_StepDur_cov'};
-meas_names = {'mean_StepDur','mean_StepDur_cov','mean_StanceDur','mean_SwingDur'};
-meas_units = {'s','%'};
-meas_titles = {'Step Duration',{'Step Duration';'Coefficient of Variation'}};
-meas_ylabel = {'Duration','Coefficient of Variation'};
-YLIMS = {[0,2],[0,27.5]};
+% meas_names = {'mean_StepDur','mean_StepDur_cov','mean_StanceDur','mean_SwingDur'};
+meas_names = {'mean_StepDur','mean_GaitCycleDur','mean_SwingDur',...
+            'mean_StanceDur','mean_SingleSupport','mean_TotalDS'};
+meas_units = {'s','s','s','s','s','s'};
+meas_titles = {'mean_StepDur','mean_GaitCycleDur','mean_SwingDur',...
+            'mean_StanceDur','mean_SingleSupport','mean_TotalDS'};
+% meas_titles = {'Step Duration',{'Step Duration';'Coefficient of Variation'}};
+% meas_ylabel = {'Duration','Coefficient of Variation'};
+meas_ylabel = {'Duration','Duration','Duration','Duration','Duration','Duration'};
+YLIMS = {[0,2.5],[0,3],[0,1],[0,3],[0,1.5],[0,2]};
 %-
 speed_chars = {'0p25','0p5','0p75','1p0'};
 terrain_chars = {'flat','low','med','high'};
@@ -1759,32 +1768,32 @@ for meas_i = 1:length(meas_names)
 %     pos1(1,2)=pos1(1,2)-0.12;
 %     set(xlh,'Position',pos1);
     %-
-    shift = 0;
-    mdl_spec='Var1~1+Var2';
-    for g_i=1:size(cond_2,2)
-        tmp = cat(2,cond_2{:,g_i});
-        for subj_i = 1:size(cond_2{1,1},1)
-            if all(~isnan(tmp(subj_i,:)))
-                y_vals = tmp(subj_i,:);
-                x_vals = xticks((1:length(tmp(subj_i,:)))+shift);
-                tb = table(y_vals',x_vals');
-                out = fitlm(x_vals,y_vals); %fitlm(tb,mdl_spec);
-%                 p = plot(ax,out.Residuals.Raw',x_vals);
-                p = plot(ax,out);
-                p(end-1,1).Visible='off';
-                p(end,1).Visible='off';
-                p(1).Visible = 'off'; %[0,0,0,0.2];
-                if out.Coefficients.Estimate(2) > 0
-                    p(2).Color = [0,0,0.7,0.70];
-                else
-                    p(2).Color = [0.7,0,0,0.70];
-                end
-                
-%                 plot(ax,x_vals,y_vals);
-            end
-        end
-        shift = shift + length(tmp(1,:));
-    end
+%     shift = 0;
+%     mdl_spec='Var1~1+Var2';
+%     for g_i=1:size(cond_2,2)
+%         tmp = cat(2,cond_2{:,g_i});
+%         for subj_i = 1:size(cond_2{1,1},1)
+%             if all(~isnan(tmp(subj_i,:)))
+%                 y_vals = tmp(subj_i,:);
+%                 x_vals = xticks((1:length(tmp(subj_i,:)))+shift);
+%                 tb = table(y_vals',x_vals');
+%                 out = fitlm(x_vals,y_vals); %fitlm(tb,mdl_spec);
+% %                 p = plot(ax,out.Residuals.Raw',x_vals);
+%                 p = plot(ax,out);
+%                 p(end-1,1).Visible='off';
+%                 p(end,1).Visible='off';
+%                 p(1).Visible = 'off'; %[0,0,0,0.2];
+%                 if out.Coefficients.Estimate(2) > 0
+%                     p(2).Color = [0,0,0.7,0.70];
+%                 else
+%                     p(2).Color = [0.7,0,0,0.70];
+%                 end
+% 
+% %                 plot(ax,x_vals,y_vals);
+%             end
+%         end
+%         shift = shift + length(tmp(1,:));
+%     end
     %- set group labels
     if size(cond_2,2) == 2
         shift = 0;

@@ -96,7 +96,7 @@ SUB_GROUP_FNAME = 'group_spec';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
-CLUSTER_K = 12;
+CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
@@ -340,6 +340,7 @@ FOOOF_TABLE = tmp.FOOOF_TABLE;
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
 groups = unique(FOOOF_TABLE.group_id);
+subjects = unique(FOOOF_TABLE.subj_id);
 design_chars = {'terrain','speed'};
 group_chars = unique(FOOOF_TABLE.group_char);
 conditions = unique(FOOOF_TABLE.cond_char);
@@ -350,6 +351,36 @@ PLOT_PARAMS = struct('color_map',linspecer(4),...
                 'font_name','Arial','x_label','');
 measure_name_plot = {'theta_avg_power','alpha_avg_power','beta_avg_power'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
 title_plot = {'Mean \theta','Mean \alpha','Mean \beta'};
+% measure_name_plot = {'med_sub_flat','low_sub_flat','high_sub_flat'};
+%% ================================================================= %%
+% % measure_name_plot = {'theta_sub','alpha_sub','beta_sub'};
+% T_FOOOF_TABLE = FOOOF_TABLE;
+% T_FOOOF_TABLE.med_sub_flat = zeros(size(T_FOOOF_TABLE,1),1);
+% T_FOOOF_TABLE.low_sub_flat = zeros(size(T_FOOOF_TABLE,1),1);
+% T_FOOOF_TABLE.high_sub_flat = zeros(size(T_FOOOF_TABLE,1),1);
+% 
+% for des_i = 1
+%     for subj_i = 1:length(subjects)
+%         inds = T_FOOOF_TABLE.design_id == num2str(des_i) & T_FOOOF_TABLE.subj_id == string(subj_i);
+%         T_plot = T_FOOOF_TABLE(inds,:);
+%         % inds = psd_feature_stats.study 
+%         flat_pwr = T_plot.cond_id == string(1);
+%         low_pwr = T_plot.cond_id == string(2);
+%         med_pwr = T_plot.cond_id == string(3);
+%         high_pwr = T_plot.cond_id == string(4);
+%         for meas_i = 1:length(measure_name_plot)
+%             T_plot.med_sub_flat(med_pwr) = T_plot.(measure_name_plot{meas_i})(med_pwr)-T_plot.(measure_name_plot{meas_i})(flat_pwr);
+%             T_plot.high_sub_flat(high_pwr) = T_plot.(measure_name_plot{meas_i})(high_pwr)-T_plot.(measure_name_plot{meas_i})(flat_pwr);
+%             T_plot.low_sub_flat(low_pwr) = T_plot.(measure_name_plot{meas_i})(low_pwr)-T_plot.(measure_name_plot{meas_i})(flat_pwr);
+%             %-
+%             % T_plot.med_sub_flat(med_pwr) = T_plot.(measure_name_plot{meas_i})(med_pwr)-T_plot.(measure_name_plot{meas_i})(flat_pwr);
+%             % T_plot.high_sub_flat(high_pwr) = T_plot.(measure_name_plot{meas_i})(high_pwr)-T_plot.(measure_name_plot{meas_i})(flat_pwr);
+%             % T_plot.low_sub_flat(low_pwr) = T_plot.(measure_name_plot{meas_i})(low_pwr)-T_plot.(measure_name_plot{meas_i})(flat_pwr);
+%         end
+%         T_FOOOF_TABLE(inds,:) = T_plot;
+%     end
+% end
+
 %% ===================================================================== %%
 %## TOPO & DIPOLE PLOTS
 for k_i = 1:length(clusters)
@@ -561,6 +592,7 @@ for k_i = 1:length(clusters)
     close(fig);
 end
 %% ================================================================= %%
+% FOOOF_TABLE = T_FOOOF_TABLE;
 %## VIOLIN PLOTS
 im_resize= 0.9;
 VIOLIN_BOTTOM = 0.7;
@@ -568,7 +600,7 @@ AX_H  = 0.2;
 AX_W = 0.25;
 for k_i = 1:length(clusters)
     %
-    atlas_name = atlas_name_store{k_i};
+    atlas_name = ''; %atlas_name_store{k_i};
     fig = figure('color','white','renderer','Painters');
     sgtitle(atlas_name,'FontName',PLOT_STRUCT.font_name,'FontSize',14,'FontWeight','bold','Interpreter','none');
     set(fig,'Units','inches','Position',[0.5,0.5,6.5,9])
@@ -579,7 +611,18 @@ for k_i = 1:length(clusters)
     %## violin plot's theta/alpha/beta (speed)
     %-
     max_val = zeros(length(measure_name_plot),length(designs));
-    STATS_STRUCT = struct('anova',{{}},...
+    % STATS_STRUCT = struct('anova',{{}},...
+    %                       'anova_grp',{{}},...
+    %                       'pvals',{{}},...
+    %                       'pvals_pairs',{{}},...
+    %                       'pvals_grp',{{}},...
+    %                       'pvals_grp_pairs',{{}},...
+    %                       'regress_pval',{{}},...
+    %                       'regress_line',{{}},...
+    %                       'r2_coeff',{{}},...
+    %                       'regress_xvals',0);
+    %-
+    DEFAULT_STATS_STRUCT = struct('anova',{{}},...
                           'anova_grp',{{}},...
                           'pvals',{{}},...
                           'pvals_pairs',{{}},...
@@ -587,17 +630,21 @@ for k_i = 1:length(clusters)
                           'pvals_grp_pairs',{{}},...
                           'regress_pval',{{}},...
                           'regress_line',{{}},...
-                          'r2_coeff',{{}},...
-                          'regress_xvals',0);
+                          'r2_coeff',{[]},...
+                          'regress_xvals',0,...
+                          'subject_char',[],... % this option when filled prints removal of nan() info
+                          'group_order',categorical({''}),...
+                          'do_include_intercept',false); 
     %
     %##
+    STATS_STRUCT = DEFAULT_STATS_STRUCT;
     cnt = 1;
     for des_i = 1:length(designs)
         for i = 1:length(measure_name_plot)
             measure_name = measure_name_plot{i};
             inds = FOOOF_TABLE.design_id == num2str(des_i) & FOOOF_TABLE.cluster_id == num2str(cl_i);
             T_plot = FOOOF_TABLE(inds,:);
-            
+            STATS_STRUCT(cnt) = DEFAULT_STATS_STRUCT;
             for k = 1:length(groups)
                 inds = psd_feature_stats.study == num2str(des_i) & psd_feature_stats.cluster == num2str(cl_i) & psd_feature_stats.group==groups(k);
                 T_stats_plot = psd_feature_stats(inds,:);
@@ -702,7 +749,7 @@ for k_i = 1:length(clusters)
             axax = group_violin(T_plot,measure_name,'cond_id','group_id',...
                 fig,...
                 'VIOLIN_PARAMS',VIOLIN_PARAMS,...
-                'PLOT_PARAMS',PLOT_PARAMS,...
+                'PLOT_STRUCT',PLOT_PARAMS,...
                 'STATS_STRUCT',tmp_stats);
             set(axax,'OuterPosition',[0,0,1,1]);
             set(axax,'Position',[0.08+horiz_shift,VIOLIN_BOTTOM+vert_shift,AX_W*im_resize,AX_H*im_resize]);  %[left bottom width height]
