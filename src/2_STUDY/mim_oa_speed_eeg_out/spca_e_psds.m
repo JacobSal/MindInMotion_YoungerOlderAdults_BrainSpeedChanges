@@ -50,8 +50,8 @@ set_workspace
 DATA_SET = 'MIM_dataset';
 PREPROC_DIR_NAME = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 STUDY_DIR_NAME = '03232024_spca_analysis_OA';
-STUDY_FNAME_GAIT = 'epoch_study_ya';
-STUDY_FNAME_REST = 'rest_epoch_study_ya';
+STUDY_FNAME_GAIT = 'epoch_study';
+STUDY_FNAME_REST = 'rest_epoch_study';
 %- study group and saving
 SAVE_ALLEEG = false;
 %## EPOCH PARAMS
