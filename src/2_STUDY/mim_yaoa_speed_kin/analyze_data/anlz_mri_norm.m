@@ -673,3 +673,17 @@ end
 exportgraphics(fig,[save_dir filesep sprintf('%s_mninorm_overlay_validation_plot.jpg',dt)]);
 
 %}
+%% (jmorris help)
+fpath = 'M:\jmorris\STUDY_PT\HeadModel\P_006';
+seg = [fpath filesep 'mri_segmented.mat'];
+seg = [fpath filesep 'mri_acpc_rs.mat'];
+segm = ft_read_mri(seg);
+cfg              = [];
+cfg.method = 'ortho';
+cfg.funparameter = 'tissue'; % They did an update on May.2021 in source code but not the tutorial
+cfg.anaparameter = 'anatomy';
+% cfg.funcolormap  = linspecer(6); % distinct color per tissue
+cfg.location     = 'center';
+cfg.renderer     = 'painter';
+cfg.crosshair   = 'yes';
+ft_sourceplot(cfg,segm);

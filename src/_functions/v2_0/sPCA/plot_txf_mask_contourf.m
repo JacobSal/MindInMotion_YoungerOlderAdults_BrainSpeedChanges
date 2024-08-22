@@ -16,12 +16,18 @@ function [fig] = plot_txf_mask_contourf(allersp,alltimes,allfreqs,...
 cat_logo();
 %-
 DISPLAY_BAND_MARKS = true;
-SUBPLOT_BOTTOM = 0.70;
-SUBPLOT_INIT_SHIFT = 0.06;
+SUBPLOT_BOTTOM = 0.725;
+SUBPLOT_INIT_SHIFT = 0.15;
 ALPHA_MULTIPLE = 0.6; % NOTE: 1 == mask is opaque, 0 == mask does nothing
 CONTOURF_GRAIN = 200;
 % COLORBAR_SHIFT = 0.08;
-COLORBAR_SHIFT = 0.085;
+% COLORBAR_SHIFT = 0.085;
+GROUP_TITLE_XOFFSET = 0.05;
+GROUP_TITLE_YOFFSET = 0.0575;
+COLORBAR_XSHIFT = 0.085;
+COLORBAR_YSHIFT = 0;
+COLORBAR_LABEL_YSHIFT = 0.025;
+COLORBAR_LABEL_XSHIFT = 0.2;
 %-
 alltitles = cell(length(allersp),1);
 for i = 1:length(allersp)
@@ -63,7 +69,7 @@ DEFAULT_PLOT_STRUCT = struct('figure_position_inch',[0.5,0.5,6.5,9],...
     'group_titles',{{}},...
     'stats_title','F Statistic Mask',...
     'figure_title','');
-
+AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
 %% Define Parser
 p = inputParser;
 %## REQUIRED
@@ -119,10 +125,12 @@ vert_shift = 0;
 subp_dim1 = size(allersp,2)+double(~isempty(allpgroup));
 supb_cnt = 1;
 hold on;
-for i = 1:size(allersp,2)
+set(gca,AXES_DEFAULT_PROPS{:})
+for i = 1:size(allersp,2) % group
     horiz_shift = 0;
-    for j = 1:size(allersp,1)
-        subplot(subp_dim1,size(allersp,1),supb_cnt);
+    for j = 1:size(allersp,1) % condition
+        % subplot(subp_dim1,size(allersp,1),supb_cnt);
+        ax = axes();
         %-
         alpha_mask = ones(size(allpcond{j,i}))*ALPHA_MULTIPLE; %alpha range [0-1] where 0 is fully transparent and 1 = fully opaque
         alpha_mask(allpcond{j,i} == 1) = 0; %0 is significant? 1 is not?
@@ -131,7 +139,7 @@ for i = 1:size(allersp,2)
         hold on;
         imagesc(alltimes,allfreqs,allersp_mask{j,i},'AlphaData',alpha_mask);
         colormap(linspecer);
-        ax = gca;
+        % ax = gca;
         %-
         set(ax,'LineWidth',1)
         set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
@@ -201,7 +209,8 @@ for i = 1:size(allersp,2)
     end
     %- set color bar
     c = colorbar();
-    c.Position(1) = c.Position(1)+COLORBAR_SHIFT;
+    c.Position(1) = c.Position(1)+COLORBAR_XSHIFT;
+    c.Position(2) = c.Position(2)+COLORBAR_YSHIFT;
     c.Limits = PLOT_STRUCT.clim;
     c.XTick = INTERVALS;
     %- color bar label
@@ -211,11 +220,11 @@ for i = 1:size(allersp,2)
           'bold','FontName',PLOT_STRUCT.font_name,'FontSize',8);
     set(hL,'Rotation',270);
     hL.Units = 'Inches';
-    hL.Position = [SUBPLOT_INIT_SHIFT+horiz_shift-0.025,SUBPLOT_BOTTOM+0.2,0];
+    hL.Position = [SUBPLOT_INIT_SHIFT+horiz_shift-COLORBAR_LABEL_XSHIFT,SUBPLOT_BOTTOM+COLORBAR_LABEL_YSHIFT,0];
     if ~isempty(PLOT_STRUCT.group_titles)
         xx = PLOT_STRUCT.figure_position_inch(3)/2/PLOT_STRUCT.figure_position_inch(3);
         yy = PLOT_STRUCT.subplot_height+SUBPLOT_BOTTOM+vert_shift;
-        a = annotation(fig,'textbox',[xx-0.05,yy-0.05,0.1,0.1],...
+        a = annotation(fig,'textbox',[xx-GROUP_TITLE_XOFFSET,yy-GROUP_TITLE_YOFFSET,0.1,0.1],...
             'String',PLOT_STRUCT.group_titles{i},'LineStyle','none',...
             'FontName',PLOT_STRUCT.font_name,'FontSize',10,'FontWeight','bold',...
             'HorizontalAlignment','center','VerticalAlignment','top');
@@ -246,7 +255,8 @@ for i = 1:size(allersp,2)
 end
 
 if ~isempty(PLOT_STRUCT.figure_title)
-    sgtitle(PLOT_STRUCT.figure_title);
+    sgtitle(PLOT_STRUCT.figure_title,'FontWeight','bold',...
+        'FontName',PLOT_STRUCT.font_name,'FontSize',14);
 end
 hold off;
 drawnow;

@@ -4,15 +4,15 @@
 #SBATCH --mail-user=jsalminen@ufl.edu # Where to send mail
 #SBATCH --nodes=1 # Use one node
 #SBATCH --ntasks=1 # Run a single task
-#SBATCH --cpus-per-task=10 # Number of CPU cores per task
-#SBATCH --mem-per-cpu=50000mb# Total memory limit
+#SBATCH --cpus-per-task=5 # Number of CPU cores per task
+#SBATCH --mem-per-cpu=200000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
-#SBATCH --time=06:00:00 # Time limit hrs:min:sec
-#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/_slurm_logs/%j_recreate_spca_studies.log # Standard output
+#SBATCH --time=02:00:00 # Time limit hrs:min:sec
+#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_oa_speed_eeg_out/_slurm_logs/%j_recreate_spca_studies.log # Standard output
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=hpg-default # cluster to run on, use slurm command 'sinfo -s'
-# sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/spca_scripts/run_recreate_spca_studies.sh
+# sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_oa_speed_eeg_out/spca_scripts/run_recreate_spca_studies.sh
 module load matlab/2023b
 
 # set linux workspace

@@ -85,13 +85,18 @@ if isempty(SubjectMatchInd)
     exact_crop_imu = []; 
 else
     %- result as a cell
-    Result = MasterTable{SubjectMatchInd,trial_name};
-    %- the result as a string
-    ResultString = Result{1};
-    %- result as a vector. the exact seconds to crop it by
-    % should get something in format of [boundary boundary]
-    exact_crop_imu = str2num(ResultString); %#ok<ST2NM>
-
+    try
+        Result = MasterTable{SubjectMatchInd,trial_name};
+        %- the result as a string
+        ResultString = Result{1};
+        %- result as a vector. the exact seconds to crop it by
+        % should get something in format of [boundary boundary]
+        exact_crop_imu = str2num(ResultString); %#ok<ST2NM>
+    catch e
+        exact_crop_imu = nan();
+        warning('%s) Error occured for trial %s...\n%s\n',subject_name,trial_name,getReport(e))
+    end
+    
     % (2021-06-16) RJD, replaced DoCrop  logic because it could not handle
     % excel having an empty cell (i.e. ResultString = '', ExactCrop = [])
     if isempty(exact_crop_imu)
@@ -139,13 +144,17 @@ if isempty(SubjectMatchInd)
     % (2021-12-07) RJD, added to avoid error in analyzeLoadsolManySubj script
 else
     %- result as a cell
-    Result = LoadsolTable{SubjectMatchInd,trial_name}; 
-    %- the result as a string
-    ResultString = Result{1}; 
-    %- result as a vector. the exact seconds to crop it by
-    % should get something in format of [boundary boundary]
-    exact_crop_ls = str2num(ResultString); %#ok<ST2NM>
-
+    try
+        Result = MasterTable{SubjectMatchInd,trial_name};
+        %- the result as a string
+        ResultString = Result{1};
+        %- result as a vector. the exact seconds to crop it by
+        % should get something in format of [boundary boundary]
+        exact_crop_ls = str2num(ResultString); %#ok<ST2NM>
+    catch e
+        exact_crop_ls = nan();
+        warning('%s) Error occured for trial %s...\n%s\n',subject_name,trial_name,getReport(e))
+    end
     %2021-06-16 RJD replaced DoCrop  logic because it could not handle
     %excel having an empty cell (i.e. ResultString = '', ExactCrop = [])
     if isempty(exact_crop_ls)
@@ -156,7 +165,6 @@ else
 
 end
 end
-
 function out = chk_inds(x)
     if any(x)
         out = true;

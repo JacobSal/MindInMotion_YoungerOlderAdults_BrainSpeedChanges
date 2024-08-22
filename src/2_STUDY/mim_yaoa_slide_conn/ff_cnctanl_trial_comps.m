@@ -67,6 +67,8 @@ DEF_ESTFITMVAR = struct('connmethods',{CONN_METHODS}, ...
             'spectraldecibels',true,   ...
             'freqs',CONN_FREQS,        ...
             'verb',1);
+%## SURROGATE STATISTICS PARAMS
+
 %## DATASET & CLUSTER INFO
 DATA_SET = 'MIM_dataset';
 study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
@@ -119,13 +121,14 @@ comps_out(inds,:) = 0;
 fprintf('Computing Connectivity\n');
 %## PARFOR LOOP
 EEG = [];
-% parfor (subj_i = 1:length(LOOP_VAR),SLURM_POOL_SIZE)
-LOOP_VAR = 1;
-for subj_i = LOOP_VAR
+% tmp_eeg_store = cell(length(LOOP_VAR));
+tmp_fpath_store = cell(length(LOOP_VAR),1);
+parfor subj_i = 1:length(LOOP_VAR)
+% LOOP_VAR = 2;
+% for subj_i = LOOP_VAR
     %## PARAMS
     pop_editoptions('option_computeica', 1); % this is needed or SIFT will bug out
-    stat_pr_cfg = DEF_STAT_PR_CFG;
-    stat_bs_cfg = DEF_STAT_BS_CFG;
+    tmp_est_fitmvar = DEF_ESTFITMVAR;
     %## LOAD EEG DATA
     ALLEEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
     %- reassign cat structure
@@ -136,44 +139,65 @@ for subj_i = LOOP_VAR
     % from the fitted VAR model.
     fprintf('===========\nCONNECTIVITY ESTIMATION\n===============\n');
     tt = tic();
-    cfg = struct2args(ESTFITMVAR);
+    cfg = struct2args(tmp_est_fitmvar);
+    tmp_alleeg = cell(length(TRIALS_PROCESS),1);
+    tmp_fpaths = cell(length(TRIALS_PROCESS),1);
     for cond_i = 1:length(TRIALS_PROCESS)
+        fprintf('Running condition %s...\n',TRIALS_PROCESS{cond_i})
         EEG = ALLEEG;
         %## Get Trial Indicies & Extract
         inds1 = logical(strcmp({EEG.event.cond}, TRIALS_PROCESS{cond_i}));
         inds2 = logical(strcmp({EEG.event.type}, 'boundary'));
         val_inds = find(inds1 & ~inds2);
-        from = [EEG.event(val_inds(1)).latency];
-        ind_from = [];
-        to = [EEG.event(val_inds(end)).latency];
-        ind_to = [];
-        fprintf('%s) Rest length is %0.2fs\n',EEG.subject,(TO-FROM)/1000);
-        EEG = pop_select(EEG, 'point', [FROM; TO]');
+        fromt = [EEG.event(val_inds(1)).latency];
+        % ind_from = find(EEG.times>=(((fromt-1)/EEG.srate)*1000) & EEG.times<=(((fromt+1)/EEG.srate)*1000));
+        tot = [EEG.event(val_inds(end)).latency];
+        % ind_to = find(EEG.times>=(((tot-1)/EEG.srate)*1000) & EEG.times<=(((tot+1)/EEG.srate)*1000));
+        fprintf('%s) %s length is %0.2fs\n',EEG.subject,TRIALS_PROCESS{cond_i},(tot/EEG.srate)-(fromt/EEG.srate));
+        EEG = pop_select(EEG, 'point', [fromt, tot]);
         %- set cat data
-        EEG.CAT.srcdata = EEG.CAT.srcdata();
-        EEG.CAT.times = EEG.CAT.times();
+        time_crop = EEG.CAT.times >= (fromt/EEG.srate)*1000 & EEG.CAT.times <= (tot/EEG.srate)*1000;
+        EEG.CAT.srcdata = EEG.icaact(double(string(EEG.CAT.curComponentNames)),:); %EEG.CAT.srcdata(:,time_crop);
+        EEG.CAT.times = EEG.times; %EEG.CAT.times(:,time_crop);
+        % EEG.CAT.Conn = []; %?
         %- set winstart times of mvar
-        EEG.CAT.MODEL.winStartTimes{};
+        err = 5.5;
+        conn_inds = EEG.CAT.MODEL.winStartTimes >= ((fromt)/EEG.srate)-err & EEG.CAT.MODEL.winStartTimes <= ((tot)/EEG.srate)+err;
+        EEG.CAT.MODEL.winStartTimes = EEG.CAT.MODEL.winStartTimes(conn_inds);
+        EEG.CAT.MODEL.AR = EEG.CAT.MODEL.AR(conn_inds);
+        EEG.CAT.MODEL.PE = EEG.CAT.MODEL.PE(conn_inds);
+        EEG.CAT.MODEL.RC = EEG.CAT.MODEL.RC(conn_inds);
+        EEG.CAT.MODEL.mu = EEG.CAT.MODEL.mu(conn_inds);
+        EEG.CAT.MODEL.th = EEG.CAT.MODEL.th(conn_inds);
         %##
-        Conn = est_mvarConnectivity('ALLEEG',EEG,'MODEL',ALLEEG(cond_i).CAT.MODEL,...
+        Conn = est_mvarConnectivity('ALLEEG',EEG,'MODEL',EEG.CAT.MODEL,...
                     cfg{:});
         if ~isempty(Conn)
-            ALLEEG(cond_i).CAT.Conn = Conn; 
+            EEG.CAT.Conn = Conn; 
         end
         % clear any existing visualization GUI config files
-        visFields = fieldnames(ALLEEG(cond_i).CAT.configs);
+        visFields = fieldnames(EEG.CAT.configs);
         visFields = visFields(~cellfun(@isempty,strfind(visFields,'vis_')));
         for k=1:length(visFields)
-            ALLEEG(cond_i).CAT.configs.(visFields{k}) = struct([]);
+            EEG.CAT.configs.(visFields{k}) = struct([]);
         end
         
         if ~isempty(cfg)
             % store the configuration structure
-            ALLEEG(cond_i).CAT.configs.('est_mvarConnectivity') = cfg;
+            EEG.CAT.configs.('est_mvarConnectivity') = cfg;
         end
+        tmp_alleeg{cond_i} = EEG;
+        tmp = strsplit(fNames{subj_i},'.');
+        tmp{1} = [tmp{1},sprintf('_%s',TRIALS_PROCESS{cond_i})];
+        tmp = strjoin(tmp,'.');
+        pop_saveset(EEG,'filepath',fPaths{subj_i},'filename',tmp);
+        tmp_fpaths{cond_i} = [fPaths{subj_i} filesep tmp];
     end
+    tmp_fpath_store{subj_i} = tmp_fpaths;
+    % tmp_eeg_store{subj_i} = cat(1,tmp_alleeg{:});
     fprintf('%s) Connectivity Estimation  Done: %0.1f\n\n',ALLEEG(1).subject,toc(tt));
 end
+par_save(tmp_fpath_store,study_fpath,'conn_slide_condition_fpaths.mat');
 pop_editoptions('option_computeica',0);
 %% SAVE BIG STUDY
 % fprintf('==== Reformatting Study ====\n');
@@ -203,7 +227,6 @@ pop_editoptions('option_computeica',0);
 % end
 % tmp = cellfun(@(x) [[]; x], tmp);
 % %##
-% tmp = eeg_checkset(tmp,'eventconsistency');
 % [STUDY, ALLEEG] = std_editset([],tmp,...
 %                                 'updatedat','off',...
 %                                 'savedat','off',...

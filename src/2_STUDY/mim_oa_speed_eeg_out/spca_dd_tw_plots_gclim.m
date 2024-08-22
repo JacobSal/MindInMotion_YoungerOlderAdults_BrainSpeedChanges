@@ -146,11 +146,6 @@ ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI at
     [ATLAS_PATH filesep 'afni' filesep 'TTatlas+tlrc.HEAD'],... % tailarch atlas
     [ATLAS_PATH filesep 'spm_anatomy' filesep 'AllAreas_v18_MPM.mat']}; % also a discrete version of this
 atlas_i = 1;
-%##
-groups_ind = [1,2,3];
-groups = {'YA','HOA','FOA'};
-group_chars = unique({STUDY.datasetinfo.group});
-condition_gait = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 
 % condition_pairs = {{'flat','low','med','high'},...
 %     {'0p25','0p5','0p75','1p0'}};
@@ -192,7 +187,7 @@ timewarp_chars = {'RHS','LTO','LHS','RTO','RHS'};
 % timewarp_chars = {'rhs','lto','lhs','rto','rhs'};
 cond_iters = {1:4,5:8};
 COLOR_PRCTILE= [15,95];
-SAVE_RESOLUTION = 300;
+SAVE_RESOLUTION = 1000;
 TERRAIN_REF_CHAR = 'flat';
 SPEED_REF_CHAR = '1p0';
 SPEED_OVERRIDE_CHARS = {'0.25m/s','0.5m/s','0.75m/s','1.0m/s'};
@@ -223,6 +218,22 @@ paramsersp = timef_params;
 alltimes = hardcode_times(time_crop);
 allfreqs = hardcode_freqs(freq_crop);
 CLUSTER_PICKS = main_cl_inds(2:end);
+% ERSP_CLIM_OVERRIDE = {[-1,1],[-0.75,0.75],[-0.75,0.75],[-0.5,0.5],...
+%     [-0.75,0.75],[-0.75,0.75],[-0.75,0.75],[-0.5,0.5],[-0.5,0.5],...
+%     [-0.75,0.75],[-0.75,0.75]};
+ERSP_CLIM_OVERRIDE = {[-.5,.5],[-0.5,0.5],[-0.5,0.5],[-0.5,0.5],...
+    [-0.5,0.5],[-0.5,0.5],[-0.5,0.5],[-0.5,0.5],[-0.5,0.5],...
+    [-0.5,0.5],[-0.5,0.5]};
+cluster_titles = {'Precuneus','Right Posterior Parietal',...
+    'Left Occipital','Left Supplementary Motor','Left Sensorimotor','Left Posterior Parietal',...
+    'Eye','Left Temporal','Mid/Posterior Cingulate','Right Sensorimotor','Right Temporal'};
+%##
+groups_ind = [1,2,3];
+groups = unique({STUDY.datasetinfo.group});
+% group_chars = {'Young Adult',{'Older Adult','High Mobility'},{'Older Adult','Low Mobility'}};
+group_chars = {'Young Adult','Older Adult High Mobility','Older Adult Low Mobility'};
+%##
+condition_gait = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
 %%
 parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
 % for ii = 1:length(CLUSTER_PICKS)
@@ -294,8 +305,8 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
                 inds_grp = cellfun(@(x) x == groups_ind(group_i),spca_table.group_c);
                 trial_order{cond_i,group_i} = condition_gait{con_con(cond_i)};
                 inds = inds_cl & inds_cond & inds_grp;
-                g_inds = cellfun(@(x) strcmp(x,group_chars{groups_ind(group_i)}),{TMP_STUDY.datasetinfo(TMP_STUDY.cluster(cl_i).sets).group});           
-                fprintf('True subjects of group %s in cluster: %i, Alg subjects in cluster: %i\n',group_chars{groups_ind(group_i)},sum(g_inds),sum(inds))
+                g_inds = cellfun(@(x) strcmp(x,groups{groups_ind(group_i)}),{TMP_STUDY.datasetinfo(TMP_STUDY.cluster(cl_i).sets).group});           
+                fprintf('True subjects of group %s in cluster: %i, Alg subjects in cluster: %i\n',groups{groups_ind(group_i)},sum(g_inds),sum(inds))
                 %- extract ersp
                 tmp = cat(3,spca_table.tf_erspcorr_c{inds});
                 tmp = permute(tmp,[2,1,3]);
@@ -400,15 +411,16 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
     bound = max([abs(prctile([data],LOW,'all')),abs(prctile([data],HIGH,'all'))]);
     GPM_CLIM = sort([-round(bound,1),round(bound,1)]);
     %## ERSP PLOTS
-    INT=12;
-    data = [];
-    for des_i = 1:length(cond_iters)
-        tmp = STORAGE{des_i,INT};
-        tmp = cellfun(@(x) mean(x,3),tmp,'UniformOutput',false);
-        data = cat(3,data,tmp{:});
-    end
-    bound = max([abs(prctile([data],LOW,'all')),abs(prctile([data],HIGH,'all'))]);
-    ERSP_CLIM = sort([-round(bound,1),round(bound,1)]);
+    % INT=12;
+    % data = [];
+    % for des_i = 1:length(cond_iters)
+    %     tmp = STORAGE{des_i,INT};
+    %     tmp = cellfun(@(x) mean(x,3),tmp,'UniformOutput',false);
+    %     data = cat(3,data,tmp{:});
+    % end
+    % bound = max([abs(prctile([data],LOW,'all')),abs(prctile([data],HIGH,'all'))]);
+    % ERSP_CLIM = sort([-round(bound,1),round(bound,1)]);
+    ERSP_CLIM = ERSP_CLIM_OVERRIDE{ii};
     %%
     for des_i = 1:length(cond_iters)
         %## VARS
@@ -448,6 +460,7 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         end
         alltitles = std_figtitle('condnames',condnames);
         %% BOOTSTRAPING ALLERSP
+        %{
         clust_ersp = cell(size(allersp_sb,1),size(allersp_sb,2));
         clust_maskedersp = cell(size(allersp_sb,1),size(allersp_sb,2));
         for group_i = 1:size(allersp_sb,2)
@@ -504,14 +517,16 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_sb.jpg',cl_i,des_i)],'Resolution',300);
         close(fig);
         PLOT_STRUCT_PAR = PLOT_STRUCT;
+        %}
         %% NO BASELINE
+        %{
         [pcond_ersp_crop,pgroup_ersp_crop, ~] = ersp_stats_conds(TMP_STUDY,allersp,allfreqs,alltimes);
-        [pcond_gpm_crop,pgroup_gpm_crop, ~] = ersp_stats_conds(TMP_STUDY,allgpm,allfreqs,alltimes);
+        % [pcond_gpm_crop,pgroup_gpm_crop, ~] = ersp_stats_conds(TMP_STUDY,allgpm,allfreqs,alltimes);
 %         [pcond_ersporig_crop, ~, ~] = ersp_stats_conds(TMP_STUDY,allersp_orig,allfreqs,alltimes);
 %         [pcond_gpmorig_crop, ~, ~] = ersp_stats_conds(TMP_STUDY,allgpm_orig,allfreqs,alltimes);
         %- calculate per condition means
         p1 = cellfun(@(x) mean(x,3),allersp,'UniformOutput',false);
-        p2 = cellfun(@(x) mean(x,3),allgpm,'UniformOutput',false);
+        % p2 = cellfun(@(x) mean(x,3),allgpm,'UniformOutput',false);
         %##
         PLOT_STRUCT_PAR.alltitles = alltitles;
         PLOT_STRUCT_PAR.group_titles = {groups{groups_ind},'Group Stats'};
@@ -520,24 +535,19 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         fig = plot_txf_conds_tftopo(p1,alltimes,allfreqs,pcond_ersp_crop,pgroup_ersp_crop,...
             'PLOT_STRUCT',PLOT_STRUCT_PAR);
         pause(2);
-        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_groupersp.tiff',cl_i,des_i)],'Resolution',1000);
         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_groupersp.tiff',cl_i,des_i)],'Resolution',SAVE_RESOLUTION);
         pause(2);
         close(fig);
-%         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp.jpg',cl_i,des_i)],'Resolution',300);
         %##
-%         PLOT_STRUCT_PAR.figure_title = 'GPM corrected';
-        PLOT_STRUCT_PAR.alltitles = alltitles;
-        PLOT_STRUCT_PAR.group_titles = {groups{groups_ind},'Group Stats'};
-        PLOT_STRUCT_PAR.clim = GPM_CLIM;
-        fig = plot_txf_conds_tftopo(p2,alltimes,allfreqs,pcond_gpm_crop,pgroup_gpm_crop,...
-            'PLOT_STRUCT',PLOT_STRUCT_PAR);
-        pause(2);
-        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_groupgpm.tiff',cl_i,des_i)],'Resolution',1000);
-        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_groupgpm.tiff',cl_i,des_i)],'Resolution',SAVE_RESOLUTION);
-        pause(2);
-        close(fig);
-%         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm.jpg',cl_i,des_i)],'Resolution',300);
+        % PLOT_STRUCT_PAR.alltitles = alltitles;
+        % PLOT_STRUCT_PAR.group_titles = {groups{groups_ind},'Group Stats'};
+        % PLOT_STRUCT_PAR.clim = GPM_CLIM;
+        % fig = plot_txf_conds_tftopo(p2,alltimes,allfreqs,pcond_gpm_crop,pgroup_gpm_crop,...
+        %     'PLOT_STRUCT',PLOT_STRUCT_PAR);
+        % pause(2);
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_groupgpm.tiff',cl_i,des_i)],'Resolution',SAVE_RESOLUTION);
+        % pause(2);
+        % close(fig);
         %##
 %         PLOT_STRUCT_PAR.figure_title = 'ERSP original';
 %         fig = plot_txf_conds_tftopo(p3,alltimes,allfreqs,pcond_ersporig_crop{1},...
@@ -550,39 +560,45 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
 %             'PLOT_STRUCT',PLOT_STRUCT_PAR);
 %         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpmorig.tiff',cl_i,des_i)],'Resolution',900);
 % %         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpmorig.jpg',cl_i,des_i)],'Resolution',300);
+        %}
         %% ACROSS CONDITIONS BASELINED ERSPS
         [pcond_ersp_crop, pgroup_ersp_crop, ~] = ersp_stats_conds(TMP_STUDY,allersp_com,allfreqs,alltimes);
-        [pcond_gpm_crop, pgroup_gpm_crop, ~] = ersp_stats_conds(TMP_STUDY,allgpm_com,allfreqs,alltimes);
+        % [pcond_gpm_crop, pgroup_gpm_crop, ~] = ersp_stats_conds(TMP_STUDY,allgpm_com,allfreqs,alltimes);
 %         [pcond_ersporig_crop, ~, ~] = ersp_stats_conds(TMP_STUDY,allerspo_com,allfreqs,alltimes);
 %         [pcond_gpmorig_crop, ~, ~] = ersp_stats_conds(TMP_STUDY,allgpmo_com,allfreqs,alltimes);
         %- subject specific plots
         %- calculate per condition means
         p1 = cellfun(@(x) mean(x,3),allersp_com,'UniformOutput',false);
-        p2 = cellfun(@(x) mean(x,3),allgpm_com,'UniformOutput',false);
+        % p2 = cellfun(@(x) mean(x,3),allgpm_com,'UniformOutput',false);
         %##
         PLOT_STRUCT_PAR.alltitles = alltitles;
-        PLOT_STRUCT_PAR.group_titles = {groups{groups_ind},'Group Stats'};
+        PLOT_STRUCT_PAR.group_titles = {group_chars{groups_ind},'Group Stats'};
         PLOT_STRUCT_PAR.clim = ERSP_CLIM;
-%         PLOT_STRUCT_PAR.figure_title = 'ERSP corrected';
-        fig = plot_txf_conds_tftopo(p1,alltimes,allfreqs,pcond_ersp_crop,pgroup_ersp_crop,...
+        PLOT_STRUCT_PAR.vert_shift_amnt = 0.205;
+        PLOT_STRUCT_PAR.figure_title = cluster_titles{ii}
+        % fig = plot_txf_conds_tftopo(p1,alltimes,allfreqs,pcond_ersp_crop,pgroup_ersp_crop,...
+        %     'PLOT_STRUCT',PLOT_STRUCT_PAR);
+        % PLOT_STRUCT_PAR.alltitles = plot_alltitles;
+        % PLOT_STRUCT_PAR.clim = data_clim{data_i};
+        % PLOT_STRUCT_PAR.group_titles = {groups{groups_ind(group_i)},'Group Stats'};
+        ersp_masked = cellfun(@(x) x > 0.05, pcond_ersp_crop,'UniformOutput',false);
+        ersp_masked = repmat(ersp_masked,[4,1]);
+        pcond_ersp_crop = repmat(pcond_ersp_crop,[4,1]);
+        [fig] = plot_txf_mask_contourf(p1,alltimes,allfreqs,ersp_masked,pcond_ersp_crop,{},...
             'PLOT_STRUCT',PLOT_STRUCT_PAR);
-        pause(2);
-        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_groupersp_com.tiff',cl_i,des_i)],'Resolution',1000);
+        drawnow;
         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_groupersp_com.tiff',cl_i,des_i)],'Resolution',SAVE_RESOLUTION);
         close(fig);
-%         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_ersp_com.jpg',cl_i,des_i)],'Resolution',300);
         %##
-        PLOT_STRUCT_PAR.alltitles = alltitles;
-        PLOT_STRUCT_PAR.group_titles = {groups{groups_ind},'Group Stats'};
-        PLOT_STRUCT_PAR.clim = GPM_CLIM;
-        fig = plot_txf_conds_tftopo(p2,alltimes,allfreqs,pcond_gpm_crop,pgroup_gpm_crop,...
-            'PLOT_STRUCT',PLOT_STRUCT_PAR);
-        pause(2);
-        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_groupgpm.tiff',cl_i,des_i)],'Resolution',1000);
-        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_groupgpm.tiff',cl_i,des_i)],'Resolution',SAVE_RESOLUTION);
-        pause(2);
-        close(fig);
-%         exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_gpm_com.jpg',cl_i,des_i)],'Resolution',300);
+        % PLOT_STRUCT_PAR.alltitles = alltitles;
+        % PLOT_STRUCT_PAR.group_titles = {groups{groups_ind},'Group Stats'};
+        % PLOT_STRUCT_PAR.clim = GPM_CLIM;
+        % fig = plot_txf_conds_tftopo(p2,alltimes,allfreqs,pcond_gpm_crop,pgroup_gpm_crop,...
+        %     'PLOT_STRUCT',PLOT_STRUCT_PAR);
+        % pause(2);
+        % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spca_groupgpm.tiff',cl_i,des_i)],'Resolution',SAVE_RESOLUTION);
+        % pause(2);
+        % close(fig);
         %##
 %         PLOT_STRUCT_PAR.figure_title = 'ERSP original corrected common-base';
 %         fig = plot_txf_conds_tftopo(p3,alltimes,allfreqs,pcond_ersporig_crop{1},...
@@ -602,12 +618,9 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
 %         data_chars = {'allersp','allgpm','allersp_orig','allgpm_orig',...
 %             'allersp_sb','allgpm_sb','allerspo_sb','allgpmo_sb',...
 %             'allersp_com','allgpm_com','allerspo_com','allgpmo_com'};
-        data_to_proc = {allersp_f,allgpm_f,...
-            allersp_com_f,allgpm_com_f};
-        data_chars = {'allersp','allgpm',...
-            'allersp_com','allgpm_com'};
-        data_clim = {ERSP_CLIM,GPM_CLIM,...
-            ERSP_CLIM,GPM_CLIM};
+        data_to_proc = {allersp_com_f};
+        data_chars = {'allersp_com'};
+        data_clim = {ERSP_CLIM};
 %         if any(strcmp(trial_order,SPEED_REF_CHAR))
 %             condnames = SPEED_OVERRIDE_CHARS;
 %         else
@@ -701,7 +714,7 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
     %             PLOT_STRUCT_PAR.figure_title = sprintf('%s based',data_chars{data_i});
                 PLOT_STRUCT_PAR.alltitles = plot_alltitles;
                 PLOT_STRUCT_PAR.clim = data_clim{data_i};
-                PLOT_STRUCT_PAR.group_titles = {groups{groups_ind(group_i)},'Group Stats'};
+                PLOT_STRUCT_PAR.group_titles = {group_chars{groups_ind(group_i)},'Group Stats'};
                 [fig] = plot_txf_mask_contourf(ersp_raw,alltimes,allfreqs,ersp_masked,ersp_pcond,{},...
                     'PLOT_STRUCT',PLOT_STRUCT_PAR);
                 pause(2);

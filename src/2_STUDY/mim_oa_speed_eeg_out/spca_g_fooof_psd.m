@@ -11,6 +11,7 @@ restoredefaultpath;
 clc;
 close all;
 clearvars
+clear java;
 %}
 %% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
@@ -20,26 +21,34 @@ global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
-    STUDY_DIR = getenv('STUDY_DIR');
-    SCRIPT_DIR = getenv('SCRIPT_DIR');
-    SRC_DIR = getenv('SRC_DIR');
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = SCRIPT_DIR; % change this if in sub folder
+        SRC_DIR = fileparts(fileparts(STUDY_DIR));
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
+        STUDY_DIR = getenv('STUDY_DIR');
+        SCRIPT_DIR = getenv('SCRIPT_DIR');
+        SRC_DIR = getenv('SRC_DIR');
+    end
 else
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
     catch e
-        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
-    STUDY_DIR = SCRIPT_DIR;
+    STUDY_DIR = SCRIPT_DIR; % change this if in sub folder
     SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
-%## Add Study & Script Paths
-addpath(STUDY_DIR);
+%## Add Study, Src, & Script Paths
 addpath(SRC_DIR);
+addpath(STUDY_DIR);
 cd(SRC_DIR);
-fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
+fprintf(1,'Current folder: %s\n',SRC_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
@@ -78,13 +87,20 @@ SPEC_PARAMS = struct('freqrange',[1,200],...
     'comps','all');
 %## hard define
 %- FOOOF
+% settings = struct('peak_width_limits',[1,8],...
+%     'min_peak_height',0.05,...
+%     'max_n_peaks',3);
 settings = struct('peak_width_limits',[1,8],...
     'min_peak_height',0.05,...
-    'max_n_peaks',3);
+    'max_n_peaks',5);
 f_range = [3, 40];
-theta_band = [4, 8];
-alpha_band = [8 12];
-beta_band  = [12 30];
+theta_band_lims = [4, 8];
+alpha_band_lims = [8 12];
+beta_band_lims  = [12 30];
+alpha1_band_lims = [8,10.5];
+alpha2_band_lims = [10.5,13];
+beta1_band_lims = [13,20];
+beta2_band_lims = [20,30];
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- cluster directory for study
@@ -98,8 +114,8 @@ spca_study_dir = '03232024_spca_analysis_OA';
 % SUB_GROUP_FNAME = 'all_spec';
 SUB_GROUP_FNAME = 'group_spec';
 %- study group and saving
-spca_dir = [studies_fpath filesep sprintf('%s',spca_study_dir)];
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
+spca_dir = [studies_fpath filesep sprintf('%s',spca_study_dir)];
 %- load cluster
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
@@ -137,15 +153,8 @@ STUDY.cluster = cl_struct;
 % subject_chars = {STUDY.datasetinfo.subject};
 % fPaths = {STUDY.datasetinfo.filepath};
 % fNames = {STUDY.datasetinfo.filename};
-try
-    GROUP_CHARS = STUDY.design(1).variable(1).value;
-catch
-    GROUP_CHARS = [];
-    fprintf('No grouping variable...\n\n');
-end
-CLUSTER_PICKS = main_cl_inds(2:end);
-DESIGN_INDS = 1:length(STUDY.design);
-save_dir = [spec_data_dir filesep 'psd_calcs'];
+save_dir = [spec_data_dir filesep 'psd_calcs' filesep 'split_band_test'];
+% save_dir = [spec_data_dir filesep 'psd_calcs'];
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
@@ -175,12 +184,53 @@ for i = 1:length(STUDY.datasetinfo)
     end
 end
 speed_alleeg = speed_alleeg(~cellfun(@isempty,speed_alleeg(:,1)),:);
+%% LOAD IN TEST FILE & GRAB PARAMS
+condition_gait = unique({STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
+subj_i = 35;
+cond_i = 1;
+tmpd = dir([spca_dir filesep STUDY.datasetinfo(subj_i).subject filesep 'GAIT_EPOCHED' filesep '*' filesep sprintf('cond%s_spca_psd.mat',condition_gait{cond_i})]);
+gait_epoch_subf = strsplit(tmpd.folder,filesep);
+gait_epoch_subf = gait_epoch_subf{end};
+% gait_epoch_subf = [spca_dir filesep STUDY.datasetinfo(subj_i).subject filesep 'GAIT_EPOCHED' filesep condition_gait{:} filesep sprintf('cond%s_spca_psd.mat',condition_gait{cond_i})];
+spca_fpath = [spca_dir filesep STUDY.datasetinfo(subj_i).subject filesep 'GAIT_EPOCHED' filesep gait_epoch_subf];
+rest_psd = par_load(spca_fpath,sprintf('gait_psd_spca.mat'));
+freqs = rest_psd.icatimefopts.freqs;
+%-
+spca_table = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],'spca_cluster_table_psd.mat');
+%% TEST PLOT
+%{
+%-
+subj_i = 1;
+cluster_i = 3;
+%-
+tmp_t = strcmp(spca_table.subj_c,STUDY.datasetinfo(subj_i).subject) & double(spca_table.cluster_n) == cluster_i;
+figure;
+hold on;
+plot(freqs,spca_table.psd_orig_avg_c{1},'DisplayName','original avg.');
+plot(freqs,spca_table.psd_orig_baselined_c{1},'DisplayName','original avg. based');
+plot(freqs,spca_table.psd_corr_based_c{1},'DisplayName','corrected based');
+plot(freqs,spca_table.psd_corr_psc1{1},'DisplayName','pc1');
+plot(freqs,spca_table.psd_corr_unbase_c{1},'DisplayName','corrected + rest');
+plot(freqs,spca_table.psd_rest_c{1},'DisplayName','rest');
+
+legend();
+title(sprintf('%s: cluster %i',STUDY.datasetinfo(subj_i).subject,cluster_i))
+hold off;
+%}
 %% (TABLE) GENERATE FOOOF VALUES ======================================= %%
+try
+    group_chars = STUDY.design(1).variable(1).value;
+catch
+    group_chars = [];
+    fprintf('No grouping variable...\n\n');
+end
+cluster_inds = main_cl_inds(2:end);
+design_inds = 1:length(STUDY.design);
 table_len = 0;
 c_chars = nan();
 g_chars = nan();
-for des_i = DESIGN_INDS
-    for cl_i = CLUSTER_PICKS
+for des_i = design_inds
+    for cl_i = cluster_inds
         s_chars = {STUDY.datasetinfo(STUDY.cluster(cl_i).sets).subject};
         for i = 1:length(STUDY.design(des_i).variable)
             if strcmp(STUDY.design(des_i).variable(i).label,'cond')
@@ -189,6 +239,12 @@ for des_i = DESIGN_INDS
                 g_chars = STUDY.design(des_i).variable(i).value;
             end
         end
+        % try
+        %     g_chars = STUDY.design(des_i).variable(1).value;
+        % catch
+        %     g_chars = 'group';
+        % end
+        % c_chars = STUDY.design(des_i).variable(2).value;
         chk = true;
         try
             if isnan(g_chars)
@@ -232,8 +288,14 @@ design_id = categorical(zeros(table_len,1));
 cluster_id = categorical(zeros(table_len,1));
 group_id = zeros(table_len,1);
 group_char = categorical(repmat({''},table_len,1));
+% speed_double = zeros(table_len,1);
 cond_id = zeros(table_len,1);
 cond_char = categorical(repmat({''},table_len,1));
+speed_diff_stat = nan(table_len,1);
+speed_div_stat = nan(table_len,1);
+speed_diffdiv_stat = nan(table_len,1);
+% speed_cat = categorical(repmat({''},table_len,1));
+% terrain_cat = categorical(repmat({''},table_len,1));
 aperiodic_exp = zeros(table_len,1);
 aperiodic_offset = zeros(table_len,1);
 central_freq = cell(table_len,1);
@@ -242,57 +304,63 @@ r_squared = zeros(table_len,1);
 theta_avg_power = zeros(table_len,1);
 alpha_avg_power = zeros(table_len,1);
 beta_avg_power = zeros(table_len,1);
+alpha1_avg_power = zeros(table_len,1);
+beta1_avg_power = zeros(table_len,1);
+alpha2_avg_power = zeros(table_len,1);
+beta2_avg_power = zeros(table_len,1);
+theta_band = cell(table_len,1);
+alpha_band = cell(table_len,1);
+beta_band = cell(table_len,1);
+alpha1_band = cell(table_len,1);
+beta1_band = cell(table_len,1);
+alpha2_band = cell(table_len,1);
+beta2_band = cell(table_len,1);
 theta = cell(table_len,1);
 alpha = cell(table_len,1);
 beta = cell(table_len,1);
+alpha1 = cell(table_len,1);
+alpha2 = cell(table_len,1);
+beta1 = cell(table_len,1);
+beta2 = cell(table_len,1);
 theta_center = cell(table_len,1);
 alpha_center = cell(table_len,1);
 beta_center = cell(table_len,1);
-FOOOF_TABLE = table(speed_ms,subj_id,subj_cl_ind,subj_char,comp_id,design_id,cond_id,...
-    cond_char,group_id,cluster_id,aperiodic_exp,aperiodic_offset,...
-    central_freq,power,r_squared,theta_avg_power,alpha_avg_power,beta_avg_power,...
-    theta,alpha,beta,theta_center,alpha_center,beta_center);
-%% LOAD IN TEST FILE & GRAB PARAMS
-condition_gait = unique({STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
-subj_i = 35;
-cond_i = 1;
-tmpd = dir([spca_dir filesep STUDY.datasetinfo(subj_i).subject filesep 'GAIT_EPOCHED' filesep '*' filesep sprintf('cond%s_spca_ersp.mat',condition_gait{cond_i})]);
-gait_epoch_subf = strsplit(tmpd.folder,filesep);
-gait_epoch_subf = gait_epoch_subf{end};
-spca_fpath = [spca_dir filesep STUDY.datasetinfo(subj_i).subject filesep 'GAIT_EPOCHED' filesep gait_epoch_subf];
-rest_psd = par_load(spca_fpath,sprintf('gait_psd_spca.mat'));
-freqs = rest_psd.icatimefopts.freqs;
-%-
-spca_table = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],'spca_cluster_table_psd.mat');
-%% TEST PLOT
-%-
-subj_i = 1;
-cluster_i = 3;
-%-
-tmp_t = strcmp(spca_table.subj_c,STUDY.datasetinfo(subj_i).subject) & double(spca_table.cluster_n) == cluster_i;
-figure;
-hold on;
-plot(freqs,spca_table.psdorig_c{1},'DisplayName','original');
-plot(freqs,spca_table.psdcorr_c{1},'DisplayName','corrected');
-plot(freqs,spca_table.psdcorr_rest_c{1},'DisplayName','corrected+rest');
-plot(freqs,spca_table.psd_pc1_c{1},'DisplayName','pc1');
-plot(freqs,spca_table.psd_rest_c{1},'DisplayName','rest');
+alpha1_center = cell(table_len,1);
+alpha2_center = cell(table_len,1);
+beta1_center = cell(table_len,1);
+beta2_center = cell(table_len,1);
 
-legend();
-title(sprintf('%s: cluster %i',STUDY.datasetinfo(subj_i).subject,cluster_i))
-hold off;
+FOOOF_TABLE = table(speed_ms,subj_id,subj_cl_ind,subj_char,comp_id,design_id,cond_id,...
+    cond_char,speed_diff_stat,speed_div_stat,speed_diffdiv_stat,group_id,cluster_id,aperiodic_exp,aperiodic_offset,...
+    central_freq,power,r_squared,theta_avg_power,alpha_avg_power,beta_avg_power,...
+    alpha1_avg_power,alpha2_avg_power,beta1_avg_power,beta2_avg_power,...
+    theta_band,alpha_band,beta_band,...
+    alpha1_band,alpha2_band,beta1_band,beta2_band,...
+    alpha1,alpha2,beta1,beta2,...
+    theta,alpha,beta,theta_center,alpha_center,beta_center,...
+    alpha1_center,alpha2_center,beta1_center,beta2_center);
 %%
-fooof_results = cell(length(DESIGN_INDS),1);
-fooof_diff_store = cell(length(DESIGN_INDS),1);
-fooof_apfit_store = cell(length(DESIGN_INDS),1);
-spec_data_original = cell(length(DESIGN_INDS),1);
+% fooof_group_results_org = cell(1,length(DESIGN_INDS));
+try
+    group_chars = STUDY.design(1).variable(1).value;
+catch
+    group_chars = [];
+    fprintf('No grouping variable...\n\n');
+end
+cluster_inds = main_cl_inds(2:end);
+design_inds = 1:length(STUDY.design);
+fooof_results = cell(length(design_inds),1);
+fooof_diff_store = cell(length(design_inds),1);
+fooof_apfit_store = cell(length(design_inds),1);
+spec_data_original = cell(length(design_inds),1);
 fooof_frequencies = zeros(2,1);
 subj_chk = {};
 cnt = 1;
-for dd = 1:length(DESIGN_INDS)
-    des_i = DESIGN_INDS(dd);
-    for cc = 1:length(CLUSTER_PICKS)
-        cl_i = CLUSTER_PICKS(cc);
+ff = fopen([save_dir filesep 'subject_cluster_numbers.txt'],'w');
+for dd = 1:length(design_inds)
+    des_i = design_inds(dd);
+    for cc = 1:length(cluster_inds)
+        cl_i = cluster_inds(cc);
         %- get subjects in cluster
         s_chars = {STUDY.datasetinfo(STUDY.cluster(cl_i).sets).subject};
         for i = 1:length(STUDY.design(des_i).variable)
@@ -318,18 +386,35 @@ for dd = 1:length(DESIGN_INDS)
                 inds_cl = spca_table.cluster_n == cl_i;
                 inds_cond = strcmp(spca_table.cond_c,c_chars{cond_i});
                 inds_grp = spca_table.group_n == group_i;
-                % inds_grp = cellfun(@(x) x==group_i,spca_table.group_c);
-                inds = inds_cl & inds_cond;
-                fprintf('True subjects in cluster: %i, Alg subjects in cluster: %i\n',length(STUDY.cluster(cl_i).sets),sum(inds));
-                tmp = cat(3,spca_table.psdcorr_c{inds});
+                % inds_grp = cellfun(@(x) x==group_i,spca_table.group_n);
+                inds = inds_cl & inds_cond & inds_grp;
+                % spca_table.subj_c{inds}
+                %- check
+                g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+                % fprintf('CL%i) Condition: %s, Group: %s\n\t Cluster N=%i, Subjects Added=%i\n',...
+                %     cl_i,c_chars{cond_i},g_chars{group_i},...
+                %     length(STUDY.cluster(cl_i).sets),sum(inds));
+                fprintf('CL%i) Condition: %s, Group: %s\n\t Cluster N=%i, Subjects Added=%i\n',...
+                    cl_i,c_chars{cond_i},g_chars{group_i},...
+                    sum(g_inds),sum(inds));
+                tmp = cat(3,spca_table.psd_corr_unbase_c{inds});
                 tmp = permute(tmp,[2,1,3]);
                 specdata{cond_i,group_i} = squeeze(tmp);
                 % specdata_crop{cond_i,group_i} = squeeze(mean(tmp(freq_crop,:),1));
                 specfreqs{cond_i,group_i} = freqs;
             end
         end
+        
         %## RUN FOOOF
-        %-
+        %- get subjects in cluster
+        s_chars = {STUDY.datasetinfo(STUDY.cluster(cl_i).sets).subject};
+        for i = 1:length(STUDY.design(des_i).variable)
+            if strcmp(STUDY.design(des_i).variable(i).label,'cond')
+                c_chars = STUDY.design(des_i).variable(i).value;
+            elseif strcmp(STUDY.design(des_i).variable(i).label,'group')
+                g_chars = STUDY.design(des_i).variable(i).value;
+            end
+        end
         iif = (specfreqs{cond_i,group_i} < f_range(2) & specfreqs{cond_i,group_i} > f_range(1));
         fooof_frequencies = specfreqs{cond_i,group_i}(iif);
         if ~any(f_range(2) == fooof_frequencies)
@@ -369,6 +454,7 @@ for dd = 1:length(DESIGN_INDS)
                 cl_comps = STUDY.cluster(cl_i).comps(g_inds);
                 cl_speeds = zeros(length(cl_chars),1);
                 fprintf('%i) subjects (N=%i): %s\n',cl_i,length(cl_chars),sprintf('%s,',cl_chars{:}));
+                fprintf(ff,'%i) subjects (N=%i): %s\n',cl_i,length(cl_chars),sprintf('%s,',cl_chars{:}));
                 subj_chk = [subj_chk, cl_chars];
                 for j = 1:length(cl_speeds)
                     ind = cellfun(@(x) x == categorical(cl_chars(j)),speed_alleeg(:,1));
@@ -392,6 +478,7 @@ for dd = 1:length(DESIGN_INDS)
                         if any(strcmp(c_chars(cond_i),TERRAIN_VALS))
                             FOOOF_TABLE.cond_char(cnt) = categorical(c_chars(cond_i));
                             FOOOF_TABLE.cond_id(cnt) = cond_i;
+                            FOOOF_TABLE.speed_diff_stat(cnt) = nan();
                             % FOOOF_TABLE.terrain_cat(cnt) = categorical(c_chars(cond_i));
                             % FOOOF_TABLE.speed_double(cnt) = [];
                             % FOOOF_TABLE.speed_cat(cnt) = categorical([]);
@@ -399,6 +486,11 @@ for dd = 1:length(DESIGN_INDS)
                             ind = strcmp(c_chars(cond_i),SPEED_VALS(2,:));
                             FOOOF_TABLE.cond_char(cnt) = categorical(SPEED_VALS(1,ind));
                             FOOOF_TABLE.cond_id(cnt) = cond_i;
+                            % FOOOF_TABLE.speed_diff_stat(cnt) = sqrt((double(string(SPEED_VALS(1,ind)))-cl_speeds(subj_i))^2)/double(string(SPEED_VALS{1,end}));
+                            FOOOF_TABLE.speed_diff_stat(cnt) = (double(string(SPEED_VALS(1,ind)))-cl_speeds(subj_i))/double(string(SPEED_VALS{1,end}));
+                            FOOOF_TABLE.speed_div_stat(cnt) = (double(string(SPEED_VALS(1,ind)))/cl_speeds(subj_i));
+                            FOOOF_TABLE.speed_diffdiv_stat(cnt) = (double(string(SPEED_VALS(1,ind)))-cl_speeds(subj_i))/cl_speeds(subj_i);
+                            
                             % ind = strcmp(c_chars(cond_i),SPEED_VALS(2,:));
                             % FOOOF_TABLE.terrain_cat(cnt) = categorical([]);
                             % FOOOF_TABLE.speed_double(cnt) = SPEED_VALS(1,ind);
@@ -430,9 +522,14 @@ for dd = 1:length(DESIGN_INDS)
                         fooof_diff = 10*(fooof_results{des_i}{cond_i,group_i}{subj_i}.power_spectrum) - 10*(fooof_results{des_i}{cond_i,group_i}{subj_i}.ap_fit);
                         fooof_freq = fooof_results{des_i}{cond_i,group_i}{subj_i}.freqs;
                         %- store
-                        FOOOF_TABLE.theta_avg_power(cnt) = mean(fooof_diff(fooof_freq >= theta_band(1) & fooof_freq < theta_band(2)));
-                        FOOOF_TABLE.alpha_avg_power(cnt) = mean(fooof_diff(fooof_freq >= alpha_band(1) & fooof_freq < alpha_band(2)));
-                        FOOOF_TABLE.beta_avg_power(cnt) = mean(fooof_diff(fooof_freq >= beta_band(1) & fooof_freq < beta_band(2)));
+                        % FOOOF_TABLE.theta_avg_power(cnt) = mean(fooof_diff(fooof_freq >= theta_band(1) & fooof_freq < theta_band(2)));
+                        FOOOF_TABLE.alpha_avg_power(cnt) = mean(fooof_diff(fooof_freq >= alpha_band_lims(1) & fooof_freq < alpha_band_lims(2)));
+                        FOOOF_TABLE.beta_avg_power(cnt) = mean(fooof_diff(fooof_freq >= beta_band_lims(1) & fooof_freq < beta_band_lims(2)));
+                        FOOOF_TABLE.theta_avg_power(cnt) = mean(fooof_diff(fooof_freq >= theta_band_lims(1) & fooof_freq < theta_band_lims(2)));
+                        FOOOF_TABLE.alpha1_avg_power(cnt) = mean(fooof_diff(fooof_freq >= alpha1_band_lims(1) & fooof_freq < alpha1_band_lims(2)));
+                        FOOOF_TABLE.beta1_avg_power(cnt) = mean(fooof_diff(fooof_freq >= beta1_band_lims(1) & fooof_freq < beta1_band_lims(2)));
+                        FOOOF_TABLE.alpha2_avg_power(cnt) = mean(fooof_diff(fooof_freq >= alpha2_band_lims(1) & fooof_freq < alpha2_band_lims(2)));
+                        FOOOF_TABLE.beta2_avg_power(cnt) = mean(fooof_diff(fooof_freq >= beta2_band_lims(1) & fooof_freq < beta2_band_lims(2)));
                         %- data structure needs to be freq x subject
                         fooof_diff_store{des_i}{cl_i}{cond_i,group_i}(:,subj_i) = fooof_diff';
                         fooof_apfit_store{des_i}{cl_i}{cond_i,group_i}(:,subj_i) = 10*(fooof_results{des_i}{cond_i,group_i}{subj_i}.ap_fit);
@@ -444,22 +541,29 @@ for dd = 1:length(DESIGN_INDS)
                     % i_ind = i_ind + size(specdata{cond_i,group_i},2);
                 end
             end
+        else
+            fprintf('Error. Missing subjects for cluster %i, design %i',cl_i, des_i)
         end
     end
 end
+fclose(ff);
 disp(length(unique(subj_chk)));
 disp(length(unique(FOOOF_TABLE.subj_id)));
 save([save_dir filesep 'fooof_results.mat'],'fooof_results');
-%%
-%-
+%##
+% tmp = load([save_dir filesep 'fooof_results.mat']);
+% fooof_results = tmp.fooof_results;
+
+%% MULTI-CLUSTER PLOT OF ALL SUBJECTS ================================== %%
+%{
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
 conditions = unique(FOOOF_TABLE.cond_char);
 groups = unique(FOOOF_TABLE.group_char);
 %-
-des_i = 1;
-cond_i = 1;
-group_i = 1;
+% des_i = 1;
+% cond_i = 1;
+% group_i = 1;
 IM_RESIZE = 0.5;
 HZ_DIM = 4;
 VERTICAL_SHIFT =  0.2;
@@ -542,6 +646,513 @@ for j = 1:length(designs)
         end
     end
 end
+%}
+%% SANITY CHECK: APERIODIC EXP., TERRAIN WALKING SPEED, APERIODIC OFFSET
+%## (STATS STRUCT) ====================================================== %%
+DEF_STATS_TRACK_STRUCT = struct('stat_test_mod',{{''}},...
+    'measure_tag',categorical({''}),...
+    'design_tag',categorical({''}),...
+    'mod_tag',categorical({''}),...
+    'mod_resp_terms',{''},...
+    'rnd_terms',{''},...
+    'anova_preds_terms',{''},...
+    'anova_preds_p',{[]},...
+    'anova_preds_stat',{[]},...
+    'anova_preds_df',{[]},...
+    'mod_preds_terms',{{''}},...
+    'mod_preds_p',[],...
+    'mod_preds_stat',[],...
+    'mod_preds_coeff',[],...
+    'mod_r2',[],...
+    'multi_comp_terms',{''},...
+    'multi_comp_t1_t2',[],...
+    'multi_comp_p',[],...
+    'multi_comp_coeff',[],...
+    'multi_comp_lci_uci',[],...
+    'norm_test_p',[],...
+    'norm_test_h',[],...
+    'effect_size',[],...
+    'effect_size_calc',{''});
+stats_struct = DEF_STATS_TRACK_STRUCT;
+%##
+designs = unique(FOOOF_TABLE.design_id);
+clusters = unique(FOOOF_TABLE.cluster_id);
+groups = unique(FOOOF_TABLE.group_id);
+g_chars_subp = {'YA','OHMA','OLMA'};
+AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],...
+        'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
+FIGURE_POSITION =[1,0,6.5,9];
+FONT_SIZE_VIO_REG = 10;
+FONT_SIZE_VIO = 6;
+IM_RESIZE = 0.85;
+AX_H  = 0.2;
+AX_W = 0.275;
+AX_HORIZ_SHIFT = 0.06;
+AX_VERT_SHIFT = 0.11;
+AX_INIT_HORIZ = 0.06;
+AX_INIT_VERT_VIO = 0.8;
+HZ_DIM = 3;
+YLIMS = [-0.5,3];
+AXES_FONT_SIZE_VIO = 10;
+GROUP_LAB_FONTSIZE = 10;
+GROUP_LAB_FONTWEIGHT = 'bold ';
+XLAB_FONTSIZE = 10;
+YLAB_FONTSIZE = 10;
+XTICK_FONTSIZE = 10;
+XLAB_FONTWEIGHT = 'bold';
+YLAB_FONTWEIGHT = 'bold';
+TITLE_FONTSIZE = 10;
+TITLE_FONTWEIGHT = 'bold';
+XLABEL_OFFSET = -.05;
+GROUP_LAB_YOFFSET = -0.275;
+MEASURES_PLOT = {'aperiodic_exp','speed_ms','aperiodic_offset'};
+measure_plot = 'aperiodic_exp';
+%-
+for k = 1:length(MEASURES_PLOT)
+    measure_plot = MEASURES_PLOT{k};
+    for i = 1:length(designs)
+        des_i = double(string(designs(i)));
+        switch des_i
+            case 1
+                color_dark = COLORS_MAPS_TERRAIN;
+                color_light = COLORS_MAPS_TERRAIN;
+                xtick_label_g = {'flat','low','med','high'};
+                x_label = 'terrain';
+                cond_offsets = [-0.35,-0.1,0.15,0.40];
+            case 2
+                color_dark = COLOR_MAPS_SPEED; %color.speed;
+                color_light = COLOR_MAPS_SPEED+0.15; %color.speed_shade;
+                xtick_label_g = {'0.25','0.50','0.75','1.0'};
+                x_label = 'speed (m/s)';
+                cond_offsets = [-0.35,-0.1,0.15,0.40];
+        end
+        %## AXES LIMITS
+        fig = figure('color','white','renderer','Painters');
+        TITLE_XSHIFT = 0.4;
+        TITLE_YSHIFT = 0.975;
+        TITLE_BOX_SZ = [0.4,0.4];
+        set(fig,'Units','inches','Position',FIGURE_POSITION)
+        set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+        set(gca,AXES_DEFAULT_PROPS{:});
+        %##
+        horiz_shift = 0;
+        vert_shift = 0;
+        hz = 1;
+        %- ylim autoset
+        temp_table = FOOOF_TABLE(FOOOF_TABLE.design_id == num2str(des_i),:);
+        YLIMS = [prctile(temp_table.(measure_plot),1)-std(temp_table.(measure_plot))*1.5,prctile(temp_table.(measure_plot),99)+std(temp_table.(measure_plot))*3];
+        for j = 1:length(clusters)
+            %## STATS\
+            cl_i = double(string(clusters(j)));
+            temp_table = FOOOF_TABLE(FOOOF_TABLE.cluster_id == num2str(cl_i) & FOOOF_TABLE.design_id == num2str(des_i),:);
+            DEFAULT_STATS_STRUCT = struct('anova',{{}},...
+                          'anova_grp',{{}},...
+                          'pvals',{{}},...
+                          'pvals_pairs',{{}},...
+                          'pvals_grp',{{}},...
+                          'pvals_grp_pairs',{{}},...
+                          'regress_pval',{{}},...
+                          'regress_line',{{}},...
+                          'r2_coeff',{[]},...
+                          'regress_xvals',0,...
+                          'subject_char',[],... % this option when filled prints removal of nan() info
+                          'group_order',categorical({''}),...
+                          'do_include_intercept',false);
+            STATS_STRUCT = DEFAULT_STATS_STRUCT;
+            cnt = 1;
+            switch des_i
+                case 1
+                    tmptmp_table = table(categorical(string(temp_table.subj_char)),double(temp_table.(measure_plot)),...
+                        categorical(string(temp_table.cond_id)),categorical(string(temp_table.cond_char)),...
+                        categorical(string(temp_table.group_id)),'VariableNames',{'subj_char',measure_plot,'cond_id','cond_char','group_id'});
+                case 2
+                    tmptmp_table = table(categorical(string(temp_table.subj_char)),double(temp_table.(measure_plot)),...
+                        double(string(temp_table.cond_char)),double(string(temp_table.cond_char)),...
+                        categorical(string(temp_table.group_id)),'VariableNames',{'subj_char',measure_plot,'cond_id','cond_char','group_id'});
+            end
+            % for g_i = 1:length(unique(temp_table.group_id))
+            %     switch des_i
+            %         case 1
+            %             %## LINEAR MODEL
+            %             % t1.log_avg_power= log(t1.(MEASURE_NAMES{meas_i})+5);
+            %             mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',measure_plot);
+            %             % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
+            %             stats_out = fitlme(tmptmp_table,mod_lme);
+            %             anova_out = anova(stats_out);
+            %             %## GATHER STATS
+            %             %- test normality
+            %             [norm_h,norm_p] = lillietest(stats_out.residuals);
+            %             %- get effects
+            %             [~,bnames,~] = stats_out.fixedEffects();
+            %             [~,brnames,bretable] = stats_out.randomEffects();
+            %             %- intercept only model
+            %             % altmod_lme = sprintf('%s ~ 1 + (1|subj_char)',measure_name);
+            %             % altstats_out = fitlme(T_vals_plot,altmod_lme,'DummyVarCoding','effects');
+            %             % R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+            %             R2 = stats_out.Rsquared.Adjusted;
+            %             %- intercept only model
+            %             altmod_out = sprintf('%s ~ 1 + (1|subj_char)',measure_plot);
+            %             altstats_out = fitlme(tmptmp_table,altmod_out);
+            %             %- alternative f2?
+            %             R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
+            %             R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
+            %             alt_f2 = (R22-R21)/(1-R22);
+            %             %- populate struct
+            %             stats_struct(cnts).stat_test_mod = mod_lme;
+            %             stats_struct(cnts).measure_tag = categorical({measure_plot});
+            %             stats_struct(cnts).design_tag = categorical(des_i);
+            %             stats_struct(cnts).mod_tag = categorical(2);
+            %             % stats_struct(cnts).resp_terms = MEASURES_PLOT(meas_i);
+            %             stats_struct(cnts).mod_resp_terms = measure_plot;
+            %             stats_struct(cnts).anova_preds_terms = t(:,1)';
+            %             tmp = t(:,7)';
+            %             tmp = tmp(~cellfun(@isempty,tmp));
+            %             stats_struct(cnts).anova_preds_p = tmp;
+            %             tmp = t(:,6)';
+            %             tmp = tmp(~cellfun(@isempty,tmp));
+            %             stats_struct(cnts).anova_preds_stat = tmp;
+            %             tmp = t(:,3)';
+            %             tmp = tmp(~cellfun(@isempty,tmp));
+            %             stats_struct(cnts).anova_preds_df =tmp;
+            %             stats_struct(cnts).mod_preds_p = stats_out.Coefficients.pValue;
+            %             stats_struct(cnts).mod_preds_terms = stats_out.Coefficients.Name';
+            %             stats_struct(cnts).mod_preds_stat = stats_out.Coefficients.tStat;
+            %             stats_struct(cnts).mod_preds_coeff = stats_out.Coefficients.Estimate;
+            %             stats_struct(cnts).multi_comp_terms = gnames';
+            %             stats_struct(cnts).multi_comp_t1_t2 = comparisons(:,1:2);
+            %             [h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(comparisons(:,6));
+            %             stats_struct(cnts).multi_comp_p = adj_p;
+            %             stats_struct(cnts).multi_comp_coeff = comparisons(:,4);
+            %             stats_struct(cnts).multi_comp_lci_uci = [comparisons(:,3),comparisons(:,5)];
+            %             stats_struct(cnts).mod_r2 = stats_out.Rsquared.Adjusted;
+            %             stats_struct(cnts).norm_test_p = norm_p;
+            %             stats_struct(cnts).norm_test_h = norm_h;
+            %             stats_struct(cnts).effect_size = alt_f2;
+            %             stats_struct(cnts).effect_size_calc = '(R2_full-R2_null)/(1-R2_full)';
+            %             cnts = cnts + 1;
+            %             stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+            %             %## PLOT =============================================================== %%
+            %             %##
+            %             aa = anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
+            %             c2s = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id_2'));
+            %             c3s = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id_3'));
+            %             c4s = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id_4'));
+            %             STATS_STRUCT(cnt).anova{group_i}=aa;
+            %             STATS_STRUCT(cnt).pvals{group_i}=[1,c2s,c3s,c4s];
+            %             STATS_STRUCT(cnt).pvals_pairs{group_i}={[1,1],[1,2],[1,3],[1,4]};
+            %         case 2
+            %             %## LINEAR MODEL
+            %             % t1.log_avg_power= log(t1.(measure_plot)+5);
+            %             % mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',measure_plot);
+            %             mod_lme = sprintf('%s ~ 1 + cond_id + group_id + (1|subj_char)',measure_plot);
+            %             % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
+            %             stats_out = fitlme(tmptmp_table,mod_lme);
+            %             anova_out = anova(stats_out);
+            %             %## GATHER STATS
+            %             %- test normality
+            %             [norm_h,norm_p] = lillietest(stats_out.residuals);
+            %             %- get effects
+            %             [~,bnames,~] = stats_out.fixedEffects();
+            %             [~,brnames,bretable] = stats_out.randomEffects();
+            %             %- intercept only model
+            %             % altmod_lme = sprintf('%s ~ 1 + (1|subj_char)',measure_name);
+            %             % altstats_out = fitlme(T_vals_plot,altmod_lme,'DummyVarCoding','effects');
+            %             % R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+            %             R2 = stats_out.Rsquared.Adjusted;
+            %             %- intercept only model
+            %             altmod_out = sprintf('%s ~ 1 + (1|subj_char)',measure_plot);
+            %             altstats_out = fitlme(tmptmp_table,altmod_out);
+            %             %- alternative f2?
+            %             R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
+            %             R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
+            %             alt_f2 = (R22-R21)/(1-R22);
+            %             %- populate struct
+            %             stats_struct(cnts).stat_test_mod = mod_lme;
+            %             stats_struct(cnts).measure_tag = categorical({measure_plot});
+            %             stats_struct(cnts).design_tag = categorical(des_i);
+            %             stats_struct(cnts).mod_tag = categorical(2);
+            %             % stats_struct(cnts).resp_terms = MEASURES_PLOT(meas_i);
+            %             stats_struct(cnts).mod_resp_terms = measure_plot;
+            %             stats_struct(cnts).anova_preds_terms = t(:,1)';
+            %             tmp = t(:,7)';
+            %             tmp = tmp(~cellfun(@isempty,tmp));
+            %             stats_struct(cnts).anova_preds_p = tmp;
+            %             tmp = t(:,6)';
+            %             tmp = tmp(~cellfun(@isempty,tmp));
+            %             stats_struct(cnts).anova_preds_stat = tmp;
+            %             tmp = t(:,3)';
+            %             tmp = tmp(~cellfun(@isempty,tmp));
+            %             stats_struct(cnts).anova_preds_df =tmp;
+            %             stats_struct(cnts).mod_preds_p = stats_out.Coefficients.pValue;
+            %             stats_struct(cnts).mod_preds_terms = stats_out.Coefficients.Name';
+            %             stats_struct(cnts).mod_preds_stat = stats_out.Coefficients.tStat;
+            %             stats_struct(cnts).mod_preds_coeff = stats_out.Coefficients.Estimate;
+            %             stats_struct(cnts).multi_comp_terms = gnames';
+            %             stats_struct(cnts).multi_comp_t1_t2 = comparisons(:,1:2);
+            %             [h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(comparisons(:,6));
+            %             stats_struct(cnts).multi_comp_p = adj_p;
+            %             stats_struct(cnts).multi_comp_coeff = comparisons(:,4);
+            %             stats_struct(cnts).multi_comp_lci_uci = [comparisons(:,3),comparisons(:,5)];
+            %             stats_struct(cnts).mod_r2 = stats_out.Rsquared.Adjusted;
+            %             stats_struct(cnts).norm_test_p = norm_p;
+            %             stats_struct(cnts).norm_test_h = norm_h;
+            %             stats_struct(cnts).effect_size = alt_f2;
+            %             stats_struct(cnts).effect_size_calc = '(R2_full-R2_null)/(1-R2_full)';
+            %             cnts = cnts + 1;
+            %             stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+            %             %## PLOT =============================================================== %%
+            %             %##
+            %             aa =  anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
+            %             c2s = [];
+            %             c3s = [];
+            %             c4s = [];
+            %             rs = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id')));
+            %             rls = [double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'))),...
+            %                 double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id')))]; 
+            %             r2 = R2;
+            %             STATS_STRUCT(cnt).anova{group_i}=anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
+            %             STATS_STRUCT(cnt).regress_pval{group_i}=rs;
+            %             STATS_STRUCT(cnt).regress_line{group_i}=rls;
+            %             STATS_STRUCT(cnt).r2_coeff(group_i)=r2;
+            %             STATS_STRUCT(cnt).regress_xvals=(0:5)*0.25;
+            %     end
+            %     cnt = cnt + 1;
+            % end
+            %## GROUPWISE
+            switch des_i
+                case 1
+                    % mod_lme = sprintf('%s~1+group_id+cond_id',measure_plot);
+                    mod_lme = sprintf('%s ~ 1 + cond_id + group_id + (1|subj_char)',measure_plot);
+                    stats_out = fitlme(tmptmp_table,mod_lme);
+                    pred_terms = stats_out.CoefficientNames;
+                    % anova_out = anova(stats_out);
+                    [p,t,anova_out,terms] = anovan(tmptmp_table.(measure_plot),{tmptmp_table.cond_id, tmptmp_table.group_id},...
+                        'sstype',3,'varnames',{'trial_char','group_id'},'model','linear','Display','off');
+                    [comparisons,means,~,gnames] = multcompare(anova_out,'Dimension',[2],...
+                        'display','off','Alpha',0.05); % comparisons columns: [pred1,pred2,lowerCI,estimate,upperCI,p-val]
+                    disp(stats_out)
+                    %- test normality
+                    [norm_h,norm_p] = lillietest(stats_out.Residuals.Raw);
+                    %- intercept only model
+                    altmod_out = sprintf('%s ~ 1',measure_plot);
+                    altstats_out = fitlm(tmptmp_table,altmod_out);
+                    %- alternative f2?
+                    R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
+                    R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
+                    alt_f2 = (R22-R21)/(1-R22);
+                    %##
+                    %- populate struct
+                    stats_struct(cnts).stat_test_mod = mod_lme;
+                    stats_struct(cnts).measure_tag = categorical({measure_plot});
+                    stats_struct(cnts).design_tag = categorical(des_i);
+                    stats_struct(cnts).mod_tag = categorical(2);
+                    % stats_struct(cnts).resp_terms = MEASURES_PLOT(meas_i);
+                    stats_struct(cnts).mod_resp_terms = measure_plot;
+                    stats_struct(cnts).anova_preds_terms = t(:,1)';
+                    tmp = t(:,7)';
+                    tmp = tmp(~cellfun(@isempty,tmp));
+                    stats_struct(cnts).anova_preds_p = tmp;
+                    tmp = t(:,6)';
+                    tmp = tmp(~cellfun(@isempty,tmp));
+                    stats_struct(cnts).anova_preds_stat = tmp;
+                    tmp = t(:,3)';
+                    tmp = tmp(~cellfun(@isempty,tmp));
+                    stats_struct(cnts).anova_preds_df =tmp;
+                    stats_struct(cnts).mod_preds_p = stats_out.Coefficients.pValue;
+                    stats_struct(cnts).mod_preds_terms = stats_out.Coefficients.Name';
+                    stats_struct(cnts).mod_preds_stat = stats_out.Coefficients.tStat;
+                    stats_struct(cnts).mod_preds_coeff = stats_out.Coefficients.Estimate;
+                    stats_struct(cnts).multi_comp_terms = gnames';
+                    stats_struct(cnts).multi_comp_t1_t2 = comparisons(:,1:2);
+                    [h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(comparisons(:,6));
+                    stats_struct(cnts).multi_comp_p = adj_p;
+                    stats_struct(cnts).multi_comp_coeff = comparisons(:,4);
+                    stats_struct(cnts).multi_comp_lci_uci = [comparisons(:,3),comparisons(:,5)];
+                    stats_struct(cnts).mod_r2 = stats_out.Rsquared.Adjusted;
+                    stats_struct(cnts).norm_test_p = norm_p;
+                    stats_struct(cnts).norm_test_h = norm_h;
+                    stats_struct(cnts).effect_size = alt_f2;
+                    stats_struct(cnts).effect_size_calc = '(R2_full-R2_null)/(1-R2_full)';
+                    cnts = cnts + 1;
+                    stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+                    %## PLOT =============================================================== %%
+                    multi_p = adj_p;
+                    aa_p = t(:,7)';
+                    mod_coeff = stats_out.Coefficients.Estimate;
+                    anova_p = aa_p{2};
+                    anova_grp_p = aa_p{3};
+                    terr_p = [1,stats_out.Coefficients.pValue(2:4)']';
+                    grp_p = [0,stats_out.Coefficients.pValue(3:4)']';
+                    speed_r2 = stats_out.Rsquared.Adjusted;
+                    speed_xvals = (0:5)*0.25;
+                    STATS_STRUCT = struct('anova',{{anova_p,anova_p,anova_p}},...
+                            'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
+                            'pvals',{{(terr_p),(terr_p),(terr_p)}},...
+                            'pvals_pairs',{{{[1,1],[1,2],[1,3],[1,4]},...
+                                {[1,1],[1,2],[1,3],[1,4]},...
+                                {[1,1],[1,2],[1,3],[1,4]}}},...
+                            'pvals_grp',{num2cell(adj_p)},...
+                            'pvals_grp_pairs',{num2cell(comparisons(:,1:2),2)},...
+                            'regress_pval',{{}},...
+                            'regress_line',{{}},...
+                            'r2_coeff',{[]},...
+                            'regress_xvals',speed_xvals,...
+                            'subject_char',[],... % this option when filled prints removal of nan() info
+                            'group_order',categorical({''}),...
+                            'do_include_intercept',false,...
+                            'bracket_yshift_perc',1,...
+                            'bracket_y_perc',1,...
+                            'bracket_rawshifty_upper',0.2,...
+                            'bracket_rawshifty_lower',0,...
+                            'grp_sig_offset_x',0,...
+                            'grp_sig_offset_y',0.1); 
+                case 2
+                    % mod_lme = sprintf('%s~1+group_id+cond_id',measure_plot);
+                    mod_lme = sprintf('%s ~ 1 + cond_id + group_id + (1|subj_char)',measure_plot);
+                    stats_out = fitlme(tmptmp_table,mod_lme);
+                    pred_terms = stats_out.CoefficientNames;
+                    % anova_out = anova(stats_out);
+                    [p,t,anova_out,terms] = anovan(tmptmp_table.(measure_plot),{tmptmp_table.cond_id, tmptmp_table.group_id},...
+                        'sstype',3,'varnames',{'trial_char','group_id'},'model','linear','Display','off');
+                    [comparisons,means,~,gnames] = multcompare(anova_out,'Dimension',[2],...
+                        'display','off','Alpha',0.05); % comparisons columns: [pred1,pred2,lowerCI,estimate,upperCI,p-val]
+                    disp(stats_out)
+                    %- test normality
+                    [norm_h,norm_p] = lillietest(stats_out.Residuals.Raw);
+                    %- intercept only model
+                    altmod_out = sprintf('%s ~ 1',measure_plot);
+                    altstats_out = fitlm(tmptmp_table,altmod_out);
+                    %- alternative f2?
+                    R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
+                    R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
+                    alt_f2 = (R22-R21)/(1-R22);
+                    %##
+                    %- populate struct
+                    stats_struct(cnts).stat_test_mod = mod_lme;
+                    stats_struct(cnts).measure_tag = categorical({measure_plot});
+                    stats_struct(cnts).design_tag = categorical(des_i);
+                    stats_struct(cnts).mod_tag = categorical(2);
+                    % stats_struct(cnts).resp_terms = MEASURES_PLOT(meas_i);
+                    stats_struct(cnts).mod_resp_terms = measure_plot;
+                    stats_struct(cnts).anova_preds_terms = t(:,1)';
+                    tmp = t(:,7)';
+                    tmp = tmp(~cellfun(@isempty,tmp));
+                    stats_struct(cnts).anova_preds_p = tmp;
+                    tmp = t(:,6)';
+                    tmp = tmp(~cellfun(@isempty,tmp));
+                    stats_struct(cnts).anova_preds_stat = tmp;
+                    tmp = t(:,3)';
+                    tmp = tmp(~cellfun(@isempty,tmp));
+                    stats_struct(cnts).anova_preds_df =tmp;
+                    stats_struct(cnts).mod_preds_p = stats_out.Coefficients.pValue;
+                    stats_struct(cnts).mod_preds_terms = stats_out.Coefficients.Name';
+                    stats_struct(cnts).mod_preds_stat = stats_out.Coefficients.tStat;
+                    stats_struct(cnts).mod_preds_coeff = stats_out.Coefficients.Estimate;
+                    stats_struct(cnts).multi_comp_terms = gnames';
+                    stats_struct(cnts).multi_comp_t1_t2 = comparisons(:,1:2);
+                    [h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(comparisons(:,6));
+                    stats_struct(cnts).multi_comp_p = adj_p;
+                    stats_struct(cnts).multi_comp_coeff = comparisons(:,4);
+                    stats_struct(cnts).multi_comp_lci_uci = [comparisons(:,3),comparisons(:,5)];
+                    stats_struct(cnts).mod_r2 = stats_out.Rsquared.Adjusted;
+                    stats_struct(cnts).norm_test_p = norm_p;
+                    stats_struct(cnts).norm_test_h = norm_h;
+                    stats_struct(cnts).effect_size = alt_f2;
+                    stats_struct(cnts).effect_size_calc = '(R2_full-R2_null)/(1-R2_full)';
+                    cnts = cnts + 1;
+                    stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+                    %## PLOT =============================================================== %%
+                    multi_p = adj_p;
+                    aa_p = t(:,7)';
+                    mod_coeff = stats_out.Coefficients.Estimate;
+                    anova_p = aa_p{2};
+                    anova_grp_p = aa_p{3};
+                    speed_p = stats_out.Coefficients.pValue(2);
+                    grp_p = [0,stats_out.Coefficients.pValue(3:4)']';
+                    speed_r2 = stats_out.Rsquared.Adjusted;
+                    speed_xvals = (0:5)*0.25;
+                    STATS_STRUCT = struct('anova',{{anova_p,anova_p,anova_p}},...
+                            'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
+                            'pvals',{{}},...
+                            'pvals_pairs',{{}},...
+                            'pvals_grp',{num2cell(adj_p)},...
+                            'pvals_grp_pairs',{num2cell(comparisons(:,1:2),2)},...
+                            'regress_pval',{{speed_p,speed_p,speed_p}},...
+                            'regress_line',{{[mod_coeff(1), mod_coeff(2)],...
+                                [mod_coeff(1)+mod_coeff(3), mod_coeff(2)],...
+                                [mod_coeff(1)+mod_coeff(4), mod_coeff(2)]}},...
+                            'r2_coeff',{repmat(speed_r2,3,1)},...
+                            'regress_xvals',speed_xvals,...
+                            'subject_char',[],... % this option when filled prints removal of nan() info
+                            'group_order',categorical({''}),...
+                            'do_include_intercept',false,...
+                            'bracket_yshift_perc',1,...
+                            'bracket_y_perc',1,...
+                            'bracket_rawshifty_upper',0.2,...
+                            'bracket_rawshifty_lower',0,...
+                            'grp_sig_offset_x',0,...
+                            'grp_sig_offset_y',0.1); 
+            end
+            %##
+            % cl_i = double(string(clusters(j)));
+            % temp_table = FOOOF_TABLE(FOOOF_TABLE.cluster_id == num2str(cl_i) & FOOOF_TABLE.design_id == num2str(des_i),:);
+            %- ylim autoset
+            % % YLIMS = [min(temp_table.(measure_plot))-0.5,max(temp_table.(measure_plot))+1];
+            %## PLOT
+            ax = axes();
+            VIOLIN_PARAMS = {'width',0.1,...
+                'ShowWhiskers',false,'ShowNotches',false,'ShowBox',true,...
+                'ShowMedian',true,'Bandwidth',0.15,'QuartileStyle','shadow',...
+                'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
+                'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
+            PLOT_STRUCT = struct('color_map',color_dark,...
+                'cond_labels',unique(tmptmp_table.cond_char),'group_labels',categorical(g_chars_subp),...
+                'cond_offsets',cond_offsets,...
+                'group_offsets',[0.125,0.475,0.812],...
+                'y_label',measure_plot,...
+                'title',sprintf('Cluster %i',cl_i),'font_size',FONT_SIZE_VIO,'ylim',YLIMS,...
+                'font_name','Arial','x_label',x_label,'do_combine_groups',false,...
+                'regresslab_txt_size',FONT_SIZE_VIO_REG);
+            ax = group_violin(tmptmp_table,measure_plot,'cond_id','group_id',...
+                ax,...
+                'VIOLIN_PARAMS',VIOLIN_PARAMS,...
+                'PLOT_STRUCT',PLOT_STRUCT,...
+                'STATS_STRUCT',STATS_STRUCT);
+            set(ax,'OuterPosition',[0,0,1,1]);
+            set(ax,'Position',[AX_INIT_HORIZ+horiz_shift,AX_INIT_VERT_VIO+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE]);  %[left bottom width height]
+            ax.Children(1).FontSize = GROUP_LAB_FONTSIZE;
+            ax.Children(2).FontSize = GROUP_LAB_FONTSIZE;
+            ax.Children(3).FontSize = GROUP_LAB_FONTSIZE;
+            ax.Children(1).Position(2) = GROUP_LAB_YOFFSET;
+            ax.Children(2).Position(2) = GROUP_LAB_YOFFSET;
+            ax.Children(3).Position(2) = GROUP_LAB_YOFFSET;
+            yt = yticks(ax);
+            xlh = xlabel(ax,PLOT_STRUCT.x_label,'Units','normalized','FontSize',XLAB_FONTSIZE,'FontWeight',XLAB_FONTWEIGHT);
+            pos1=get(xlh,'Position');
+            pos1(1,2)=pos1(1,2)+XLABEL_OFFSET;
+            set(xlh,'Position',pos1);
+            if hz ~= 1
+                ylabel('');
+            end
+            %##
+            if hz < HZ_DIM
+                horiz_shift = horiz_shift + AX_W*IM_RESIZE + AX_HORIZ_SHIFT*IM_RESIZE;
+            else
+                vert_shift = vert_shift - (AX_H*IM_RESIZE + AX_VERT_SHIFT*IM_RESIZE);
+                horiz_shift = 0;
+                hz = 0;
+            end
+            hz = hz + 1;
+        end
+        drawnow;
+        %## SAVE
+        hold off;
+        savefig(fig,[save_dir filesep sprintf('%s_violin_group_plot_des%i.fig',measure_plot,des_i)])
+        exportgraphics(fig,[save_dir filesep sprintf('%s_violin_group_plot_des%i.png',measure_plot,des_i)],'Resolution',300)
+        close(fig);
+    end
+end
+
 %% (JS) DETERMINE PEAK FREQUENCIES
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
@@ -568,19 +1179,38 @@ for i = 1:length(designs)
             if ~isempty(FOOOF_TABLE.central_freq{inds(k)})
                 for l = 1:length(FOOOF_TABLE.central_freq{inds(k)})
                     cf = FOOOF_TABLE.central_freq{inds(k)}(l);
-                    if cf > theta_band(1) & cf <= theta_band(2)
+                    % if cf > theta_band(1) & cf <= theta_band(2)
+                    %     FOOOF_TABLE.theta{inds(k)} = [FOOOF_TABLE.theta{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
+                    % elseif cf > alpha_band(1) & cf <= alpha_band(2)
+                    %     FOOOF_TABLE.alpha{inds(k)} = [FOOOF_TABLE.alpha{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
+                    % elseif cf > beta_band(1) & cf <= beta_band(2)
+                    %     FOOOF_TABLE.beta{inds(k)} = [FOOOF_TABLE.beta{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
+                    % end
+                    if cf > theta_band_lims(1) & cf <= theta_band_lims(2)
                         FOOOF_TABLE.theta{inds(k)} = [FOOOF_TABLE.theta{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
-                    elseif cf > alpha_band(1) & cf <= alpha_band(2)
+                    elseif cf > alpha_band_lims(1) & cf <= alpha_band_lims(2)
                         FOOOF_TABLE.alpha{inds(k)} = [FOOOF_TABLE.alpha{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
-                    elseif cf > beta_band(1) & cf <= beta_band(2)
+                    elseif cf > beta_band_lims(1) & cf <= beta_band_lims(2)
                         FOOOF_TABLE.beta{inds(k)} = [FOOOF_TABLE.beta{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
+                    elseif cf > alpha1_band_lims(1) & cf <= alpha1_band_lims(2)
+                        FOOOF_TABLE.alpha1_band{inds(k)} = [FOOOF_TABLE.alpha1_band{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
+                    elseif cf > alpha2_band_lims(1) & cf <= alpha2_band_lims(2)
+                        FOOOF_TABLE.alpha2_band{inds(k)} = [FOOOF_TABLE.alpha2_band{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
+                    elseif cf > beta1_band_lims(1) & cf <= beta1_band_lims(2)
+                        FOOOF_TABLE.beta1_band{inds(k)} = [FOOOF_TABLE.beta1_band{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
+                    elseif cf > beta2_band_lims(1) & cf <= beta2_band_lims(2)
+                        FOOOF_TABLE.beta2_band{inds(k)} = [FOOOF_TABLE.beta2_band{inds(k)}; cf, FOOOF_TABLE.power{inds(k)}(l)];
                     end
+                    % alpha1_band = [8,10.5];
+                    % alpha2_band = [10.5,13];
+                    % beta1_band = [13,20];
+                    % beta2_band = [20,30];
                 end
-                if length(FOOOF_TABLE.theta{inds(k)}) > 1
-                    [~,indx] = min(abs(FOOOF_TABLE.theta{inds(k)}(:,1)-6));
-                    temp_power = FOOOF_TABLE.theta{inds(k)}(:,2);
-                    FOOOF_TABLE.theta_center{inds(k)} = [FOOOF_TABLE.theta{inds(k)}(indx,1) temp_power(indx)];
-                end
+                % if length(FOOOF_TABLE.theta{inds(k)}) > 1
+                %     [~,indx] = min(abs(FOOOF_TABLE.theta{inds(k)}(:,1)-6));
+                %     temp_power = FOOOF_TABLE.theta{inds(k)}(:,2);
+                %     FOOOF_TABLE.theta_center{inds(k)} = [FOOOF_TABLE.theta{inds(k)}(indx,1) temp_power(indx)];
+                % end
                 if length(FOOOF_TABLE.alpha{inds(k)}) > 1
                     [~,indx] = min(abs(FOOOF_TABLE.alpha{inds(k)}(:,1)-10));
                     temp_power = FOOOF_TABLE.alpha{inds(k)}(:,2);
@@ -590,6 +1220,31 @@ for i = 1:length(designs)
                     [~,indx] = min(abs(FOOOF_TABLE.beta{inds(k)}(:,1)-20));
                     temp_power = FOOOF_TABLE.beta{inds(k)}(:,2);
                     FOOOF_TABLE.beta_center{inds(k)} = [FOOOF_TABLE.beta{inds(k)}(indx,1) temp_power(indx)];
+                end
+                if length(FOOOF_TABLE.theta{inds(k)}) > 1
+                    [~,indx] = min(abs(FOOOF_TABLE.theta{inds(k)}(:,1)-6));
+                    temp_power = FOOOF_TABLE.theta{inds(k)}(:,2);
+                    FOOOF_TABLE.theta_center{inds(k)} = [FOOOF_TABLE.theta{inds(k)}(indx,1) temp_power(indx)];
+                end
+                if length(FOOOF_TABLE.alpha1_band{inds(k)}) > 1
+                    [~,indx] = min(abs(FOOOF_TABLE.alpha1_band{inds(k)}(:,1)-10));
+                    temp_power = FOOOF_TABLE.alpha1_band{inds(k)}(:,2);
+                    FOOOF_TABLE.alpha1_center{inds(k)} = [FOOOF_TABLE.alpha1_band{inds(k)}(indx,1) temp_power(indx)];
+                end
+                if length(FOOOF_TABLE.alpha2_band{inds(k)}) > 1
+                    [~,indx] = min(abs(FOOOF_TABLE.alpha2_band{inds(k)}(:,1)-20));
+                    temp_power = FOOOF_TABLE.alpha2_band{inds(k)}(:,2);
+                    FOOOF_TABLE.alpha2_center{inds(k)} = [FOOOF_TABLE.alpha2_band{inds(k)}(indx,1) temp_power(indx)];
+                end
+                if length(FOOOF_TABLE.beta1_band{inds(k)}) > 1
+                    [~,indx] = min(abs(FOOOF_TABLE.beta1_band{inds(k)}(:,1)-6));
+                    temp_power = FOOOF_TABLE.beta1_band{inds(k)}(:,2);
+                    FOOOF_TABLE.beta1_center{inds(k)} = [FOOOF_TABLE.beta1_band{inds(k)}(indx,1) temp_power(indx)];
+                end
+                if length(FOOOF_TABLE.beta2_band{inds(k)}) > 1
+                    [~,indx] = min(abs(FOOOF_TABLE.beta2_band{inds(k)}(:,1)-10));
+                    temp_power = FOOOF_TABLE.beta2_band{inds(k)}(:,2);
+                    FOOOF_TABLE.beta2_center{inds(k)} = [FOOOF_TABLE.beta2_band{inds(k)}(indx,1) temp_power(indx)];
                 end
             end
         end
@@ -601,6 +1256,7 @@ save([save_dir filesep 'fooof_diff_store.mat'],'fooof_diff_store');
 save([save_dir filesep 'fooof_apfit_store.mat'],'fooof_apfit_store');
 save([save_dir filesep 'spec_data_original.mat'],'spec_data_original');
 %% DETERMINE PEAK FREQUENCIES
+%{
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
 for i = 1:length(designs)
@@ -639,43 +1295,64 @@ for i = 1:length(designs)
         end
     end
 end
-%## SAVE DATA
+%## SAVE DATA% %- coefficients & pvals
+                        stats_struct(cntsts).anova_speed_p = anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
+                        stats_struct(cntsts).anova_speed_df = anova_out.DF2(strcmp(anova_out.Term,'cond_id'));
+                        stats_struct(cntsts).anova_speed_f = anova_out.FStat(strcmp(anova_out.Term,'cond_id'));
+                        %-
+                        stats_struct(cntsts).lme_speed_p = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id')));
+                        stats_struct(cntsts).lme_inter_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
+                        %-
+                        stats_struct(cntsts).lme_speed_coeff = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id')));
+                        stats_struct(cntsts).lme_inter_coeff = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
+                        %## QUADRATIC
+                        % ap1 = anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
+                        % af1 = anova_out.DF2(strcmp(anova_out.Term,'cond_id'));
+                        % adf1 = anova_out.FStat(strcmp(anova_out.Term,'cond_id'));
+                        % ap2 = anova_out.pValue(strcmp(anova_out.Term,'cond_id^2'));
+                        % af2 = anova_out.DF2(strcmp(anova_out.Term,'cond_id^2'));
+                        % adf2 = anova_out.FStat(strcmp(anova_out.Term,'cond_id^2'));
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_p2 = {[ap1,ap2]};
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_f2 = {[af1,af2]};
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_df2 = {[adf1,adf2]};
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_p2_wt = sprintf('%s, ',[ap1,ap2]);
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_f2_wt = sprintf('%s, ',[af1,af2]);
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_df2_wt = sprintf('%s, ',[adf1,adf2]);
+                        % p1 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id'));
+                        % p2 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id^2'));
+                        % STATS_TRACK_STRUCT(cntsts).lme_speed_p2 = {[p1,p2]};
+                        % STATS_TRACK_STRUCT(cntsts).lme_speed_p2_wt = sprintf('%s, ',[p1,p2]);
+                        % STATS_TRACK_STRUCT(cntsts).lme_inter_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
+                        % c1 = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id')));
+                        % c2 = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id^2')));
+                        % STATS_TRACK_STRUCT(cntsts).lme_speed_coeff2 = {[c1,c2]};
+                        % STATS_TRACK_STRUCT(cntsts).lme_speed_coeff2_wt = sprintf('%s, ',[c1,c2]);
+                        % STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
+                        %- store
+                        stats_struct(cntsts).group = groups(g_i);
+                        stats_struct(cntsts).design = designs(des_i);
+                        stats_struct(cntsts).cluster = clusters(cl_i);
+                        stats_struct(cntsts).measure_tag = {MEASURE_NAMES{meas_i}};
+                        stats_struct(cntsts).measure_vals = tmp.(MEASURE_NAMES{meas_i});
+                        stats_struct(cntsts).log_avg_power = log(tmp.(MEASURE_NAMES{meas_i})+5);
+                        %-
+                        stats_struct(cntsts).stat_test_mod = {mod_lme};
+                        stats_struct(cntsts).resp_terms = {MEASURE_NAMES{meas_i}};
+                        stats_struct(cntsts).pred_terms = bnames.Name';
+                        stats_struct(cntsts).pred_terms_wt = sprintf('%s, ',bnames.Name{:}); %
+                        stats_struct(cntsts).rnd_terms = brnames.Level';
+                        stats_struct(cntsts).rnd_terms_wt = sprintf('%s, ',brnames.Level{:}); %
+                        stats_struct(cntsts).lme_rnd_effects = {bretable};
+                        stats_struct(cntsts).norm_test_h = norm_h;
+                        stats_struct(cntsts).norm_test_p = norm_p;
+                        stats_struct(cntsts).R2 = R2;
+                        stats_struct(cntsts).effect_size = alt_f2;
+                        stats_struct(cntsts).effect_size_calc = 'cohensf2 = (R22-R21)/(1-R22)';
 % save([save_dir filesep 'fooof_results_summary.mat'],'fooof_group_results_org');
 save([save_dir filesep 'fooof_diff_store.mat'],'fooof_diff_store');
 save([save_dir filesep 'fooof_apfit_store.mat'],'fooof_apfit_store');
 save([save_dir filesep 'spec_data_original.mat'],'spec_data_original');
-%%
-% tmp_study = STUDY;
-% RE_CALC = true;
-% if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
-% end
-% if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
-% designs = unique(FOOOF_TABLE.design_id);
-% clusters = unique(FOOOF_TABLE.cluster_id);
-% for i = 1:length(designs)
-%     des_i = string(designs(i));
-%     for j = 1:length(clusters) % For each cluster requested
-%         cl_i = double(string(clusters(j)));
-%         if isempty(tmp_study.cluster(cl_i).topo) || RE_CALC
-%             inds = find(FOOOF_TABLE.design_id == des_i & FOOOF_TABLE.cluster_id == string(cl_i));
-%             sets_i = unique([FOOOF_TABLE.subj_cl_ind(inds)]);
-%             tmp_study.cluster(cl_i).sets = tmp_study.cluster(cl_i).sets(sets_i);
-%             tmp_study.cluster(cl_i).comps = tmp_study.cluster(cl_i).comps(sets_i);
-%             tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cl_i);% Using this custom modified code to allow taking average within participant for each cluster
-%             STUDY.cluster(cl_i).topox = tmp_study.cluster(cl_i).topox;
-%             STUDY.cluster(cl_i).topoy = tmp_study.cluster(cl_i).topoy;
-%             STUDY.cluster(cl_i).topoall = tmp_study.cluster(cl_i).topoall;
-%             STUDY.cluster(cl_i).topo = tmp_study.cluster(cl_i).topo;
-%             STUDY.cluster(cl_i).topopol = tmp_study.cluster(cl_i).topopol;
-%         end
-%     end
-% end
-    
+%}
 %% Create table from group results, take mean across participants ICs    
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
@@ -697,8 +1374,38 @@ for i = 1:length(designs)
             if isempty(FOOOF_TABLE.beta_center{inds(k)})
                 FOOOF_TABLE.beta_center{inds(k)} = [NaN, NaN];
             end
+            %-
+            if isempty(FOOOF_TABLE.alpha1_band{inds(k)})
+                FOOOF_TABLE.alpha1_band{inds(k)} = [NaN, NaN];
+            end
+            if isempty(FOOOF_TABLE.beta1_band{inds(k)})
+                FOOOF_TABLE.beta1_band{inds(k)} = [NaN, NaN];
+            end
+            if isempty(FOOOF_TABLE.alpha1_center{inds(k)})
+                FOOOF_TABLE.alpha1_center{inds(k)} = [NaN, NaN];
+            end
+            if isempty(FOOOF_TABLE.beta1_center{inds(k)})
+                FOOOF_TABLE.beta1_center{inds(k)} = [NaN, NaN];
+            end
+            %-
+            if isempty(FOOOF_TABLE.alpha2_band{inds(k)})
+                FOOOF_TABLE.alpha2_band{inds(k)} = [NaN, NaN];
+            end
+            if isempty(FOOOF_TABLE.beta2_band{inds(k)})
+                FOOOF_TABLE.beta2_band{inds(k)} = [NaN, NaN];
+            end
+            if isempty(FOOOF_TABLE.alpha2_center{inds(k)})
+                FOOOF_TABLE.alpha2_center{inds(k)} = [NaN, NaN];
+            end
+            if isempty(FOOOF_TABLE.beta2_center{inds(k)})
+                FOOOF_TABLE.beta2_center{inds(k)} = [NaN, NaN];
+            end
             [~,idx_a] = max(FOOOF_TABLE.alpha{inds(k)}(:,2));
             [~,idx_b] = max(FOOOF_TABLE.beta{inds(k)}(:,2));
+            [~,idx_a] = max(FOOOF_TABLE.alpha1_band{inds(k)}(:,2));
+            [~,idx_b] = max(FOOOF_TABLE.beta1_band{inds(k)}(:,2));
+            [~,idx_a] = max(FOOOF_TABLE.alpha2_band{inds(k)}(:,2));
+            [~,idx_b] = max(FOOOF_TABLE.beta2_band{inds(k)}(:,2));
         end
     end
 end
@@ -709,189 +1416,277 @@ FOOOF_TABLE.design_id = categorical(FOOOF_TABLE.design_id);
 FOOOF_TABLE.group_id = categorical(FOOOF_TABLE.group_id);
 writetable(FOOOF_TABLE,[save_dir filesep 'fooof_spec_table.xlsx']);
 save([save_dir filesep 'psd_feature_table.mat'],'FOOOF_TABLE');
-%% (STATISTICS CALCULATIONS) =========================================== %% 
-%## Preliminary stats on average power (substracted background)
-% Create stats table
+%## LOAD
+%{
+tmp = load([save_dir filesep 'psd_feature_table.mat']);
+FOOOF_TABLE = tmp.FOOOF_TABLE;
+%}
+%% (STATISTICS CALCULATIONS) =========================================== %%
+%## STRUCT IMPLEMENTATION
+DEF_STATS_TRACK_STRUCT = struct('design',categorical({''}),...
+    'cluster',categorical({''}),...
+    'group',categorical({''}),...
+    'stat_test_mod',{{''}},...
+    'measure_tag',{{''}},...
+    'measure_vals',[],...
+    'resp_terms',{{''}},...
+    'pred_terms',{{''}},...
+    'pred_terms_wt',{{''}},...
+    'rnd_terms',{{''}},...
+    'rnd_terms_wt',{{''}},...
+    'anova_grp_p',[],...
+    'anova_terr_p',[],...
+    'anova_speed_p',[],...
+    'anova_speed_p2',{{}},...
+    'anova_speed_p2_wt',{{''}},...
+    'anova_inter_p',[],...
+    'anova_grp_f',[],...
+    'anova_terr_f',[],...
+    'anova_speed_f',[],...
+    'anova_speed_f2',{{}},...
+    'anova_speed_f2_wt',{{''}},...
+    'anova_inter_f',[],...
+    'anova_grp_df',[],...
+    'anova_terr_df',[],...
+    'anova_speed_df',[],...,''
+    'anova_speed_df2',{{}},...
+    'anova_speed_df2_wt',{{''}},...
+    'anova_inter_df',[],...
+    'lme_grp_p',{{}},...
+    'lme_terr_p',{{}},...
+    'lme_terr_p_wt',{{''}},...
+    'lme_speed_p',[],...
+    'lme_speed_p2',{{}},...
+    'lme_speed_p2_wt',{{''}},...
+    'lme_inter_p',[],...
+    'lme_grp_coeff',{{}},...
+    'lme_terr_coeff',{{}},...
+    'lme_terr_coeff_wt',{{''}},...
+    'lme_speed_coeff',[],...
+    'lme_speed_coeff2',{{}},...
+    'lme_speed_coeff2_wt',{{''}},...
+    'lme_inter_coeff',[],...
+    'lme_rnd_effects',{{}},...
+    'R2',[],...
+    'norm_test_h',[],...
+    'norm_test_p',[],...
+    'log_avg_power',[],...
+    'effect_size',[],...
+    'effect_size_calc',{{''}});
+stats_struct = DEF_STATS_TRACK_STRUCT;
+%-
 TERRAIN_DES_ID = 1;
 SPEED_DES_ID = 2;
-psd_feature_stats = table;
-%-
+% MEASURE_NAMES = {'theta_avg_power','alpha_avg_power','beta_avg_power'};
+MEASURE_NAMES = {'theta_avg_power','alpha_avg_power','beta_avg_power','alpha1_avg_power','alpha2_avg_power','beta1_avg_power','beta2_avg_power'};
+LOG_MEASURE_NAMES = {'log_theta_avg_power','log_alpha_avg_power','log_beta_avg_power'};
+%% ===================================================================== %%
+SPEED_MEAS_ANL = 'cond_char';
+% SPEED_MEAS_ANL = 'speed_div_stat';
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
 groups = unique(FOOOF_TABLE.group_id);
-for i = 1:length(designs)
-    des_i = designs(i);
-    for j = 1:length(clusters)
-        cl_i = clusters(j);
-        for k = 1:length(groups)
-            group_i = groups(k);
+cntsts = 1;
+%-
+for des_i = 1:length(designs)
+    for cl_i = 1:length(clusters)
+        for g_i = 1:length(groups)
             %- extract table for cluster and design
-            inds = (FOOOF_TABLE.cluster_id == cl_i & FOOOF_TABLE.design_id == des_i & FOOOF_TABLE.group_id == group_i);
-            t1 = FOOOF_TABLE(inds,:);
-            %- re-categorize variables for stats
-            t1.cond = categorical(t1.cond_id);
-            % t1.cond = double(t1.cond_id)*0.25;
-            t1.log_alpha_avg_power = log(t1.alpha_avg_power+5);
-            t1.log_theta_avg_power = log(t1.theta_avg_power+5);
-            %## theta
-            %- test lienar model
-            mod = 'theta_avg_power ~ 1 + cond + (1|subj_id)';
-            lme_theta_avg_power = fitlme(t1,mod,'FitMethod','ML');
-    %         lme_theta_avg_power = fitlme(t1,'theta_avg_power ~ cond + (1|speed_ms)');
-            %-
-            theta_anova = anova(lme_theta_avg_power);
-            %- test normality
-            [theta_h,theta_p] = lillietest(lme_theta_avg_power.residuals);
-            % if theta_h
-            %     histogram(t1.theta_avg_power)
-            %     % fitglme(t1,mod,'Distribution','Poisson');
-            %     newOut = fitglme(t1,mod,'Distribution','Gamma');
-            %     waitforbuttonpress;
-            % end
-            %## alpha
-            %- test linear model
-            lme_alpha_avg_power = fitlme(t1,'alpha_avg_power ~ cond + (1|subj_id)');
-    %         lme_alpha_avg_power = fitlme(t1,'alpha_avg_power ~ cond + (1|speed_ms)');
-            %-
-            alpha_anova = anova(lme_alpha_avg_power); 
-            %- test normality
-            [alpha_h,alpha_p] = lillietest(lme_alpha_avg_power.residuals);
-            %## beta
-            lme_beta_avg_power = fitlme(t1,'beta_avg_power ~ cond + (1|subj_id)');
-    %         lme_beta_avg_power = fitlme(t1,'beta_avg_power ~ cond + (1|speed_ms)');
-            %-
-            beta_anova = anova(lme_beta_avg_power); 
-            %- test normality
-            [beta_h,beta_p] = lillietest(lme_beta_avg_power.residuals);
-            %## LOG stats
-    %         lme_log_theta_avg_power = fitlme(t1,'log_theta_avg_power ~ cond + (1|subID)');
-    %         log_Th = anova(lme_log_theta_avg_power);[h,p] = lillietest(lme_log_theta_avg_power.residuals)
-    %         lme_log_alpha_avg_power= fitlme(t1,'log_alpha_avg_power ~ cond + (1|subID)');
-    %         log_A = anova(lme_log_alpha_avg_power);[h,p] = lillietest(lme_log_alpha_avg_power.residuals)
-            %## add stats for aperiod fit/offsets
-            lme_ap_exp = fitlme(t1,'aperiodic_exp ~ cond + (1|speed_ms)');
-            ap_exp = anova(lme_ap_exp);
-            lme_ap_offset = fitlme(t1,'aperiodic_offset ~ cond + (1|speed_ms)');
-            ap_offset = anova(lme_ap_offset);
-            %-
-            temp_stats = table;
-            temp_stats.theta_lilnorm_h = theta_h;
-            temp_stats.theta_lilnorm_p = theta_p;
-            temp_stats.alpha_lilnorm_h = alpha_h;
-            temp_stats.alpha_lilnorm_p = alpha_p;
-            temp_stats.beta_lilnorm_h = beta_h;
-            temp_stats.beta_lilnorm_p = beta_p;
-            %- statistics & labels
-            temp_stats.study = des_i;
-            temp_stats.cluster = cl_i;
-            temp_stats.group = group_i;
-            temp_stats.theta_anova = theta_anova.pValue(2);
-            temp_stats.theta_F = theta_anova.FStat(2);
-            temp_stats.theta_F_DF2 = theta_anova.DF2(2);
-            temp_stats.alpha_anova = alpha_anova.pValue(2);
-            temp_stats.alpha_F = alpha_anova.FStat(2);
-            temp_stats.alpha_F_DF2 = alpha_anova.DF2(2);
-            temp_stats.beta_anova = beta_anova.pValue(2);
-            temp_stats.beta_F = beta_anova.FStat(2);
-            temp_stats.beta_F_DF2 = beta_anova.DF2(2);
-            %- pvalue
-            temp_stats.theta_cond2_pval = lme_theta_avg_power.Coefficients.pValue(2);
-            temp_stats.theta_cond3_pval = lme_theta_avg_power.Coefficients.pValue(3);
-            temp_stats.theta_cond4_pval = lme_theta_avg_power.Coefficients.pValue(4);
-    
-            temp_stats.alpha_cond2_pval = lme_alpha_avg_power.Coefficients.pValue(2);
-            temp_stats.alpha_cond3_pval = lme_alpha_avg_power.Coefficients.pValue(3);
-            temp_stats.alpha_cond4_pval = lme_alpha_avg_power.Coefficients.pValue(4);
-    
-            temp_stats.beta_cond2_pval = lme_beta_avg_power.Coefficients.pValue(2);
-            temp_stats.beta_cond3_pval = lme_beta_avg_power.Coefficients.pValue(3);
-            temp_stats.beta_cond4_pval = lme_beta_avg_power.Coefficients.pValue(4);
-            %- aperiodic fit
-            temp_stats.ap_exp_anova = ap_exp.pValue(2);
-            temp_stats.ap_exp2 = lme_ap_exp.Coefficients.pValue(2);
-            temp_stats.ap_exp3 = lme_ap_exp.Coefficients.pValue(3);
-            temp_stats.ap_exp4 = lme_ap_exp.Coefficients.pValue(4);
-            %- aperiodic offset
-            temp_stats.ap_offset_anova = ap_offset.pValue(2);
-            temp_stats.ap_offset2 = lme_ap_offset.Coefficients.pValue(2);
-            temp_stats.ap_offset3 = lme_ap_offset.Coefficients.pValue(3);
-            temp_stats.ap_offset4 = lme_ap_offset.Coefficients.pValue(4);
-            
-           
-            if des_i == num2str(SPEED_DES_ID)
-                % use continuous variable
-                % t1.cond = double(string(t1.cond));
-                t1.cond = double(string(t1.cond_char));
-                %- theta
-    %             lme_theta_avg_power_num = fitlme(t1,'theta_avg_power ~ cond + (1|speed_ms)');
-                lme_theta_avg_power_num = fitlme(t1,'theta_avg_power ~ cond + (1|subj_id)');
-                Th_num = anova(lme_theta_avg_power_num);[theta_h,theta_p] = lillietest(lme_theta_avg_power_num.residuals);
-                %- alpha
-    %             lme_alpha_avg_power_num = fitlme(t1,'alpha_avg_power ~ cond + (1|speed_ms)');
-                lme_alpha_avg_power_num = fitlme(t1,'alpha_avg_power ~ cond  + (1|subj_id)');
-                A_num  = anova(lme_alpha_avg_power_num);[alpha_h,alpha_p] = lillietest(lme_alpha_avg_power_num.residuals);
-                %- beta
-    %             lme_beta_avg_power_num = fitlme(t1,'beta_avg_power ~ cond + (1|speed_ms)');
-                lme_beta_avg_power_num = fitlme(t1,'beta_avg_power ~ cond + (1|subj_id)');
-                B_num  = anova(lme_beta_avg_power_num);[beta_h,beta_p] = lillietest(lme_beta_avg_power_num.residuals);
-                %- lillie test
-                temp_stats.theta_lilnorm_h = theta_h;
-                temp_stats.theta_lilnorm_p = theta_p;
-                temp_stats.alpha_lilnorm_h = alpha_h;
-                temp_stats.alpha_lilnorm_p = alpha_p;
-                temp_stats.beta_lilnorm_h = beta_h;
-                temp_stats.beta_lilnorm_p = beta_p;
-                %- 
-                temp_stats.Th_num_pval = Th_num.pValue(2);
-                temp_stats.A_num_pval = A_num.pValue(2);
-                temp_stats.B_num_pval = B_num.pValue(2);
-                temp_stats.theta_F_num = Th_num.FStat(2);
-                temp_stats.theta_F_DF2_num = Th_num.DF2(2);
-                temp_stats.alpha_F_num = A_num.FStat(2);
-                temp_stats.alpha_F_DF2_num = A_num.DF2(2);
-                temp_stats.beta_F_num = B_num.FStat(2);
-                temp_stats.beta_F_DF2_num = B_num.DF2(2);
-                
-                % store the linear fit for all these data
-                temp_stats.Th_slope = lme_theta_avg_power_num.Coefficients.Estimate(2);
-                temp_stats.Th_intercept = lme_theta_avg_power_num.Coefficients.Estimate(1);
-                temp_stats.A_slope = lme_alpha_avg_power_num.Coefficients.Estimate(2);
-                temp_stats.A_intercept = lme_alpha_avg_power_num.Coefficients.Estimate(1);
-                temp_stats.B_slope = lme_beta_avg_power_num.Coefficients.Estimate(2);
-                temp_stats.B_intercept = lme_beta_avg_power_num.Coefficients.Estimate(1);
-                temp_stats.Th_num_R2 = lme_theta_avg_power_num.Rsquared.Adjusted;
-                temp_stats.A_num_R2 = lme_alpha_avg_power_num.Rsquared.Adjusted;
-                temp_stats.B_num_R2 = lme_beta_avg_power_num.Rsquared.Adjusted;
-            else
-                %- lillie test
-
-                temp_stats.Th_num_pval = NaN;
-                temp_stats.A_num_pval = NaN;
-                temp_stats.B_num_pval = NaN;
-                temp_stats.theta_F_num = NaN;
-                temp_stats.theta_F_DF2_num = NaN;
-                temp_stats.alpha_F_num = NaN;
-                temp_stats.alpha_F_DF2_num = NaN;
-                temp_stats.beta_F_num = NaN;
-                temp_stats.beta_F_DF2_num = NaN;
-                temp_stats.Th_slope = NaN;
-                temp_stats.Th_intercept = NaN;
-                temp_stats.A_slope = NaN;
-                temp_stats.A_intercept = NaN;
-                temp_stats.B_slope = NaN;
-                temp_stats.B_intercept = NaN;
-                temp_stats.Th_num_R2 = NaN;
-                temp_stats.A_num_R2 = NaN;
-                temp_stats.B_num_R2 = NaN;
+            inds = FOOOF_TABLE.cluster_id == clusters(cl_i) &...
+                FOOOF_TABLE.design_id == designs(des_i) & FOOOF_TABLE.group_id == groups(g_i);
+            tmptmp = FOOOF_TABLE(inds,:);
+            switch double(string(des_i))
+                case TERRAIN_DES_ID
+                    for meas_i = 1:length(MEASURE_NAMES)
+                        %- NOTE: need to reassign to new table because of how
+                        %categorical variables will hold onto removed
+                        %entries causing rank defiecencies.
+                        tmp = table(categorical(string(tmptmp.subj_char)),double(tmptmp.(MEASURE_NAMES{meas_i})),...
+                            categorical(string(tmptmp.cond_id)),'VariableNames',{'subj_char',MEASURE_NAMES{meas_i},'cond_id'});
+                        %## LINEAR MODEL
+                        % t1.log_avg_power= log(t1.(MEASURE_NAMES{meas_i})+5);
+                        mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',MEASURE_NAMES{meas_i});
+                        % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
+                        stats_out = fitlme(tmp,mod_lme);
+                        anova_out = anova(stats_out);
+                        %## GATHER STATS
+                        %- test normality
+                        [norm_h,norm_p] = lillietest(stats_out.residuals);
+                        %- get effects
+                        [~,bnames,~] = stats_out.fixedEffects();
+                        [~,brnames,bretable] = stats_out.randomEffects();
+                        %- intercept only model
+                        % altmod_lme = sprintf('%s ~ 1 + (1|subj_char)',measure_name);
+                        % altstats_out = fitlme(T_vals_plot,altmod_lme,'DummyVarCoding','effects');
+                        % R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+                        R2 = stats_out.Rsquared.Adjusted;
+                        %- intercept only model
+                        altmod_out = sprintf('%s ~ 1 + (1|subj_char)',MEASURE_NAMES{meas_i});
+                        altstats_out = fitlme(tmp,altmod_out);
+                        %- alternative f2?
+                        R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
+                        R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
+                        alt_f2 = (R22-R21)/(1-R22);
+                        %- store
+                        stats_struct(cntsts).group = groups(g_i);
+                        stats_struct(cntsts).design = designs(des_i);
+                        stats_struct(cntsts).cluster = clusters(cl_i);
+                        stats_struct(cntsts).measure_tag = {MEASURE_NAMES{meas_i}};
+                        stats_struct(cntsts).measure_vals = tmp.(MEASURE_NAMES{meas_i});
+                        stats_struct(cntsts).log_avg_power = log(tmp.(MEASURE_NAMES{meas_i})+5);
+                        %-
+                        stats_struct(cntsts).stat_test_mod = {mod_lme};
+                        stats_struct(cntsts).resp_terms = {MEASURE_NAMES{meas_i}};
+                        stats_struct(cntsts).pred_terms = bnames.Name';
+                        stats_struct(cntsts).pred_terms_wt = sprintf('%s, ',bnames.Name{:}); %
+                        stats_struct(cntsts).rnd_terms = brnames.Level';
+                        stats_struct(cntsts).rnd_terms_wt = sprintf('%s, ',brnames.Level{:}); %
+                        %- coefficients & pvals
+                        stats_struct(cntsts).anova_terr_p = anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
+                        stats_struct(cntsts).anova_terr_df = anova_out.DF2(strcmp(anova_out.Term,'cond_id'));
+                        stats_struct(cntsts).anova_terr_f = anova_out.FStat(strcmp(anova_out.Term,'cond_id'));
+                        %-
+                        pval_flat = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
+                        pval_low = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id_2'));
+                        pval_med = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id_3'));
+                        pval_high = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id_4'));
+                        stats_struct(cntsts).lme_terr_p = {[pval_low,pval_med,pval_high]};
+                        stats_struct(cntsts).lme_terr_p_wt = sprintf('%0.4f, ',[pval_low,pval_med,pval_high]);
+                        stats_struct(cntsts).lme_inter_p = pval_flat;
+                        %-
+                        slope_low = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id_2')));
+                        slope_med = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id_3')));
+                        slope_high = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id_4')));
+                        inter_mn = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
+                        stats_struct(cntsts).lme_terr_coeff = {[slope_low,slope_med,slope_high]};
+                        stats_struct(cntsts).lme_terr_coeff_wt = sprintf('%0.4f, ',[slope_low,slope_med,slope_high]);
+                        stats_struct(cntsts).lme_inter_coeff = inter_mn;
+                        %-
+                        stats_struct(cntsts).lme_rnd_effects = {bretable};
+                        stats_struct(cntsts).norm_test_h = norm_h;
+                        stats_struct(cntsts).norm_test_p = norm_p;
+                        stats_struct(cntsts).R2 = R2;
+                        stats_struct(cntsts).effect_size = alt_f2;
+                        stats_struct(cntsts).effect_size_calc = 'cohensf2 = (R22-R21)/(1-R22)';
+                        cntsts = cntsts + 1;
+                        stats_struct(cntsts) = DEF_STATS_TRACK_STRUCT;
+                    end
+                case SPEED_DES_ID
+                    for meas_i = 1:length(MEASURE_NAMES)
+                        %- NOTE: need to reassign to new table because of how
+                        %categorical variables will hold onto removed
+                        %entries causing rank defiecencies.
+                        %- speed factors
+                        % tmp = table(categorical(string(tmptmp.subj_char)),double(tmptmp.(MEASURE_NAMES{meas_i})),...
+                        %     categorical(string(tmptmp.cond_id)),'VariableNames',{'subj_char',MEASURE_NAMES{meas_i},'cond_id'});
+                        %- speed cont.
+                        % tmp = table(categorical(string(tmptmp.subj_char)),double(tmptmp.(MEASURE_NAMES{meas_i})),...
+                        %     double(string(tmptmp.cond_id)),'VariableNames',{'subj_char',MEASURE_NAMES{meas_i},'cond_id'});
+                        %- speed_diff_stat.
+                        tmp = table(categorical(string(tmptmp.subj_char)),double(tmptmp.(MEASURE_NAMES{meas_i})),...
+                            double(string(tmptmp.(SPEED_MEAS_ANL))),'VariableNames',{'subj_char',MEASURE_NAMES{meas_i},'cond_id'});
+                        %## LINEAR MODEL
+                        % t1.log_avg_power= log(t1.(MEASURE_NAMES{meas_i})+5);
+                        mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',MEASURE_NAMES{meas_i});
+                        % mod_lme = sprintf('%s ~ 1 + cond_id^2 + cond_id + (1|subj_char)',MEASURE_NAMES{meas_i});
+                        % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
+                        stats_out = fitlme(tmp,mod_lme);
+                        anova_out = anova(stats_out);
+                        %## GATHER STATS
+                        %- test normality
+                        [norm_h,norm_p] = lillietest(stats_out.residuals);
+                        %- get effects
+                        [~,bnames,~] = stats_out.fixedEffects();
+                        [~,brnames,bretable] = stats_out.randomEffects();
+                        %- intercept only model
+                        % altmod_lme = sprintf('%s ~ 1 + (1|subj_char)',measure_name);
+                        % altstats_out = fitlme(T_vals_plot,altmod_lme,'DummyVarCoding','effects');
+                        % R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+                        R2 = stats_out.Rsquared.Adjusted;
+                        %- intercept only model
+                        altmod_out = sprintf('%s ~ 1 + (1|subj_char)',MEASURE_NAMES{meas_i});
+                        altstats_out = fitlme(tmp,altmod_out);
+                        %- alternative f2?
+                        R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
+                        R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
+                        alt_f2 = (R22-R21)/(1-R22);
+                        %## LINEAR
+                        % %- coefficients & pvals
+                        stats_struct(cntsts).anova_speed_p = anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
+                        stats_struct(cntsts).anova_speed_df = anova_out.DF2(strcmp(anova_out.Term,'cond_id'));
+                        stats_struct(cntsts).anova_speed_f = anova_out.FStat(strcmp(anova_out.Term,'cond_id'));
+                        %-
+                        stats_struct(cntsts).lme_speed_p = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id')));
+                        stats_struct(cntsts).lme_inter_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
+                        %-
+                        stats_struct(cntsts).lme_speed_coeff = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id')));
+                        stats_struct(cntsts).lme_inter_coeff = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
+                        %## QUADRATIC
+                        % ap1 = anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
+                        % af1 = anova_out.DF2(strcmp(anova_out.Term,'cond_id'));
+                        % adf1 = anova_out.FStat(strcmp(anova_out.Term,'cond_id'));
+                        % ap2 = anova_out.pValue(strcmp(anova_out.Term,'cond_id^2'));
+                        % af2 = anova_out.DF2(strcmp(anova_out.Term,'cond_id^2'));
+                        % adf2 = anova_out.FStat(strcmp(anova_out.Term,'cond_id^2'));
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_p2 = {[ap1,ap2]};
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_f2 = {[af1,af2]};
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_df2 = {[adf1,adf2]};
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_p2_wt = sprintf('%s, ',[ap1,ap2]);
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_f2_wt = sprintf('%s, ',[af1,af2]);
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_df2_wt = sprintf('%s, ',[adf1,adf2]);
+                        % p1 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id'));
+                        % p2 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id^2'));
+                        % STATS_TRACK_STRUCT(cntsts).lme_speed_p2 = {[p1,p2]};
+                        % STATS_TRACK_STRUCT(cntsts).lme_speed_p2_wt = sprintf('%s, ',[p1,p2]);
+                        % STATS_TRACK_STRUCT(cntsts).lme_inter_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
+                        % c1 = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id')));
+                        % c2 = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id^2')));
+                        % STATS_TRACK_STRUCT(cntsts).lme_speed_coeff2 = {[c1,c2]};
+                        % STATS_TRACK_STRUCT(cntsts).lme_speed_coeff2_wt = sprintf('%s, ',[c1,c2]);
+                        % STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
+                        %- store
+                        stats_struct(cntsts).group = groups(g_i);
+                        stats_struct(cntsts).design = designs(des_i);
+                        stats_struct(cntsts).cluster = clusters(cl_i);
+                        stats_struct(cntsts).measure_tag = {MEASURE_NAMES{meas_i}};
+                        stats_struct(cntsts).measure_vals = tmp.(MEASURE_NAMES{meas_i});
+                        stats_struct(cntsts).log_avg_power = log(tmp.(MEASURE_NAMES{meas_i})+5);
+                        %-
+                        stats_struct(cntsts).stat_test_mod = {mod_lme};
+                        stats_struct(cntsts).resp_terms = {MEASURE_NAMES{meas_i}};
+                        stats_struct(cntsts).pred_terms = bnames.Name';
+                        stats_struct(cntsts).pred_terms_wt = sprintf('%s, ',bnames.Name{:}); %
+                        stats_struct(cntsts).rnd_terms = brnames.Level';
+                        stats_struct(cntsts).rnd_terms_wt = sprintf('%s, ',brnames.Level{:}); %
+                        stats_struct(cntsts).lme_rnd_effects = {bretable};
+                        stats_struct(cntsts).norm_test_h = norm_h;
+                        stats_struct(cntsts).norm_test_p = norm_p;
+                        stats_struct(cntsts).R2 = R2;
+                        stats_struct(cntsts).effect_size = alt_f2;
+                        stats_struct(cntsts).effect_size_calc = 'cohensf2 = (R22-R21)/(1-R22)';
+                        
+                        cntsts = cntsts + 1;
+                        stats_struct(cntsts) = DEF_STATS_TRACK_STRUCT;
+                    end
+                otherwise
+                    error('Design %i not defined...\n',des_i);
             end
-            psd_feature_stats = vertcat(psd_feature_stats,temp_stats);
+            
         end
     end
 end
-psd_feature_stats.study = categorical(psd_feature_stats.study);
-psd_feature_stats.cluster = categorical(psd_feature_stats.cluster);
-writetable(psd_feature_stats,[save_dir filesep 'psd_band_power_stats.xlsx']);
-save([save_dir filesep 'psd_band_power_stats.mat'],'psd_feature_stats');
+%%
+tmp_table = struct2table(stats_struct);
+tmp_table.log_avg_power = [];
+tmp_table.pred_terms = [];
+tmp_table.rnd_terms = [];
+tmp_table.lme_rnd_effects = [];
+writetable(tmp_table,[save_dir filesep 'STATS_TRACK_STRUCT_TABLE_speedlin.xlsx']);
+% writetable(tmp_table,[save_dir filesep 'STATS_TRACK_STRUCT_TABLE_speedquad.xlsx']);
+stats_struct = struct2table(stats_struct);
+stats_struct(isundefined(stats_struct.cluster),:) = [];
+save([save_dir filesep 'STATS_TRACK_STRUCT_speedlin.mat'],'stats_struct');
+% save([save_dir filesep 'STATS_TRACK_STRUCT_speedquad.mat'],'STATS_TRACK_STRUCT');
 % %% VISUALIZE 
 % CLUSTER_I = 3;
 % DESIGN_I = 1;
@@ -901,16 +1696,730 @@ save([save_dir filesep 'psd_band_power_stats.mat'],'psd_feature_stats');
 % groups = unique(FOOOF_TABLE.group_id);
 % inds = psd_feature_stats.study == num2str(des_i) & psd_feature_stats.cluster == num2str(cl_i) & psd_feature_stats.group==groups(k);
 % T_stats_plot = psd_feature_stats(inds,:);
-
-
+%% CONDENSED ANOVA PLOTS FOR EEG POWER
+%## (STATS STRUCT) ====================================================== %%
+DEF_STATS_TRACK_STRUCT = struct('stat_test_mod',{{''}},...
+    'measure_tag',categorical({''}),...
+    'measure_char',{''},...
+    'design_tag',categorical({''}),...
+    'design_num',[],...
+    'cluster_num',[],...
+    'mod_tag',categorical({''}),...
+    'mod_resp_terms',{''},...
+    'rnd_terms',{''},...
+    'anova_preds_terms',{''},...
+    'anova_preds_p',{[]},...
+    'anova_preds_stat',{[]},...
+    'anova_preds_df',{[]},...
+    'mod_preds_terms',{{''}},...
+    'mod_preds_p',[],...
+    'mod_preds_stat',[],...
+    'mod_preds_coeff',[],...
+    'mod_r2',[],...
+    'multi_comp_terms',{''},...
+    'multi_comp_t1_t2',[],...
+    'multi_comp_p',[],...
+    'multi_comp_coeff',[],...
+    'multi_comp_lci_uci',[],...
+    'norm_test_p',[],...
+    'norm_test_h',[],...
+    'effect_size',[],...
+    'effect_size_calc',{''});
+stats_struct = DEF_STATS_TRACK_STRUCT;
+cnts = 1;
+%##
+designs = unique(FOOOF_TABLE.design_id);
+clusters = unique(FOOOF_TABLE.cluster_id);
+groups = unique(FOOOF_TABLE.group_id);
+g_chars_subp = {'YA','OHMA','OLMA'};
+%-
+AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],...
+        'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
+FIGURE_POSITION =[1,1,6.5,9];
+%-
+FONT_SIZE_VIO_REG = 8;
+FONT_SIZE_VIO = 6;
+IM_RESIZE = 0.85;
+AX_H  = 0.18;
+AX_W = 0.27;
+AX_HORIZ_SHIFT = 0.06;
+AX_VERT_SHIFT = 0.11;
+AX_INIT_HORIZ = 0.07;
+AX_INIT_VERT_VIO = 0.8;
+HZ_DIM = 3;
+YLIMS = [-0.5,3];
+AXES_FONT_SIZE_VIO = 10;
+GROUP_LAB_FONTSIZE = 10;
+GROUP_LAB_FONTWEIGHT = 'bold ';
+XLAB_FONTSIZE = 10;
+YLAB_FONTSIZE = 10;
+XTICK_FONTSIZE = 10;
+XLAB_FONTWEIGHT = 'bold';
+YLAB_FONTWEIGHT = 'bold';
+TITLE_FONTSIZE = 10;
+TITLE_FONTWEIGHT = 'bold';
+XLABEL_OFFSET = -.05;
+GROUP_LAB_YOFFSET = -0.275;
+MEASURES_PLOT = {'theta_avg_power','alpha_avg_power','beta_avg_power','alpha1_avg_power','alpha2_avg_power','beta1_avg_power','beta2_avg_power'};
+% measure_plot = 'aperiodic_exp';
+for k = 1:length(MEASURES_PLOT)
+    measure_plot = MEASURES_PLOT{k};
+    for i = 2 %1:length(designs)
+        des_i = double(string(designs(i)));
+        switch des_i
+            case 1
+                color_dark = COLORS_MAPS_TERRAIN;
+                color_light = COLORS_MAPS_TERRAIN;
+                xtick_label_g = {'flat','low','med','high'};
+                x_label = 'terrain';
+                cond_offsets = [-0.35,-0.1,0.15,0.40];
+            case 2
+                color_dark = COLOR_MAPS_SPEED; %color.speed;
+                color_light = COLOR_MAPS_SPEED+0.15; %color.speed_shade;
+                xtick_label_g = {'0.25','0.50','0.75','1.0'};
+                x_label = 'speed (m/s)';
+                cond_offsets = [-0.35,-0.1,0.15,0.40];
+        end
+        %## AXES LIMITS
+        fig = figure('color','white','renderer','Painters');
+        TITLE_XSHIFT = 0.4;
+        TITLE_YSHIFT = 0.975;
+        TITLE_BOX_SZ = [0.4,0.4];
+        set(fig,'Units','inches','Position',FIGURE_POSITION)
+        set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+        set(gca,AXES_DEFAULT_PROPS{:});
+        %##
+        horiz_shift = 0;
+        vert_shift = 0;
+        hz = 1;
+        %- ylim autoset
+        temp_table = FOOOF_TABLE(FOOOF_TABLE.design_id == num2str(des_i),:);
+        YLIMS = [prctile(temp_table.(measure_plot),1)-std(temp_table.(measure_plot))*1.5,prctile(temp_table.(measure_plot),99)+std(temp_table.(measure_plot))*3];
+        for j = 1:length(clusters)
+            %## STATS
+            cl_i = double(string(clusters(j)));
+            temp_table = FOOOF_TABLE(FOOOF_TABLE.cluster_id == num2str(cl_i) & FOOOF_TABLE.design_id == num2str(des_i),:);
+                
+            DEFAULT_STATS_STRUCT = struct('anova',{{}},...
+                          'anova_grp',{{}},...
+                          'pvals',{{}},...
+                          'pvals_pairs',{{}},...
+                          'pvals_grp',{{}},...
+                          'pvals_grp_pairs',{{}},...
+                          'regress_pval',{{}},...
+                          'regress_line',{{}},...
+                          'r2_coeff',{[]},...
+                          'regress_xvals',0,...
+                          'subject_char',[],... % this option when filled prints removal of nan() info
+                          'group_order',categorical({''}),...
+                          'do_include_intercept',false);
+            STATS_STRUCT = DEFAULT_STATS_STRUCT;
+            % cnt = 1;
+            for g_i = 1:length(unique(temp_table.group_id))
+                tmptmp_table = FOOOF_TABLE(FOOOF_TABLE.group_id == string(g_i) & FOOOF_TABLE.cluster_id == num2str(cl_i) & FOOOF_TABLE.design_id == num2str(des_i),:);
+                
+                switch des_i
+                    case 1
+                        tmptmp_table = table(categorical(string(tmptmp_table.subj_char)),double(tmptmp_table.(measure_plot)),...
+                            categorical(string(tmptmp_table.cond_id)),categorical(string(tmptmp_table.cond_char)),...
+                            categorical(string(tmptmp_table.group_id)),'VariableNames',{'subj_char',measure_plot,'cond_id','cond_char','group_id'});
+                    case 2
+                        tmptmp_table = table(categorical(string(tmptmp_table.subj_char)),double(tmptmp_table.(measure_plot)),...
+                            double(string(tmptmp_table.cond_char)),...
+                            categorical(string(tmptmp_table.group_id)),'VariableNames',{'subj_char',measure_plot,'cond_char','group_id'});
+                end
+                switch des_i
+                    case 1
+                        %## LINEAR MODEL
+                        % t1.log_avg_power= log(t1.(MEASURE_NAMES{meas_i})+5);
+                        mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',measure_plot);
+                        % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
+                        stats_out = fitlme(tmptmp_table,mod_lme);
+                        anova_out = anova(stats_out);
+                        %## GATHER STATS
+                        %- test normality
+                        [norm_h,norm_p] = lillietest(stats_out.residuals);
+                        %- get effects
+                        [~,bnames,~] = stats_out.fixedEffects();
+                        [~,brnames,bretable] = stats_out.randomEffects();
+                        %- intercept only model
+                        % altmod_lme = sprintf('%s ~ 1 + (1|subj_char)',measure_name);
+                        % altstats_out = fitlme(T_vals_plot,altmod_lme,'DummyVarCoding','effects');
+                        % R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+                        R2 = stats_out.Rsquared.Adjusted;
+                        %- intercept only model
+                        altmod_out = sprintf('%s ~ 1 + (1|subj_char)',measure_plot);
+                        altstats_out = fitlme(tmptmp_table,altmod_out);
+                        %- alternative f2?
+                        R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
+                        R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
+                        alt_f2 = (R22-R21)/(1-R22);
+                        %- populate struct
+                        stats_struct(cnts).stat_test_mod = mod_lme;
+                        stats_struct(cnts).measure_tag = categorical({measure_plot});
+                        stats_struct(cnts).design_tag = categorical(des_i);
+                        stats_struct(cnts).mod_tag = categorical(2);
+                        % stats_struct(cnts).resp_terms = MEASURES_PLOT(meas_i);
+                        stats_struct(cnts).mod_resp_terms = measure_plot;
+                        stats_struct(cnts).anova_preds_terms = t(:,1)';
+                        tmp = t(:,7)';
+                        tmp = tmp(~cellfun(@isempty,tmp));
+                        stats_struct(cnts).anova_preds_p = tmp;
+                        tmp = t(:,6)';
+                        tmp = tmp(~cellfun(@isempty,tmp));
+                        stats_struct(cnts).anova_preds_stat = tmp;
+                        tmp = t(:,3)';
+                        tmp = tmp(~cellfun(@isempty,tmp));
+                        stats_struct(cnts).anova_preds_df =tmp;
+                        stats_struct(cnts).mod_preds_p = stats_out.Coefficients.pValue;
+                        stats_struct(cnts).mod_preds_terms = stats_out.Coefficients.Name';
+                        stats_struct(cnts).mod_preds_stat = stats_out.Coefficients.tStat;
+                        stats_struct(cnts).mod_preds_coeff = stats_out.Coefficients.Estimate;
+                        stats_struct(cnts).mod_r2 = stats_out.Rsquared.Adjusted;
+                        stats_struct(cnts).norm_test_p = norm_p;
+                        stats_struct(cnts).norm_test_h = norm_h;
+                        stats_struct(cnts).effect_size = alt_f2;
+                        stats_struct(cnts).effect_size_calc = '(R2_full-R2_null)/(1-R2_full)';
+                        cnts = cnts + 1;
+                        stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+                        %## PLOT =============================================================== %%
+                        %##
+                        aa = anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
+                        c2s = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id_2'));
+                        c3s = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id_3'));
+                        c4s = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id_4'));
+                        STATS_STRUCT.anova{g_i}=aa;
+                        STATS_STRUCT.pvals{g_i}=[1,c2s,c3s,c4s];
+                        STATS_STRUCT.pvals_pairs{g_i}={[1,1],[1,2],[1,3],[1,4]};
+                        
+                    case 2
+                        %## LINEAR MODEL
+                        % t1.log_avg_power= log(t1.(measure_plot)+5);
+                        % mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',measure_plot);
+                        mod_lme = sprintf('%s ~ 1 + cond_char + group_id + (1|subj_char)',measure_plot);
+                        % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
+                        stats_out = fitlme(tmptmp_table,mod_lme);
+                        anova_out = anova(stats_out);
+                        %## GATHER STATS
+                        %- test normality
+                        [norm_h,norm_p] = lillietest(stats_out.residuals);
+                        %- get effects
+                        [~,bnames,~] = stats_out.fixedEffects();
+                        [~,brnames,bretable] = stats_out.randomEffects();
+                        %- intercept only model
+                        % altmod_lme = sprintf('%s ~ 1 + (1|subj_char)',measure_name);
+                        % altstats_out = fitlme(T_vals_plot,altmod_lme,'DummyVarCoding','effects');
+                        % R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+                        R2 = stats_out.Rsquared.Adjusted;
+                        %- intercept only model
+                        altmod_out = sprintf('%s ~ 1 + (1|subj_char)',measure_plot);
+                        altstats_out = fitlme(tmptmp_table,altmod_out);
+                        %- alternative f2?
+                        R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
+                        R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
+                        alt_f2 = (R22-R21)/(1-R22);
+                        %- populate struct
+                        stats_struct(cnts).stat_test_mod = mod_lme;
+                        stats_struct(cnts).measure_tag = categorical({measure_plot});
+                        stats_struct(cnts).design_tag = categorical(des_i);
+                        stats_struct(cnts).mod_tag = categorical(2);
+                        % stats_struct(cnts).resp_terms = MEASURES_PLOT(meas_i);
+                        stats_struct(cnts).mod_resp_terms = measure_plot;
+                        stats_struct(cnts).anova_preds_terms = t(:,1)';
+                        tmp = t(:,7)';
+                        tmp = tmp(~cellfun(@isempty,tmp));
+                        stats_struct(cnts).anova_preds_p = tmp;
+                        tmp = t(:,6)';
+                        tmp = tmp(~cellfun(@isempty,tmp));
+                        stats_struct(cnts).anova_preds_stat = tmp;
+                        tmp = t(:,3)';
+                        tmp = tmp(~cellfun(@isempty,tmp));
+                        stats_struct(cnts).anova_preds_df =tmp;
+                        stats_struct(cnts).mod_preds_p = stats_out.Coefficients.pValue;
+                        stats_struct(cnts).mod_preds_terms = stats_out.Coefficients.Name';
+                        stats_struct(cnts).mod_preds_stat = stats_out.Coefficients.tStat;
+                        stats_struct(cnts).mod_preds_coeff = stats_out.Coefficients.Estimate;
+                        stats_struct(cnts).mod_r2 = stats_out.Rsquared.Adjusted;
+                        stats_struct(cnts).norm_test_p = norm_p;
+                        stats_struct(cnts).norm_test_h = norm_h;
+                        stats_struct(cnts).effect_size = alt_f2;
+                        stats_struct(cnts).effect_size_calc = '(R2_full-R2_null)/(1-R2_full)';
+                        cnts = cnts + 1;
+                        stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+                        %## PLOT =============================================================== %%
+                        %##
+                        aa =  anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
+                        c2s = [];
+                        c3s = [];
+                        c4s = [];
+                        rs = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_char')));
+                        rls = [double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)'))),...
+                            double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_char')))]; 
+                        r2 = R2;
+                        STATS_STRUCT.anova{g_i}=anova_out.pValue(strcmp(anova_out.Term,'cond_char'));
+                        STATS_STRUCT.regress_pval{g_i}=rs;
+                        STATS_STRUCT.regress_line{g_i}=rls;
+                        STATS_STRUCT.regress_xvals=(0:5)*0.25;
+                        STATS_STRUCT.display_stats_char = true;
+                        if aa > 0.01 && aa < 0.05
+                            str = sprintf('* m=%0.2g\nb=%0.2g\nR^2=%0.2g',rls(2),rls(1),r2);
+                        elseif aa <= 0.01 && aa > 0.001
+                            str = sprintf('** m=%0.2g\nb=%0.2g\nR^2=%0.2g',rls(2),rls(1),r2);
+                        elseif aa <= 0.001
+                            str = sprintf('** m=%0.2g\nb=%0.2g\nR^2=%0.2g',rls(2),rls(1),r2);
+                        else
+                            str = '';
+                        end
+                        STATS_STRUCT.stats_char{g_i}=str;
+                end
+            end
+            %##
+            % cl_i = double(string(clusters(j)));
+            % temp_table = FOOOF_TABLE(FOOOF_TABLE.cluster_id == num2str(cl_i) & FOOOF_TABLE.design_id == num2str(des_i),:);
+            %- ylim autoset
+            % % YLIMS = [min(temp_table.(measure_plot))-0.5,max(temp_table.(measure_plot))+1];
+            %## PLOT
+            ax = axes();
+            VIOLIN_PARAMS = {'width',0.1,...
+                'ShowWhiskers',false,'ShowNotches',false,'ShowBox',true,...
+                'ShowMedian',true,'Bandwidth',0.15,'QuartileStyle','shadow',...
+                'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
+                'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
+            PLOT_STRUCT = struct('color_map',color_dark,...
+                'cond_labels',unique(temp_table.cond_char),'group_labels',categorical(g_chars_subp),...
+                'cond_offsets',cond_offsets,...
+                'group_offsets',[0.125,0.475,0.812],...
+                'y_label',measure_plot,...
+                'title',sprintf('Cluster %i',cl_i),'font_size',FONT_SIZE_VIO,'ylim',YLIMS,...
+                'font_name','Arial','x_label',x_label,'do_combine_groups',false,...
+                'regresslab_txt_size',FONT_SIZE_VIO_REG);
+            ax = group_violin(temp_table,measure_plot,'cond_char','group_id',...
+                ax,...
+                'VIOLIN_PARAMS',VIOLIN_PARAMS,...
+                'PLOT_STRUCT',PLOT_STRUCT,...
+                'STATS_STRUCT',STATS_STRUCT);
+            set(ax,'OuterPosition',[0,0,1,1]);
+            set(ax,'Position',[AX_INIT_HORIZ+horiz_shift,AX_INIT_VERT_VIO+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE]);  %[left bottom width height]
+            ax.Children(1).FontSize = GROUP_LAB_FONTSIZE;
+            ax.Children(2).FontSize = GROUP_LAB_FONTSIZE;
+            ax.Children(3).FontSize = GROUP_LAB_FONTSIZE;
+            ax.Children(1).Position(2) = GROUP_LAB_YOFFSET;
+            ax.Children(2).Position(2) = GROUP_LAB_YOFFSET;
+            ax.Children(3).Position(2) = GROUP_LAB_YOFFSET;
+            yt = yticks(ax);
+            xlh = xlabel(ax,PLOT_STRUCT.x_label,'Units','normalized','FontSize',XLAB_FONTSIZE,'FontWeight',XLAB_FONTWEIGHT);
+            pos1=get(xlh,'Position');
+            pos1(1,2)=pos1(1,2)+XLABEL_OFFSET;
+            set(xlh,'Position',pos1);
+            if hz ~= 1
+                ylabel('');
+            end
+            %##
+            if hz < HZ_DIM
+                horiz_shift = horiz_shift + AX_W*IM_RESIZE + AX_HORIZ_SHIFT*IM_RESIZE;
+            else
+                vert_shift = vert_shift - (AX_H*IM_RESIZE + AX_VERT_SHIFT*IM_RESIZE);
+                horiz_shift = 0;
+                hz = 0;
+            end
+            hz = hz + 1;
+        end
+        drawnow;
+        %## SAVE
+        hold off;
+        savefig(fig,[save_dir filesep sprintf('%s_violin_group_plot_nongroup_des%i.fig',measure_plot,des_i)])
+        exportgraphics(fig,[save_dir filesep sprintf('%s_violin_group_plot_nongroup_des%i.png',measure_plot,des_i)],'Resolution',300)
+        close(fig);
+    end
+end
+stats_struct_table = struct2table(stats_struct);
+%% RANOVAS FOR EEG POWER
+%{
+%## (STATS STRUCT) ====================================================== %%
+DEF_STATS_TRACK_STRUCT = struct('stat_test_mod',{{''}},...
+    'measure_tag',categorical({''}),...
+    'measure_char',{''},...
+    'design_tag',categorical({''}),...
+    'design_num',[],...
+    'cluster_num',[],...
+    'mod_tag',categorical({''}),...
+    'mod_resp_terms',{''},...
+    'rnd_terms',{''},...
+    'anova_preds_terms',{''},...
+    'anova_preds_p',{[]},...
+    'anova_preds_stat',{[]},...
+    'anova_preds_df',{[]},...
+    'mod_preds_terms',{{''}},...
+    'mod_preds_p',[],...
+    'mod_preds_stat',[],...
+    'mod_preds_coeff',[],...
+    'mod_r2',[],...
+    'multi_comp_terms',{''},...
+    'multi_comp_t1_t2',[],...
+    'multi_comp_p',[],...
+    'multi_comp_coeff',[],...
+    'multi_comp_lci_uci',[],...
+    'norm_test_p',[],...
+    'norm_test_h',[],...
+    'effect_size',[],...
+    'effect_size_calc',{''});
+stats_struct = DEF_STATS_TRACK_STRUCT;
+cnts = 1;
+%##
+designs = unique(FOOOF_TABLE.design_id);
+clusters = unique(FOOOF_TABLE.cluster_id);
+groups = unique(FOOOF_TABLE.group_id);
+g_chars_subp = {'YA','OHMA','OLMA'};
+%-
+AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],...
+        'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
+FIGURE_POSITION =[1,1,6.5,9];
+%-
+FONT_SIZE_VIO_REG = 10;
+FONT_SIZE_VIO = 6;
+IM_RESIZE = 0.85;
+AX_H  = 0.18;
+AX_W = 0.27;
+AX_HORIZ_SHIFT = 0.06;
+AX_VERT_SHIFT = 0.11;
+AX_INIT_HORIZ = 0.07;
+AX_INIT_VERT_VIO = 0.8;
+HZ_DIM = 3;
+YLIMS = [-0.5,3];
+AXES_FONT_SIZE_VIO = 10;
+GROUP_LAB_FONTSIZE = 10;
+GROUP_LAB_FONTWEIGHT = 'bold ';
+XLAB_FONTSIZE = 10;
+YLAB_FONTSIZE = 10;
+XTICK_FONTSIZE = 10;
+XLAB_FONTWEIGHT = 'bold';
+YLAB_FONTWEIGHT = 'bold';
+TITLE_FONTSIZE = 10;
+TITLE_FONTWEIGHT = 'bold';
+XLABEL_OFFSET = -.05;
+GROUP_LAB_YOFFSET = -0.275;
+MEASURES_PLOT = {'theta_avg_power','alpha_avg_power','beta_avg_power','alpha1_avg_power','alpha2_avg_power','beta1_avg_power','beta2_avg_power'};
+% measure_plot = 'aperiodic_exp';
+%%
+for k = 1:length(MEASURES_PLOT)
+    measure_plot = MEASURES_PLOT{k};
+    for i = 2 %1:length(designs)
+        %%
+        des_i = double(string(designs(i)));
+        switch des_i
+            case 1
+                color_dark = COLORS_MAPS_TERRAIN;
+                color_light = COLORS_MAPS_TERRAIN;
+                xtick_label_g = {'flat','low','med','high'};
+                x_label = 'terrain';
+                cond_offsets = [-0.35,-0.1,0.15,0.40];
+            case 2
+                color_dark = COLOR_MAPS_SPEED; %color.speed;
+                color_light = COLOR_MAPS_SPEED+0.15; %color.speed_shade;
+                xtick_label_g = {'0.25','0.50','0.75','1.0'};
+                x_label = 'speed (m/s)';
+                cond_offsets = [-0.35,-0.1,0.15,0.40];
+        end
+        %## AXES LIMITS
+        fig = figure('color','white','renderer','Painters');
+        TITLE_XSHIFT = 0.4;
+        TITLE_YSHIFT = 0.975;
+        TITLE_BOX_SZ = [0.4,0.4];
+        set(fig,'Units','inches','Position',FIGURE_POSITION)
+        set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+        set(gca,AXES_DEFAULT_PROPS{:});
+        %##
+        horiz_shift = 0;
+        vert_shift = 0;
+        hz = 1;
+        %- ylim autoset
+        temp_table = FOOOF_TABLE(FOOOF_TABLE.design_id == num2str(des_i),:);
+        YLIMS = [prctile(temp_table.(measure_plot),1)-std(temp_table.(measure_plot))*1.5,prctile(temp_table.(measure_plot),99)+std(temp_table.(measure_plot))*3];
+        for j = 1:length(clusters)
+            %## STATS
+            cl_i = double(string(clusters(j)));
+            temp_table = FOOOF_TABLE(FOOOF_TABLE.cluster_id == num2str(cl_i) & FOOOF_TABLE.design_id == num2str(des_i),:);
+            DEFAULT_STATS_STRUCT = struct('anova',{{}},...
+                          'anova_grp',{{}},...
+                          'pvals',{{}},...
+                          'pvals_pairs',{{}},...
+                          'pvals_grp',{{}},...
+                          'pvals_grp_pairs',{{}},...
+                          'regress_pval',{{}},...
+                          'regress_line',{{}},...
+                          'r2_coeff',{[]},...
+                          'regress_xvals',0,...
+                          'subject_char',[],... % this option when filled prints removal of nan() info
+                          'group_order',categorical({''}),...
+                          'do_include_intercept',false);
+            STATS_STRUCT = DEFAULT_STATS_STRUCT;
+            cnt = 1;
+            switch des_i
+                case 1
+                    tmptmp_table = table(categorical(string(temp_table.subj_char)),double(temp_table.(measure_plot)),...
+                        categorical(string(temp_table.cond_id)),categorical(string(temp_table.cond_char)),...
+                        categorical(string(temp_table.group_id)),'VariableNames',{'subj_char',measure_plot,'cond_id','cond_char','group_id'});
+                case 2
+                    tmptmp_table = table(categorical(string(temp_table.subj_char)),double(temp_table.(measure_plot)),...
+                        double(string(temp_table.cond_char)),...
+                        categorical(string(temp_table.group_id)),'VariableNames',{'subj_char',measure_plot,'cond_char','group_id'});
+            end
+            %## GROUPWISE
+            switch des_i
+                case 1
+                    % mod_lme = sprintf('%s~1+group_id+cond_id',measure_plot);
+                    mod_lme = sprintf('%s ~ 1 + cond_id + group_id + (1|subj_char)',measure_plot);
+                    stats_out = fitlme(tmptmp_table,mod_lme);
+                    pred_terms = stats_out.CoefficientNames;
+                    % anova_out = anova(stats_out);
+                    [p,t,anova_out,terms] = anovan(tmptmp_table.(measure_plot),{tmptmp_table.cond_id, tmptmp_table.group_id},...
+                        'sstype',3,'varnames',{'trial_char','group_id'},'model','linear','Display','off');
+                    [comparisons,means,~,gnames] = multcompare(anova_out,'Dimension',[2],...
+                        'display','off','Alpha',0.05); % comparisons columns: [pred1,pred2,lowerCI,estimate,upperCI,p-val]
+                    disp(stats_out)
+                    % %## RANOVA
+                    % tt_out = unstack(tmp_table,meas_names{meas_i},'trial_char');
+                    % % mod_out = sprintf('x0_25,x0_5,x0_75,x1~group_id+1');
+                    % mod_out = sprintf('x0_25,x0_5,x0_75,x1_0~group_id+1');
+                    % tmptmp = table([1,2,3,4]','VariableNames',{'speed'});
+                    % %-
+                    % rm_out = fitrm(tt_out,mod_out,'WithinDesign',tmptmp);
+                    % [ran_out,A,C,D] = ranova(rm_out);
+                    % [tbl] = rm_out.multcompare('group_id');
+                    % %##
+                    %- test normality
+                    [norm_h,norm_p] = lillietest(stats_out.Residuals.Raw);
+                    %- intercept only model
+                    altmod_out = sprintf('%s ~ 1',measure_plot);
+                    altstats_out = fitlm(tmptmp_table,altmod_out);
+                    %- alternative f2?
+                    R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
+                    R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
+                    alt_f2 = (R22-R21)/(1-R22);
+                    %##
+                    %- populate struct
+                    stats_struct(cnts).stat_test_mod = mod_lme;
+                    stats_struct(cnts).measure_tag = categorical({measure_plot});
+                    stats_struct(cnts).design_tag = categorical(des_i);
+                    stats_struct(cnts).mod_tag = categorical(2);
+                    % stats_struct(cnts).resp_terms = MEASURES_PLOT(meas_i);
+                    stats_struct(cnts).mod_resp_terms = measure_plot;
+                    stats_struct(cnts).anova_preds_terms = t(:,1)';
+                    tmp = t(:,7)';
+                    tmp = tmp(~cellfun(@isempty,tmp));
+                    stats_struct(cnts).anova_preds_p = tmp;
+                    tmp = t(:,6)';
+                    tmp = tmp(~cellfun(@isempty,tmp));
+                    stats_struct(cnts).anova_preds_stat = tmp;
+                    tmp = t(:,3)';
+                    tmp = tmp(~cellfun(@isempty,tmp));
+                    stats_struct(cnts).anova_preds_df =tmp;
+                    stats_struct(cnts).mod_preds_p = stats_out.Coefficients.pValue;
+                    stats_struct(cnts).mod_preds_terms = stats_out.Coefficients.Name';
+                    stats_struct(cnts).mod_preds_stat = stats_out.Coefficients.tStat;
+                    stats_struct(cnts).mod_preds_coeff = stats_out.Coefficients.Estimate;
+                    stats_struct(cnts).multi_comp_terms = gnames';
+                    stats_struct(cnts).multi_comp_t1_t2 = comparisons(:,1:2);
+                    [h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(comparisons(:,6));
+                    stats_struct(cnts).multi_comp_p = adj_p;
+                    stats_struct(cnts).multi_comp_coeff = comparisons(:,4);
+                    stats_struct(cnts).multi_comp_lci_uci = [comparisons(:,3),comparisons(:,5)];
+                    stats_struct(cnts).mod_r2 = stats_out.Rsquared.Adjusted;
+                    stats_struct(cnts).norm_test_p = norm_p;
+                    stats_struct(cnts).norm_test_h = norm_h;
+                    stats_struct(cnts).effect_size = alt_f2;
+                    stats_struct(cnts).effect_size_calc = '(R2_full-R2_null)/(1-R2_full)';
+                    cnts = cnts + 1;
+                    stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+                    %## PLOT =============================================================== %%
+                    multi_p = adj_p;
+                    aa_p = t(:,7)';
+                    mod_coeff = stats_out.Coefficients.Estimate;
+                    anova_p = aa_p{2};
+                    anova_grp_p = aa_p{3};
+                    terr_p = [1,stats_out.Coefficients.pValue(2:4)']';
+                    grp_p = [0,stats_out.Coefficients.pValue(3:4)']';
+                    speed_r2 = stats_out.Rsquared.Adjusted;
+                    speed_xvals = (0:5)*0.25;
+                    STATS_STRUCT = struct('anova',{{anova_p,anova_p,anova_p}},...
+                            'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
+                            'pvals',{{(terr_p),(terr_p),(terr_p)}},...
+                            'pvals_pairs',{{{[1,1],[1,2],[1,3],[1,4]},...
+                                {[1,1],[1,2],[1,3],[1,4]},...
+                                {[1,1],[1,2],[1,3],[1,4]}}},...
+                            'pvals_grp',{num2cell(adj_p)},...
+                            'pvals_grp_pairs',{num2cell(comparisons(:,1:2),2)},...
+                            'regress_pval',{{}},...
+                            'regress_line',{{}},...
+                            'r2_coeff',{[]},...
+                            'regress_xvals',speed_xvals,...
+                            'subject_char',[],... % this option when filled prints removal of nan() info
+                            'group_order',categorical({''}),...
+                            'do_include_intercept',false,...
+                            'bracket_yshift_perc',1,...
+                            'bracket_y_perc',1,...
+                            'bracket_rawshifty_upper',0.2,...
+                            'bracket_rawshifty_lower',0,...
+                            'grp_sig_offset_x',0,...
+                            'grp_sig_offset_y',0.1); 
+                case 2
+                    %## RANOVA
+                    tt_out = unstack(tmptmp_table,measure_plot,'cond_char');
+                    mod_out = sprintf('x0_25,x0_5,x0_75,x1~group_id+1');
+                    tmptmp = table([1,2,3,4]','VariableNames',{'speed'});
+                    %- run test
+                    rm_out = fitrm(tt_out,mod_out,'WithinDesign',tmptmp);
+                    [ran_out,A,C,D] = ranova(rm_out);
+                    %- test coeffs
+                    disp(cat(1,A{:})*table2array(rm_out.Coefficients)*C)
+                    [ran_mult] = rm_out.multcompare('group_id');
+                    %- test normality
+                    % [norm_h,norm_p] = lillietest(stats_out.Residuals.Raw);
+                    sphr = rm_out.mauchly(C);
+                    sphr_corr = rm_out.epsilon(C);
+                    %## RANOVA
+                    %- populate struct
+                    stats_struct(cnts).stat_test_mod = rm_out.BetweenModel;
+                    stats_struct(cnts).measure_tag = categorical({measure_plot});
+                    stats_struct(cnts).measure_char = measure_plot;
+                    stats_struct(cnts).design_tag = categorical(des_i);
+                    stats_struct(cnts).design_num = des_i;
+                    stats_struct(cnts).cluster_num = cl_i;
+                    stats_struct(cnts).mod_tag = categorical({'ranova_2'});
+                    stats_struct(cnts).mod_resp_terms = rm_out.ResponseNames;
+                    %- anova
+                    stats_struct(cnts).anova_preds_terms = ran_out.Properties.RowNames';
+                    stats_struct(cnts).anova_preds_df = ran_out.DF';
+                    %- liberal
+                    % tmp = min([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+                    % stats_struct(cnts).anova_preds_p = tmp(1:2)';
+                    %- conservative
+                    tmp = max([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+                    stats_struct(cnts).anova_preds_p = tmp(1:2)';
+                    %-
+                    stats_struct(cnts).anova_preds_stat = ran_out.F;
+                    %- model
+                    stats_struct(cnts).mod_preds_coeff = rm_out.Coefficients; % remove from table before xlsx
+                    stats_struct(cnts).mod_preds_terms = rm_out.BetweenFactorNames';
+                    stats_struct(cnts).multi_comp_terms = ran_mult.Properties.VariableNames(1:2);
+                    stats_struct(cnts).multi_comp_p = ran_mult.pValue;
+                    stats_struct(cnts).multi_comp_t1_t2 = num2cell(ran_mult{:,1:2},2)';
+                    stats_struct(cnts).multi_comp_lci_uci = [ran_mult.Lower,ran_mult.Upper];
+                    stats_struct(cnts).norm_test_p = norm_p;
+                    stats_struct(cnts).norm_test_h = norm_h;
+                    cnts = cnts + 1;
+                    stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+                    %## PLOT =============================================================== %%
+                    %## RANOVA VISUALIZE
+                    % tmp = max([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+                    tmp = min([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+                    comparisons = [1,2;1,3;2,3];
+                    [h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(ran_mult.pValue);
+                    adj_p = [adj_p(1),adj_p(2),adj_p(4)];
+                    anova_p = 0;
+                    % anova_grp_p = ran_out.pValue(2);
+                    anova_grp_p = tmp(2);
+                    % ran_means_1 = [rm_out.Coefficients{1,:}].*[0.25,0.5,0.75,1];
+                    % ran_means_2 = [rm_out.Coefficients{2,:}].*[0.25,0.5,0.75,1]+ran_means_1;
+                    % ran_means_3 = [rm_out.Coefficients{3,:}].*[0.25,0.5,0.75,1]+ran_means_1;
+                    ran_means_1 = [rm_out.Coefficients{1,:}];
+                    ran_means_2 = [rm_out.Coefficients{2,:}]+ran_means_1;
+                    ran_means_3 = [rm_out.Coefficients{3,:}]+ran_means_1;
+                    if anova_grp_p > 0.01 && anova_grp_p < 0.05
+                        str = {sprintf('* pVal=%0.3g\nMS_{error}=%0.2g',tmp(2),ran_out.MeanSq(3)),'',''};
+                    elseif anova_grp_p <= 0.01 && anova_grp_p > 0.001
+                        str = {sprintf('** pVal=%0.3g\nMS_{error}=%0.2g',tmp(2),ran_out.MeanSq(3)),'',''};
+                    elseif anova_grp_p <= 0.001
+                        str = {sprintf('*** pVal=%0.3g\nMS_{error}=%0.2g',tmp(2),ran_out.MeanSq(3)),'',''};
+                    else
+                        str = {'','',''};
+                    end
+                    STATS_STRUCT = struct('anova',{{anova_p,anova_p,anova_p}},...
+                            'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
+                            'pvals',{{}},...
+                            'pvals_pairs',{{}},...
+                            'pvals_grp',{num2cell(adj_p)},...
+                            'pvals_grp_pairs',{num2cell(comparisons,2)},...
+                            'regress_pval',{{0,0,0}},...
+                            'regress_line',{{ran_means_2,...
+                                ran_means_3,...
+                                ran_means_1}},...
+                            'line_type',{'means'},...
+                            'stats_char',{str},...
+                            'display_stats_char',true,...
+                            'bracket_yshift_perc',0.5,...
+                            'bracket_y_perc',0.5,...
+                            'bracket_rawshifty_upper',0,...
+                            'bracket_rawshifty_lower',0,...
+                            'grp_sig_offset_x',0,...
+                            'grp_sig_offset_y',0);
+            end
+            %##
+            % cl_i = double(string(clusters(j)));
+            % temp_table = FOOOF_TABLE(FOOOF_TABLE.cluster_id == num2str(cl_i) & FOOOF_TABLE.design_id == num2str(des_i),:);
+            %- ylim autoset
+            % % YLIMS = [min(temp_table.(measure_plot))-0.5,max(temp_table.(measure_plot))+1];
+            %## PLOT
+            ax = axes();
+            VIOLIN_PARAMS = {'width',0.1,...
+                'ShowWhiskers',false,'ShowNotches',false,'ShowBox',true,...
+                'ShowMedian',true,'Bandwidth',0.15,'QuartileStyle','shadow',...
+                'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
+                'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
+            PLOT_STRUCT = struct('color_map',color_dark,...
+                'cond_labels',unique(tmptmp_table.cond_char),'group_labels',categorical(g_chars_subp),...
+                'cond_offsets',cond_offsets,...
+                'group_offsets',[0.125,0.475,0.812],...
+                'y_label',measure_plot,...
+                'title',sprintf('Cluster %i',cl_i),'font_size',FONT_SIZE_VIO,'ylim',YLIMS,...
+                'font_name','Arial','x_label',x_label,'do_combine_groups',false,...
+                'regresslab_txt_size',FONT_SIZE_VIO_REG);
+            ax = group_violin(tmptmp_table,measure_plot,'cond_char','group_id',...
+                ax,...
+                'VIOLIN_PARAMS',VIOLIN_PARAMS,...
+                'PLOT_STRUCT',PLOT_STRUCT,...
+                'STATS_STRUCT',STATS_STRUCT);
+            set(ax,'OuterPosition',[0,0,1,1]);
+            set(ax,'Position',[AX_INIT_HORIZ+horiz_shift,AX_INIT_VERT_VIO+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE]);  %[left bottom width height]
+            ax.Children(1).FontSize = GROUP_LAB_FONTSIZE;
+            ax.Children(2).FontSize = GROUP_LAB_FONTSIZE;
+            ax.Children(3).FontSize = GROUP_LAB_FONTSIZE;
+            ax.Children(1).Position(2) = GROUP_LAB_YOFFSET;
+            ax.Children(2).Position(2) = GROUP_LAB_YOFFSET;
+            ax.Children(3).Position(2) = GROUP_LAB_YOFFSET;
+            yt = yticks(ax);
+            xlh = xlabel(ax,PLOT_STRUCT.x_label,'Units','normalized','FontSize',XLAB_FONTSIZE,'FontWeight',XLAB_FONTWEIGHT);
+            pos1=get(xlh,'Position');
+            pos1(1,2)=pos1(1,2)+XLABEL_OFFSET;
+            set(xlh,'Position',pos1);
+            if hz ~= 1
+                ylabel('');
+            end
+            %##
+            if hz < HZ_DIM
+                horiz_shift = horiz_shift + AX_W*IM_RESIZE + AX_HORIZ_SHIFT*IM_RESIZE;
+            else
+                vert_shift = vert_shift - (AX_H*IM_RESIZE + AX_VERT_SHIFT*IM_RESIZE);
+                horiz_shift = 0;
+                hz = 0;
+            end
+            hz = hz + 1;
+        end
+        drawnow;
+        %## SAVE
+        hold off;
+        savefig(fig,[save_dir filesep sprintf('%s_violin_group_plot_ranova_des%i.fig',measure_plot,des_i)])
+        exportgraphics(fig,[save_dir filesep sprintf('%s_violin_group_plot_ranova_des%i.png',measure_plot,des_i)],'Resolution',300)
+        close(fig);
+    end
+end
+stats_struct_table = struct2table(stats_struct);
+%}
 %% Perform time series stats on the flattened curve
 iter = 200; % in eeglab, the fdr stats will automatically *20
 try
     STUDY.etc = rmfield(STUDY.etc,'statistics');
 end
-% STUDY = pop_statparams(STUDY,'groupstats','on','condstats','on','statistics','perm',...
-%     'singletrials','off','mode','eeglab','effect','main','alpha',NaN,'mcorrect','fdr','naccu',iter);% If not using mcorrect, use none, Not sure why, if using fdr correction, none of these are significant
-% 
 STUDY = pop_statparams(STUDY, 'groupstats','off','condstats', 'on',...
             'method','perm',...
             'singletrials','off','mode','fieldtrip','fieldtripalpha',NaN,...
@@ -1059,266 +2568,56 @@ for i = 1:length(designs)
     end
 end
 save([save_dir filesep 'org_pcond.mat'],'pcond_org');
-%{
-%% (LOAD EXISTING TALBES && FORMAT STUDY)
-tmp = load([save_dir filesep 'psd_feature_table.mat']);
-FOOOF_TABLE = tmp.FOOOF_TABLE;
-tmp = load([save_dir filesep 'psd_band_power_stats.mat']);
-psd_feature_stats = tmp.psd_feature_stats;
-tmp = load([save_dir filesep 'fooof_pcond.mat']);
-pcond = tmp.pcond;
-tmp = load([save_dir filesep 'org_pcond.mat']);
-pcond_org = tmp.pcond_org;
-% tmp = load([save_dir filesep 'fooof_results_summary.mat']);
-% fooof_group_results_org = tmp.fooof_group_results_org;
-tmp = load([save_dir filesep 'fooof_diff_store.mat']);
-fooof_diff_store = tmp.fooof_diff_store;
-tmp = load([save_dir filesep 'fooof_apfit_store.mat']);
-fooof_apfit_store = tmp.fooof_apfit_store;
-tmp = load([save_dir filesep 'spec_data_original.mat']);
-spec_data_original = tmp.spec_data_original;
-tmp = load([save_dir filesep 'fooof_results.mat']);
-fooof_results = tmp.fooof_results;
-fooof_freq = fooof_results{1}{1,1}{1}.freqs;
-%## TOPO PLOTS
-% tmp_study = STUDY;
-% RE_CALC = true;
-% if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
-% end
-% if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
+%% Sanity check - time series plots from aperiodic subtraction
+% TERRAIN_DES_ID = 1;
+% SPEED_VALS = {'0.25','0.5','0.75','1.0';
+%               '0p25','0p5','0p75','1p0'};
+% TERRAIN_VALS = {'flat','low','med','high'};
+% COLORS_MAPS_TERRAIN = linspecer(4);
+% custom_yellow = [254,223,0]/255;
+% COLORS_MAPS_TERRAIN = [COLORS_MAPS_TERRAIN(3,:);custom_yellow;COLORS_MAPS_TERRAIN(4,:);COLORS_MAPS_TERRAIN(2,:)];
+% COLOR_MAPS_SPEED = linspecer(4*3);
+% COLOR_MAPS_SPEED = [COLOR_MAPS_SPEED(1,:);COLOR_MAPS_SPEED(2,:);COLOR_MAPS_SPEED(3,:);COLOR_MAPS_SPEED(4,:)];
+% %##
+% %-
 % designs = unique(FOOOF_TABLE.design_id);
 % clusters = unique(FOOOF_TABLE.cluster_id);
+% groups = unique(FOOOF_TABLE.group_id);
+% %-
 % for i = 1:length(designs)
-%     des_i = string(designs(i));
-%     for j = 1:length(clusters) % For each cluster requested
+%     des_i = double(string(designs(i)));
+%     for j = 1:length(clusters)
 %         cl_i = double(string(clusters(j)));
-%         if isempty(tmp_study.cluster(cl_i).topo) || RE_CALC
-%             inds = find(FOOOF_TABLE.design_id == des_i & FOOOF_TABLE.cluster_id == string(cl_i));
-%             sets_i = unique([FOOOF_TABLE.subj_cl_ind(inds)]);
-%             tmp_study.cluster(cl_i).sets = tmp_study.cluster(cl_i).sets(sets_i);
-%             tmp_study.cluster(cl_i).comps = tmp_study.cluster(cl_i).comps(sets_i);
-%             tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cl_i);% Using this custom modified code to allow taking average within participant for each cluster
-%             STUDY.cluster(cl_i).topox = tmp_study.cluster(cl_i).topox;
-%             STUDY.cluster(cl_i).topoy = tmp_study.cluster(cl_i).topoy;
-%             STUDY.cluster(cl_i).topoall = tmp_study.cluster(cl_i).topoall;
-%             STUDY.cluster(cl_i).topo = tmp_study.cluster(cl_i).topo;
-%             STUDY.cluster(cl_i).topopol = tmp_study.cluster(cl_i).topopol;
+%         data_min = min([fooof_diff_store{des_i}{cl_i}{:}],[],'all');
+%         data_max = max([fooof_diff_store{des_i}{cl_i}{:}],[],'all');
+%         cnt = 1;
+%         figure('color','white');
+%         for k = 1:size(fooof_diff_store{des_i}{cl_i},1)
+%             for l = 1:size(fooof_diff_store{des_i}{cl_i},2)
+%                 hold on;
+%                 subplot(size(fooof_diff_store{des_i}{cl_i},1),size(fooof_diff_store{des_i}{cl_i},2),cnt)
+%                 data = fooof_diff_store{des_i}{cl_i}{k,l};
+%                 switch des_i
+%                     case 1
+%                         color_dark = COLORS_MAPS_TERRAIN;
+%                         color_light = COLORS_MAPS_TERRAIN;
+%                         GROUP_CMAP_OFFSET = [0,0.1,0.1];
+%                         xtick_label_g = {'flat','low','med','high'};
+%                     case 2
+%                         color_dark = COLOR_MAPS_SPEED;
+%                         color_light = COLOR_MAPS_SPEED+0.15;
+%                         GROUP_CMAP_OFFSET = [0.15,0,0];
+%                         xtick_label_g = c_chars; %{'0.25','0.50','0.75','1.0'};
+%                 end
+%                 plot(fooof_freq,data,'color',color_dark(k,:));
+%                 ylabel('log10(Power)')
+%                 ylim([data_min data_max]);
+%                 xlabel('Frequency(Hz)');
+%                 % title(['Cluster ',num2str(cl_i)]);
+%                 cnt = cnt + 1;
+%             end
 %         end
+%         hold off;
+%         drawnow;
 %     end
 % end
-%## STATS
-iter = 200; % in eeglab, the fdr stats will automatically *20
-try
-    STUDY.etc = rmfield(STUDY.etc,'statistics');
-end
-% STUDY = pop_statparams(STUDY,'groupstats','on','condstats','on','statistics','perm',...
-%     'singletrials','off','mode','eeglab','effect','main','alpha',NaN,'mcorrect','fdr','naccu',iter);% If not using mcorrect, use none, Not sure why, if using fdr correction, none of these are significant
-% 
-STUDY = pop_statparams(STUDY, 'groupstats','off','condstats', 'on',...
-            'method','perm',...
-            'singletrials','off','mode','fieldtrip','fieldtripalpha',NaN,...
-            'fieldtripmethod','montecarlo','fieldtripmcorrect','fdr','fieldtripnaccu',iter*20);
-
-stats = STUDY.etc.statistics;
-stats.paired{1} = 'on'; % Condition stats
-stats.paired{2} = 'off'; % Group stats
-%% Sanity check - time series plots from aperiodic subtraction
-%-
-designs = unique(FOOOF_TABLE.design_id);
-clusters = unique(FOOOF_TABLE.cluster_id);
-groups = unique(FOOOF_TABLE.group_id);
-%-
-for i = 1:length(designs)
-    des_i = double(string(designs(i)));
-    for j = 1:length(clusters)
-        cl_i = double(string(clusters(j)));
-        data_min = min([fooof_diff_store{des_i}{cl_i}{:}],[],'all');
-        data_max = max([fooof_diff_store{des_i}{cl_i}{:}],[],'all');
-        cnt = 1;
-        figure('color','white');
-        for k = 1:size(fooof_diff_store{des_i}{cl_i},1)
-            for l = 1:size(fooof_diff_store{des_i}{cl_i},2)
-                hold on;
-                subplot(size(fooof_diff_store{des_i}{cl_i},1),size(fooof_diff_store{des_i}{cl_i},2),cnt)
-                data = fooof_diff_store{des_i}{cl_i}{k,l};
-                if des_i == num2str(TERRAIN_DES_ID)
-                    if l == 1
-                        tmpc = color.terrain(i,:);
-                    else
-                        tmpc = color.terrain(i,:)*0.5;
-                    end
-                else
-                    if l == 2
-                        tmpc = color.speed(i,:);
-                    else
-                        tmpc = color.speed(i,:)*0.5;
-                    end
-                end
-                plot(fooof_freq,data,'color',tmpc);
-                ylabel('log10(Power)')
-                ylim([data_min data_max]);
-                xlabel('Frequency(Hz)');
-                % title(['Cluster ',num2str(cl_i)]);
-                cnt = cnt + 1;
-            end
-        end
-        hold off;
-        drawnow;
-    end
-end
-%% Sanity check: Plot distribution of aperiodic params (exp), central frequency, and goodness of fit
-%-
-designs = unique(FOOOF_TABLE.design_id);
-clusters = unique(FOOOF_TABLE.cluster_id);
-groups = unique(FOOOF_TABLE.group_id);
-%-
-for i = 1:length(designs)
-    des_i = double(string(designs(i)));
-    for j = 1:length(clusters)
-        cl_i = double(string(clusters(j)));
-        temp_table = FOOOF_TABLE(FOOOF_TABLE.cluster_id == num2str(cl_i) & FOOOF_TABLE.design_id == num2str(des_i),:);
-        figure();
-        hold on;
-        set(gcf,'color','white');
-        subplot(2,2,1)
-        boxchart(temp_table.cond_id,temp_table.aperiodic_exp);
-        ylabel('Aperodic exponent');
-        subplot(2,2,3)
-        boxchart(temp_table.cond_id,temp_table.r_squared);
-        ylabel('R squared');
-        hold off;
-        drawnow;
-    end
-end
-%% 
-COLORS_MAPS_TERRAIN = linspecer(4);
-custom_yellow = [254,223,0]/255;
-COLORS_MAPS_TERRAIN = [COLORS_MAPS_TERRAIN(3,:);custom_yellow;COLORS_MAPS_TERRAIN(4,:);COLORS_MAPS_TERRAIN(2,:)];
-COLOR_MAPS_SPEED = linspecer(4*3);
-COLOR_MAPS_SPEED = [COLOR_MAPS_SPEED(1,:);COLOR_MAPS_SPEED(2,:);COLOR_MAPS_SPEED(3,:);COLOR_MAPS_SPEED(4,:)];
-%-
-des_i = 1;
-cl_i = 3;
-cond_i = 1;
-group_i = 1;
-%-
-subj_ap_fits = fooof_apfit_store{des_i}{cl_i}{cond_i,group_i}';
-ap_fit_mean = mean(subj_ap_fits);
-subj_orig_psd = spec_data_original{des_i}{cl_i}{cond_i,group_i}';
-orig_psd_mean = mean(subj_orig_psd);
-fooof_psd = fooof_diff_store{des_i}{cl_i}{cond_i,group_i}';
-fooof_psd_mean = mean(fooof_psd);
-
-%## SUBJECTS AP FITS
-% AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
-fig = figure('color','white','renderer','Painters');
-set(fig,'Units','inches','Position',[0.5,0.5,4,4])
-set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
-hold on;
-% set(gca,AXES_DEFAULT_PROPS{:})
-hold on;
-% mean_plot = plot(fooof_freq,orig_psd_mean,'color',COLOR_MAPS_SPEED(1,:),'linestyle','-','linewidth',3,'displayname','orig. psd mean');
-% dash = plot(fooof_freq,ap_fit_mean,'color',COLOR_MAPS_SPEED(1,:),'linestyle','-.','linewidth',3,'displayname','ap. fit');
-subjs = plot(fooof_freq,subj_orig_psd,'color',[COLOR_MAPS_SPEED(1,:),0.75],'linestyle','-','linewidth',2,'displayname','orig. subj psd');
-subjs_ap = plot(fooof_freq,subj_ap_fits,'color',[COLOR_MAPS_SPEED(2,:),0.5],'linestyle','-.','linewidth',2,'displayname','orig. subj psd');
-hold off;
-ax = gca;
-xlim([4 40]);
-ylim([-35 -5]);
-% plot([0 40],[0 0],'--','color','black');
-xlabel('Frequency(Hz)');
-ylabel('10*log_{10}(Power)');
-set(ax,'FontName','Arial',...
-    'FontSize',14,...
-    'FontWeight','bold')
-%-
-exportgraphics(fig,[save_dir filesep sprintf('ap_fit_subjs_tmpplot.tiff')],'Resolution',600)
-
-%## MEAN AP FITS
-% fig = figure;
-AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
-fig = figure('color','white','renderer','Painters');
-set(fig,'Units','inches','Position',[0.5,0.5,4,4])
-set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
-hold on;
-% set(gca,AXES_DEFAULT_PROPS{:})
-hold on;
-mean_plot = plot(fooof_freq,orig_psd_mean,'color',COLOR_MAPS_SPEED(1,:),'linestyle','-','linewidth',3,'displayname','orig. psd mean');
-dash = plot(fooof_freq,ap_fit_mean,'color',COLOR_MAPS_SPEED(2,:),'linestyle','-.','linewidth',2,'displayname','ap. fit');
-% subjs = plot(fooof_freq,subj_orig_psd,'color',[COLOR_MAPS_SPEED(1,:),0.75],'linestyle','-','linewidth',2,'displayname','orig. subj psd');
-% subjs_ap = plot(fooof_freq,subj_ap_fits,'color',[COLOR_MAPS_SPEED(2,:),0.5],'linestyle','-.','linewidth',2,'displayname','orig. subj psd');
-hold off;
-ax = gca;
-xlim([4 40]);
-ylim([-35 -5]);
-% plot([0 40],[0 0],'--','color','black');
-xlabel('Frequency(Hz)');
-ylabel('10*log_{10}(Power)');
-set(ax,'FontName','Arial',...
-    'FontSize',14,...
-    'FontWeight','bold')
-%-
-exportgraphics(fig,[save_dir filesep sprintf('ap_fit_mean_tmpplot.tiff')],'Resolution',600)
-
-%## FLATTEND SUBJS
-% fig = figure;
-AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
-fig = figure('color','white','renderer','Painters');
-set(fig,'Units','inches','Position',[0.5,0.5,4,4])
-set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
-hold on;
-% set(gca,AXES_DEFAULT_PROPS{:})
-hold on;
-colormap(linspecer);
-% mean_plot = plot(fooof_freq,orig_psd_mean,'color',COLOR_MAPS_SPEED(1,:),'linestyle','-','linewidth',3,'displayname','orig. psd mean');
-% dash = plot(fooof_freq,ap_fit_mean,'color',COLOR_MAPS_SPEED(2,:),'linestyle','-.','linewidth',2,'displayname','ap. fit');
-subjs = plot(fooof_freq,fooof_psd,'linestyle','-','linewidth',2,'displayname','orig. subj psd');
-% subjs_ap = plot(fooof_freq,subj_ap_fits,'color',[COLOR_MAPS_SPEED(2,:),0.5],'linestyle','-.','linewidth',2,'displayname','orig. subj psd');
-hold off;
-ax = gca;
-xlim([4 40]);
-ylim([-2 7.5]);
-% plot([0 40],[0 0],'--','color','black');
-xlabel('Frequency(Hz)');
-ylabel('10*log_{10}(Power)');
-set(ax,'FontName','Arial',...
-    'FontSize',14,...
-    'FontWeight','bold')
-%-
-exportgraphics(fig,[save_dir filesep sprintf('fooof_subjs_tmpplot.tiff')],'Resolution',600)
-
-%## FLATTEND MEAN
-% fig = figure;
-AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
-fig = figure('color','white','renderer','Painters');
-set(fig,'Units','inches','Position',[0.5,0.5,4,4])
-set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
-hold on;
-% set(gca,AXES_DEFAULT_PROPS{:})
-colormap(linspecer);
-% mean_plot = plot(fooof_freq,orig_psd_mean,'color',COLOR_MAPS_SPEED(1,:),'linestyle','-','linewidth',3,'displayname','orig. psd mean');
-% dash = plot(fooof_freq,ap_fit_mean,'color',COLOR_MAPS_SPEED(2,:),'linestyle','-.','linewidth',2,'displayname','ap. fit');
-mean_plot = plot(fooof_freq,fooof_psd_mean,'linestyle','-','linewidth',4,'displayname','orig. subj psd');
-subjs = plot(fooof_freq,fooof_psd,'color',[COLOR_MAPS_SPEED(2,:),0.2],'linestyle','-','linewidth',2,'displayname','orig. subj psd');
-% subjs_ap = plot(fooof_freq,subj_ap_fits,'color',[COLOR_MAPS_SPEED(2,:),0.5],'linestyle','-.','linewidth',2,'displayname','orig. subj psd');
-
-ax = gca;
-
-plot([0 40],[0 0],'--','color','black');
-xlim([4 40]);
-ylim([-2 7.5]);
-xlabel('Frequency(Hz)');
-ylabel('10*log_{10}(Power)');
-set(ax,'FontName','Arial',...
-    'FontSize',14,...
-    'FontWeight','bold')
-hold off;
-%-
-exportgraphics(fig,[save_dir filesep sprintf('fooof_subjs_tmpplot.tiff')],'Resolution',600)
-
-%}

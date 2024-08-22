@@ -264,6 +264,29 @@ STUDY_COND_DESI = {{'subjselect',{},...
             {'subjselect',{},...
             'variable1','cond','values1',{'0p25','0p5','0p75','1p0'},...
             'variable2','group','values2',{}}};
+%% (KMEANS K SEARCH CRIT) ============================================== %%
+%{
+eva1 = evalclusters(STUDY.etc.preclust.preclustdata, cluster_idx, 'silhouette'); % this is the method to find optimal number of clusters (confirmed by EEGlab mailing list)
+eva2 = evalclusters(STUDY.etc.preclust.preclustdata, cluster_idx, 'CalinskiHarabasz');
+eva3 = evalclusters(STUDY.etc.preclust.preclustdata, cluster_idx, 'DaviesBouldin');
+
+figure();
+subplot(1,3,1)
+plot(eva1.InspectedK,eva1.CriterionValues,'-o');hold on;
+plot(eva1.OptimalK,eva1.CriterionValues(eva1.InspectedK == eva1.OptimalK),'o','color','r');
+xlabel('Clusters');ylabel('Silhouette');
+subplot(1,3,2)
+plot(eva2.InspectedK,eva2.CriterionValues,'-o');hold on;
+plot(eva2.OptimalK,eva2.CriterionValues(eva2.InspectedK == eva2.OptimalK),'o','color','r');
+xlabel('Clusters');ylabel('CalinskiHarabasz');
+subplot(1,3,3)
+plot(eva3.InspectedK,eva3.CriterionValues,'-o');hold on;
+plot(eva3.OptimalK,eva3.CriterionValues(eva3.InspectedK == eva3.OptimalK),'o','color','r');
+xlabel('Clusters');ylabel('DaviesBouldin');
+
+saveas(gcf, [save_dir filesep 'cluster_kmeans_eval.fig'])
+saveas(gcf, [save_dir filesep 'cluster_kmeans_eval.jpg'])
+%}
 %%
 if DO_K_ICPRUNE 
 %     for i = 1:length(MIN_ICS_SUBJ)

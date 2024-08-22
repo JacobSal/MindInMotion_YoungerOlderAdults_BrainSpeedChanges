@@ -14,12 +14,24 @@ function [ax] = group_violin(table_in,measure_char,cond_char,group_char,varargin
 %## TIME
 tic
 %## DEFINE DEFAULTS
+%- FONTS
+ax = [];
+GROUP_LAB_FONTSIZE = 10;
+GROUP_LAB_FONTWEIGHT = 'normal';
+XLAB_FONTSIZE = 10;
+YLAB_FONTSIZE = 10;
+XTICK_FONTSIZE = 10;
+XLAB_FONTWEIGHT = 'bold';
+YLAB_FONTWEIGHT = 'bold';
+TITLE_FONTSIZE = 10;
+TITLE_FONTWEIGHT = 'bold';
+%-
 AXES_POS = [0.15 0.20 0.8 0.7];
 XLABEL_OFFSET = -0.225;
 % GROUPLAB_POS = [0.225,0.775];
 % GROUPLAB_POS = [0.125,0.475,0.812];
 
-GROUPLAB_YOFFSET = -0.2;
+GROUPLAB_YOFFSET = -0.285;
 % REGRESS_TXT_XMULTI = 1; %-0.8;
 % REGRESS_TXT_YMULTI = 1;
 % REGRESS_TXT_SIZE = 6;
@@ -54,11 +66,22 @@ DEFAULT_STATS_STRUCT = struct('anova',{{}},...
                           'pvals_grp_pairs',{{}},...
                           'regress_pval',{{}},...
                           'regress_line',{{}},...
-                          'r2_coeff',{[]},...
+                          'line_type',{'best_fit'},... % ('best_fit' | 'means')
+                          'r2_coeff',{[]},... % this may become depricated
                           'regress_xvals',0,...
                           'subject_char',[],... % this option when filled prints removal of nan() info
                           'group_order',categorical({''}),...
-                          'do_include_intercept',false); 
+                          'do_include_intercept',false,... % this may become depricated
+                          'display_one_regress',true,... % this may become depricated
+                          'display_stats_char',false,... 
+                          'stats_char',{{}},...
+                          'bracket_yshift_perc',0.6,...
+                          'bracket_y_perc',1,...
+                          'bracket_rawshifty_upper',0,...
+                          'bracket_rawshifty_lower',0,...
+                          'grp_sig_offset_x',0,...
+                          'grp_sig_offset_y',0); 
+
 %- STATS_STRUCT EXAMPLE:
 % STATS_STRUCT = struct('anova',{0.02,0.1},...
 %                       'pvals',{[0.001,0.002,0.01],[0.2,0.3,0.05,0.1]},...
@@ -76,7 +99,7 @@ addRequired(p,'measure_char',@ischar);
 addRequired(p,'cond_char',@ischar);
 addRequired(p,'group_char',@ischar);
 %## OPTIONAL
-addOptional(p,'parent_axes',[],@isobject)
+addOptional(p,'parent_axes',[],@(x) isobject(x) || isempty(x))
 %## PARAMETER
 addParameter(p,'VIOLIN_PARAMS',DEFAULT_VIOLIN_PARAMS,@iscell);
 addParameter(p,'PLOT_STRUCT',DEFAULT_PLOT_STRUCT,@(x) validate_struct(x,DEFAULT_PLOT_STRUCT));
@@ -84,7 +107,7 @@ addParameter(p,'STATS_STRUCT',DEFAULT_STATS_STRUCT,@(x) validate_struct(x,DEFAUL
 %##
 parse(p,table_in,measure_char,cond_char,group_char,varargin{:});
 %## SET DEFAULTS
-parent_axes = p.Results.parent_axes;
+ax = p.Results.parent_axes;
 VIOLIN_PARAMS = p.Results.VIOLIN_PARAMS;
 PLOT_STRUCT = p.Results.PLOT_STRUCT;
 STATS_STRUCT = p.Results.STATS_STRUCT;
@@ -113,11 +136,11 @@ end
 %- set conditions
 conds = unique(table_tmp.(cond_char));
 %%
-if isempty(parent_axes)
-    ax = axes(figure);
-else
-    ax = axes(parent_axes);
-end
+% if isempty(parent_axes)
+%     ax = axes(figure);
+% else
+%     ax = axes(parent_axes);
+% end
 hold on;
 cnt = 1;
 xticks = [];
@@ -215,6 +238,12 @@ cnt_g = 1;
 hold_xlim = get(gca,'xlim');
 annotes = [];
 set_y = true;
+sig_offset_x = STATS_STRUCT.grp_sig_offset_x;
+sig_offset_y = STATS_STRUCT.grp_sig_offset_y;
+bracket_rawshifty_upper = STATS_STRUCT.bracket_rawshifty_upper;
+bracket_rawshifty_lower = STATS_STRUCT.bracket_rawshifty_lower;
+bracket_yshift_perc = STATS_STRUCT.bracket_yshift_perc ;
+bracket_y_perc = STATS_STRUCT.bracket_y_perc;
 for i=1:length(groups)
     %- GROUP STATISTICS
     if ~isempty(STATS_STRUCT.anova_grp)
@@ -227,7 +256,7 @@ for i=1:length(groups)
                 by2 = zeros(1,2);
                 g1 = STATS_STRUCT.pvals_grp_pairs{i}(1,1);
                 g2 = STATS_STRUCT.pvals_grp_pairs{i}(1,2);
-                if i ~= 1
+                % if i ~= 1
                     if g1 ~= 1
                         bx1(1) = (g1-1)*length(conds)+1;
                         bx1(2) = (g1-1)*length(conds)+length(conds);
@@ -246,23 +275,29 @@ for i=1:length(groups)
                     for tt = linspace(bx1(1),bx1(2),bx1(2)-bx1(1)+1)
                         tmpy = [tmpy, violins{tt}.ScatterPlot.YData];
                     end
-                    by1(1) = max(tmpy)*1.01; 
+                    by1(1) = max(tmpy)*1.025; 
                     by1(2) = max(tmpy)*1.05;
                     tmpy = [];
                     for tt = linspace(bx2(1),bx2(2),bx2(2)-bx2(1)+1)
                         tmpy = [tmpy, violins{tt}.ScatterPlot.YData];
                     end
-                    by2(1) = max(tmpy)*1.01; 
+                    by2(1) = max(tmpy)*1.025; 
                     by2(2) = max(tmpy)*1.05;
                     %-
                     for tt = 1:length(bx1)
                         bx1(tt) = violins{bx1(tt)}.MedianPlot.XData;
                         bx2(tt) = violins{bx2(tt)}.MedianPlot.XData;
-                    end     
-                    pp = cus_sigbracket('+',STATS_STRUCT.pvals_grp{i},bx1,bx2,by1,by2);
+                    end
+                    by1(1,2) = by1(1,2) + bracket_rawshifty_upper;
+                    by2(1,2) = by2(1,2) + bracket_rawshifty_upper;
+                    by1(1,1) = by1(1,1) + bracket_rawshifty_lower;
+                    by2(1,1) = by2(1,1) + bracket_rawshifty_lower;
+                    pp = cus_sigbracket('+',STATS_STRUCT.pvals_grp{i},bx1,bx2,by1,by2,...
+                        bracket_y_perc,sig_offset_x,sig_offset_y);
                     y = gety(pp);
                     set_y = false;
-                end
+                    bracket_y_perc = bracket_y_perc*(1+bracket_yshift_perc)^2;
+                % end
             end
         end
     end
@@ -299,59 +334,76 @@ for i=1:length(groups)
         end
     end
     %- REGRESSION-CONTINUOUS
-    if ~all(isempty(STATS_STRUCT.regress_pval)) && ~all(isempty(STATS_STRUCT.regress_line)) && ~all(STATS_STRUCT.r2_coeff==0)
+    if ~all(isempty(STATS_STRUCT.regress_pval)) && ~all(isempty(STATS_STRUCT.regress_line)) %&& ~all(STATS_STRUCT.r2_coeff==0)
         if STATS_STRUCT.anova{i} < 0.05
-            %- plot line
-            x = xticks(cnt_g:cnt_g+length(conds)-1);
-            incr = x(2)-x(1);
-            x = [x(1)-incr, x];
-            x = [x, x(end)+incr];
-            % y = STATS_STRUCT.regress_xvals*STATS_STRUCT.regress_line{i}(2) + STATS_STRUCT.regress_line{i}(1);
-            y = STATS_STRUCT.regress_xvals*STATS_STRUCT.regress_line{i}(2) + STATS_STRUCT.regress_line{i}(1);
-            plot(x,y,'-','color','k','linewidth',1);
-            % y_txt = mean(ymaxs(i,:))*REGRESS_TXT_YMULTI*(1+(i-1))+std(ymaxs(i,:));
-            % xx = xticks(cnt_g:cnt_g+length(conds)-1)
-            % x_txt = min(xx)*REGRESS_TXT_XMULTI*((i-1))+xticks(1)+std(xticks);
+            %- plot line of best fit
+            if strcmp(STATS_STRUCT.line_type,'best_fit')
+                x = xticks(cnt_g:cnt_g+length(conds)-1);
+                incr = x(2)-x(1);
+                x = [x(1)-incr, x];
+                x = [x, x(end)+incr];
+                y = STATS_STRUCT.regress_xvals*STATS_STRUCT.regress_line{i}(2) + STATS_STRUCT.regress_line{i}(1);
+                plot(x,y,'-','color','k','linewidth',1);
+            %-
+            elseif strcmp(STATS_STRUCT.line_type,'means')
+                x = xticks(cnt_g:cnt_g+length(conds)-1);
+                y = STATS_STRUCT.regress_line{i}(:);
+                plot(x,y,'-','color','k','linewidth',3);
+            end
             x_txt = PLOT_STRUCT.group_offsets(i)-0.1;
             y_txt = 0.9;
-            if STATS_STRUCT.do_include_intercept
-                str = sprintf('b=%0.2g\nm=%0.2g\nR^2=%0.2g',STATS_STRUCT.regress_line{i}(1),STATS_STRUCT.regress_line{i}(2),STATS_STRUCT.r2_coeff(i));
-            else
-                str = sprintf('m=%0.2g\nR^2=%0.2g',STATS_STRUCT.regress_line{i}(2),STATS_STRUCT.r2_coeff(i));
+            if STATS_STRUCT.display_stats_char
+                if length(STATS_STRUCT.stats_char) ~= length(groups)
+                    error('ERROR. STATS_STRUCT.stats_char must be length(unique(table.group_char)).')
+                end
+                str = STATS_STRUCT.stats_char{i};
+                text(x_txt,y_txt,str,...
+                        'FontSize',PLOT_STRUCT.regresslab_txt_size,...
+                        'FontName',PLOT_STRUCT.font_name,...
+                        'FontWeight','bold','Units','normalized');
             end
-            if STATS_STRUCT.regress_pval{i} > 0.01 && STATS_STRUCT.regress_pval{i} < 0.05
-                text(x_txt,y_txt,['* ',str],...
-                    'FontSize',PLOT_STRUCT.regresslab_txt_size,...
-                    'FontName',PLOT_STRUCT.font_name,...
-                    'FontWeight','bold','Units','normalized');
-            elseif STATS_STRUCT.regress_pval{i} <= 0.01 && STATS_STRUCT.regress_pval{i} > 0.001
-                text(x_txt,y_txt,['** ',str],...
-                    'FontSize',PLOT_STRUCT.regresslab_txt_size,...
-                    'FontName',PLOT_STRUCT.font_name,...
-                    'FontWeight','bold','Units','normalized');
-            else
-                text(x_txt,y_txt,['*** ',str],...
-                    'FontSize',PLOT_STRUCT.regresslab_txt_size,...
-                    'FontName',PLOT_STRUCT.font_name,...
-                    'FontWeight','bold','Units','normalized');
-            end
+            % if STATS_STRUCT.display_one_regress && i == 1
+            %     if STATS_STRUCT.do_include_intercept
+            %         str = sprintf('b=%0.2g\nm=%0.2g\nR^2=%0.2g',STATS_STRUCT.regress_line{i}(1),STATS_STRUCT.regress_line{i}(2),STATS_STRUCT.r2_coeff(i));
+            %     else
+            %         str = sprintf('m=%0.2g\nR^2=%0.2g',STATS_STRUCT.regress_line{i}(2),STATS_STRUCT.r2_coeff(i));
+            %     end
+            %     if STATS_STRUCT.regress_pval{i} > 0.01 && STATS_STRUCT.regress_pval{i} < 0.05
+            %         text(x_txt,y_txt,['* ',str],...
+            %             'FontSize',PLOT_STRUCT.regresslab_txt_size,...
+            %             'FontName',PLOT_STRUCT.font_name,...
+            %             'FontWeight','bold','Units','normalized');
+            %     elseif STATS_STRUCT.regress_pval{i} <= 0.01 && STATS_STRUCT.regress_pval{i} > 0.001
+            %         text(x_txt,y_txt,['** ',str],...
+            %             'FontSize',PLOT_STRUCT.regresslab_txt_size,...
+            %             'FontName',PLOT_STRUCT.font_name,...
+            %             'FontWeight','bold','Units','normalized');
+            %     else
+            %         text(x_txt,y_txt,['*** ',str],...
+            %             'FontSize',PLOT_STRUCT.regresslab_txt_size,...
+            %             'FontName',PLOT_STRUCT.font_name,...
+            %             'FontWeight','bold','Units','normalized');
+            %     end
+            % end
         end
     end
     cnt_g = cnt_g + length(conds);
 end
 
-%- set figure color, units, and size
+%## set figure color, units, and size
 %- set axes units, and size
-set(gca,'XLim',hold_xlim);
-set(gca,'box', 'off')
-set(gca,'LineWidth',1)
-set(gca,'FontName','Arial','FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
-set(gca,'OuterPosition',[0 0 1 1]);
-set(gca,'Position',AXES_POS);  %[left bottom width height] This I what I added, You need to play with this
-set(gca,'XTick',sort(xticks));
-set(gca,'XTickLabel',xtick_labs);
-xtickangle(45);
-xlh = xlabel(PLOT_STRUCT.x_label,'Units','normalized','FontSize',PLOT_STRUCT.font_size);
+set(ax,'XLim',hold_xlim);
+set(ax,'box', 'off')
+set(ax,'LineWidth',1)
+% set(gca,'FontName','Arial','FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
+set(ax,'FontName','Arial','FontSize',XTICK_FONTSIZE)
+set(ax,'OuterPosition',[0 0 1 1]);
+% set(gca,'Position',AXES_POS);  %[left bottom width height] This I what I added, You need to play with this
+set(ax,'XTick',sort(xticks));
+set(ax,'XTickLabel',xtick_labs);
+xtickangle(75);
+%- xlabel
+xlh = xlabel(ax,PLOT_STRUCT.x_label,'Units','normalized','FontSize',XLAB_FONTSIZE,'FontWeight',XLAB_FONTWEIGHT);
 pos1=get(xlh,'Position');
 pos1(1,2)=pos1(1,2)+XLABEL_OFFSET;
 set(xlh,'Position',pos1);
@@ -363,8 +415,8 @@ try
         for i = 1:length(groups)
             x = PLOT_STRUCT.group_offsets(i);
             y = GROUPLAB_YOFFSET; %GROUPLAB_YOFFSET
-            text(x,y,0,char(PLOT_STRUCT.group_labels(i)),...
-                'FontSize',PLOT_STRUCT.font_size,'FontWeight','bold','HorizontalAlignment','center',...
+            text(ax,x,y,0,char(PLOT_STRUCT.group_labels(i)),...
+                'FontSize',GROUP_LAB_FONTSIZE,'FontWeight',GROUP_LAB_FONTWEIGHT,'HorizontalAlignment','center',...
                 'Units','normalized');
             cnt_g = cnt_g + length(conds);
         end
@@ -373,13 +425,14 @@ catch e
     error('Error. Plotting group labels failed...\n\n%s',getReport(e));
 end
 %- set ylabel & title
-ylabel(PLOT_STRUCT.y_label,'FontSize',PLOT_STRUCT.font_size);
-title(PLOT_STRUCT.title);
-ylim(PLOT_STRUCT.ylim);
-hold off;
+ylabel(ax,PLOT_STRUCT.y_label,'FontSize',YLAB_FONTSIZE,'FontWeight',YLAB_FONTWEIGHT);
+title(ax,PLOT_STRUCT.title,'FontSize',TITLE_FONTSIZE,'FontWeight',TITLE_FONTWEIGHT);
+ylim(ax,PLOT_STRUCT.ylim);
+% hold on;
+% hold off;
 end
 %% ================================================================== %%
-function pp = cus_sigbracket(lbl,pVal,bx1,bx2,by1,by2)
+function pp = cus_sigbracket(lbl,pVal,bx1,bx2,by1,by2,bracket_offset,sig_offset_x,sig_offset_y)
     
     bxx1 = [bx1(1),bx1(1),bx1(2),bx1(2)];
     bxx2 = [bx2(1),bx2(1),bx2(2),bx2(2)];
@@ -388,7 +441,7 @@ function pp = cus_sigbracket(lbl,pVal,bx1,bx2,by1,by2)
     bm1 = mean(bx1);
     bm2 = mean(bx2);
     [byymax,~] = max([by1,by2]);
-    boffset = abs(by2(2)-by2(1));
+    boffset = abs(by2(2)-by2(1))*bracket_offset;
     byconn = [max(by1),byymax+boffset,byymax+boffset,max(by2)];
     bxconn = [bm1,bm1,bm2,bm2];
     % Now plot the sig line on the current axis
@@ -399,13 +452,13 @@ function pp = cus_sigbracket(lbl,pVal,bx1,bx2,by1,by2)
     %- add label
     if lbl
         if pVal < 0.001
-            lbl = '***';
+            lbl = '+++';
         elseif pVal > 0.001 && pVal < 0.01
-            lbl = '**';
+            lbl = '++';
         elseif pVal > 0.01 && pVal < 0.05
-            lbl = '*';
+            lbl = '+';
         end
-        text(mean(bxconn)*1, max(byconn)*1.05, lbl) % the sig star sign
+        text(mean(bxconn)+sig_offset_x, max(byconn)*1.05+sig_offset_y, lbl) % the sig star sign
     end
     hold on;
 end

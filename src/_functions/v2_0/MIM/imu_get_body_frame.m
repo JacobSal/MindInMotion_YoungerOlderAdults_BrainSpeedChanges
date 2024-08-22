@@ -69,12 +69,19 @@ for trial_i = 1:length(unique({EEG_IMU.event.trialName}))
         trial_num = 1;
     end
     if trial_num <= 2
-        [ do_crop{trial_i}, crop_idxs{trial_i}, ~, ~ ] = mim_check_trials(EEG_IMU.subject,trial_name,TRIAL_CROPPING_XLSX); %grabbing cropping times if needed
+        [ tmp_dc, tmp_ci, ~, ~ ] = mim_check_trials(EEG_IMU.subject,trial_name,TRIAL_CROPPING_XLSX); %grabbing cropping times if needed
         % do_crop{trial_i} = false;
         % crop_idxs{trial_i} = [];
-        if do_crop{trial_i}
-            fprintf('Cropping data for subject %s and trial %s',EEG_IMU.subject,trial_name);
+        if isnan(tmp_ci)
+            fprintf('%s) trial %s not found. Not including...\n',EEG_IMU.subject,trial_name);
+        else
+            do_crop{trial_i}=tmp_dc;
+            crop_idxs{trial_i}=tmp_ci;
+            if do_crop{trial_i}
+                fprintf('Cropping data for subject %s and trial %s\n',EEG_IMU.subject,trial_name);
+            end
         end
+        
     else
         fprintf('Trial number is %i, not performing cropping for %s...\n',trial_num,trial_name);
         do_crop{trial_i} = false;

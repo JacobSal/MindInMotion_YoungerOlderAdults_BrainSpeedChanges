@@ -328,31 +328,7 @@ fprintf('==== Reformatting Study ====\n');
 fprintf('Bugged Subjects: %s',MAIN_ALLEEG(cellfun(@isempty,tmp)).subject);
 tmp = tmp(~cellfun(@isempty,tmp));
 %## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
-fss = cell(1,length(tmp));
-for subj_i = 1:length(tmp)
-    fss{subj_i} = fields(tmp{subj_i})';
-    disp(size(fields(tmp{subj_i})'));
-end
-fss = unique([fss{:}]);
-fsPrev = fss;
-for subj_i = 1:length(tmp)
-    EEG = tmp{subj_i};
-    fs = fields(EEG);
-    % delete fields not present in other structs.
-    out = cellfun(@(x) any(strcmp(x,fs)),fsPrev,'UniformOutput',false); 
-    out = [out{:}];
-    addFs = fsPrev(~out);
-    if any(~out)
-        for j = 1:length(addFs)
-            EEG.(addFs{j}) = [];
-            fprintf('%s) Adding fields %s\n',EEG.subject,addFs{j})
-        end
-    end 
-%     tmp{subj_i} = EEG;
-    tmp{subj_i} = orderfields(EEG);
-end
-%- CONCATENATE tmp
-tmp = cellfun(@(x) [[]; x], tmp);
+tmp = util_resolve_struct(tmp,{tmp.subject});
 %##
 [STUDY, ALLEEG] = std_editset([],tmp,...
                                 'updatedat','off',...

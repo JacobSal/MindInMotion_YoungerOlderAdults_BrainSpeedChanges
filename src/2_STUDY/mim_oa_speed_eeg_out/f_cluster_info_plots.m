@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_f_cluster_info_plots.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_oa_speed_eeg_out/run_f_cluster_info_plots.sh
 
 %{
 %## RESTORE MATLAB
@@ -126,7 +126,8 @@ subject_chars = {STUDY.datasetinfo.subject};
 %-
 fPaths = {STUDY.datasetinfo.filepath};
 fNames = {STUDY.datasetinfo.filename};
-CLUSTER_PICKS = main_cl_inds(2:end);
+% CLUSTER_PICKS = main_cl_inds(2:end);
+CLUSTER_PICKS = [12,7,4,8,11,6,3];
 %## CREATE PATHS
 cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 if ~isempty(SUB_GROUP_FNAME)
@@ -271,19 +272,19 @@ pause(2);
 close(fig);
 %##
 for i = 1:length(CLUSTER_PICKS)
-%         cluster_i = CLUSTER_PICKS(i);
-%         [fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_i,...
-%             'PLOT_TYPE','all_nogroup',...
-%             'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
-%         pause(2);
-% %         camzoom(1.2^2);
-%         exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.tiff',cluster_i)],'Resolution',1000);
-%         view([45,0,0])
-%         exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.tiff',cluster_i)],'Resolution',1000);
-%         view([0,-45,0])
-%         exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cluster_i)],'Resolution',1000);
-%         pause(2);
-%         close(fig);
+    cluster_i = CLUSTER_PICKS(i);
+    [fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_i,...
+        'PLOT_TYPE','all_nogroup',...
+        'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
+    pause(2);
+%         camzoom(1.2^2);
+    exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_top.tiff',cluster_i)],'Resolution',1000);
+    view([45,0,0])
+    exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_coronal.tiff',cluster_i)],'Resolution',1000);
+    view([0,-45,0])
+    exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cluster_i)],'Resolution',1000);
+    pause(2);
+    close(fig);
     cluster_i = CLUSTER_PICKS(i);
     [fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_i,...
         'PLOT_TYPE','all_group',...

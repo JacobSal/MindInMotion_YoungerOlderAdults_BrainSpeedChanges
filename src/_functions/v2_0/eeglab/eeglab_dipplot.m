@@ -343,7 +343,7 @@ for cc = 1:length(clusters)
                 % end
                 fig.Children(end).Children(cnt+3).LineWidth = fig.Children(end).Children(cnt+3+1).MarkerSize*0.05;
                 fig.Children(end).Children(cnt+3).MarkerFaceColor = fig.Children(end).Children(cnt+3+1).Color;
-                fig.Children(end).Children(cnt+3).MarkerSize = fig.Children(end).Children(cnt+3+1).MarkerSize*1.6;
+                fig.Children(end).Children(cnt+3).MarkerSize = fig.Children(end).Children(cnt+3+1).MarkerSize*2.5;
                 % disp(length(fig.Children(end).Children))
                 % if kk ~= 0 && length(grps) > 1
                 %     % tmpax = findobj('Marker','.','XData',dips(ii).posxyz(1),'YData',dips(ii).posxyz(2),'ZData',dips(ii).posxyz(3));

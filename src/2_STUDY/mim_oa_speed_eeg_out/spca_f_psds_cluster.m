@@ -20,15 +20,23 @@ global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
-    STUDY_DIR = getenv('STUDY_DIR');
-    SCRIPT_DIR = getenv('SCRIPT_DIR');
-    SRC_DIR = getenv('SRC_DIR');
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = SCRIPT_DIR;
+        SRC_DIR = fileparts(fileparts(STUDY_DIR));
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
+        STUDY_DIR = getenv('STUDY_DIR');
+        SCRIPT_DIR = getenv('SCRIPT_DIR');
+        SRC_DIR = getenv('SRC_DIR');
+    end
 else
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
     catch e
-        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
@@ -111,12 +119,12 @@ parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
     group_n         = zeros(length(condition_gait)*length(CLUSTER_PICKS),1);
     cluster_n       = zeros(length(condition_gait)*length(CLUSTER_PICKS),1);
     comp_c          = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    psd_corr_based       = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
+    psd_corr_based_c       = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
     psd_rest_c      = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    psdcorr_restorebase_c  = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
+    psd_corr_unbase_c  = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
     psd_orig_baselined_c = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
     % tf_gpmcorr_c    = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    psd_orig_avg       = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
+    psd_orig_avg_c       = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
     % tf_gpmorig_c    = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
     psd_corr_psc1        = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
     tf_coeff_c      = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
@@ -193,11 +201,11 @@ parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
                 if ~isempty(comp_i) && length(comp_i) < 2
                     tmp_c = unmix(2,ic_keep(comp_i) == unmix(1,:));
                     fprintf('%s) assigning IC(spca index,study index) %i(%i,%i) to cluster %i in condition %s...\n',subject_chars{subj_i},ic_keep(comp_i),comp_i,tmp_c,cl_i,condition_gait{cond_i});
-                    psd_corr_based{cnt} = squeeze(spca_psd.psd_corr_based(:,tmp_c,:));
-                    psd_orig_avg{cnt} = squeeze(spca_psd.psd_orig_avg(:,tmp_c,:));
+                    psd_corr_based_c{cnt} = squeeze(spca_psd.psd_corr_based(:,tmp_c,:));
+                    psd_orig_avg_c{cnt} = squeeze(spca_psd.psd_orig_avg(:,tmp_c,:));
                     psd_orig_baselined_c{cnt} = squeeze(spca_psd.psd_orig_baselined(:,tmp_c,:));
                     psd_rest_c{cnt} = squeeze(spca_psd.baseline_psd(:,tmp_c,:));
-                    psdcorr_restorebase_c{cnt} = squeeze(spca_psd.psd_corr_based(:,tmp_c,:))+squeeze(spca_psd.baseline_psd(:,tmp_c,:));
+                    psd_corr_unbase_c{cnt} = squeeze(spca_psd.psd_corr_based(:,tmp_c,:))+squeeze(spca_psd.baseline_psd(:,tmp_c,:));
                     psd_corr_psc1{cnt} = squeeze(spca_psd.psd_corr_psc1(:,tmp_c,:));
                     % tf_coeff_c{cnt} = spca_psd.coeffs;
                     %- validation
@@ -223,8 +231,8 @@ parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
             end
         end
         loop_store{subj_i} = table(subj_c,group_n,cluster_n,cond_c,comp_c,...
-            psd_orig_avg,psd_orig_baselined_c,psd_rest_c,psd_corr_based,...
-            psdcorr_restorebase_c,psd_corr_psc1,tf_coeff_c);
+            psd_orig_avg_c,psd_orig_baselined_c,psd_rest_c,psd_corr_based_c,...
+            psd_corr_unbase_c,psd_corr_psc1,tf_coeff_c);
     
         % loop_store{subj_i} = table(subj_c,group_c,cluster_c,cond_c,comp_c,tf_erspcorr_c,tf_gpmcorr_c,tf_ersporig_c,tf_gpmorig_c,tf_pc1_c,tf_coeff_c);
     catch e

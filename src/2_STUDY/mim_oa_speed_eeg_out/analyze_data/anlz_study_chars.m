@@ -145,3 +145,44 @@ end
 tbl_out = table(subj_chars,trial_counts(:,1),trial_counts(:,2),trial_counts(:,3),...
     trial_counts(:,4),trial_counts(:,5),trial_counts(:,6),trial_counts(:,7),trial_counts(:,8),channel_rejs,sample_rej_perc,'VariableNames',{'subj_chars','0p25','0p5','0p75','1p0','flat','low','med','high','channel_rejs','sample_rej_perc'});
 writetable(tbl_out,[cluster_study_fpath filesep 'study_characterisics.xlsx'])
+%%
+CLUSTER_STUDY_NAME = 
+if ~ispc
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',cluster_study_fpath);
+else
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',cluster_study_fpath);
+end
+TRIALS_PROCESS = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+trial_times = zeros(length(ALLEEG),length(TRIALS_PROCESS));
+for subj_i = 1:length(ALLEEG)
+    for cond_i = 1:length(TRIALS_PROCESS)
+        fprintf('Running condition %s...\n',TRIALS_PROCESS{cond_i})
+        EEG = ALLEEG(subj_i);
+        %## Get Trial Indicies & Extract
+        inds1 = logical(strcmp({EEG.event.cond}, TRIALS_PROCESS{cond_i}));
+        inds2 = logical(strcmp({EEG.event.type}, 'boundary'));
+        val_inds = find(inds1 & ~inds2);
+        %-
+        tmp_epochn = unique([tmp_event.epoch]);
+        tmp_event = EEG.event(val_inds);
+        lats = [tmp_event.latency];
+        %-
+        % tmp_epochn = unique([tmp_event.epoch]);
+        % lats = zeros(length(tmp_epochn),1);
+        % for epoch_i = 1:length(tmp_epochn)
+        %     inds = [tmp_event.epoch] == tmp_epochn(epoch_i);
+        %     tmp = tmp_event(inds);
+        %     % lat = (max([tmp.latency])-min([tmp.latency]))/EEG.srate;
+        %     lats(epoch_i) = (max([tmp.latency])-min([tmp.latency]))/EEG.srate;
+        % end
+        % trial_times(subj_i,cond_i) = mean(lats)*length(tmp_epochn);
+        %-
+        % fromt = [EEG.event(val_inds(1)).latency];
+        % ind_from = find(EEG.times>=(((fromt-1)/EEG.srate)*1000) & EEG.times<=(((fromt+1)/EEG.srate)*1000));
+        % tot = [EEG.event(val_inds(end)).latency];
+        % ind_to = find(EEG.times>=(((tot-1)/EEG.srate)*1000) & EEG.times<=(((tot+1)/EEG.srate)*1000));
+        % fprintf('%s) %s length is %0.2fs\n',EEG.subject,TRIALS_PROCESS{cond_i},(tot/EEG.srate)-(fromt/EEG.srate));
+        % trial_times(subj_i,cond_i) = (tot/EEG.srate)-(fromt/EEG.srate);
+
+    end
+end

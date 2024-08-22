@@ -17,7 +17,7 @@ module purge
 module load matlab/2019a
 export DONOT_RECREATE=true;
 cd /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/1_segmentation
-export PATH="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/i_HEADMODEL/1_segmentation/SimNIBS/install/bin:$PATH"
+export PATH="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/0_DATA_PREP/3_MRI_PREP/SimNIBS/install/bin:$PATH"
 export SUBJ_DIR="/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/"
 # export SUBJ_RUN=("H1002" "H1004" "H1007" "H1009"
 #  "H1010" "H1011" "H1012" "H1013" "H1017" "H1018" "H1019"

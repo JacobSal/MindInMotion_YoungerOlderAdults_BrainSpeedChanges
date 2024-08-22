@@ -50,8 +50,8 @@ set_workspace
 DATA_SET = 'MIM_dataset';
 PREPROC_DIR_NAME = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 STUDY_DIR_NAME = '03232024_spca_analysis_OA';
-STUDY_FNAME_GAIT = 'epoch_study';
-STUDY_FNAME_REST = 'rest_epoch_study';
+STUDY_FNAME_GAIT = 'epoch_study_yaoa';
+STUDY_FNAME_REST = 'rest_epoch_study_yaoa';
 %- study group and saving
 SAVE_ALLEEG = false;
 %## EPOCH PARAMS
@@ -177,7 +177,7 @@ STUDY_REST = pop_specparams(STUDY_REST,'subtractsubjectmean',SPEC_PARAMS.subtrac
     'plotconditions','together','ylim',SPEC_PARAMS.plot_ylim,'plotgroups','together');
 %% (PRECOMPUTE MEASURES) COMPUTE ERSPs
 subject_chars = {STUDY_REST.datasetinfo.subject};
-% for subj_i = 1:length(ALLEEG)
+% for subj_i = 1:length(STUDY_REST.datasetinfo)
 parfor subj_i = 1:length(STUDY_REST.datasetinfo)
     %- TEMP PARAMS
     tmp_study_rest = STUDY_REST;
@@ -199,6 +199,7 @@ parfor subj_i = 1:length(STUDY_REST.datasetinfo)
         EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
         EEG.icaact = reshape(EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     end
+    EEG = eeglab_reload_eeg(tmp_study.datasetinfo(subj_i).filepath,tmp_study.datasetinfo(subj_i).filename);
     %##
     if DO_RECREATE_SPCA || ~all(cellfun(@(x) exist([EEG.filepath filesep sprintf('cond%s_spca_psd.mat',x)],'file'),tmp_epoch_params.gait_trial_chars))
         %## GENERATE ERSPS
@@ -223,7 +224,6 @@ parfor subj_i = 1:length(STUDY_REST.datasetinfo)
         end
 
         %##
-        % EEG = ALLEEG_REST(subj_i);
         EEG = pop_loadset('filepath',tmp_study_rest.datasetinfo(subj_i).filepath,...
             'filename',tmp_study_rest.datasetinfo(subj_i).filename);
         EEG = eeg_checkset(EEG,'loaddata');
@@ -286,7 +286,7 @@ parfor subj_i = 1:length(STUDY_REST.datasetinfo)
 
             % base_txf_mean = zeros(1,size(rest_psdf,1),size(rest_psdf,2));
             % base_txf_mean(1,:,:) = rest_psdf; % format this as 'pnts' x chans x freq
-    %         base_txf_mean(1,:,:) = squeeze(mean(abs(rest_txf(10+1:end-10,:,:)),1));
+            % base_txf_mean(1,:,:) = squeeze(mean(abs(rest_txf(10+1:end-10,:,:)),1));
             %- clear rest_txf
             % psd_out = struct('psd_fec',rest_psdf)
             rest_psdf = double.empty;
