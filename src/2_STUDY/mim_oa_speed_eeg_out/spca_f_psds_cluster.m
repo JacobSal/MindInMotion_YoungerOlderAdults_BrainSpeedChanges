@@ -73,7 +73,8 @@ OUTSIDE_DATA_DIR = [studies_fpath filesep ica_orig_dir]; % JACOB,SAL(02/23/2023)
 %- load cluster
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
-cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %- create new study directory
 if ~exist(save_dir,'dir')

@@ -107,7 +107,8 @@ studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studie
 %- load cluster
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
-cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% ================================================================== %%
 %## SET STUDY PATHS
@@ -151,9 +152,9 @@ STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
 tmp = load([save_dir filesep 'psd_feature_table.mat']);
 FOOOF_TABLE = tmp.FOOOF_TABLE;
 tmp = load([save_dir filesep 'STATS_TRACK_STRUCT_speedlin.mat']);
-STATS_TRACK_STRUCT = tmp.STATS_TRACK_STRUCT;
-STATS_TRACK_STRUCT = struct2table(STATS_TRACK_STRUCT);
-% STATS_TRACK_STRUCT = tmp.stats_struct;
+% STATS_TRACK_STRUCT = tmp.STATS_TRACK_STRUCT;
+% STATS_TRACK_STRUCT = struct2table(STATS_TRACK_STRUCT);
+STATS_TRACK_STRUCT = tmp.stats_struct;
 tmp = load([save_dir filesep 'fooof_pcond.mat']);
 pcond = tmp.pcond;
 tmp = load([save_dir filesep 'org_pcond.mat']);
@@ -239,93 +240,18 @@ STUDY = pop_statparams(STUDY, 'groupstats','off','condstats', 'on',...
 stats = STUDY.etc.statistics;
 stats.paired{1} = 'on'; % Condition stats
 stats.paired{2} = 'off'; % Group stats
+%% (ANATOMY) =========================================================== %%
+addpath([PATHS.submods_dir filesep 'AAL3']);
+[STUDY,~,centroid_topo,centroid_dip] = eeglab_get_anatomy(STUDY,'ALLEEG',ALLEEG);
+% save([save_dir filesep 'anatomy_chars.mat'],'txt_store','atlas_name_store');
+%% (LOAD) ============================================================== %%
+atlas_char = 'AAL3v1.nii';
+tmp = load([STUDY.filepath filesep 'anatomy_struct_out.mat']);
+anatomy_struct = tmp.anatomy_struct;
+inds = strcmp({anatomy_struct.atlas_label},atlas_char) & strcmp({anatomy_struct.calculation},'aggregate label for all');
+atlas_name_store={anatomy_struct(inds).anatomy_label};
+
 %% ===================================================================== %%
-%## PARAMS
-%-
-ATLAS_PATH = [PATHS.submods_dir,...
-    filesep 'fieldtrip' filesep 'template' filesep 'atlas'];
-% see. https://www.fieldtriptoolbox.org/template/atlas/
-ATLAS_FPATHS = {[ATLAS_PATH filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI atalst
-    [ATLAS_PATH filesep 'afni' filesep 'TTatlas+tlrc.HEAD'],... % tailarch atlas
-    [ATLAS_PATH filesep 'spm_anatomy' filesep 'AllAreas_v18_MPM.mat']}; % also a discrete version of this
-atlas_i = 1;
-%-
-SUBPLOT_BOTTOM = 0.2;
-SUBPLOT_INIT_SHIFT = 0.05;
-PG_SIZE = [6.5,9];
-%% ===================================================================== %%
-clusters = unique(FOOOF_TABLE.cluster_id);
-% [STUDY,centroid] = std_centroid(STUDY,ALLEEG,double(string(clusters)),'dipole');
-txt_store = cell(length(clusters),1);
-atlas_name_store = cell(length(clusters),1);
-    %%ngth(clusters),1);
-for k_i = 1:length(clusters)
-    k = double(string(clusters(k_i)));
-    %## ANATOMY
-    dip1 = STUDY.cluster(k).all_diplocs;
-    STUDY.cluster(k).centroid.dipole.posxyz = mean(dip1);
-    atlas = ft_read_atlas(ATLAS_FPATHS{atlas_i});
-    atlas_name = 'error';
-    cfg              = [];
-    cfg.roi        = dip1;
-    cfg.output     = 'single';
-    cfg.atlas      = atlas;
-    cfg.inputcoord = 'mni';
-    cfg.verbose = 0;
-    %- (01/19/2023), JS: Changing cfg.sphere from 1 to 3 (1mm vs 3mm)
-    cfg.sphere = 3;
-    label_i = ft_volumelookup(cfg, atlas);
-    if ~isempty(label_i)
-        counts = sum([label_i.count],2);
-        [val, indx] = max(counts);
-        names = label_i(1).name;
-        if strcmp(names(indx),'no_label_found')
-            sub_indx = find(counts ~= 0 & counts < val);
-            if ~isempty(sub_indx)
-                atlas_name = names{sub_indx};
-            end
-        else
-            atlas_name = names{indx};
-        end
-    end
-    %## ANATOMY
-    
-    dip1 = STUDY.cluster(k).centroid.dipole.posxyz;
-    atlas = ft_read_atlas(ATLAS_FPATHS{atlas_i});
-    atlas_name_ct = 'error';
-    cfg              = [];
-    cfg.roi        = dip1;
-    cfg.output     = 'multiple';
-    cfg.atlas      = atlas;
-    cfg.inputcoord = 'mni';
-    cfg.verbose = 0;
-    %- (01/19/2023), JS: Changing cfg.sphere from 1 to 3 (1mm vs 3mm)
-    cfg.sphere = 3;
-    label_i = ft_volumelookup(cfg, atlas);
-    if ~isempty(label_i)
-        counts = sum([label_i.count],2);
-        [val, indx] = max(counts);
-        names = label_i(1).name;
-        if strcmp(names(indx),'no_label_found')
-            sub_indx = find(counts ~= 0 & counts < val);
-            if ~isempty(sub_indx)
-                atlas_name_ct = names{sub_indx};
-            end
-        else
-            atlas_name_ct = names{indx};
-        end
-    end
-    txt_store{k} = [sprintf('CL%i: N=%i\n',k,length(STUDY.cluster(k).sets)),...
-    sprintf('CL%i: %s\n',k,atlas_name),...
-    sprintf('Dip Center: [%0.1f,%0.1f,%0.1f]\n',STUDY.cluster(k).dipole.posxyz),...
-    sprintf('CENTROID: CL%i: %s\n',k,atlas_name_ct),...
-    sprintf('CENTROID: Dip %0.1f,%0.1f,%0.1f]\n\n',STUDY.cluster(k).centroid.dipole.posxyz)];
-    atlas_name_store{k_i} = sprintf('CL%i: %s\n',k,atlas_name);
-    % atlas_name_store{k} = sprintf('CL%i: %s\n',k,atlas_name_ct);
-end
-cellfun(@(x) disp(x),txt_store);
-save([save_dir filesep 'anatomy_chars.mat'],'txt_store','atlas_name_store');
-%% ==================================================================== %%
 %## MIM KINEMATICS
 % meas_names_imu = {'nanmean_APexc_mean','nanmean_MLexc_mean','nanmean_APexc_COV','nanmean_MLexc_COV'}; %{'APexc_COV','MLexc_COV'};
 % meas_names_ls = {'nanmean_StepDur','nanmean_StepDur_cov','nanmean_GaitCycleDur_cov','nanmean_GaitCycleDur',};
@@ -412,17 +338,63 @@ LAB_C_YOFFSET = 0.075;
 LAB_C_XOFFSET = -0.125;
 LAB_D_YOFFSET = 0.08;
 LAB_D_XOFFSET = -0.125;
-FIGURE_POSITION =[0,0,6.5,9];
+FIGURE_POSITION =[1,1,6.5,9];
+PG_SIZE = [6.5,9];
 FONT_NAME = 'Arial';
 FONT_WEIGHT_PSD = 'normal';
 TOPO_FONTSIZE = 7;
 FONT_SIZE_PSD = 10;
 FONT_SIZE_PSD_LEG = 10;
 FONT_SIZE_VIO = 10;
-FONT_SIZE_VIO_REG = 6;
+FONT_SIZE_VIO_REG = 5;
 % PSD_GROUP_TITLE_FONTSIZE = 12;
 PSD_GROUP_TITLE_FONTSIZE = 10;
 LEG_TOKEN_SIZE_PSD = 20;
+%##
+% im_resize= 0.9;
+    IM_RESIZE = 0.9;
+    AX_H  = 0.2;
+    AX_W = 0.275;
+    AX_HORIZ_SHIFT = 0.06;
+    %- set ylabel & title
+    AXES_FONT_SIZE_VIO = 10;
+    GROUP_LAB_FONTSIZE = AXES_FONT_SIZE_VIO;
+    GROUP_LAB_FONTWEIGHT = 'bold ';
+    XLAB_FONTSIZE = AXES_FONT_SIZE_VIO;
+    YLAB_FONTSIZE = AXES_FONT_SIZE_VIO;
+    XTICK_FONTSIZE = AXES_FONT_SIZE_VIO;
+    XLAB_FONTWEIGHT = 'bold';
+    YLAB_FONTWEIGHT = 'bold';
+    TITLE_FONTSIZE = AXES_FONT_SIZE_VIO;
+    TITLE_FONTWEIGHT = 'bold';
+    XLABEL_OFFSET = -.05;
+    GROUP_LAB_YOFFSET = -0.05;
+VIO_PLOT_STRUCT = struct('color_map',[],...
+            'cond_labels',{'0.25','0.50','0.75','1.0'},...
+            'cond_offsets',[-0.35,-0.1,0.15,0.40],...
+            'group_labels',{'YA','OHMA','OLMA'},...
+            'group_offsets',[0.125,0.475,0.812],...
+            'group_lab_yoffset',-0.285,...
+            'group_lab_fontweight','normal',...
+            'group_lab_fontsize',10,...
+            'y_label','unit',...
+            'y_label_fontsize',10,...
+            'y_label_fontweight','normal',...
+            'ylim',[],...
+            'x_label','x',...
+            'x_label_fontsize',10,...
+            'x_label_fontweight','bold',...
+            'x_label_yoffset',-0.1,...
+            'xlim',[],...
+            'title','',...
+            'title_fontsize',10,...
+            'title_fontweight','normal',...
+            'font_size',10,...
+            'font_name','Arial',...
+            'do_combine_groups',false,...
+            'regresslab_txt_size',7,...
+            'ax_position',[0,0,1,1],...
+            'ax_line_width',1);
 %-
 des_i = 2;
 cl_i = 3;
@@ -434,18 +406,44 @@ for i = 1:length(STUDY.design(des_i).variable)
         g_chars = STUDY.design(des_i).variable(i).value;
     end
 end
-cluster_titles = {'Precuneus','Right Posterior Parietal',...
-    'Left Occipital','Left Supplementary Motor','Left Sensorimotor','Left Posterior Parietal',...
-    'Eye','Left Temporal','Mid/Posterior Cingulate','Right Sensorimotor','Right Temporal'};
-psd_ylimits = {[-31.5,-10],[-31.5,-15], [-30,-12.5], [-32.5,-15], [-32.5,-15],...
-    [-30,-12.5], [-30,-10], [-30,-10], [-30,-10], [-32.5,-15], [-30,-10]};
-c_chars = {'0.25m/s','0.5m/s','0.75m/s','1.0m/s'};
+% cluster_new_labs = {'Precuneus_R','Postcentral_R','Calcarine_L/Lingaul_L','Frontal_Sup_2_L',...
+%     'Precentral_L','Parietal_Inf_L','Putamen_R/Caudate_R/Frontal_Mid_2_R','Insula_L',...
+%     'Supp_Motor_Area_R/error','Frontal_Sup_2_R','Rolandic_Oper_R'};
+% cluster_titles = {'Precuneus','Right Posterior Parietal',...
+%     'Left Occipital','Left Supplementary Motor','Left Sensorimotor','Left Posterior Parietal',...
+%     'Eye','Left Temporal','Mid/Posterior Cingulate','Right Sensorimotor','Right Temporal'};
+% cluster_titles = {'Precuneus','Right Sensorimotor',...
+%     'Left Occipital','Left Supplementary Motor','Left Sensorimotor','Left Posterior Parietal',...
+%     'Eye','Left Temporal','Mid Cingulate','Right Supplementary Motor','Right Temporal'};
+% cluster_titles = atlas_name_store;
+%- (09/04/2024) ICLabel Chosen Brain Areas
+cluster_titles = {'Precuneus','Right Supplementary Motor',...
+    'Left Sensorimotor','Left Occipital','Right Temporal','Right Sensorimotor',...
+    'Left Temporal','Mid Cingulate','Left Posterior Parietal','Right Posterior Parietal','Left Supplementary Motor'};
+% psd_ylimits = {[-31.5,-10],[-32.5,-15],...
+%     [-30,-12.5], [-32.5,-15], [-32.5,-15],[-30,-12.5],...
+%     [-30,-10],[-30,-10],[-30,-10],[-32.5,-15],[-30,-10]};
+% psd_ylimits = {[-31.5,-10],[-32.5,-15],...
+%     [-37.5,-15], [-32.5,-15], [-32.5,-15],[-30,-12.5],...
+%     [-30,-10],[-30,-10],[-30,-10],[-32.5,-15],[-30,-10]};
+% violin_ylimits_theta = {[-1,6],[-1.5,4],...
+%     [-1.5,5], [], [],[],...
+%     [],[],[],[],[]};
+% violin_ylimits_alpha = {[-1,12.5],[-1,12.5],...
+%     [-1,12.5], [], [],[],...
+%     [],[],[],[],[]};
+% violin_ylimits_beta = {[-1,7],[-1,9],...
+%     [-1.5,7], [], [],[],...
+%     [],[],[],[],[]};
+c_chars = {'0.25 m/s','0.50 m/s','0.75 m/s','1.0 m/s'};
 % g_chars_topo = {'Young Adult',{'Older Adult','High Mobility'},{'Older Adult','Low Mobility'}};
 g_chars_topo = {'Young Adults','Older High Mobility Adults','Older Low Mobility Adults'};
 g_chars_subp = {'YA','OHMA','OLMA'};
+VIOLIN_XTICK_CHARS = {'0.25','0.50','0.75','1.0'};
 AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],...
         'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
 %%
+des_i = 2;
 %## TOPO & DIPOLE PLOTS
 for k_i = 1:length(clusters)
     %%
@@ -471,7 +469,6 @@ for k_i = 1:length(clusters)
     % GAP = 0.05;
     IM_RESIZE = 0.8;
     %## TOPO PLOT
-    %{
     % AX_INIT_HORIZ_DIP = 2.25; % inches for some reason, maybe a bug with normal units
     % AX_INIT_VERT_DIP = 7.2; % inches for some reason, maybe a bug with normal units
     % subplot(3,4,1)
@@ -490,15 +487,25 @@ for k_i = 1:length(clusters)
             g_counts{group_i} =sprintf('%s\n%s N=%i',g_chars_topo{group_i}{1},g_chars_topo{group_i}{2},sum(g_inds));
         end
     end
-    fig_i.Children(1).Title.String = g_counts; %sprintf('N=%i',length(STUDY.cluster(cl_i).sets));
-    fig_i.Children(1).Title.Interpreter = 'none';
-    fig_i.Children(1).FontSize = TOPO_FONTSIZE; %PLOT_STRUCT.font_size;
-    fig_i.Children(1).FontName = FONT_NAME;
-    fig_i.Children(1).FontWeight = 'bold';
-    fig_i.Children(1).OuterPosition = [0,0,1,1];
-    fig_i.Children(1).Units = 'Normalized';
-    fig_i.Children(1).Position = [AX_INIT_HORIZ_TOPO,AX_INIT_VERT_TOPO,0.225*IM_RESIZE,0.25*IM_RESIZE];  %[left bottom width height]
-    %}
+    % fig_i.Children(1).Title.String = g_counts; %sprintf('N=%i',length(STUDY.cluster(cl_i).sets));
+    % fig_i.Children(1).Title.Interpreter = 'none';
+    % fig_i.Children(1).FontSize = TOPO_FONTSIZE; %PLOT_STRUCT.font_size;
+    % fig_i.Children(1).FontName = FONT_NAME;
+    % fig_i.Children(1).FontWeight = 'bold';
+    % fig_i.Children(1).OuterPosition = [0,0,1,1];
+    % fig_i.Children(1).Units = 'Normalized';
+    % fig_i.Children(1).Position = [AX_INIT_HORIZ_TOPO,AX_INIT_VERT_TOPO,0.225*IM_RESIZE,0.25*IM_RESIZE];  %[left bottom width height]
+    obj_i = findobj(fig_i,'type','Axes');
+    obj_i(1).Title.String = g_counts;
+    obj_i(1).Title.String = g_counts; %sprintf('N=%i',length(STUDY.cluster(cl_i).sets));
+    obj_i(1).Title.Interpreter = 'none';
+    obj_i(1).FontSize = TOPO_FONTSIZE; %PLOT_STRUCT.font_size;
+    obj_i(1).FontName = FONT_NAME;
+    obj_i(1).FontWeight = 'bold';
+    obj_i(1).OuterPosition = [0,0,1,1];
+    obj_i(1).Units = 'Normalized';
+    obj_i(1).Position = [AX_INIT_HORIZ_TOPO,AX_INIT_VERT_TOPO,0.225*IM_RESIZE,0.25*IM_RESIZE];  %[left bottom width height]
+
     %## DIPOLE PLOTS
     %-
     target_sz = 1.25; %inch
@@ -564,9 +571,9 @@ for k_i = 1:length(clusters)
     im2 = padarray(im2,[31,0],0,"post");
     im2 = padarray(im2,[10,0],0,"both");
     im3(1:40,:,:) = [];
-    im1(im1==255) = 0;
-    im2(im2==255) = 0;
-    im3(im3==225) = 0;
+    % im1(im1==255) = 0;
+    % im2(im2==255) = 0;
+    % im3(im3==225) = 0;
     %-
     % szw1 = (size(im1,2)/DIP_IM_DPI); %/PG_SIZE(1); %width
     % szh1 = (size(im1,1)/DIP_IM_DPI); %/PG_SIZE(2); %+0.0001; %height
@@ -619,7 +626,6 @@ for k_i = 1:length(clusters)
         'String','A)','HorizontalAlignment','left',...
         'VerticalAlignment','top','LineStyle','none','FontName',FONT_NAME,...
         'FontSize',14,'FontWeight','Bold','Units','normalized');
-    %%
     %## (PSDS) ====================================================== %%
     % im_resize = 0.5;
     GROUP_EDGECOLOR = {};
@@ -633,7 +639,6 @@ for k_i = 1:length(clusters)
     horiz_shift = 0;
     %## AUTO SET PSD YLIM
     tmp_data = cell(length(groups),1);
-    des_i = 2;
     cnt = 1;
     for j = 1:length(groups)
         for i = 1:size(spec_data_original{des_i}{cl_i},1)
@@ -645,7 +650,6 @@ for k_i = 1:length(clusters)
     Y_LIM_GROUP = [round(prctile(tmp_data,6,'all'),1),prctile(tmp_data,94,'all')];
     %- end auto set psd ylim
     for j = 1:length(groups)
-        des_i = 2;
         switch des_i
             case 1
                 color_dark = COLORS_MAPS_TERRAIN;
@@ -680,7 +684,7 @@ for k_i = 1:length(clusters)
         for i = 1:size(spec_data_original{des_i}{cl_i},1)
             aperiodic_fit = fooof_apfit_store{des_i}{cl_i}{i,j}';
             tmp = plot(fooof_freq,mean(aperiodic_fit),'color',color_dark(i,:),...
-                'linestyle','-.','linewidth',LINE_WIDTH_APPSD,'displayname','ap. fit');
+                'linestyle','-.','linewidth',LINE_WIDTH_APPSD,'displayname','AP. Fit');
             set(tmp,'Color',[color_dark(i,:),LINE_ALPHA_PSD]);
             if i == 1
                 dash = tmp;
@@ -745,7 +749,7 @@ for k_i = 1:length(clusters)
     vert_shift = 0;
     %## AUTO SET PSD YLIM
     tmp_data = cell(length(groups),1);
-    des_i = 2;
+    
     cnt = 1;
     for j = 1:length(groups)
         for i = 1:size(fooof_diff_store{des_i}{cl_i},1)
@@ -757,7 +761,7 @@ for k_i = 1:length(clusters)
     Y_LIM_GROUP = [round(prctile(tmp_data,1,'all'),1),prctile(tmp_data,99,'all')+prctile(tmp_data,99,'all')*0.01];
     %- end auto set psd ylim
     for j = 1:length(groups)
-        des_i = 2;
+        % des_i = 2;
         switch des_i
             case 1
                 color_dark = COLORS_MAPS_TERRAIN;
@@ -811,7 +815,7 @@ for k_i = 1:length(clusters)
         %## LABELS
         xlabel('Frequency(Hz)','FontWeight','bold','FontSize',FONT_SIZE_PSD);
         if j == 1
-            ylabel('10*log_{10}(PSD - AP. Fit)','FontWeight','bold','FontSize',FONT_SIZE_PSD);
+            ylabel('10*log_{10}(PSD) - AP. Fit','FontWeight','bold','FontSize',FONT_SIZE_PSD);
         else
             ylabel('','FontWeight','bold','FontSize',FONT_SIZE_PSD);
         end
@@ -839,42 +843,60 @@ for k_i = 1:length(clusters)
         'FontSize',14,'FontWeight','Bold','Units','normalized');
     hold on;
     %## VIOLIN PLOTS) ================================================== %%
-    % im_resize= 0.9;
-    IM_RESIZE = 0.9;
-    AX_H  = 0.2;
-    AX_W = 0.275;
-    AX_HORIZ_SHIFT = 0.06;
+    %%
+    figure;
+    switch des_i
+        case 1
+            color_dark = COLORS_MAPS_TERRAIN;
+            color_light = COLORS_MAPS_TERRAIN;
+            xtick_label_g = {'flat','low','med','high'};
+            x_label = 'terrain';
+            cond_offsets = [-0.35,-0.1,0.15,0.40];
+        case 2
+            color_dark = COLOR_MAPS_SPEED; %color.speed;
+            color_light = COLOR_MAPS_SPEED+0.15; %color.speed_shade;
+            xtick_label_g = {'0.25','0.50','0.75','1.0'};
+            x_label = 'speed (m/s)';
+            cond_offsets = [-0.35,-0.1,0.15,0.40];
+    end
     %## violin plot's theta/alpha/beta (speed)
-    %-
-    max_val = zeros(length(measure_name_plot),length(designs));
     DEFAULT_STATS_STRUCT = struct('anova',{{}},...
-                          'anova_grp',{{}},...
-                          'pvals',{{}},...
-                          'pvals_pairs',{{}},...
-                          'pvals_grp',{{}},...
-                          'pvals_grp_pairs',{{}},...
-                          'regress_pval',{{}},...
-                          'regress_line',{{}},...
-                          'r2_coeff',{[]},...
-                          'regress_xvals',0,...
-                          'subject_char',[],... % this option when filled prints removal of nan() info
-                          'group_order',categorical({''}),...
-                          'do_include_intercept',false); 
+                              'anova_grp',{{}},...
+                              'pvals',{{}},...
+                              'pvals_pairs',{{}},...
+                              'pvals_grp',{{}},...
+                              'pvals_grp_pairs',{{}},...
+                              'regress_pval',{{}},...
+                              'regress_line',{{}},...
+                              'line_type',{'best_fit'},... % ('best_fit' | 'means')
+                              'r2_coeff',{[]},... % this may become depricated
+                              'regress_xvals',0,...
+                              'subject_char',[],... % this option when filled prints removal of nan() info
+                              'group_order',categorical({''}),...
+                              'do_include_intercept',false,... % this may become depricated
+                              'display_one_regress',true,... % this may become depricated
+                              'display_stats_char',false,... 
+                              'stats_char',{{}},...
+                              'bracket_yshift_perc',0.6,...
+                              'bracket_y_perc',1,...
+                              'bracket_rawshifty_upper',0,...
+                              'bracket_rawshifty_lower',0,...
+                              'grp_sig_offset_x',0,...
+                              'grp_sig_offset_y',0); 
     %
     %##
     STATS_STRUCT = DEFAULT_STATS_STRUCT;
     cnt = 1;
-    des_i = 2;
-    % inds = STATS_TRACK_STRUCT.design == designs(des_i) & STATS_TRACK_STRUCT.cluster == clusters(k_i);
-    % tmp_table = STATS_TRACK_STRUCT(inds,:);
-    % prc_ylim = [prctile(tmp_fooof_t.(measure_name_plot{meas_i}),5),prctile(tmp_fooof_t.(measure_name_plot{meas_i}),95)];
+    vert_shift = 0;    
+    horiz_shift= 0;
+    prc_ylim = zeros(length(measure_name_plot),2);
     for meas_i = 1:length(measure_name_plot)
-        
         % measure_name_plot{meas_i} = measure_name_plot{meas_i};
         inds = FOOOF_TABLE.design_id == num2str(des_i) & FOOOF_TABLE.cluster_id == num2str(cl_i);
         tmp_fooof_t = FOOOF_TABLE(inds,:);
-        prc_ylim = [floor(prctile(tmp_fooof_t.(measure_name_plot{meas_i}),1))+floor(prctile(tmp_fooof_t.(measure_name_plot{meas_i}),99))*.3,...
-            ceil(prctile(tmp_fooof_t.(measure_name_plot{meas_i}),99))+ceil(prctile(tmp_fooof_t.(measure_name_plot{meas_i}),99))*.1];
+        prc_ylim(meas_i,:) = [floor(prctile(tmp_fooof_t.(measure_name_plot{meas_i}),1))-floor(std(tmp_fooof_t.(measure_name_plot{meas_i}))),...
+            ceil(prctile(tmp_fooof_t.(measure_name_plot{meas_i}),99))+ceil(std(tmp_fooof_t.(measure_name_plot{meas_i})))*1.5];
+        disp(prc_ylim)
         STATS_STRUCT(cnt) = DEFAULT_STATS_STRUCT;
         for group_i = 1:length(groups)
             inds = STATS_TRACK_STRUCT.design == designs(des_i) & STATS_TRACK_STRUCT.cluster == clusters(k_i) &...
@@ -902,134 +924,61 @@ for k_i = 1:length(clusters)
                     rs = tmp_table.lme_speed_p{1};
                     rls = [tmp_table.lme_inter_coeff{1}, tmp_table.lme_speed_coeff{1}]; 
                     r2 = tmp_table.R2{1};
+                    if aa > 0.01 && aa < 0.05
+                        % str = sprintf('* %0.1g\{times}<speed>+%0.1g\nR^2=%0.2g',rls(2),rls(1),r2);
+                        % str = [sprintf('* %0.1g',rls(2)),'\times<speed>+',sprintf('%0.1g\nR^2=%0.2g',rls(1),r2)];
+                        str = [sprintf('* %0.1g',rls(2)),'x+',sprintf('%0.1g\nR^2=%0.2g',rls(1),r2)];
+                    elseif aa <= 0.01 && aa > 0.001
+                        % str = sprintf('* %0.1g\{times}<speed>+%0.1g\nR^2=%0.2g',rls(2),rls(1),r2);
+                        % str = [sprintf('* %0.1g',rls(2)),'\times<speed>+',sprintf('%0.1g\nR^2=%0.2g',rls(1),r2)];
+                        str = [sprintf('** %0.1g',rls(2)),'x+',sprintf('%0.1g\nR^2=%0.2g',rls(1),r2)];
+                    elseif aa <= 0.001
+                        % str = [sprintf('* %0.1g',rls(2)),'\times<speed>+',sprintf('%0.1g\nR^2=%0.2g',rls(1),r2)];
+                        str = [sprintf('*** %0.1g',rls(2)),'x+',sprintf('%0.1g\nR^2=%0.2g',rls(1),r2)];
+                    else
+                        str = '';
+                    end
+                    STATS_STRUCT(cnt).line_type = 'best_fit';
+                    STATS_STRUCT(cnt).stats_char{group_i} = str;
+                    STATS_STRUCT(cnt).display_stats_char = true;
                     norm_p = tmp_table.norm_test_p;
                     STATS_STRUCT(cnt).anova{group_i}=aa;
                     STATS_STRUCT(cnt).regress_pval{group_i}=rs;
                     STATS_STRUCT(cnt).regress_line{group_i}=rls;
-                    STATS_STRUCT(cnt).r2_coeff(group_i)=r2;
+                    % STATS_STRUCT(cnt).r2_coeff(group_i)=r2;
                     STATS_STRUCT(cnt).regress_xvals=(0:5)*0.25;
             end
         end
-        stat_add = (max(tmp_fooof_t.(measure_name_plot{meas_i}))-min(tmp_fooof_t.(measure_name_plot{meas_i})))*0.2;
-        for group_i = 1:length(groups)
-            switch des_i
-                case 1
-                    tm = ceil(prctile(tmp_fooof_t.(measure_name_plot{meas_i}),97));
-                    % tm = max(T_plot.(measure_name_plot{meas_i}))+sum([STATS_STRUCT(cnt).pvals{k}(:)]<0.05)*stat_add;
-                    % tm = max(tmp_fooof_t.(measure_name_plot{meas_i}))+1*std(tmp_fooof_t.(measure_name_plot{meas_i}));
-                case 2
-                    tm = ceil(prctile(tmp_fooof_t.(measure_name_plot{meas_i}),97));
-                    % tm = max(T_plot.(measure_name_plot{meas_i}))+sum([STATS_STRUCT(cnt).regress_pval{k}]<0.05)*(stat_add*2);
-                    % tm = max(tmp_fooof_t.(measure_name_plot{meas_i}))+1*std(tmp_fooof_t.(measure_name_plot{meas_i}));
-            end
-        end
-        max_val(meas_i,des_i) = tm;
-        cnt = cnt + 1;
-    end
-    max_vals = max(max_val,[],2)+1*std(max_val,[],2);
-    %-
-    vert_shift = 0;
-    cnt = 1;   
-    inds = FOOOF_TABLE.design_id == num2str(des_i) & FOOOF_TABLE.cluster_id == num2str(cl_i);
-    tmp_fooof_t = FOOOF_TABLE(inds,:);
-    switch des_i
-        case 1
-            color_dark = COLORS_MAPS_TERRAIN;
-            color_light = COLORS_MAPS_TERRAIN;
-            xtick_label_g = {'flat','low','med','high'};
-            x_label = 'terrain';
-            cond_offsets = [-0.35,-0.1,0.15,0.40];
-        case 2
-            color_dark = COLOR_MAPS_SPEED; %color.speed;
-            color_light = COLOR_MAPS_SPEED+0.15; %color.speed_shade;
-            xtick_label_g = {'0.25','0.50','0.75','1.0'};
-            x_label = 'speed (m/s)';
-            cond_offsets = [-0.35,-0.1,0.15,0.40];
-    end
-    horiz_shift= 0;
-    for meas_i = 1:length(measure_name_plot)
+        %## PLOT
         ax = axes();
         tmp_stats = STATS_STRUCT(cnt);
-        % figure;
-        VIOLIN_PARAMS = {'width',0.1,...
+        VIO_PARAMS = {'width',0.1,...
             'ShowWhiskers',false,'ShowNotches',false,'ShowBox',true,...
             'ShowMedian',true,'Bandwidth',0.15,'QuartileStyle','shadow',...
             'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
             'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
-        PLOT_STRUCT = struct('color_map',color_dark,...
-            'cond_labels',unique(tmp_fooof_t.cond_char),'group_labels',categorical(g_chars_subp),...
-            'cond_offsets',cond_offsets,...
-            'group_offsets',[0.125,0.475,0.812],...
-            'y_label','10*log_{10}(Flattened PSD)',...
-            'title',title_plot{meas_i},'font_size',FONT_SIZE_VIO,'ylim',[min(tmp_fooof_t.(measure_name_plot{meas_i}))-0.5,max_vals(meas_i)],...
-            'font_name','Arial','x_label',x_label,'do_combine_groups',false,...
-            'regresslab_txt_size',FONT_SIZE_VIO_REG);
-        % PLOT_PARAMS = struct('color_map',color_dark,...
-        %     'cond_labels',unique(tmp_fooof_t.cond_char),'group_labels',unique(tmp_fooof_t.group_char),...
-        %     'cond_offsets',cond_offsets,...
-        %     'group_offsets',[0.125,0.475,0.812],...
-        %     'y_label','10*log_{10}(Flattened PSD)',...
-        %     'title',title_plot{meas_i},'font_size',PLOT_STRUCT.font_size,'ylim',prc_ylim,...
-        %     'font_name','Arial','x_label',x_label,'do_combine_groups',false,...
-        %     'regresslab_txt_size',9);
-        % ax = axes();
-        % figfig = figure();
+        %-
+        VIO_PLOT_STRUCT.color_map = color_dark;
+        VIO_PLOT_STRUCT.cond_labels = xtick_label_g;
+        VIO_PLOT_STRUCT.cond_labels = xtick_label_g;
+        VIO_PLOT_STRUCT.title = title_plot{meas_i};
+        if meas_i == 1
+            VIO_PLOT_STRUCT.y_label ='10*log_{10}(PSD) - AP. Fit';
+        else
+            VIO_PLOT_STRUCT.y_label ='';
+        end
+        VIO_PLOT_STRUCT.ylim = prc_ylim(meas_i,:);
+        VIO_PLOT_STRUCT.ax_position = [AX_INIT_HORIZ+horiz_shift,AX_INIT_VERT_VIO+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE];
+        %-
         ax = group_violin(tmp_fooof_t,measure_name_plot{meas_i},'cond_id','group_id',...
             ax,...
-            'VIOLIN_PARAMS',VIOLIN_PARAMS,...
-            'PLOT_STRUCT',PLOT_STRUCT,...
+            'VIOLIN_PARAMS',VIO_PARAMS,...
+            'PLOT_STRUCT',VIO_PLOT_STRUCT,...
             'STATS_STRUCT',tmp_stats);
         if meas_i ~= 1
             ylabel('');
         end
-        set(ax,'OuterPosition',[0,0,1,1]);
-        set(ax,'Position',[AX_INIT_HORIZ+horiz_shift,AX_INIT_VERT_VIO+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE]);  %[left bottom width height]
-        %## TITLE
-        % annotation('textbox',[AX_INIT_HORIZ+horiz_shift,AX_INIT_VERT_VIO-vert_shift+AX_SUBTITLE_OFFSET+AX_H*IM_RESIZE,0.2,0.2],...
-        % 'String',string(group_chars(j)),'HorizontalAlignment','center',...
-        % 'VerticalAlignment','middle','LineStyle','none','FontName',FONT_NAME,...
-        % 'FontSize',14,'FontWeight','Bold','Units','normalized');
         horiz_shift = horiz_shift + AX_W*IM_RESIZE + AX_HORIZ_SHIFT*IM_RESIZE;
-        % set(axax,'Position',[0.08+horiz_shift,VIOLIN_BOTTOM+vert_shift,AX_W*im_resize,AX_H*im_resize]);  %[left bottom width height]
-        % hold off;
-        % %- iterate
-        % horiz_shift = horiz_shift + 0.3*im_resize+0.05;
-        %- set ylabel & title
-        AXES_FONT_SIZE_VIO = 10;
-        GROUP_LAB_FONTSIZE = AXES_FONT_SIZE_VIO;
-        GROUP_LAB_FONTWEIGHT = 'bold ';
-        XLAB_FONTSIZE = AXES_FONT_SIZE_VIO;
-        YLAB_FONTSIZE = AXES_FONT_SIZE_VIO;
-        XTICK_FONTSIZE = AXES_FONT_SIZE_VIO;
-        XLAB_FONTWEIGHT = 'bold';
-        YLAB_FONTWEIGHT = 'bold';
-        TITLE_FONTSIZE = AXES_FONT_SIZE_VIO;
-        TITLE_FONTWEIGHT = 'bold';
-        XLABEL_OFFSET = -.05;
-        GROUP_LAB_YOFFSET = -0.275;
-        % ax = gca;
-        ax.Children(1).FontSize = GROUP_LAB_FONTSIZE;
-        ax.Children(2).FontSize = GROUP_LAB_FONTSIZE;
-        ax.Children(3).FontSize = GROUP_LAB_FONTSIZE;
-        ax.Children(1).Position(2) = GROUP_LAB_YOFFSET;
-        ax.Children(2).Position(2) = GROUP_LAB_YOFFSET;
-        ax.Children(3).Position(2) = GROUP_LAB_YOFFSET;
-        % set(ax,'FontName','Arial','FontSize',XTICK_FONTSIZE,'FontWeight','normal')
-        % yticks(ax,'FontSize',XTICK_FONTSIZE)
-        yt = yticks(ax);
-        xlh = xlabel(ax,PLOT_STRUCT.x_label,'Units','normalized','FontSize',XLAB_FONTSIZE,'FontWeight',XLAB_FONTWEIGHT);
-        pos1=get(xlh,'Position');
-        pos1(1,2)=pos1(1,2)+XLABEL_OFFSET;
-        set(xlh,'Position',pos1);
-        if meas_i == 1
-            ylabel(ax,'10*log_{10}(PSD - AP. Fit)','FontSize',YLAB_FONTSIZE,'FontWeight',YLAB_FONTWEIGHT);
-        else
-            ylabel(ax,'','FontSize',YLAB_FONTSIZE,'FontWeight',YLAB_FONTWEIGHT);
-        end
-        title(ax,PLOT_STRUCT.title,...
-            'FontSize',TITLE_FONTSIZE,'FontWeight',TITLE_FONTWEIGHT);
-        % fontsize(ax,10,"points");
-        % ylim(gca,PLOT_STRUCT.ylim);
         cnt = cnt + 1;
     end
     %## LETTER
@@ -1037,16 +986,11 @@ for k_i = 1:length(clusters)
         'String','D)','HorizontalAlignment','left',...
         'VerticalAlignment','top','LineStyle','none','FontName',FONT_NAME,...
         'FontSize',14,'FontWeight','Bold','Units','normalized');
-    %## TITLE
-    % annotation('line',[AX_INIT_HORIZ+0.0775,1-AX_INIT_HORIZ-0.0875],repmat(AX_INIT_VERT_VIO+AX_H*IM_RESIZE+0.035,[1,2]),...
-    %     'Color','black','Units','normalized','LineStyle','-','LineWidth',2);
-    % annotation('rectangl/home/jsalminene',[AX_INIT_HORIZ-0.075,AX_INIT_VERT_VIO-0.075,1-(AX_INIT_HORIZ-0.075),AX_H*IM_RESIZE+0.1],...
-    %     'Color','black','Units','normalized','LineStyle','-','LineWidth',3);
-    % vert_shift = vert_shift - (0.1+0.225*im_resize);
     hold off;
-    savefig(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i.fig',cl_i)])
-    exportgraphics(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i.tiff',cl_i)],'Resolution',1000)
-    exportgraphics(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i.png',cl_i)],'Resolution',300)
+    drawnow;
+    % exportgraphics(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i_des%i.tiff',cl_i,des_i)],'Resolution',1000)
+    % exportgraphics(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i_des%i.png',cl_i,des_i)],'Resolution',300)
+    savefig(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i_des%i.fig',cl_i,des_i)])
     % exportgraphics(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i.tiff',cl_i)],'Resolution',300)
     % close(fig);
 end

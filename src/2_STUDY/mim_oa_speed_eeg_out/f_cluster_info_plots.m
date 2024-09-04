@@ -20,26 +20,34 @@ global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
-    STUDY_DIR = getenv('STUDY_DIR');
-    SCRIPT_DIR = getenv('SCRIPT_DIR');
-    SRC_DIR = getenv('SRC_DIR');
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = SCRIPT_DIR; % change this if in sub folder
+        SRC_DIR = fileparts(fileparts(STUDY_DIR));
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
+        STUDY_DIR = getenv('STUDY_DIR');
+        SCRIPT_DIR = getenv('SCRIPT_DIR');
+        SRC_DIR = getenv('SRC_DIR');
+    end
 else
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
     catch e
-        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
-    STUDY_DIR = SCRIPT_DIR;
+    STUDY_DIR = SCRIPT_DIR; % change this if in sub folder
     SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
-%## Add Study & Script Paths
-addpath(STUDY_DIR);
+%## Add Study, Src, & Script Paths
 addpath(SRC_DIR);
+addpath(STUDY_DIR);
 cd(SRC_DIR);
-fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
+fprintf(1,'Current folder: %s\n',SRC_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
@@ -109,8 +117,10 @@ studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studie
 %- load cluster
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
-cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
+cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 %% ================================================================== %%
 %## LOAD STUDY
 if ~ispc
@@ -121,24 +131,8 @@ end
 cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
 [comps_out,main_cl_inds,outlier_cl_inds,valid_clusters] = eeglab_get_cluster_comps(STUDY);
-condition_gait = unique({STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
-subject_chars = {STUDY.datasetinfo.subject};
-%-
-fPaths = {STUDY.datasetinfo.filepath};
-fNames = {STUDY.datasetinfo.filename};
-% CLUSTER_PICKS = main_cl_inds(2:end);
-CLUSTER_PICKS = [12,7,4,8,11,6,3];
-%## CREATE PATHS
-cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
-if ~isempty(SUB_GROUP_FNAME)
-    spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
-else
-    spec_data_dir = [cluster_dir filesep 'spec_data'];
-end
-if ~exist(spec_data_dir,'dir')
-    mkdir(spec_data_dir);
-    % error('spec_data dir does not exist');
-end
+CLUSTER_PICKS = main_cl_inds(2:end);
+% CLUSTER_PICKS = [12,7,4,8,11,6,3];
 %## TOPO PLOTS
 tmp_study = STUDY;
 RE_CALC = true;

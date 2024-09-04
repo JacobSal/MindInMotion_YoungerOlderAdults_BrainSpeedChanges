@@ -18,20 +18,20 @@ tic
 ax = [];
 GROUP_LAB_FONTSIZE = 10;
 GROUP_LAB_FONTWEIGHT = 'normal';
-XLAB_FONTSIZE = 10;
-YLAB_FONTSIZE = 10;
-XTICK_FONTSIZE = 10;
-XLAB_FONTWEIGHT = 'bold';
-YLAB_FONTWEIGHT = 'bold';
-TITLE_FONTSIZE = 10;
-TITLE_FONTWEIGHT = 'bold';
+% XLAB_FONTSIZE = 10;
+% YLAB_FONTSIZE = 10;
+% XTICK_FONTSIZE = 10;
+% XLAB_FONTWEIGHT = 'bold';
+% YLAB_FONTWEIGHT = 'bold';
+% TITLE_FONTSIZE = 10;
+% TITLE_FONTWEIGHT = 'bold';
 %-
-AXES_POS = [0.15 0.20 0.8 0.7];
-XLABEL_OFFSET = -0.225;
+% AXES_POS = [0.15 0.20 0.8 0.7];
+% XLABEL_OFFSET = -0.225;
 % GROUPLAB_POS = [0.225,0.775];
 % GROUPLAB_POS = [0.125,0.475,0.812];
 
-GROUPLAB_YOFFSET = -0.285;
+% GROUPLAB_YOFFSET = -0.285;
 % REGRESS_TXT_XMULTI = 1; %-0.8;
 % REGRESS_TXT_YMULTI = 1;
 % REGRESS_TXT_SIZE = 6;
@@ -43,15 +43,35 @@ DEFAULT_VIOLIN_PARAMS = {'Width',0.05,...
             'ShowMedian',true,'Bandwidth',0.1,'QuartileStyle','shadow',...
             'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
             'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
+prc_ylim = [floor(prctile(table_in.(measure_char),1))-floor(std(table_in.(measure_char)))*1.5,...
+            ceil(prctile(table_in.(measure_char),99))+ceil(std(table_in.(measure_char)))*1.5];
 DEFAULT_PLOT_STRUCT = struct('color_map',linspecer(length(unique(table_in.(cond_char)))),...
-    'cond_labels',unique(table_in.(cond_char)),'group_labels',unique(table_in.(group_char)),...
+    'cond_labels',{string(unique(table_in.(cond_char)))},...
     'cond_offsets',linspace(-0.3,0.3,length(unique(table_in.(cond_char)))),...
-    'group_offsets',[0.125,0.475,0.812],....
+    'group_labels',{string(unique(table_in.(group_char)))},...
+    'group_offsets',[0.125,0.475,0.812],...
+    'group_lab_yoffset',-0.285,...
+    'group_lab_fontweight','normal',...
+    'group_lab_fontsize',12,...
     'y_label','unit',...
-    'x_label','x','title','','font_size',12,'ylim',[min(table_in.(measure_char)),max(table_in.(measure_char))],...
+    'y_label_fontsize',12,...
+    'y_label_fontweight','bold',...
+    'ylim',prc_ylim,...
+    'x_label','x',...
+    'x_label_fontsize',12,...
+    'x_label_fontweight','bold',...
+    'x_label_yoffset',-0.1,...
+    'xlim',[],...
+    'title','',...
+    'title_fontsize',12,...
+    'title_fontweight','normal',...
+    'font_size',12,...
     'font_name','Arial',...
     'do_combine_groups',false,...
-    'regresslab_txt_size',5);
+    'regresslab_txt_size',5,...
+    'ax_position',[0,0,1,1],...
+    'ax_line_width',1);
+
 % STATS_STRUCT = struct('anova',{{}},...
 %                       'pvals',{{}},...
 %                       'pvals_pairs',{{}},...
@@ -143,13 +163,21 @@ conds = unique(table_tmp.(cond_char));
 % end
 hold on;
 cnt = 1;
+g_o = 1; 
+g_cnt = 1;
 xticks = [];
 xtick_labs = {};
+gticks = [];
 %- group primary, cond secondary
 ymaxs = zeros(length(groups),length(conds));
 sigline_ymax = zeros(length(groups),length(conds));
 violins = cell(length(groups)*length(conds),1);
-g_offset = 0;
+if ~isempty(PLOT_STRUCT.group_offsets)
+    g_offset = PLOT_STRUCT.group_offsets(g_o);
+    g_o = g_o + 1;
+else
+    g_offset = 0;
+end
 for i=1:length(groups)
     for j=1:length(conds)
         g_i = groups(i);
@@ -226,14 +254,20 @@ for i=1:length(groups)
         end
         cnt = cnt+1;
     end
-    g_offset = g_offset + 0.2;
+    gticks(i) = mean(xticks((cnt-length(conds)):(cnt-1)));
+    if ~isempty(PLOT_STRUCT.group_offsets) & i < length(groups)
+        g_offset = PLOT_STRUCT.group_offsets(g_o);
+        g_o = g_o + 1;
+    else
+        g_offset = g_offset + 0.2;
+    end
 end
 hold on;
 %##
 % SIG_LINE_INCR = 0.1;
 % ymax = max(table_tmp.(measure_char));
-yiter = get(gca,'ytick');
-yiter = yiter(2)-yiter(1);
+% yiter = get(gca,'ytick');
+% yiter = yiter(2)-yiter(1);
 cnt_g = 1;
 hold_xlim = get(gca,'xlim');
 annotes = [];
@@ -392,42 +426,68 @@ end
 
 %## set figure color, units, and size
 %- set axes units, and size
-set(ax,'XLim',hold_xlim);
-set(ax,'box', 'off')
-set(ax,'LineWidth',1)
-% set(gca,'FontName','Arial','FontSize',PLOT_STRUCT.font_size,'FontWeight','bold')
-set(ax,'FontName','Arial','FontSize',XTICK_FONTSIZE)
+set(ax,'box','off')
+set(ax,'LineWidth',PLOT_STRUCT.ax_line_width)
+set(ax,'FontName',PLOT_STRUCT.font_name,'FontSize',PLOT_STRUCT.font_size)
 set(ax,'OuterPosition',[0 0 1 1]);
-% set(gca,'Position',AXES_POS);  %[left bottom width height] This I what I added, You need to play with this
+set(gca,'Position',PLOT_STRUCT.ax_position);  %[left bottom width height] This I what I added, You need to play with this
+%- xlabel
+xlh = xlabel(ax,PLOT_STRUCT.x_label,'Units','normalized',...
+    'FontSize',PLOT_STRUCT.x_label_fontsize,'FontWeight',PLOT_STRUCT.x_label_fontweight);
+pos1=get(xlh,'Position');
+pos1(1,2)=pos1(1,2)+PLOT_STRUCT.x_label_yoffset;
+set(xlh,'Position',pos1);
+%- xticks
+if ~isempty(PLOT_STRUCT.xlim)
+    set(ax,'XLim',PLOT_STRUCT.xlim)
+else
+    set(ax,'XLim',hold_xlim)
+end
 set(ax,'XTick',sort(xticks));
 set(ax,'XTickLabel',xtick_labs);
 xtickangle(75);
-%- xlabel
-xlh = xlabel(ax,PLOT_STRUCT.x_label,'Units','normalized','FontSize',XLAB_FONTSIZE,'FontWeight',XLAB_FONTWEIGHT);
-pos1=get(xlh,'Position');
-pos1(1,2)=pos1(1,2)+XLABEL_OFFSET;
-set(xlh,'Position',pos1);
+%- set ylabel
+ylabel(ax,PLOT_STRUCT.y_label,'FontSize',PLOT_STRUCT.y_label_fontsize,...
+    'FontWeight',PLOT_STRUCT.y_label_fontweight);
+ylim(ax,PLOT_STRUCT.ylim);
+%- title
+title(ax,PLOT_STRUCT.title,'FontSize',PLOT_STRUCT.title_fontsize,...
+    'FontWeight',PLOT_STRUCT.title_fontweight);       
 %- set group labels
+% axpos = get(ax,'Position');
+% axxlim = get(ax,'XLim');
+axylim = get(ax,'YLim');
 try
     % if ~isempty(PLOT_STRUCT.group_labels)
+    % 3 = 4.5991
+    % 2 = 5
+    % 1 = 7.0769
     if ~isundefined(PLOT_STRUCT.group_labels)
         cnt_g = 1;
         for i = 1:length(groups)
-            x = PLOT_STRUCT.group_offsets(i);
-            y = GROUPLAB_YOFFSET; %GROUPLAB_YOFFSET
-            text(ax,x,y,0,char(PLOT_STRUCT.group_labels(i)),...
-                'FontSize',GROUP_LAB_FONTSIZE,'FontWeight',GROUP_LAB_FONTWEIGHT,'HorizontalAlignment','center',...
-                'Units','normalized');
+            % x = gticks(i)/(axlim(1)+axlim(2));
+            % x = gticks(i)/(axlim(2)+axpos(1)*axpos(3));
+            % x = (gticks(i)/(axlim(2)+axlim(1)))*axpos(3)+axpos(1);%PLOT_STRUCT.group_offsets(i);
+            x = gticks(i);
+            % y = 0.3; %GROUPLAB_YOFFSET
+            y = PLOT_STRUCT.group_lab_yoffset*abs(axylim(2)-axylim(1));
+            % text(ax,x,y,0,char(PLOT_STRUCT.group_labels(i)),...
+            %     'FontSize',GROUP_LAB_FONTSIZE,'FontWeight',GROUP_LAB_FONTWEIGHT,'HorizontalAlignment','center',...
+            %     'Units','normalized');
+            tt = text(ax,x,y,0,char(PLOT_STRUCT.group_labels(i)),...
+                'FontSize',PLOT_STRUCT.group_lab_fontsize,'FontWeight',PLOT_STRUCT.group_lab_fontweight,...
+                'FontName',PLOT_STRUCT.font_name,'HorizontalAlignment','center',...
+                'Units','data');
+            tt.Units = 'normalized';
+            tt.Position(2) = PLOT_STRUCT.group_lab_yoffset;
             cnt_g = cnt_g + length(conds);
         end
     end
 catch e
     error('Error. Plotting group labels failed...\n\n%s',getReport(e));
 end
-%- set ylabel & title
-ylabel(ax,PLOT_STRUCT.y_label,'FontSize',YLAB_FONTSIZE,'FontWeight',YLAB_FONTWEIGHT);
-title(ax,PLOT_STRUCT.title,'FontSize',TITLE_FONTSIZE,'FontWeight',TITLE_FONTWEIGHT);
-ylim(ax,PLOT_STRUCT.ylim);
+%%
+
 % hold on;
 % hold off;
 end

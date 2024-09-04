@@ -7,7 +7,7 @@
 %   Previous Version: n/a
 %   Summary: 
 
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_slide_conn/run_g_cnctanl_surro.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_slide_conn/run_ff_cnctanl_trial_comps.sh
 
 %{
 %## RESTORE MATLAB
@@ -108,12 +108,12 @@ end
 cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
 [comps_out,~,~,valid_cls] = eeglab_get_cluster_comps(STUDY);
+%%
+[STUDY,atlas_name,centroids] = add_anatomical_labels(STUDY,ALLEEG);
 %% INITIALIZE PARFOR LOOP VARS
 fPaths = {STUDY.datasetinfo.filepath};
 fNames = {STUDY.datasetinfo.filename};
 LOOP_VAR = 1:length(STUDY.datasetinfo);
-tmp = cell(1,length(STUDY.datasetinfo));
-rmv_subj = zeros(1,length(STUDY.datasetinfo));
 %## CUT OUT NON VALID CLUSTERS
 inds = setdiff(1:length(comps_out),valid_cls);
 comps_out(inds,:) = 0;
@@ -199,48 +199,6 @@ parfor subj_i = 1:length(LOOP_VAR)
 end
 par_save(tmp_fpath_store,study_fpath,'conn_slide_condition_fpaths.mat');
 pop_editoptions('option_computeica',0);
-%% SAVE BIG STUDY
-% fprintf('==== Reformatting Study ====\n');
-% %- remove bugged out subjects
-% tmp = tmp(~cellfun(@isempty,tmp));
-% %## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
-% fss = cell(1,length(tmp));
-% for subj_i = 1:length(tmp)
-%     fss{subj_i} = fields(tmp{subj_i});
-% end
-% fss = unique([fss{:}]);
-% fsPrev = fss;
-% for subj_i = 1:length(tmp)
-%     EEG = tmp{subj_i};
-%     fs = fields(EEG);
-%     % delete fields not present in other structs.
-%     out = cellfun(@(x) any(strcmp(x,fsPrev)),fs,'UniformOutput',false); 
-%     out = [out{:}];
-%     addFs = fs(~out);
-%     if any(~out)
-%         for j = 1:length(addFs)
-%             EEG.(addFs{j}) = [];
-%             fprintf('%s) Adding %s %s\n',EEG.subject,addFs{j})
-%         end
-%     end 
-%     tmp{subj_i} = EEG;
-% end
-% tmp = cellfun(@(x) [[]; x], tmp);
-% %##
-% [STUDY, ALLEEG] = std_editset([],tmp,...
-%                                 'updatedat','off',...
-%                                 'savedat','off',...
-%                                 'name',study_fname_1,...
-%                                 'filename',study_fname_1,...
-%                                 'filepath',study_load_dir);
-% %## ASSIGN PARAMETERS
-% STUDY.etc.a_epoch_process.epoch_chars = MAIN_STUDY.etc.a_epoch_process;
-% STUDY.etc.d_cnctanl_process.epoch_chars = MAIN_STUDY.etc.d_cnctanl_process;
-% STUDY.etc.e_cnctanl_surrogates.params = comps_out;
-% STUDY.etc.e_cnctanl_surrogates.params = struct();
-% [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
-%                                             study_fname_1,study_load_dir,...
-%                                             'STUDY_COND',[]);
 %%
 %{
 SUBJ_PICS = {MAIN_STUDY.datasetinfo.subject};

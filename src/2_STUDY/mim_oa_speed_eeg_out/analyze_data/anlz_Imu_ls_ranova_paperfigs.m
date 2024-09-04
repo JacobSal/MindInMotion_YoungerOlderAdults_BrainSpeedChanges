@@ -662,9 +662,37 @@ table_new_ls = table_new_ls.table_new_ls;
 table_new_imu = load([save_dir filesep 'imu_table_meantrial.mat']);
 table_new_imu = table_new_imu.table_new_imu;
 %% (STATS STRUCT) ====================================================== %%
+% DEF_STATS_TRACK_STRUCT = struct('stat_test_mod',{{''}},...
+%     'measure_tag',categorical({''}),...
+%     'design_tag',categorical({''}),...
+%     'mod_tag',categorical({''}),...
+%     'mod_resp_terms',{''},...
+%     'rnd_terms',{''},...
+%     'anova_preds_terms',{''},...
+%     'anova_preds_p',{[]},...
+%     'anova_preds_stat',{[]},...
+%     'anova_preds_df',{[]},...
+%     'mod_preds_terms',{{''}},...
+%     'mod_preds_p',[],...
+%     'mod_preds_stat',[],...
+%     'mod_preds_coeff',[],...
+%     'mod_r2',[],...
+%     'multi_comp_terms',{''},...
+%     'multi_comp_t1_t2',[],...
+%     'multi_comp_p',[],...
+%     'multi_comp_coeff',[],...
+%     'multi_comp_lci_uci',[],...
+%     'norm_test_p',[],...
+%     'norm_test_h',[],...
+%     'effect_size',[],...
+%     'effect_size_calc',{''});
+% stats_struct = DEF_STATS_TRACK_STRUCT;
 DEF_STATS_TRACK_STRUCT = struct('stat_test_mod',{{''}},...
     'measure_tag',categorical({''}),...
+    'measure_char',{''},...
     'design_tag',categorical({''}),...
+    'design_num',[],...
+    'cluster_num',[],...
     'mod_tag',categorical({''}),...
     'mod_resp_terms',{''},...
     'rnd_terms',{''},...
@@ -687,7 +715,7 @@ DEF_STATS_TRACK_STRUCT = struct('stat_test_mod',{{''}},...
     'effect_size',[],...
     'effect_size_calc',{''});
 stats_struct = DEF_STATS_TRACK_STRUCT;
-
+cnts = 1;
 %% PLOT ================================================================ %%
 %## VISUAL
 %- colors
@@ -728,8 +756,8 @@ LAB_C_YOFFSET = 0.12;
 LAB_C_XOFFSET = -0.12;
 LAB_D_YOFFSET = 0.12;
 LAB_D_XOFFSET = -0.12;
-XLABEL_OFFSET = -.05;
-GROUP_LAB_YOFFSET = -0.275;
+XLABEL_OFFSET = .115;
+GROUP_LAB_YOFFSET = -0.29;
 FIGURE_POSITION =[0,0,6.5,9];
 TITLE_XSHIFT = 0.4;
 TITLE_YSHIFT = 0.975;
@@ -744,7 +772,7 @@ meas_titles = {{'Anteroposterior Excursion';'Coefficient of Variation'},...
     {'Step Duration';'Coefficient of Variation'},...
     {'Overground Walking';'Speeds'}};
 % YLIMS = {[0,90],[0,95]};
-YLIMS = {[0,70],[0,47.5],[0,25],[0,2.25]};
+YLIMS = {[0,55],[0,40],[0,22.5],[0,2.25]};
 %## TEMPS
 horiz_shift = 0;
 vert_shift = 0;
@@ -771,7 +799,7 @@ tmp_table = table_new_ls(inds,:);
 tmp_table = table(categorical(string(tmp_table.trial_char)),categorical(double(tmp_table.trial_tag_in)),...
     categorical(string(tmp_table.subj_char)),...
     categorical(string(tmp_table.group_id)),tmp_table.(meas_names{meas_i}),...
-    'VariableNames',{'trial_char','trial_tag_in','subj_char','group_id',meas_names{meas_i}});
+    'VariableNames',{'cond_char','trial_tag_in','subj_char','group_id',meas_names{meas_i}});
 %##
 tmp_table(tmp_table.(meas_names{meas_i}) == 0,:) = [];
 tmp_table(isnan(tmp_table.(meas_names{meas_i})),:) = [];
@@ -830,9 +858,41 @@ stats_struct(cnts).effect_size = alt_f2;
 stats_struct(cnts).effect_size_calc = '(R2_full-R2_null)/(1-R2_full)';
 cnts = cnts + 1;
 stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+%-
+tmp = t(:,7)';
+tmp = tmp(~cellfun(@isempty,tmp));
+anova_grp_p = tmp{3};
+tmp = t(:,6)';
+tmp = tmp(~cellfun(@isempty,tmp));
+anova_grp_stat = tmp{3};
+grp_p = [0,stats_out.Coefficients.pValue(2:3)']';
+multi_comp_t1_t2 = comparisons(:,1:2);
+speed_xvals = (0:5)*0.25;
+if anova_grp_p > 0.01 && anova_grp_p < 0.05
+    str = {sprintf('* F_{stat}=%0.3g',anova_grp_stat),'',''};
+elseif anova_grp_p <= 0.01 && anova_grp_p > 0.001
+    str = {sprintf('** F_{stat}=%0.3g',anova_grp_stat),'',''};
+elseif anova_grp_p <= 0.001
+    str = {sprintf('*** F_{stat}=%0.3g',anova_grp_stat),'',''};
+else
+    str = {'','',''};
+end
+STATS_STRUCT = struct('anova',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
+    'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
+    'pvals',{{}},...
+    'pvals_pairs',{{}},...
+    'pvals_grp',{num2cell(adj_p)},...
+    'pvals_grp_pairs',{num2cell(multi_comp_t1_t2,2)},...
+    'display_stats_char',true,...
+    'stats_char',{str},...
+    'group_order',categorical({''}),...
+    'bracket_yshift_perc',0.5,...
+    'bracket_y_perc',0.5,...
+    'bracket_rawshifty_upper',0,...
+    'bracket_rawshifty_lower',0,...
+    'grp_sig_offset_x',0,...
+    'grp_sig_offset_y',0);
 %## PLOT =============================================================== %%
-inds = [stats_struct.mod_tag] == categorical(2) & [stats_struct.measure_tag] == categorical(meas_names(meas_i));
-tmp_stats = stats_struct(inds);
 VIOLIN_PARAMS = {'width',0.1,...
     'ShowWhiskers',false,'ShowNotches',false,'ShowBox',true,...
     'ShowMedian',true,'Bandwidth',0.15,'QuartileStyle','shadow',...
@@ -847,47 +907,6 @@ PLOT_STRUCT = struct('color_map',[COLORS_MAPS_TERRAIN;COLOR_MAPS_SPEED(2,:)*0.8]
     'title',meas_names{meas_i},'font_size',FONT_SIZE_VIO,'ylim',YLIMS{meas_i},...
     'font_name','Arial','x_label','','do_combine_groups',false,...
     'regresslab_txt_size',FONT_SIZE_VIO_REG);
-%-
-% anova_p = tmp_stats.anova_preds_p{2};
-% anova_grp_p = tmp_stats.anova_preds_p{3};
-% speed_p = [0,tmp_stats.mod_preds_p(2:5)']';
-% grp_p = [0,tmp_stats.mod_preds_p(6:7)']';
-% speed_r2 = tmp_stats.mod_r2;
-% speed_xvals = (0:5)*0.25;
-% STATS_STRUCT = struct('anova',{{anova_p,anova_p,anova_p}},...
-%     'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
-%     'pvals',{{speed_p,speed_p,speed_p}},...
-%     'pvals_pairs',{{{[1,1],[1,2],[1,3],[1,4],[1,5]},...
-%         {[1,1],[1,2],[1,3],[1,4],[1,5]},...
-%         {[1,1],[1,2],[1,3],[1,4],[1,5]}}},...
-%     'pvals_grp',{num2cell(grp_p)},...
-%     'pvals_grp_pairs',{{[1,1],[1,2],[1,3]}},...
-%     'regress_pval',{{}},...
-%     'regress_line',{{}},...
-%     'r2_coeff',[],...
-%     'regress_xvals',[],...
-%     'subject_char',[],... % this option when filled prints removal of nan() info
-%     'group_order',categorical({''}),...
-%     'do_include_intercept',false);
-%-
-% STATS_STRUCT = struct();
-%-
-anova_grp_p = tmp_stats.anova_preds_p{3};
-grp_p = [0,tmp_stats.mod_preds_p(2:3)']';
-speed_xvals = (0:5)*0.25;
-STATS_STRUCT = struct('anova',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
-    'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
-    'pvals',{{}},...
-    'pvals_pairs',{{}},...
-    'pvals_grp',{num2cell(tmp_stats.multi_comp_p)},...
-    'pvals_grp_pairs',{num2cell(tmp_stats.multi_comp_t1_t2,2)},...
-    'regress_pval',{{}},...
-    'regress_line',{{}},...
-    'r2_coeff',[],...
-    'regress_xvals',[],...
-    'subject_char',[],... % this option when filled prints removal of nan() info
-    'group_order',categorical({''}),...
-    'do_include_intercept',false)
 %##
 ax = axes();
 ax = group_violin(tmp_table,meas_names{meas_i},'trial_tag_in','group_id',...
@@ -924,75 +943,104 @@ inds = table_new_imu.design_id == des_i;
 tmp_table = table_new_imu(inds,:);
 tmp_table = table(double(string(tmp_table.trial_char)),categorical(string(tmp_table.subj_char)),...
     categorical(string(tmp_table.group_id)),tmp_table.(meas_names{meas_i}),...
-    'VariableNames',{'trial_char','subj_char','group_id',meas_names{meas_i}});
+    'VariableNames',{'cond_char','subj_char','group_id',meas_names{meas_i}});
 %-
-% mod_out = sprintf('%s~1+group_id+trial_char',meas_names{meas_i});
-% stats_out = fitlm(tmp_table,mod_out);
-% pred_terms = stats_out.CoefficientNames;
-% anova_out = anova(stats_out);
-tt_out = unstack(tmp_table,meas_names{meas_i},'trial_char');
-%-
-% tt = unstack(tmp_table,meas_names{meas_i},'trial_char');
-% tt_025 = unstack(tt,'x0_25','group_id','NewDataVariableNames',{'1','2','3'});
-% tt_025(32,:) = [];
-% tt_05 = unstack(tt,'x0_5','group_id','NewDataVariableNames',{'4','5','6'});
-% tt_075 = unstack(tt,'x0_75','group_id','NewDataVariableNames',{'7','8','9'});
-% tt_1 = unstack(tt,'x1','group_id','NewDataVariableNames',{'10','11','12'});
-% tt_out = cat(2,tt_025(:,1),tt_025(:,end-2:end),tt_05(:,end-2:end),tt_075(:,end-2:end),tt_1(:,end-2:end));
-% tmptmp = table([1,2,3,1,2,3,1,2,3,1,2,3]',[1,1,1,2,2,2,3,3,3,4,4,4]','VariableNames',{'wi1','wi2'});
-%-
-mod_out = sprintf('x0_25,x0_5,x0_75,x1~1+group_id');
+%##
+tmp_table(tmp_table.(meas_names{meas_i}) == 0,:) = [];
+tmp_table(isnan(tmp_table.(meas_names{meas_i})),:) = [];
+tmp_table(isinf(tmp_table.(meas_names{meas_i})),:) = [];
+%## RANOVA
+tt_out = unstack(tmp_table,meas_names{meas_i},'cond_char');
+mod_out = sprintf('x0_25,x0_5,x0_75,x1~group_id+1');
 tmptmp = table([1,2,3,4]','VariableNames',{'speed'});
+%- run test
 rm_out = fitrm(tt_out,mod_out,'WithinDesign',tmptmp);
 [ran_out,A,C,D] = ranova(rm_out);
-% [p,t,anova_out,terms] = anovan(tmp_table.(meas_names{meas_i}),{tmp_table.trial_char, tmp_table.group_id},...
-%     'sstype',3,'varnames',{'trial_char','group_id'},'model','linear','Display','off');
-[comparisons,means,~,gnames] = multcompare(anova_out,'Dimension',[2],...
-    'display','off','Alpha',0.05); % comparisons columns: [pred1,pred2,lowerCI,estimate,upperCI,p-val]
-disp(stats_out)
+%- test coeffs
+disp(cat(1,A{:})*table2array(rm_out.Coefficients)*C)
+[ran_mult] = rm_out.multcompare('group_id');
 %- test normality
-[norm_h,norm_p] = lillietest(stats_out.Residuals.Raw);
-%- intercept only model
-altmod_out = sprintf('%s ~ 1',meas_names{meas_i});
-altstats_out = fitlm(tmp_table,altmod_out);
-%- alternative f2?
-R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
-R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
-alt_f2 = (R22-R21)/(1-R22);
+% [norm_h,norm_p] = lillietest(stats_out.Residuals.Raw);
+sphr = rm_out.mauchly(C);
+sphr_corr = rm_out.epsilon(C);
+%## RANOVA
 %- populate struct
-stats_struct(cnts).stat_test_mod = mod_out;
-stats_struct(cnts).measure_tag = categorical(meas_names(meas_i));
+stats_struct(cnts).stat_test_mod = rm_out.BetweenModel;
+stats_struct(cnts).measure_tag = categorical({meas_names{meas_i}});
+stats_struct(cnts).measure_char = meas_names{meas_i};
 stats_struct(cnts).design_tag = categorical(des_i);
-stats_struct(cnts).mod_tag = categorical(2);
-% stats_struct(cnts).resp_terms = meas_names(meas_i);
-stats_struct(cnts).mod_resp_terms = meas_names{meas_i};
-stats_struct(cnts).anova_preds_terms = t(:,1)';
-tmp = t(:,7)';
-tmp = tmp(~cellfun(@isempty,tmp));
-stats_struct(cnts).anova_preds_p = tmp;
-tmp = t(:,6)';
-tmp = tmp(~cellfun(@isempty,tmp));
-stats_struct(cnts).anova_preds_stat = tmp;
-tmp = t(:,3)';
-tmp = tmp(~cellfun(@isempty,tmp));
-stats_struct(cnts).anova_preds_df =tmp;
-stats_struct(cnts).mod_preds_p = stats_out.Coefficients.pValue;
-stats_struct(cnts).mod_preds_terms = stats_out.Coefficients.Properties.RowNames';
-stats_struct(cnts).mod_preds_stat = stats_out.Coefficients.tStat;
-stats_struct(cnts).mod_preds_coeff = stats_out.Coefficients.Estimate;
-stats_struct(cnts).multi_comp_terms = gnames';
-stats_struct(cnts).multi_comp_t1_t2 = comparisons(:,1:2);
-[h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(comparisons(:,6));
-stats_struct(cnts).multi_comp_p = adj_p;
-stats_struct(cnts).multi_comp_coeff = comparisons(:,4);
-stats_struct(cnts).multi_comp_lci_uci = [comparisons(:,3),comparisons(:,5)];
-stats_struct(cnts).mod_r2 = stats_out.Rsquared.Adjusted;
-stats_struct(cnts).norm_test_p = norm_p;
-stats_struct(cnts).norm_test_h = norm_h;
-stats_struct(cnts).effect_size = alt_f2;
-stats_struct(cnts).effect_size_calc = '(R2_full-R2_null)/(1-R2_full)';
+stats_struct(cnts).design_num = des_i;
+% stats_struct(cnts).cluster_num = cl_i;
+stats_struct(cnts).mod_tag = categorical({'ranova_2'});
+stats_struct(cnts).mod_resp_terms = rm_out.ResponseNames;
+%- anova
+stats_struct(cnts).anova_preds_terms = ran_out.Properties.RowNames';
+stats_struct(cnts).anova_preds_df = ran_out.DF';
+stats_struct(cnts).anova_preds_stat = ran_out.F;
+%- liberal
+% tmp = min([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+% stats_struct(cnts).anova_preds_p = tmp(1:2)';
+%- conservative
+tmp = max([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+stats_struct(cnts).anova_preds_p = tmp(1:2)';
+%-
+stats_struct(cnts).anova_preds_stat = ran_out.F;
+%- model
+stats_struct(cnts).mod_preds_coeff = rm_out.Coefficients; % remove from table before xlsx
+stats_struct(cnts).mod_preds_terms = rm_out.BetweenFactorNames';
+stats_struct(cnts).multi_comp_terms = ran_mult.Properties.VariableNames(1:2);
+stats_struct(cnts).multi_comp_p = ran_mult.pValue;
+stats_struct(cnts).multi_comp_t1_t2 = num2cell(ran_mult{:,1:2},2)';
+stats_struct(cnts).multi_comp_lci_uci = [ran_mult.Lower,ran_mult.Upper];
+% stats_struct(cnts).norm_test_p = norm_p;
+% stats_struct(cnts).norm_test_h = norm_h;
 cnts = cnts + 1;
 stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+%## PLOT =============================================================== %%
+%## RANOVA VISUALIZE
+% tmp = max([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+tmp = min([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+comparisons = [1,2;1,3;2,3];
+[h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(ran_mult.pValue);
+adj_p = [adj_p(1),adj_p(2),adj_p(4)];
+anova_p = 0;
+% anova_grp_p = ran_out.pValue(2);
+anova_grp_p = tmp(2);
+% ran_means_1 = [rm_out.Coefficients{1,:}].*[0.25,0.5,0.75,1];
+% ran_means_2 = [rm_out.Coefficients{2,:}].*[0.25,0.5,0.75,1]+ran_means_1;
+% ran_means_3 = [rm_out.Coefficients{3,:}].*[0.25,0.5,0.75,1]+ran_means_1;
+ran_means_1 = [rm_out.Coefficients{1,:}];
+ran_means_2 = [rm_out.Coefficients{2,:}]+ran_means_1;
+ran_means_3 = [rm_out.Coefficients{3,:}]+ran_means_1;
+if anova_grp_p > 0.01 && anova_grp_p < 0.05
+    str = {sprintf('* pVal=%0.3g\nMS_{error}=%0.2g',tmp(2),ran_out.MeanSq(3)),'',''};
+elseif anova_grp_p <= 0.01 && anova_grp_p > 0.001
+    str = {sprintf('** pVal=%0.3g\nMS_{error}=%0.2g',tmp(2),ran_out.MeanSq(3)),'',''};
+elseif anova_grp_p <= 0.001
+    str = {sprintf('*** pVal=%0.3g\nMS_{error}=%0.2g',tmp(2),ran_out.MeanSq(3)),'',''};
+else
+    str = {'','',''};
+end
+STATS_STRUCT = struct('anova',{{anova_p,anova_p,anova_p}},...
+        'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
+        'pvals',{{}},...
+        'pvals_pairs',{{}},...
+        'pvals_grp',{num2cell(adj_p)},...
+        'pvals_grp_pairs',{num2cell(comparisons,2)},...
+        'regress_pval',{{0,0,0}},...
+        'regress_line',{{ran_means_2,...
+            ran_means_3,...
+            ran_means_1}},...
+        'line_type',{'means'},...
+        'stats_char',{str},...
+        'display_stats_char',true,...
+        'bracket_yshift_perc',0.5,...
+        'bracket_y_perc',0.5,...
+        'bracket_rawshifty_upper',0,...
+        'bracket_rawshifty_lower',0,...
+        'grp_sig_offset_x',0,...
+        'grp_sig_offset_y',0);
+
 %## PLOT =============================================================== %%
 inds = [stats_struct.mod_tag] == categorical(2) & [stats_struct.measure_tag] == categorical(meas_names(meas_i));
 tmp_stats = stats_struct(inds);
@@ -1002,55 +1050,17 @@ VIOLIN_PARAMS = {'width',0.1,...
     'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
     'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
 PLOT_STRUCT = struct('color_map',COLOR_MAPS_SPEED,...
-    'cond_labels',unique(tmp_table.trial_char),'group_labels',categorical({'YA','OHMA','OLMA'}),...
+    'cond_labels',unique(tmp_table.cond_char),'group_labels',categorical({'YA','OHMA','OLMA'}),...
     'cond_offsets',[-0.35,-0.1,0.15,0.40],...
     'group_offsets',[0.125,0.475,0.812],...
     'y_label',meas_ylabel{meas_i},...
     'title',meas_names{meas_i},'font_size',FONT_SIZE_VIO,'ylim',YLIMS{meas_i},...
     'font_name','Arial','x_label','speed (m/s)','do_combine_groups',false,...
     'regresslab_txt_size',FONT_SIZE_VIO_REG);
-%-
-cond_ind = 2;
-grp_ind = 3;
-anova_p = tmp_stats.anova_preds_p{2};
-anova_grp_p = tmp_stats.anova_preds_p{3};
-speed_p = tmp_stats.mod_preds_p(2);
-grp_p = [0,tmp_stats.mod_preds_p(3:4)']';
-speed_r2 = tmp_stats.mod_r2;
-speed_xvals = (0:5)*0.25;
-% STATS_STRUCT = struct('anova',{{anova_p,anova_p,anova_p}},...
-%     'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
-%     'pvals',{{}},...
-%     'pvals_pairs',{{}},...
-%     'pvals_grp',{num2cell(grp_p)},...
-%     'pvals_grp_pairs',{{[1,1],[1,2],[1,3]}},...
-%     'regress_pval',{{speed_p,speed_p,speed_p}},...
-%     'regress_line',{{[tmp_stats.mod_preds_coeff(1), tmp_stats.mod_preds_coeff(2)],...
-%         [tmp_stats.mod_preds_coeff(1)+tmp_stats.mod_preds_coeff(3), tmp_stats.mod_preds_coeff(2)],...
-%         [tmp_stats.mod_preds_coeff(1)+tmp_stats.mod_preds_coeff(4), tmp_stats.mod_preds_coeff(2)]}},...
-%     'r2_coeff',{repmat(speed_r2,3,1)},...
-%     'regress_xvals',speed_xvals,...
-%     'subject_char',[],... % this option when filled prints removal of nan() info
-%     'group_order',categorical({''}),...
-%     'do_include_intercept',false);
-STATS_STRUCT = struct('anova',{{anova_p,anova_p,anova_p}},...
-    'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
-    'pvals',{{}},...
-    'pvals_pairs',{{}},...
-    'pvals_grp',{num2cell(tmp_stats.multi_comp_p)},...
-    'pvals_grp_pairs',{{[1,2],[1,3],[2,3]}},...
-    'regress_pval',{{speed_p,speed_p,speed_p}},...
-    'regress_line',{{[tmp_stats.mod_preds_coeff(1), tmp_stats.mod_preds_coeff(2)],...
-        [tmp_stats.mod_preds_coeff(1)+tmp_stats.mod_preds_coeff(3), tmp_stats.mod_preds_coeff(2)],...
-        [tmp_stats.mod_preds_coeff(1)+tmp_stats.mod_preds_coeff(4), tmp_stats.mod_preds_coeff(2)]}},...
-    'r2_coeff',{repmat(speed_r2,3,1)},...
-    'regress_xvals',speed_xvals,...
-    'subject_char',[],... % this option when filled prints removal of nan() info
-    'group_order',categorical({''}),...
-    'do_include_intercept',false);
+
 %##
 ax = axes();
-ax = group_violin(tmp_table,meas_names{meas_i},'trial_char','group_id',...
+ax = group_violin(tmp_table,meas_names{meas_i},'cond_char','group_id',...
     ax,...
     'VIOLIN_PARAMS',VIOLIN_PARAMS,...
     'PLOT_STRUCT',PLOT_STRUCT,...
@@ -1085,80 +1095,100 @@ inds = table_new_imu.design_id == des_i;
 tmp_table = table_new_imu(inds,:);
 tmp_table = table(double(string(tmp_table.trial_char)),categorical(string(tmp_table.subj_char)),...
     categorical(string(tmp_table.group_id)),tmp_table.(meas_names{meas_i}),...
-    'VariableNames',{'trial_char','subj_char','group_id',meas_names{meas_i}});
-%## ANOVA
-% mod_out = sprintf('%s~1+group_id+trial_char',meas_names{meas_i});
-% stats_out = fitlm(tmp_table,mod_out);
-% pred_terms = stats_out.CoefficientNames;
-% anova_out = anova(stats_out);
-% [p,t,anova_out,terms] = anovan(tmp_table.(meas_names{meas_i}),{tmp_table.trial_char, tmp_table.group_id},...
-%     'sstype',3,'varnames',{'trial_char','group_id'},'model','linear','Display','off');
+    'VariableNames',{'cond_char','subj_char','group_id',meas_names{meas_i}});
+%-
+%##
+tmp_table(tmp_table.(meas_names{meas_i}) == 0,:) = [];
+tmp_table(isnan(tmp_table.(meas_names{meas_i})),:) = [];
+tmp_table(isinf(tmp_table.(meas_names{meas_i})),:) = [];
 %## RANOVA
-tt_out = unstack(tmp_table,meas_names{meas_i},'trial_char');
-mod_out = sprintf('x0_25,x0_5,x0_75,x1~1+group_id');
-% mod_out = sprintf('%s~1+group_id+trial_char',meas_names{meas_i});
+tt_out = unstack(tmp_table,meas_names{meas_i},'cond_char');
+mod_out = sprintf('x0_25,x0_5,x0_75,x1~group_id+1');
 tmptmp = table([1,2,3,4]','VariableNames',{'speed'});
-%-
-% tt = unstack(tmp_table,meas_names{meas_i},'trial_char');
-% tt_025 = unstack(tt,'x0_25','group_id','NewDataVariableNames',{'1','2','3'});
-% tt_025(32,:) = [];
-% tt_05 = unstack(tt,'x0_5','group_id','NewDataVariableNames',{'4','5','6'});
-% tt_075 = unstack(tt,'x0_75','group_id','NewDataVariableNames',{'7','8','9'});
-% tt_1 = unstack(tt,'x1','group_id','NewDataVariableNames',{'10','11','12'});
-% tt_out = cat(2,tt_025(:,1),tt_025(:,end-2:end),tt_05(:,end-2:end),tt_075(:,end-2:end),tt_1(:,end-2:end));
-% tmptmp = table([1,2,3,1,2,3,1,2,3,1,2,3]',[1,1,1,2,2,2,3,3,3,4,4,4]','VariableNames',{'wi1','wi2'});
-%-
+%- run test
 rm_out = fitrm(tt_out,mod_out,'WithinDesign',tmptmp);
-% rm_out = fitrm(tmp_table,mod_out,'WithinDesign',1);
 [ran_out,A,C,D] = ranova(rm_out);
-[tbl] = rm_out.multcompare('group_id');
-%-
-[comparisons,means,~,gnames] = multcompare(anova_out,'Dimension',[2],...
-    'display','off','Alpha',0.05); % comparisons columns: [pred1,pred2,lowerCI,estimate,upperCI,p-val]
-disp(stats_out)
+%- test coeffs
+disp(cat(1,A{:})*table2array(rm_out.Coefficients)*C)
+[ran_mult] = rm_out.multcompare('group_id');
 %- test normality
-[norm_h,norm_p] = lillietest(stats_out.Residuals.Raw);
-%- intercept only model
-altmod_out = sprintf('%s ~ 1',meas_names{meas_i});
-altstats_out = fitlm(tmp_table,altmod_out);
-%- alternative f2?
-R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
-R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
-alt_f2 = (R22-R21)/(1-R22);
+% [norm_h,norm_p] = lillietest(stats_out.Residuals.Raw);
+sphr = rm_out.mauchly(C);
+sphr_corr = rm_out.epsilon(C);
+%## RANOVA
 %- populate struct
-stats_struct(cnts).stat_test_mod = mod_out;
-stats_struct(cnts).measure_tag = categorical(meas_names(meas_i));
+stats_struct(cnts).stat_test_mod = rm_out.BetweenModel;
+stats_struct(cnts).measure_tag = categorical({meas_names{meas_i}});
+stats_struct(cnts).measure_char = meas_names{meas_i};
 stats_struct(cnts).design_tag = categorical(des_i);
-stats_struct(cnts).mod_tag = categorical(2);
-% stats_struct(cnts).resp_terms = meas_names(meas_i);
-stats_struct(cnts).mod_resp_terms = meas_names{meas_i};
-stats_struct(cnts).anova_preds_terms = t(:,1)';
-tmp = t(:,7)';
-tmp = tmp(~cellfun(@isempty,tmp));
-stats_struct(cnts).anova_preds_p = tmp;
-tmp = t(:,6)';
-tmp = tmp(~cellfun(@isempty,tmp));
-stats_struct(cnts).anova_preds_stat = tmp;
-tmp = t(:,3)';
-tmp = tmp(~cellfun(@isempty,tmp));
-stats_struct(cnts).anova_preds_df =tmp;
-stats_struct(cnts).mod_preds_p = stats_out.Coefficients.pValue;
-stats_struct(cnts).mod_preds_terms = stats_out.Coefficients.Properties.RowNames';
-stats_struct(cnts).mod_preds_stat = stats_out.Coefficients.tStat;
-stats_struct(cnts).mod_preds_coeff = stats_out.Coefficients.Estimate;
-stats_struct(cnts).multi_comp_terms = gnames';
-stats_struct(cnts).multi_comp_t1_t2 = comparisons(:,1:2);
-[h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(comparisons(:,6));
-stats_struct(cnts).multi_comp_p = adj_p;
-stats_struct(cnts).multi_comp_coeff = comparisons(:,4);
-stats_struct(cnts).multi_comp_lci_uci = [comparisons(:,3),comparisons(:,5)];
-stats_struct(cnts).mod_r2 = stats_out.Rsquared.Adjusted;
-stats_struct(cnts).norm_test_p = norm_p;
-stats_struct(cnts).norm_test_h = norm_h;
-stats_struct(cnts).effect_size = alt_f2;
-stats_struct(cnts).effect_size_calc = '(R2_full-R2_null)/(1-R2_full)';
+stats_struct(cnts).design_num = des_i;
+% stats_struct(cnts).cluster_num = cl_i;
+stats_struct(cnts).mod_tag = categorical({'ranova_2'});
+stats_struct(cnts).mod_resp_terms = rm_out.ResponseNames;
+%- anova
+stats_struct(cnts).anova_preds_terms = ran_out.Properties.RowNames';
+stats_struct(cnts).anova_preds_df = ran_out.DF';
+stats_struct(cnts).anova_preds_stat = ran_out.F';
+%- liberal
+% tmp = min([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+% stats_struct(cnts).anova_preds_p = tmp(1:2)';
+%- conservative
+tmp = max([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+stats_struct(cnts).anova_preds_p = tmp(1:2)';
+%- model
+stats_struct(cnts).mod_preds_coeff = rm_out.Coefficients; % remove from table before xlsx
+stats_struct(cnts).mod_preds_terms = rm_out.BetweenFactorNames';
+stats_struct(cnts).multi_comp_terms = ran_mult.Properties.VariableNames(1:2);
+stats_struct(cnts).multi_comp_p = ran_mult.pValue;
+stats_struct(cnts).multi_comp_t1_t2 = num2cell(ran_mult{:,1:2},2)';
+stats_struct(cnts).multi_comp_lci_uci = [ran_mult.Lower,ran_mult.Upper];
+% stats_struct(cnts).norm_test_p = norm_p;
+% stats_struct(cnts).norm_test_h = norm_h;
 cnts = cnts + 1;
 stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+%## RANOVA VISUALIZE
+% tmp = max([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+tmp = min([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+comparisons = [1,2;1,3;2,3];
+[h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(ran_mult.pValue);
+adj_p = [adj_p(1),adj_p(2),adj_p(4)];
+anova_p = 0;
+% anova_grp_p = ran_out.pValue(2);
+anova_grp_p = tmp(2);
+% ran_means_1 = [rm_out.Coefficients{1,:}].*[0.25,0.5,0.75,1];
+% ran_means_2 = [rm_out.Coefficients{2,:}].*[0.25,0.5,0.75,1]+ran_means_1;
+% ran_means_3 = [rm_out.Coefficients{3,:}].*[0.25,0.5,0.75,1]+ran_means_1;
+ran_means_1 = [rm_out.Coefficients{1,:}];
+ran_means_2 = [rm_out.Coefficients{2,:}]+ran_means_1;
+ran_means_3 = [rm_out.Coefficients{3,:}]+ran_means_1;
+if anova_grp_p > 0.01 && anova_grp_p < 0.05
+    str = {sprintf('* pVal=%0.3g\nMS_{error}=%0.2g',tmp(2),ran_out.MeanSq(3)),'',''};
+elseif anova_grp_p <= 0.01 && anova_grp_p > 0.001
+    str = {sprintf('** pVal=%0.3g\nMS_{error}=%0.2g',tmp(2),ran_out.MeanSq(3)),'',''};
+elseif anova_grp_p <= 0.001
+    str = {sprintf('*** pVal=%0.3g\nMS_{error}=%0.2g',tmp(2),ran_out.MeanSq(3)),'',''};
+else
+    str = {'','',''};
+end
+STATS_STRUCT = struct('anova',{{anova_p,anova_p,anova_p}},...
+        'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
+        'pvals',{{}},...
+        'pvals_pairs',{{}},...
+        'pvals_grp',{num2cell(adj_p)},...
+        'pvals_grp_pairs',{num2cell(comparisons,2)},...
+        'regress_pval',{{0,0,0}},...
+        'regress_line',{{ran_means_2,...
+            ran_means_3,...
+            ran_means_1}},...
+        'line_type',{'means'},...
+        'stats_char',{str},...
+        'display_stats_char',true,...
+        'bracket_yshift_perc',0.5,...
+        'bracket_y_perc',0.5,...
+        'bracket_rawshifty_upper',0,...
+        'bracket_rawshifty_lower',0,...
+        'grp_sig_offset_x',0,...
+        'grp_sig_offset_y',0);
 %## PLOT =============================================================== %%
 inds = [stats_struct.mod_tag] == categorical(2) & [stats_struct.measure_tag] == categorical(meas_names(meas_i));
 tmp_stats = stats_struct(inds);
@@ -1168,40 +1198,17 @@ VIOLIN_PARAMS = {'width',0.1,...
     'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
     'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
 PLOT_STRUCT = struct('color_map',COLOR_MAPS_SPEED,...
-    'cond_labels',unique(tmp_table.trial_char),'group_labels',categorical({'YA','OHMA','OLMA'}),...
+    'cond_labels',unique(tmp_table.cond_char),'group_labels',categorical({'YA','OHMA','OLMA'}),...
     'cond_offsets',[-0.35,-0.1,0.15,0.40],...
     'group_offsets',[0.125,0.475,0.812],...
     'y_label',meas_ylabel{meas_i},...
     'title',meas_names{meas_i},'font_size',FONT_SIZE_VIO,'ylim',YLIMS{meas_i},...
     'font_name','Arial','x_label','speed (m/s)','do_combine_groups',false,...
     'regresslab_txt_size',FONT_SIZE_VIO_REG);
-%-
-cond_ind = 2;
-grp_ind = 3;
-anova_p = tmp_stats.anova_preds_p{cond_ind};
-anova_grp_p = tmp_stats.anova_preds_p{grp_ind};
-speed_p = tmp_stats.mod_preds_p(2);
-grp_p = [0,tmp_stats.mod_preds_p(3:4)']';
-speed_r2 = tmp_stats.mod_r2;
-speed_xvals = (0:5)*0.25;
-STATS_STRUCT = struct('anova',{{anova_p,anova_p,anova_p}},...
-    'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
-    'pvals',{{}},...
-    'pvals_pairs',{{}},...
-    'pvals_grp',{num2cell(grp_p)},...
-    'pvals_grp_pairs',{{[1,1],[1,2],[1,3]}},...
-    'regress_pval',{{speed_p,speed_p,speed_p}},...
-    'regress_line',{{[tmp_stats.mod_preds_coeff(1), tmp_stats.mod_preds_coeff(2)],...
-        [tmp_stats.mod_preds_coeff(1)+tmp_stats.mod_preds_coeff(3), tmp_stats.mod_preds_coeff(2)],...
-        [tmp_stats.mod_preds_coeff(1)+tmp_stats.mod_preds_coeff(4), tmp_stats.mod_preds_coeff(2)]}},...
-    'r2_coeff',{repmat(speed_r2,3,1)},...
-    'regress_xvals',speed_xvals,...
-    'subject_char',[],... % this option when filled prints removal of nan() info
-    'group_order',categorical({''}),...
-    'do_include_intercept',false);
+
 %##
 ax = axes();
-ax = group_violin(tmp_table,meas_names{meas_i},'trial_char','group_id',...
+ax = group_violin(tmp_table,meas_names{meas_i},'cond_char','group_id',...
     ax,...
     'VIOLIN_PARAMS',VIOLIN_PARAMS,...
     'PLOT_STRUCT',PLOT_STRUCT,...
@@ -1234,88 +1241,107 @@ des_i = 2;
 %-
 inds = table_new_ls.design_id == des_i;
 tmp_table = table_new_ls(inds,:);
-% tmp_table = table(double(string(tmp_table.trial_char)),categorical(string(tmp_table.subj_char)),...
-%     categorical(string(tmp_table.group_id)),tmp_table.(meas_names{meas_i}),...
-%     'VariableNames',{'trial_char','subj_char','group_id',meas_names{meas_i}});
-tmp_table = table(categorical(string(tmp_table.trial_char)),categorical(string(tmp_table.subj_char)),...
+tmp_table = table(double(string(tmp_table.trial_char)),categorical(string(tmp_table.subj_char)),...
     categorical(string(tmp_table.group_id)),tmp_table.(meas_names{meas_i}),...
-    'VariableNames',{'trial_char','subj_char','group_id',meas_names{meas_i}});
-%## ANOVA
-mod_out = sprintf('%s~1+group_id+trial_char',meas_names{meas_i});
-stats_out = fitlm(tmp_table,mod_out);
-pred_terms = stats_out.CoefficientNames;
-% anova_out = anova(stats_out);
-[p,t,anova_out,terms] = anovan(tmp_table.(meas_names{meas_i}),{tmp_table.trial_char, tmp_table.group_id},...
-    'sstype',3,'varnames',{'trial_char','group_id'},'model','linear','Display','off');
-[comparisons,means,~,gnames] = multcompare(anova_out,'Dimension',[2],...
-    'display','off','Alpha',0.05); % compaarisons columns: [pred1,pred2,lowerCI,estimate,upperCI,p-val]
+    'VariableNames',{'cond_char','subj_char','group_id',meas_names{meas_i}});
+% tmp_table = table(categorical(string(tmp_table.trial_char)),categorical(string(tmp_table.subj_char)),...
+%     categorical(string(tmp_table.group_id)),tmp_table.(meas_names{meas_i}),...
+%     'VariableNames',{'cond_char','subj_char','group_id',meas_names{meas_i}});
+%-
+%##
+tmp_table(tmp_table.(meas_names{meas_i}) == 0,:) = [];
+tmp_table(isnan(tmp_table.(meas_names{meas_i})),:) = [];
+tmp_table(isinf(tmp_table.(meas_names{meas_i})),:) = [];
 %## RANOVA
-% tt_out = unstack(tmp_table,meas_names{meas_i},'group_id');
-% mod_out = sprintf('x1,x2,x3~1+trial_char');
-% tmptmp = table([1,2,3]','VariableNames',{'group'});
-%-
-tt_out = unstack(tmp_table,meas_names{meas_i},'trial_char');
-% mod_out = sprintf('x0_25,x0_5,x0_75,x1~group_id+1');
-mod_out = sprintf('x0_25,x0_5,x0_75,x1_0~group_id+1');
+tt_out = unstack(tmp_table,meas_names{meas_i},'cond_char');
+mod_out = sprintf('x0_25,x0_5,x0_75,x1~group_id+1');
 tmptmp = table([1,2,3,4]','VariableNames',{'speed'});
-%-
-% tt = unstack(tmp_table,meas_names{meas_i},'trial_char');
-% tt_025 = unstack(tt,'x0_25','group_id','NewDataVariableNames',{'1','2','3'});
-% tt_025(32,:) = [];
-% tt_05 = unstack(tt,'x0_5','group_id','NewDataVariableNames',{'4','5','6'});
-% tt_075 = unstack(tt,'x0_75','group_id','NewDataVariableNames',{'7','8','9'});
-% tt_1 = unstack(tt,'x1','group_id','NewDataVariableNames',{'10','11','12'});
-% tt_out = cat(2,tt_025(:,1),tt_025(:,end-2:end),tt_05(:,end-2:end),tt_075(:,end-2:end),tt_1(:,end-2:end));
-% tmptmp = table([1,2,3,1,2,3,1,2,3,1,2,3]',[1,1,1,2,2,2,3,3,3,4,4,4]','VariableNames',{'wi1','wi2'});
-%-
+%- run test
 rm_out = fitrm(tt_out,mod_out,'WithinDesign',tmptmp);
 [ran_out,A,C,D] = ranova(rm_out);
-[tbl] = rm_out.multcompare('group_id');
-%##
-disp(stats_out)
+%- test coeffs
+disp(cat(1,A{:})*table2array(rm_out.Coefficients)*C)
+[ran_mult] = rm_out.multcompare('group_id');
 %- test normality
-[norm_h,norm_p] = lillietest(stats_out.Residuals.Raw);
-%- intercept only model
-altmod_out = sprintf('%s ~ 1',meas_names{meas_i});
-altstats_out = fitlm(tmp_table,altmod_out);
-%- alternative f2?
-R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
-R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
-alt_f2 = (R22-R21)/(1-R22);
+% [norm_h,norm_p] = lillietest(stats_out.Residuals.Raw);
+sphr = rm_out.mauchly(C);
+sphr_corr = rm_out.epsilon(C);
+%## RANOVA
 %- populate struct
-stats_struct(cnts).stat_test_mod = mod_out;
-stats_struct(cnts).measure_tag = categorical(meas_names(meas_i));
+stats_struct(cnts).stat_test_mod = rm_out.BetweenModel;
+stats_struct(cnts).measure_tag = categorical({meas_names{meas_i}});
+stats_struct(cnts).measure_char = meas_names{meas_i};
 stats_struct(cnts).design_tag = categorical(des_i);
-stats_struct(cnts).mod_tag = categorical(2);
-% stats_struct(cnts).resp_terms = meas_names(meas_i);
-stats_struct(cnts).mod_resp_terms = meas_names{meas_i};
-stats_struct(cnts).anova_preds_terms = t(:,1)';
-tmp = t(:,7)';
-tmp = tmp(~cellfun(@isempty,tmp));
-stats_struct(cnts).anova_preds_p = tmp;
-tmp = t(:,6)';
-tmp = tmp(~cellfun(@isempty,tmp));
-stats_struct(cnts).anova_preds_stat = tmp;
-tmp = t(:,3)';
-tmp = tmp(~cellfun(@isempty,tmp));
-stats_struct(cnts).anova_preds_df =tmp;
-stats_struct(cnts).mod_preds_p = stats_out.Coefficients.pValue;
-stats_struct(cnts).mod_preds_terms = stats_out.Coefficients.Properties.RowNames';
-stats_struct(cnts).mod_preds_stat = stats_out.Coefficients.tStat;
-stats_struct(cnts).mod_preds_coeff = stats_out.Coefficients.Estimate;
-stats_struct(cnts).multi_comp_terms = gnames';
-stats_struct(cnts).multi_comp_t1_t2 = comparisons(:,1:2);
-[h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(comparisons(:,6));
-stats_struct(cnts).multi_comp_p = adj_p;
-stats_struct(cnts).multi_comp_coeff = comparisons(:,4);
-stats_struct(cnts).multi_comp_lci_uci = [comparisons(:,3),comparisons(:,5)];
-stats_struct(cnts).mod_r2 = stats_out.Rsquared.Adjusted;
+stats_struct(cnts).design_num = des_i;
+% stats_struct(cnts).cluster_num = cl_i;
+stats_struct(cnts).mod_tag = categorical({'ranova_2'});
+stats_struct(cnts).mod_resp_terms = rm_out.ResponseNames;
+%- anova
+stats_struct(cnts).anova_preds_terms = ran_out.Properties.RowNames';
+stats_struct(cnts).anova_preds_df = ran_out.DF';
+stats_struct(cnts).anova_preds_stat = ran_out.F;
+%- liberal
+% tmp = min([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+% stats_struct(cnts).anova_preds_p = tmp(1:2)';
+%- conservative
+tmp = max([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+stats_struct(cnts).anova_preds_p = tmp(1:2)';
+%-
+
+%- model
+stats_struct(cnts).mod_preds_coeff = rm_out.Coefficients; % remove from table before xlsx
+stats_struct(cnts).mod_preds_terms = rm_out.BetweenFactorNames';
+stats_struct(cnts).multi_comp_terms = ran_mult.Properties.VariableNames(1:2);
+stats_struct(cnts).multi_comp_p = ran_mult.pValue;
+stats_struct(cnts).multi_comp_t1_t2 = num2cell(ran_mult{:,1:2},2)';
+stats_struct(cnts).multi_comp_lci_uci = [ran_mult.Lower,ran_mult.Upper];
 stats_struct(cnts).norm_test_p = norm_p;
 stats_struct(cnts).norm_test_h = norm_h;
-stats_struct(cnts).effect_size = alt_f2;
-stats_struct(cnts).effect_size_calc = '(R2_full-R2_null)/(1-R2_full)';
 cnts = cnts + 1;
 stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+%## RANOVA VISUALIZE
+% tmp = max([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+tmp = min([ran_out.pValue,ran_out.pValueGG,ran_out.pValueHF,ran_out.pValueLB],[],2);
+comparisons = [1,2;1,3;2,3];
+[h,crit_p,adj_ci_cvrg,adj_p] = fdr_bh(ran_mult.pValue);
+adj_p = [adj_p(1),adj_p(2),adj_p(4)];
+anova_p = 0;
+% anova_grp_p = ran_out.pValue(2);
+anova_grp_p = tmp(2);
+% ran_means_1 = [rm_out.Coefficients{1,:}].*[0.25,0.5,0.75,1];
+% ran_means_2 = [rm_out.Coefficients{2,:}].*[0.25,0.5,0.75,1]+ran_means_1;
+% ran_means_3 = [rm_out.Coefficients{3,:}].*[0.25,0.5,0.75,1]+ran_means_1;
+ran_means_1 = [rm_out.Coefficients{1,:}];
+ran_means_2 = [rm_out.Coefficients{2,:}]+ran_means_1;
+ran_means_3 = [rm_out.Coefficients{3,:}]+ran_means_1;
+if anova_grp_p > 0.01 && anova_grp_p < 0.05
+    str = {sprintf('* pVal=%0.3g\nMS_{error}=%0.2g',tmp(2),ran_out.MeanSq(3)),'',''};
+elseif anova_grp_p <= 0.01 && anova_grp_p > 0.001
+    str = {sprintf('** pVal=%0.3g\nMS_{error}=%0.2g',tmp(2),ran_out.MeanSq(3)),'',''};
+elseif anova_grp_p <= 0.001
+    str = {sprintf('*** pVal=%0.3g\nMS_{error}=%0.2g',tmp(2),ran_out.MeanSq(3)),'',''};
+else
+    str = {'','',''};
+end
+STATS_STRUCT = struct('anova',{{anova_p,anova_p,anova_p}},...
+        'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
+        'pvals',{{}},...
+        'pvals_pairs',{{}},...
+        'pvals_grp',{num2cell(adj_p)},...
+        'pvals_grp_pairs',{num2cell(comparisons,2)},...
+        'regress_pval',{{0,0,0}},...
+        'regress_line',{{ran_means_2,...
+            ran_means_3,...
+            ran_means_1}},...
+        'line_type',{'means'},...
+        'stats_char',{str},...
+        'display_stats_char',true,...
+        'bracket_yshift_perc',0.5,...
+        'bracket_y_perc',0.5,...
+        'bracket_rawshifty_upper',0,...
+        'bracket_rawshifty_lower',0,...
+        'grp_sig_offset_x',0,...
+        'grp_sig_offset_y',0);
 %## PLOT =============================================================== %%
 inds = [stats_struct.mod_tag] == categorical(2) & [stats_struct.measure_tag] == categorical(meas_names(meas_i));
 tmp_stats = stats_struct(inds);
@@ -1325,40 +1351,17 @@ VIOLIN_PARAMS = {'width',0.1,...
     'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
     'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
 PLOT_STRUCT = struct('color_map',COLOR_MAPS_SPEED,...
-    'cond_labels',unique(tmp_table.trial_char),'group_labels',categorical({'YA','OHMA','OLMA'}),...
+    'cond_labels',unique(tmp_table.cond_char),'group_labels',categorical({'YA','OHMA','OLMA'}),...
     'cond_offsets',[-0.35,-0.1,0.15,0.40],...
     'group_offsets',[0.125,0.475,0.812],...
     'y_label',meas_ylabel{meas_i},...
     'title',meas_names{meas_i},'font_size',FONT_SIZE_VIO,'ylim',YLIMS{meas_i},...
     'font_name','Arial','x_label','speed (m/s)','do_combine_groups',false,...
     'regresslab_txt_size',FONT_SIZE_VIO_REG);
-%-
-cond_ind = 2;
-grp_ind = 3;
-anova_p = tmp_stats.anova_preds_p{cond_ind};
-anova_grp_p = tmp_stats.anova_preds_p{grp_ind};
-speed_p = tmp_stats.mod_preds_p(2);
-grp_p = [0,tmp_stats.mod_preds_p(3:4)']';
-speed_r2 = tmp_stats.mod_r2;
-speed_xvals = (0:5)*0.25;
-STATS_STRUCT = struct('anova',{{anova_p,anova_p,anova_p}},...
-    'anova_grp',{{anova_grp_p,anova_grp_p,anova_grp_p}},...
-    'pvals',{{}},...
-    'pvals_pairs',{{}},...
-    'pvals_grp',{num2cell(grp_p)},...
-    'pvals_grp_pairs',{{[1,1],[1,2],[1,3]}},...
-    'regress_pval',{{speed_p,speed_p,speed_p}},...
-    'regress_line',{{[tmp_stats.mod_preds_coeff(1), tmp_stats.mod_preds_coeff(2)],...
-        [tmp_stats.mod_preds_coeff(1)+tmp_stats.mod_preds_coeff(3), tmp_stats.mod_preds_coeff(2)],...
-        [tmp_stats.mod_preds_coeff(1)+tmp_stats.mod_preds_coeff(4), tmp_stats.mod_preds_coeff(2)]}},...
-    'r2_coeff',{repmat(speed_r2,3,1)},...
-    'regress_xvals',speed_xvals,...
-    'subject_char',[],... % this option when filled prints removal of nan() info
-    'group_order',categorical({''}),...
-    'do_include_intercept',false);
+
 %##
 ax = axes();
-ax = group_violin(tmp_table,meas_names{meas_i},'trial_char','group_id',...
+ax = group_violin(tmp_table,meas_names{meas_i},'cond_char','group_id',...
     ax,...
     'VIOLIN_PARAMS',VIOLIN_PARAMS,...
     'PLOT_STRUCT',PLOT_STRUCT,...
@@ -1384,11 +1387,11 @@ annotation('textbox',[AX_INIT_HORIZ+LAB_C_XOFFSET+(0.1/2)+horiz_shift,AX_INIT_VE
 %## SHIFT
 % horiz_shift = horiz_shift + AX_W*IM_RESIZE + AX_HORIZ_SHIFT*IM_RESIZE;
 %## SAVE
-% exportgraphics(fig,[save_dir filesep 'figure_behavioral_data_paper.tiff'],'Resolution',1000);
+exportgraphics(fig,[save_dir filesep 'figure_behavioral_data_paper_ranova.tiff'],'Resolution',1000);
 
 %%
-save([save_dir filesep 'figure_behavioral_data_stats.mat'],'stats_struct')
+save([save_dir filesep 'figure_behavioral_data_stats_ranova.mat'],'stats_struct')
 stats_struct = struct2table(stats_struct);
 stats_struct(isundefined(stats_struct.measure_tag),:) = [];
 % stats_struct(:,'anova_preds_terms')
-writetable(stats_struct,[save_dir filesep 'figure_behavioral_data_stats.xlsx'])
+writetable(stats_struct,[save_dir filesep 'figure_behavioral_data_stats_ranova.xlsx'])

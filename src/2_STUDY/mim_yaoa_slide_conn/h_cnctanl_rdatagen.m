@@ -100,38 +100,40 @@ end
 %- Create STUDY & ALLEEG structs
 %## LOAD STUDY
 % if ~ispc
-%     [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_LOAD '_UNIX.study'],'filepath',study_fpath);
+%     [STUDY,ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_LOAD '_UNIX.study'],'filepath',study_fpath);
 % else
-%     [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_LOAD '.study'],'filepath',study_fpath);
+%     [STUDY,ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_LOAD '.study'],'filepath',study_fpath);
 % end
+% [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
+%                     STUDY_FNAME_LOAD,study_fpath,...
+%                     'STUDY_COND',[]);
 % cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 % MAIN_STUDY.cluster = cl_struct;
 % [comps_out,main_cl_inds,outlier_cl_inds,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
-
 %## LOAD STUDY
 if ~ispc
     tmp = load('-mat',[study_fpath filesep sprintf('%s_UNIX.study',STUDY_FNAME_LOAD)]);
-    MAIN_STUDY = tmp.STUDY;
+    STUDY = tmp.STUDY;
 else
     tmp = load('-mat',[study_fpath filesep sprintf('%s.study',STUDY_FNAME_LOAD)]);
-    MAIN_STUDY = tmp.STUDY;
+    STUDY = tmp.STUDY;
 end
 cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
-MAIN_STUDY.cluster = cl_struct;
-[comps_out,~,~,valid_cls] = eeglab_get_cluster_comps(MAIN_STUDY);
+STUDY.cluster = cl_struct;
+[comps_out,~,~,valid_cls] = eeglab_get_cluster_comps(STUDY);
 %## CUT OUT NON VALID CLUSTERS
 inds = setdiff(1:length(comps_out),valid_cls);
 comps_out(inds,:) = 0;
 clusters = valid_cls;
 %-
-fPaths = {MAIN_STUDY.datasetinfo.filepath};
-fNames = {MAIN_STUDY.datasetinfo.filename};
+fPaths = {STUDY.datasetinfo.filepath};
+fNames = {STUDY.datasetinfo.filename};
 % condition_gait = unique({MAIN_STUDY.datasetinfo(1).trialinfo.cond}); %{'0p25','0p5','0p75','1p0','flat','low','med','high'};
 % subject_chars = {MAIN_STUDY.datasetinfo.subject};
 %% MODEL ORDER & VALIDATION DATA
 %{
 % [tbl_out,tbl_summary_out] = cnctanl_valfigs_to_table(save_dir,COND_CHARS);
-[tbl_out,tbl_summary_out] = cnctanl_valfigs_to_table([STUDIES_DIR filesep sprintf('%s',study_dir_fname) filesep 'conn_data'],conditions);
+[tbl_out,tbl_summary_out] = cnctanl_valfigs_to_table([study_fpath filesep 'conn_valid_slide'],{'all'});
 
 %-
 fprintf('HQ median information crit model order: %0.2f\n',median(tbl_summary_out.min_modorder_info_crit_hq_line));
@@ -150,13 +152,13 @@ fprintf('Stability: %0.2f\n',mean(tbl_summary_out.mean_stability_ind))
 writetable(tbl_summary_out,[save_dir filesep 'model_crit_summary.xlsx']);
 %}
 %% ===================================================================== %%
-[MAIN_STUDY,centroid] = std_centroid(MAIN_STUDY,MAIN_ALLEEG,double(string(clusters)),'dipole');
+[STUDY,centroid] = std_centroid(STUDY,ALLEEG,double(string(clusters)),'dipole');
 txt_store = cell(length(clusters),1);
 atlas_name_store = cell(length(clusters),1);
 for k_i = 1:length(clusters)
     k = double(string(clusters(k_i)));
     %## ANATOMY
-    dip1 = MAIN_STUDY.cluster(k).all_diplocs;
+    dip1 = STUDY.cluster(k).all_diplocs;
     atlas = ft_read_atlas(ATLAS_FPATHS{atlas_i});
     atlas_name = 'error';
     cfg              = [];
@@ -183,7 +185,7 @@ for k_i = 1:length(clusters)
     end
     %## ANATOMY
     
-    dip1 = MAIN_STUDY.cluster(k).centroid.dipole.posxyz;
+    dip1 = STUDY.cluster(k).centroid.dipole.posxyz;
     atlas = ft_read_atlas(ATLAS_FPATHS{atlas_i});
     atlas_name_ct = 'error';
     cfg              = [];
@@ -208,22 +210,42 @@ for k_i = 1:length(clusters)
             atlas_name_ct = names{indx};
         end
     end
-    txt_store{k} = [sprintf('CL%i: N=%i\n',k,length(MAIN_STUDY.cluster(k).sets)),...
+    txt_store{k} = [sprintf('CL%i: N=%i\n',k,length(STUDY.cluster(k).sets)),...
     sprintf('CL%i: %s\n',k,atlas_name),...
-    sprintf('Dip Center: [%0.1f,%0.1f,%0.1f]\n',MAIN_STUDY.cluster(k).dipole.posxyz),...
+    sprintf('Dip Center: [%0.1f,%0.1f,%0.1f]\n',STUDY.cluster(k).dipole.posxyz),...
     sprintf('CENTROID: CL%i: %s\n',k,atlas_name_ct),...
-    sprintf('CENTROID: Dip %0.1f,%0.1f,%0.1f]\n\n',MAIN_STUDY.cluster(k).centroid.dipole.posxyz)];
+    sprintf('CENTROID: Dip %0.1f,%0.1f,%0.1f]\n\n',STUDY.cluster(k).centroid.dipole.posxyz)];
     atlas_name_store{k_i} = sprintf('CL%i: %s\n',k,atlas_name);
 end
 cellfun(@(x) disp(x),txt_store);
 %% ===================================================================== %%
+tmp = load([STUDY.datasetinfo(1).filepath filesep STUDY.datasetinfo(1).filename],'-mat');
+FREQ_BOUND = [4,60];
+TIME_BOUNDS = [0,3000]; % in seconds
+FREQ_INDS = tmp.etc.COND_CAT.Conn.freqs >= FREQ_BOUND(1) & tmp.etc.COND_CAT.Conn.freqs <= FREQ_BOUND(2);
+conn_freqs = tmp.etc.COND_CAT.Conn.freqs(FREQ_INDS);
+TIME_INDS = tmp.etc.COND_CAT.Conn.winCenterTimes >= TIME_BOUNDS(1) & tmp.etc.COND_CAT.Conn.winCenterTimes <= TIME_BOUNDS(2);
+%## SEPERATE REST AND GAIT SECTIONS
+condition_base = 'rest';
+CONN_MEAS = 'dDTF08';
+subject_chars = {STUDY.datasetinfo.subject};
+condition_gait = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
+%## TEST LOAD
+tmp_alleeg{cond_i} = EEG;
+tmp = strsplit(fNames{subj_i},'.');
+tmp{1} = [tmp{1},sprintf('_%s',TRIALS_PROCESS{cond_i})];
+tmp = strjoin(tmp,'.');
+pop_saveset(EEG,'filepath',fPaths{subj_i},'filename',tmp);
+tmp_fpaths{cond_i} = [fPaths{subj_i} filesep tmp];
+%% ===================================================================== %%
+%{
 tmp = load([MAIN_STUDY.datasetinfo(1).filepath filesep MAIN_STUDY.datasetinfo(1).filename],'-mat');
 FREQ_BOUND = [4,60];
 TIME_BOUNDS = [0,3000]; % in seconds
 FREQ_INDS = tmp.etc.COND_CAT.Conn.freqs >= FREQ_BOUND(1) & tmp.etc.COND_CAT.Conn.freqs <= FREQ_BOUND(2);
 conn_freqs = tmp.etc.COND_CAT.Conn.freqs(FREQ_INDS);
 TIME_INDS = tmp.etc.COND_CAT.Conn.winCenterTimes >= TIME_BOUNDS(1) & tmp.etc.COND_CAT.Conn.winCenterTimes <= TIME_BOUNDS(2);
-BOOT_ACCU_N = 2000;
+% BOOT_ACCU_N = 2000;
 %## SEPERATE REST AND GAIT SECTIONS
 condition_base = 'rest';
 CONN_MEAS = 'dDTF08';
@@ -347,10 +369,11 @@ conn_table = table(subj_c,comps_c,conn_cond_c,...
     cond_c,comps_char_c,win_times_c);
 par_save(conn_table,save_dir,'conn_table.mat');
 % clear MAIN_ALLEEG
+%}
 %% ===================================================================== %%
 %## TERRAIN vs SPEED vs REST
 conds_test = {'rest',{'0p25','0p5','0p75','1p0'},{'flat','low','med','high'}};
-cluster_struct = MAIN_STUDY.cluster;
+cluster_struct = STUDY.cluster;
 conn_clust_mat = cell(length(cluster_struct),length(cluster_struct),length(conds_test));
 subj_clust_mat = cell(length(cluster_struct),length(cluster_struct),length(conds_test));
 % subj_cl_ics = zeros(length(cluster_struct),length(cluster_struct));
@@ -395,7 +418,7 @@ end
 %% ===================================================================== %%
 %## ALL GAIT vs REST
 conds_test = {'all_gait_median','rest'};
-cluster_struct = MAIN_STUDY.cluster;
+cluster_struct = STUDY.cluster;
 conn_clust_mat = cell(length(cluster_struct),length(cluster_struct),length(conds_test));
 % subj_cl_ics = zeros(length(cluster_struct),length(cluster_struct));
 for cond_i = 1:length(conds_test)
@@ -850,7 +873,7 @@ end
 %with same significance mask as average, this will determine which edges
 %are significantly different from the other conditions
 %-
-EEG = MAIN_ALLEEG(1);
+EEG = ALLEEG(1);
 CONN_DIMS = length(cluster_ints);
 NET_VALS = struct('theta',{cell(CONN_DIMS,CONN_DIMS)},...
     'alpha',{cell(CONN_DIMS,CONN_DIMS)},...
@@ -1203,10 +1226,10 @@ end
 %This helps estimate how increases in subject sample size affect the sample size at each connection.
 goodClusts=valid_cls;
 sub_cl_inds=sub_ints;
-cl_struct = MAIN_STUDY.cluster;
-allSubjs = 1:length(MAIN_ALLEEG);
+cl_struct = STUDY.cluster;
+allSubjs = 1:length(ALLEEG);
 subj_cl_ics = cell(length(cl_struct),length(cl_struct));
-for subj_i=1:length(MAIN_ALLEEG)
+for subj_i=1:length(ALLEEG)
 %     EEG = MAIN_ALLEEG(subj_i);
     %Now figure out which clusters this subject is missing
     icaDat2Add=[]; icaEst4_crossVal=[]; icNums=[];
@@ -1226,11 +1249,11 @@ end
 
 %% From a range of 1-29 subjects, do 200 subject permutations and average the result
 numPerms=200; 
-finalPermMean=zeros(1,length(MAIN_ALLEEG)); finalPermStd=finalPermMean;
+finalPermMean=zeros(1,length(ALLEEG)); finalPermStd=finalPermMean;
 finalPermMean_min=finalPermMean; finalPermStd_min=finalPermMean;
 finalPermMean_max=finalPermMean; finalPermStd_max=finalPermMean;
 
-for numSubjs=1:length(MAIN_ALLEEG)
+for numSubjs=1:length(ALLEEG)
     permVals=zeros(1,numPerms);
     permVals_min=zeros(1,numPerms);
     permVals_max=zeros(1,numPerms);
@@ -1264,15 +1287,15 @@ end
 
 %%
 figure; hold on;
-errorbar(1:length(MAIN_ALLEEG),finalPermMean,finalPermStd,'g');
-errorbar(1:length(MAIN_ALLEEG),finalPermMean_min,finalPermStd_min,'r');
-errorbar(1:length(MAIN_ALLEEG),finalPermMean_max,finalPermStd_max,'b');
+errorbar(1:length(ALLEEG),finalPermMean,finalPermStd,'g');
+errorbar(1:length(ALLEEG),finalPermMean_min,finalPermStd_min,'r');
+errorbar(1:length(ALLEEG),finalPermMean_max,finalPermStd_max,'b');
 hold off;
 xlim([0 30]); ylim([-1 20]);
 
-Fit_mean = polyfit(1:length(MAIN_ALLEEG),finalPermMean,2);
-Fit_min = polyfit(1:length(MAIN_ALLEEG),finalPermMean_min,2);
-Fit_max = polyfit(1:length(MAIN_ALLEEG),finalPermMean_max,2);
+Fit_mean = polyfit(1:length(ALLEEG),finalPermMean,2);
+Fit_min = polyfit(1:length(ALLEEG),finalPermMean_min,2);
+Fit_max = polyfit(1:length(ALLEEG),finalPermMean_max,2);
 finalPerm.meanVal=finalPermMean;
 finalPerm.maxVal=finalPermMean_max;
 finalPerm.minVal=finalPermMean_min;
@@ -1280,8 +1303,8 @@ finalPerm.meanValstd=finalPermStd;
 finalPerm.maxValstd=finalPermStd_max;
 finalPerm.minValstd=finalPermStd_min;
 %% Simulation of IC number vs. number of connections (should show quadratic behavior)
-numConns=zeros(1,length(MAIN_ALLEEG));
-for i=1:length(MAIN_ALLEEG)
+numConns=zeros(1,length(ALLEEG));
+for i=1:length(ALLEEG)
     for j=1:i
         for k=1:i
             if j~=k
@@ -1290,9 +1313,9 @@ for i=1:length(MAIN_ALLEEG)
         end
     end
 end
-figure; plot(1:length(MAIN_ALLEEG),numConns);
-Fit_ICnum = polyfit(1:length(MAIN_ALLEEG),numConns,2);
+figure; plot(1:length(ALLEEG),numConns);
+Fit_ICnum = polyfit(1:length(ALLEEG),numConns,2);
 finalPerm.simFitICnum=numConns;
-finalPerm.x=1:length(MAIN_ALLEEG);
+finalPerm.x=1:length(ALLEEG);
 
 % save('/usr/local/VR_connectivity/Data/regularGroupConn/plots/numSubjsNumConns_fit.mat','finalPerm');

@@ -545,6 +545,97 @@ table_ls_out = load([save_dir filesep 'ls_table_out.mat']);
 table_ls_out = table_ls_out.table_ls_out;
 table_imu_out = load([save_dir filesep 'imu_table_out.mat']);
 table_imu_out = table_imu_out.table_imu_out;
+%% READ IN SUBJECT STABILITY SCORES (TRIAL)
+SPEED_CUTOFF = 0.1;
+MasterTable = mim_read_master_sheet('M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\subject_mgmt\subject_mastersheet_notes.xlsx');
+tmp = fieldnames(MasterTable(:,22:38));
+tmp = tmp(1:end-3);
+tmp_table = MasterTable(:,22:38);
+og_length = size(tmp_table,2);
+tmp_table.subject_code = categorical(MasterTable.subject_code);
+tmp_table.stability_score = MasterTable.flat_low_med_high_rating_of_stability;
+% table_new_imu.stability_rating = zeros(size(table_new_imu,1),1);
+% table_new_ls.stability_rating = zeros(size(table_new_ls,1),1);
+tmp_table_imu = table_imu_out;
+tmp_table_ls = table_ls_out;
+trials = {'flat','low','med','high'};
+for i = 1:size(tmp_table,1)
+    %- get subject index
+    ss = tmp_table.subject_code(i);
+    ss_var = tmp_table.stability_score(i);
+    ss_var = strsplit(ss_var{1},';');
+    ss_var = ss_var(~cellfun(@isempty,ss_var));
+%     ss = table_new_imu.SubjectName(i);
+    ind1 = tmp_table_imu.subj_char==ss;
+    ind2 = tmp_table_ls.subj_char==ss;
+    if any(ind1) & ~isempty(ss_var)
+        for j = 1:length(trials)
+            sub = strsplit(ss_var{j},',');
+            dsub = double(string(sub));
+            %- get subject and trial type index in imu/ls sheets
+            ind11 = tmp_table_imu.subj_char==ss & tmp_table_imu.trial_char==trials{j};
+            ind22 = tmp_table_ls.subj_char==ss & tmp_table_ls.trial_char==trials{j};
+            if ~isempty(sub{1})
+                k_imu = find(ind11);
+                k_ls = find(ind22);
+                for k = 1:length(k_ls)
+                    if any(ind22)
+                        tmp_table_ls.(sprintf('%s','stability_rating'))(k_ls(k)) = double(string(sub{k}));
+                    else
+                        tmp_table_ls.(sprintf('%s','stability_rating'))(k_ls(k)) = nan();
+                    end
+                end
+                for k = 1:length(k_imu)
+                    if any(ind11)
+                        tmp_table_imu.(sprintf('%s','stability_rating'))(k_imu(k)) = double(string(sub{k}));
+                    else
+                        tmp_table_imu.(sprintf('%s','stability_rating'))(k_imu(k)) = nan();
+                    end
+                end
+            else
+                for k = 1:2
+                    tmp_table_imu.(sprintf('%s','stability_rating'))(k_imu(k)) = nan();
+                    tmp_table_ls.(sprintf('%s','stability_rating'))(k_ls(k)) = nan();
+                end
+            end
+            fn = fieldnames(tmp_table);
+            for f = 1:length(fn)-6
+                tmp_table_imu(ind11,fn{f}) = tmp_table(tmp_table.subject_code==ss,f);
+                tmp_table_ls(ind22,fn{f}) = tmp_table(tmp_table.subject_code==ss,f);
+            end
+            tmp_table_imu(ind11,'og_length_m') = {3};
+            tmp_table_ls(ind22,'og_length_m') = {3};
+        end
+    end
+end
+fn = fieldnames(tmp_table);
+for f = 1:length(fn)-6
+    try
+        tmp_table_imu(tmp_table_imu.(fn{f}) == 0,fn{f}) = {nan()};
+        tmp_table_ls(tmp_table_ls.(fn{f}) == 0,fn{f}) = {nan()};
+    catch ME
+       switch ME.identifier
+           case 'MATLAB:datetime:InvalidComparison'
+               fprintf('Datetime value detected. Keeping as default.\n');
+       end
+    end
+end
+%%
+tmp_table_imu.stability_rating(tmp_table_imu.stability_rating==0) = nan();
+tmp_table_ls.stability_rating(tmp_table_ls.stability_rating==0) = nan();
+tmp_table_imu.og_length_m(tmp_table_imu.og_length_m==0) = nan();
+tmp_table_ls.og_length_m(tmp_table_ls.og_length_m==0) = nan();
+writetable(tmp_table_imu,[save_dir filesep 'imu_table_trial.xlsx']);
+writetable(tmp_table_ls,[save_dir filesep 'ls_table_trial.xlsx']);
+save([save_dir filesep 'imu_table_trial.mat'],'tmp_table_imu')
+save([save_dir filesep 'ls_table_trial.mat'],'tmp_table_ls')
+table_ls_out = tmp_table_ls;
+table_imu_out = tmp_table_imu;
+%% LOAD IN IF AVAILABLE
+table_ls_out = load([save_dir filesep 'ls_table_out.mat']);
+table_ls_out = table_ls_out.table_ls_out;
+table_imu_out = load([save_dir filesep 'imu_table_out.mat']);
+table_imu_out = table_imu_out.table_imu_out;
 %% average across trials
 subjs = unique(table_imu_out.subj_char);
 trials = unique(table_imu_out.trial_char);
@@ -558,12 +649,17 @@ for i = 1:length(subjs)
 %         tmp = varfun(@nanmean, tmp, 'InputVariables', @isnumeric);
         if ~isempty(tmp)
             tmpvals = varfun(@mean, tmp, 'InputVariables', @isnumeric);
-            tmpvals.subj_char = tmp.subj_char(1);
-            tmpvals.trial_char = tmp.trial_char(1);
-            tmpvals.subj_cat = tmp.subj_cat(1);
-            tmpvals.file_name = tmp.file_name(1);
-            tmpvals.group_id = tmp.group_id(1);
-            tmpvals.design_id = tmp.design_id(1);
+            tmpvalsnot = varfun(@(x) x(1), tmp, 'InputVariables', @(x) ~isnumeric(x));
+            tmpnames = cellfun(@(x) strsplit(x,'_'),tmpvalsnot.Properties.VariableNames,'UniformOutput',false);
+            tmpnames = cellfun(@(x) strjoin(x(2:end),'_'),tmpnames,'UniformOutput',false);
+            tmpvalsnot.Properties.VariableNames = tmpnames;
+            tmpvals = cat(2,tmpvalsnot,tmpvals);
+            % tmpvals.subj_char = tmp.subj_char(1);
+            % tmpvals.trial_char = tmp.trial_char(1);
+            % tmpvals.subj_cat = tmp.subj_cat(1);
+            % tmpvals.file_name = tmp.file_name(1);
+            % tmpvals.group_id = tmp.group_id(1);
+            % tmpvals.design_id = tmp.design_id(1);
             table_new = [table_new; tmpvals];
         end
     end
@@ -584,18 +680,22 @@ for i = 1:length(subjs)
         tmp = table_ls_out(ind,:); %tmpvals(tmpvals.trial_char == trials(j),:);
         if ~isempty(tmp)
             tmpvals = varfun(@mean, tmp, 'InputVariables', @isnumeric);
-            tmpvals.subj_char = tmp.subj_char(1);
-            tmpvals.trial_char = tmp.trial_char(1);
-            tmpvals.subj_cat = tmp.subj_cat(1);
-            tmpvals.file_name = tmp.file_name(1);
-            tmpvals.group_id = tmp.group_id(1);
-            tmpvals.design_id = tmp.design_id(1);
+            tmpvalsnot = varfun(@(x) x(1), tmp, 'InputVariables', @(x) ~isnumeric(x));
+            tmpnames = cellfun(@(x) strsplit(x,'_'),tmpvalsnot.Properties.VariableNames,'UniformOutput',false);
+            tmpnames = cellfun(@(x) strjoin(x(2:end),'_'),tmpnames,'UniformOutput',false);
+            tmpvalsnot.Properties.VariableNames = tmpnames;
+            tmpvals = cat(2,tmpvalsnot,tmpvals);
+            % tmpvals.subj_char = tmp.subj_char(1);
+            % tmpvals.trial_char = tmp.trial_char(1);
+            % tmpvals.subj_cat = tmp.subj_cat(1);
+            % tmpvals.file_name = tmp.file_name(1);
+            % tmpvals.group_id = tmp.group_id(1);
+            % tmpvals.design_id = tmp.design_id(1);
             table_new = [table_new; tmpvals];
         end
     end
 end
-table_new_ls = table_new;
-
+table_new_ls = tabl
 %% READ IN SUBJECT SPECIFIC SPEEDS FOR TERRAIN
 % SPEED_CUTOFF = 0.1;
 SPEED_CUTOFF = 0;

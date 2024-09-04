@@ -119,7 +119,8 @@ spca_dir = [studies_fpath filesep sprintf('%s',spca_study_dir)];
 %- load cluster
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
-cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% ================================================================== %%
 %## LOAD STUDY
@@ -202,19 +203,23 @@ spca_table = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],'spc
 %-
 subj_i = 1;
 cluster_i = 3;
+
 %-
-tmp_t = strcmp(spca_table.subj_c,STUDY.datasetinfo(subj_i).subject) & double(spca_table.cluster_n) == cluster_i;
+tmp_t = spca_table(strcmp(spca_table.subj_c,STUDY.datasetinfo(subj_i).subject) & double(spca_table.cluster_n) == cluster_i,:);
 figure;
 hold on;
-plot(freqs,spca_table.psd_orig_avg_c{1},'DisplayName','original avg.');
-plot(freqs,spca_table.psd_orig_baselined_c{1},'DisplayName','original avg. based');
-plot(freqs,spca_table.psd_corr_based_c{1},'DisplayName','corrected based');
-plot(freqs,spca_table.psd_corr_psc1{1},'DisplayName','pc1');
-plot(freqs,spca_table.psd_corr_unbase_c{1},'DisplayName','corrected + rest');
-plot(freqs,spca_table.psd_rest_c{1},'DisplayName','rest');
+plot(freqs,tmp_t.psd_orig_avg_c{1},'DisplayName','original avg.');
+% plot(freqs,tmp_t.psd_orig_baselined_c{1},'DisplayName','original avg. based');
+% plot(freqs,tmp_t.psd_corr_based_c{1},'DisplayName','corrected based');
+% plot(freqs,tmp_t.psd_corr_psc1{1},'DisplayName','pc1');
+% plot(freqs,tmp_t.psd_corr_unbase_c{1},'DisplayName','corrected + rest');
+% plot(freqs,tmp_t.psd_rest_c{1},'DisplayName','rest');
 
 legend();
-title(sprintf('%s: cluster %i',STUDY.datasetinfo(subj_i).subject,cluster_i))
+ylabel('10*log_{10}(PSD)');
+xlabel('Frequency (Hz)');
+% title(sprintf('%s: cluster %i',STUDY.datasetinfo(subj_i).subject,cluster_i))
+title('Component 5');
 hold off;
 %}
 %% (TABLE) GENERATE FOOOF VALUES ======================================= %%
@@ -555,7 +560,7 @@ save([save_dir filesep 'fooof_results.mat'],'fooof_results');
 % fooof_results = tmp.fooof_results;
 
 %% MULTI-CLUSTER PLOT OF ALL SUBJECTS ================================== %%
-%{
+
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
 conditions = unique(FOOOF_TABLE.cond_char);
@@ -646,7 +651,7 @@ for j = 1:length(designs)
         end
     end
 end
-%}
+
 %% SANITY CHECK: APERIODIC EXP., TERRAIN WALKING SPEED, APERIODIC OFFSET
 %## (STATS STRUCT) ====================================================== %%
 DEF_STATS_TRACK_STRUCT = struct('stat_test_mod',{{''}},...
@@ -674,6 +679,7 @@ DEF_STATS_TRACK_STRUCT = struct('stat_test_mod',{{''}},...
     'effect_size',[],...
     'effect_size_calc',{''});
 stats_struct = DEF_STATS_TRACK_STRUCT;
+cnts = 1;
 %##
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
@@ -1109,6 +1115,7 @@ for k = 1:length(MEASURES_PLOT)
                 'cond_labels',unique(tmptmp_table.cond_char),'group_labels',categorical(g_chars_subp),...
                 'cond_offsets',cond_offsets,...
                 'group_offsets',[0.125,0.475,0.812],...
+                'group_lab_yoffset',-0.285,...
                 'y_label',measure_plot,...
                 'title',sprintf('Cluster %i',cl_i),'font_size',FONT_SIZE_VIO,'ylim',YLIMS,...
                 'font_name','Arial','x_label',x_label,'do_combine_groups',false,...
@@ -1123,9 +1130,9 @@ for k = 1:length(MEASURES_PLOT)
             ax.Children(1).FontSize = GROUP_LAB_FONTSIZE;
             ax.Children(2).FontSize = GROUP_LAB_FONTSIZE;
             ax.Children(3).FontSize = GROUP_LAB_FONTSIZE;
-            ax.Children(1).Position(2) = GROUP_LAB_YOFFSET;
-            ax.Children(2).Position(2) = GROUP_LAB_YOFFSET;
-            ax.Children(3).Position(2) = GROUP_LAB_YOFFSET;
+            % ax.Children(1).Position(2) = GROUP_LAB_YOFFSET;
+            % ax.Children(2).Position(2) = GROUP_LAB_YOFFSET;
+            % ax.Children(3).Position(2) = GROUP_LAB_YOFFSET;
             yt = yticks(ax);
             xlh = xlabel(ax,PLOT_STRUCT.x_label,'Units','normalized','FontSize',XLAB_FONTSIZE,'FontWeight',XLAB_FONTWEIGHT);
             pos1=get(xlh,'Position');
@@ -1474,6 +1481,7 @@ DEF_STATS_TRACK_STRUCT = struct('design',categorical({''}),...
     'effect_size',[],...
     'effect_size_calc',{{''}});
 stats_struct = DEF_STATS_TRACK_STRUCT;
+cnts = 1;
 %-
 TERRAIN_DES_ID = 1;
 SPEED_DES_ID = 2;
@@ -1491,6 +1499,7 @@ cntsts = 1;
 for des_i = 1:length(designs)
     for cl_i = 1:length(clusters)
         for g_i = 1:length(groups)
+            %##
             %- extract table for cluster and design
             inds = FOOOF_TABLE.cluster_id == clusters(cl_i) &...
                 FOOOF_TABLE.design_id == designs(des_i) & FOOOF_TABLE.group_id == groups(g_i);
@@ -1590,8 +1599,13 @@ for des_i = 1:length(designs)
                         mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',MEASURE_NAMES{meas_i});
                         % mod_lme = sprintf('%s ~ 1 + cond_id^2 + cond_id + (1|subj_char)',MEASURE_NAMES{meas_i});
                         % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
-                        stats_out = fitlme(tmp,mod_lme);
+                        stats_out = fitlme(tmp,mod_lme,'FitMethod','REML');
                         anova_out = anova(stats_out);
+                        % [p,t,anova_out,terms] = anovan(tmp.(MEASURE_NAMES{meas_i}),{tmp.cond_id},...
+                        % 'sstype',3,'varnames',{'cond_id'},'model','linear','Display','off');
+                        % [comparisons,means,~,gnames] = multcompare(anova_out,'Dimension',[2],...
+                        %     'display','off','Alpha',0.05); % comparisons columns: [pred1,pred2,lowerCI,estimate,upperCI,p-val]
+                        disp(stats_out)
                         %## GATHER STATS
                         %- test normality
                         [norm_h,norm_p] = lillietest(stats_out.residuals);
@@ -1677,6 +1691,7 @@ for des_i = 1:length(designs)
 end
 %%
 tmp_table = struct2table(stats_struct);
+tmp_table.measure_vals = [];
 tmp_table.log_avg_power = [];
 tmp_table.pred_terms = [];
 tmp_table.rnd_terms = [];
@@ -1834,7 +1849,7 @@ for k = 1:length(MEASURES_PLOT)
                         % t1.log_avg_power= log(t1.(MEASURE_NAMES{meas_i})+5);
                         mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',measure_plot);
                         % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
-                        stats_out = fitlme(tmptmp_table,mod_lme);
+                        stats_out = fitlme(tmptmp_table,mod_lme,'FitMethod','REML');
                         anova_out = anova(stats_out);
                         %## GATHER STATS
                         %- test normality
@@ -1893,12 +1908,13 @@ for k = 1:length(MEASURES_PLOT)
                         STATS_STRUCT.pvals_pairs{g_i}={[1,1],[1,2],[1,3],[1,4]};
                         
                     case 2
+                       
                         %## LINEAR MODEL
                         % t1.log_avg_power= log(t1.(measure_plot)+5);
                         % mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',measure_plot);
                         mod_lme = sprintf('%s ~ 1 + cond_char + group_id + (1|subj_char)',measure_plot);
                         % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
-                        stats_out = fitlme(tmptmp_table,mod_lme);
+                        stats_out = fitlme(tmptmp_table,mod_lme,'FitMethod','REML');
                         anova_out = anova(stats_out);
                         %## GATHER STATS
                         %- test normality
@@ -1989,6 +2005,7 @@ for k = 1:length(MEASURES_PLOT)
                 'cond_labels',unique(temp_table.cond_char),'group_labels',categorical(g_chars_subp),...
                 'cond_offsets',cond_offsets,...
                 'group_offsets',[0.125,0.475,0.812],...
+                'group_lab_yoffset',-0.285,...
                 'y_label',measure_plot,...
                 'title',sprintf('Cluster %i',cl_i),'font_size',FONT_SIZE_VIO,'ylim',YLIMS,...
                 'font_name','Arial','x_label',x_label,'do_combine_groups',false,...
@@ -2003,9 +2020,9 @@ for k = 1:length(MEASURES_PLOT)
             ax.Children(1).FontSize = GROUP_LAB_FONTSIZE;
             ax.Children(2).FontSize = GROUP_LAB_FONTSIZE;
             ax.Children(3).FontSize = GROUP_LAB_FONTSIZE;
-            ax.Children(1).Position(2) = GROUP_LAB_YOFFSET;
-            ax.Children(2).Position(2) = GROUP_LAB_YOFFSET;
-            ax.Children(3).Position(2) = GROUP_LAB_YOFFSET;
+            % ax.Children(1).Position(2) = GROUP_LAB_YOFFSET;
+            % ax.Children(2).Position(2) = GROUP_LAB_YOFFSET;
+            % ax.Children(3).Position(2) = GROUP_LAB_YOFFSET;
             yt = yticks(ax);
             xlh = xlabel(ax,PLOT_STRUCT.x_label,'Units','normalized','FontSize',XLAB_FONTSIZE,'FontWeight',XLAB_FONTWEIGHT);
             pos1=get(xlh,'Position');
@@ -2370,6 +2387,7 @@ for k = 1:length(MEASURES_PLOT)
                 'cond_labels',unique(tmptmp_table.cond_char),'group_labels',categorical(g_chars_subp),...
                 'cond_offsets',cond_offsets,...
                 'group_offsets',[0.125,0.475,0.812],...
+                'group_lab_yoffset',-0.285,...
                 'y_label',measure_plot,...
                 'title',sprintf('Cluster %i',cl_i),'font_size',FONT_SIZE_VIO,'ylim',YLIMS,...
                 'font_name','Arial','x_label',x_label,'do_combine_groups',false,...
@@ -2384,9 +2402,9 @@ for k = 1:length(MEASURES_PLOT)
             ax.Children(1).FontSize = GROUP_LAB_FONTSIZE;
             ax.Children(2).FontSize = GROUP_LAB_FONTSIZE;
             ax.Children(3).FontSize = GROUP_LAB_FONTSIZE;
-            ax.Children(1).Position(2) = GROUP_LAB_YOFFSET;
-            ax.Children(2).Position(2) = GROUP_LAB_YOFFSET;
-            ax.Children(3).Position(2) = GROUP_LAB_YOFFSET;
+            % ax.Children(1).Position(2) = GROUP_LAB_YOFFSET;
+            % ax.Children(2).Position(2) = GROUP_LAB_YOFFSET;
+            % ax.Children(3).Position(2) = GROUP_LAB_YOFFSET;
             yt = yticks(ax);
             xlh = xlabel(ax,PLOT_STRUCT.x_label,'Units','normalized','FontSize',XLAB_FONTSIZE,'FontWeight',XLAB_FONTWEIGHT);
             pos1=get(xlh,'Position');

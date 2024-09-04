@@ -88,7 +88,7 @@ elseif ADD_DIPFIT_COMPILE_SUBMODS
 else
     %- Conn SUBMODS
     SUBMODULES = {'fieldtrip','eeglab','SIFT','postAmicaUtility',...
-        'Granger_Geweke_Causality',...
+        'Granger_Geweke_Causality','AAL3'...
         'ICLabel','Viewprops1.5.4','PowPowCAT3.0'};
     SUBMODULES_GENPATH = {};
     SUBMODULES_ITERS = (1:length(SUBMODULES));
@@ -110,6 +110,10 @@ for ss = SUBMODULES_ITERS
     else
         fprintf('Adding submodule: %s...\n',[submodules_dir filesep SUBMODULES{ss}]);
         path(path,[submodules_dir filesep SUBMODULES{ss}]);
+    end
+    %- spm12 exception
+    if strcmp(SUBMODULES{ss},'spm12')
+        path(path,[submodules_dir filesep SUBMODULES{ss} filesep SUBMODULES{ss}]);
     end
     PATHS.PATHS{ss} = [submodules_dir filesep SUBMODULES{ss}];
 end

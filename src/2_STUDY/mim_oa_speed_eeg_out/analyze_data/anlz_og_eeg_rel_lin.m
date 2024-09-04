@@ -18,7 +18,7 @@ clear java
 %## TIME
 tic
 global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
-ADD_CLEANING_SUBMODS = false;
+ADD_CLEANING_SUBMODS = true;
 %## Determine Working Directories
 if ~ispc
     try
@@ -51,18 +51,11 @@ cd(SRC_DIR);
 fprintf(1,'Current folder: %s\n',SRC_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
-%% Add Study & Script Paths
-addpath(STUDY_DIR);
-addpath(SRC_DIR);
-cd(SRC_DIR);
-fprintf(1,'Current folder: %s\n',SCRIPT_DIR);
-%## Set PWD_DIR, EEGLAB path, _functions path, and others...
-set_workspace
 %% (DATASET INFORMATION) =============================================== %%
 [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
 %% (PARAMETERS) ======================================================== %%
 fprintf('Assigning Params\n');
-%## Hard Define
+%## Hard Defines
 %- statistics & conditions
 SPEED_VALS = {'0.25','0.5','0.75','1.0';
               '0p25','0p5','0p75','1p0'};
@@ -129,7 +122,7 @@ else
 end
 cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
-save_dir = [spec_data_dir filesep 'psd_calcs'];
+save_dir = [spec_data_dir filesep 'psd_calcs' filesep 'split_band_test'];
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
@@ -145,12 +138,13 @@ STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
 %% (LOAD EXISTING TALBES && FORMAT STUDY)
 tmp = load([save_dir filesep 'psd_feature_table.mat']);
 FOOOF_TABLE = tmp.FOOOF_TABLE;
+FOOOF_TABLE.('log_speed_div_stat') = log10(FOOOF_TABLE.speed_div_stat);
 %-
-tmp = load([save_dir filesep 'STATS_TRACK_STRUCT_speedlin.mat']);
+% tmp = load([save_dir filesep 'STATS_TRACK_STRUCT_speedlin.mat']);
 % tmp = load([save_dir filesep 'STATS_TRACK_STRUCT_speedquad.mat']);
 % psd_feature_stats = tmp.psd_feature_stats;
-psd_feature_stats = tmp.STATS_TRACK_STRUCT;
-psd_feature_stats = struct2table(psd_feature_stats);
+% psd_feature_stats = tmp.STATS_TRACK_STRUCT;
+% psd_feature_stats = struct2table(psd_feature_stats);
 %-
 tmp = load([save_dir filesep 'fooof_results.mat']);
 fooof_results = tmp.fooof_results;
@@ -201,6 +195,45 @@ PLOT_STRUCT = struct('figure_position_inch',[3,3,6.5,9],...
 MEASURES_ANALYZE = {'theta_avg_power','beta_avg_power','tbr_avg_power'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
 title_plot = {'Mean \theta','Mean \beta','\beta//\theta'};
 %% ===================================================================== %%
+if ~ispc
+    tmp = strsplit(path,':');
+else
+    tmp = strsplit(path,';');
+end
+%*
+b1 = regexp(tmp,'fieldtrip','end');
+b2 = tmp(~cellfun(@isempty,b1));
+try
+    path_fieldtrip = b2{1}(1:b1{1});
+    fprintf('fieldtrip path: %s\n',path_fieldtrip);
+catch ME
+    switch ME.identifier
+        case 'MATLAB:badsubscript'
+            fprintf('fieldtrip path not found.\n');
+    end
+end
+%*
+b1 = regexp(tmp,'AAL3','end');
+b2 = tmp(~cellfun(@isempty,b1));
+try
+    path_aal3 = b2{1}(1:b1{1});
+    fprintf('ALL3 path: %s\n',path_aal3);
+catch ME
+    switch ME.identifier
+        case 'MATLAB:badsubscript'
+            fprintf('AAL3 path not found.\n');
+    end
+end
+%- atlas paths
+% ATLAS_FPATHS = {[path_fieldtrip filesep 'template',...
+%         filesep 'atlas' filesep 'aal' filesep 'ROI_MNI_V4.nii'],... % MNI atalst
+%     [path_fieldtrip filesep 'template' filesep 'atlas'...
+%         filesep 'afni' filesep 'TTatlas+tlrc.HEAD'],... % tailarch atlas
+%     [path_fieldtrip filesep 'template' filesep 'atlas'...
+%         filesep 'spm_anatomy' filesep 'AllAreas_v18_MPM.mat']}; % also a discrete version of this
+% ATLAS_FPATHS = {[path_aal3 filesep 'AAL3v1.nii']}; 
+ATLAS_FPATHS = {[path_aal3 filesep 'AAL3v1_1mm.nii']}; 
+%%
 clusters = unique(FOOOF_TABLE.cluster_id);
 % [STUDY,centroid] = std_centroid(STUDY,ALLEEG,double(string(clusters)),'dipole');
 txt_store = cell(length(clusters),1);
@@ -273,108 +306,70 @@ txt_store = txt_store(~cellfun(@isempty,txt_store));
 cellfun(@(x) fprintf(f,x),txt_store);
 fclose(f);
 par_save(atlas_name_store,save_dir,'atlas_names.mat');
+%% (LOAD) ============================================================== %%
+tmp = load([save_dir filesep 'anatomy_chars.mat']);
+atlas_name_store = tmp.atlas_name_store;
 %% ===================================================================== %%
 % FOOOF_TABLE = FOOOF_TABLE;
 %## MEASURES TO COMPUTE (LIMIT TO 3 WHEN POSSIBLE)
 MEASURES_ANALYZE = {'theta_avg_power','alpha_avg_power','beta_avg_power'};
 MEASURE_NAME_LABS = {'Mean \theta','Mean \alpha','Mean \beta'};
 MEASURE_SYMBOLS = {'\theta','\alpha','\beta'};
-%% ===================================================================== %%
-%## STRUCT IMPLEMENTATION
-DEF_STATS_TRACK_STRUCT = struct('design',categorical({''}),...
-    'cluster',categorical({''}),...
-    'group',categorical({''}),...
-    'stat_test_mod',{{''}},...
-    'measure_tag',{{''}},...
-    'resp_terms',{{''}},...
-    'pred_terms',{{''}},...
-    'pred_terms_wt',{{''}},...
-    'rnd_terms',{{''}},...
-    'rnd_terms_wt',{{''}},...
-    'anova_grp_p',[],...
-    'anova_terr_p',[],...
-    'anova_speed_p',[],...
-    'anova_speed_p2',{{}},...
-    'anova_speed_p2_wt',{{''}},...
-    'anova_inter_p',[],...
-    'anova_grp_f',[],...
-    'anova_terr_f',[],...
-    'anova_speed_f',[],...
-    'anova_speed_f2',{{}},...
-    'anova_speed_f2_wt',{{''}},...
-    'anova_inter_f',[],...
-    'anova_grp_df',[],...
-    'anova_terr_df',[],...
-    'anova_speed_df',[],...
-    'anova_speed_df2',{{}},...
-    'anova_speed_df2_wt',{{''}},...
-    'anova_inter_df',[],...
-    'lme_grp_p',{{}},...
-    'lme_terr_p',{{}},...
-    'lme_terr_p_wt',{{''}},...
-    'lme_speed_p',[],...
-    'lme_speed_p2',{{}},...
-    'lme_speed_p2_wt',{{''}},...
-    'lme_inter_p',[],...
-    'lme_grp_coeff',{{}},...
-    'lme_terr_coeff',{{}},...
-    'lme_terr_coeff_wt',{{''}},...
-    'lme_speed_coeff',[],...
-    'lme_speed_coeff2',{{}},...
-    'lme_speed_coeff2_wt',{{''}},...
-    'lme_inter_coeff',[],...
-    'lme_rnd_effects',{{}},...
-    'R2',[],...
-    'norm_test_h',[],...
+%## (STATS STRUCT) ====================================================== %%
+DEF_STATS_TRACK_STRUCT = struct('stat_test_mod',{{''}},...
+    'measure_tag',categorical({''}),...
+    'measure_char',{''},...
+    'design_tag',categorical({''}),...
+    'design_num',[],...
+    'cluster_num',[],...
+    'mod_tag',categorical({''}),...
+    'mod_resp_terms',{''},...
+    'rnd_terms',{''},...
+    'anova_preds_terms',{''},...
+    'anova_preds_p',{[]},...
+    'anova_preds_stat',{[]},...
+    'anova_preds_df',{[]},...
+    'mod_preds_terms',{{''}},...
+    'mod_preds_p',[],...
+    'mod_preds_stat',[],...
+    'mod_preds_coeff',[],...
+    'mod_r2',[],...
+    'multi_comp_terms',{''},...
+    'multi_comp_t1_t2',[],...
+    'multi_comp_p',[],...
+    'multi_comp_coeff',[],...
+    'multi_comp_lci_uci',[],...
     'norm_test_p',[],...
-    'log_avg_power',[]);
-STATS_TRACK_STRUCT = DEF_STATS_TRACK_STRUCT;
+    'norm_test_h',[],...
+    'effect_size',[],...
+    'effect_size_calc',{''});
+stats_struct = DEF_STATS_TRACK_STRUCT;
+cnts = 1;
 %-
 TERRAIN_DES_ID = 1;
 SPEED_DES_ID = 2;
-% MEASURE_NAMES = {'theta_avg_power','alpha_avg_power','beta_avg_power'};
+% MEASURES_ANALYZE = {'theta_avg_power','alpha_avg_power','beta_avg_power'};
 % LOG_MEASURE_NAMES = {'log_alpha_avg_power','log_theta_avg_power','log_beta_avg_power'};
 %% (STAT) PREDICTORS: SPEED_DIFF_STAT. RESPONSE: BRAIN ACTIVITY, STATS TEST
 %## PARAMS
 %-
 AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
 des_i = 2;
-group_i = 1;
-% designs = unique(FOOOF_TABLE.design_id);
-% clusters = unique(FOOOF_TABLE.cluster_id);
 % SPEED_MEAS_ANL = 'speed_diff_stat';
 SPEED_MEAS_ANL = 'speed_div_stat';
 % SPEED_MEAS_ANL = 'speed_diffdiv_stat';
 %-
-COLORS = linspecer(2);
 IM_RESIZE = 1;
 TITLE_TXT_SIZE = 14;
-ALPHA = 0.05;
-DO_PLOT_RANDOM_VARS = false;
 %-
 AX_FONT_NAME = 'Arial';
 AX_W = 0.35;
 AX_H = 0.25;
-AX_HORIZ_SHIFT = 0.1;
-AX_VERT_SHIFT = 0.1250;
 AX_INIT_HORIZ = 0.07;
 AX_INIT_VERT = 0.65;
-AX_TXT_SIZE = 10;
-%-
-LINE_WIDTH_REFF = 2;
-LINE_WIDTH_MEFF = 3;
-%-
-DO_PLOT_R2 = true;
-REG_TXT_SIZE = 8;
-REG_HORIZ_SHIFT = 0.05;
-REG_VERT_SHIFT = 0.05;
-%-
-LEG_HORIZ_SHIFT = 0;
-LEG_VERT_SHIFT =  0.125;
-LEG_TXT_SIZE = 9;
-LEG_TOKEN_SIZE = 20;
-AX_MAX = 3;
-tmp_savedir = [save_dir filesep sprintf('lme_P%s_stat-Reeg',SPEED_MEAS_ANL)];
+g_chars_subp = {'YA','OHMA','OLMA'};
+
+tmp_savedir = [save_dir filesep sprintf('lme_P%s_stat-Reeg_linear',SPEED_MEAS_ANL)];
 mkdir(tmp_savedir);
 %-
 %-
@@ -382,7 +377,6 @@ groups = unique(FOOOF_TABLE.group_id);
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
 for cl_i = 1:length(clusters)
-    %%
     atlas_name = atlas_name_store{cl_i};
     fig = figure('color','white');
     sgtitle(atlas_name,'FontName',AX_FONT_NAME,'FontSize',TITLE_TXT_SIZE,'FontWeight','bold','Interpreter','none');
@@ -400,40 +394,47 @@ for cl_i = 1:length(clusters)
     %- data
     inds = FOOOF_TABLE.design_id == designs(des_i) & FOOOF_TABLE.cluster_id == clusters(cl_i);
     tmp_data = FOOOF_TABLE(inds,:);
-    % y_lim_calc = [min(tmp_data.(MEASURES_ANALYZE{meas_i}))-std(tmp_data.(MEASURES_ANALYZE{meas_i})),...
-    %     max(tmp_data.(MEASURES_ANALYZE{meas_i}))+std(tmp_data.(MEASURES_ANALYZE{meas_i}))];
-
+    tmp_data.(SPEED_MEAS_ANL) = log10(tmp_data.(SPEED_MEAS_ANL));
+    y_lim_calc = [prctile(tmp_data.(SPEED_MEAS_ANL),3)-std(tmp_data.(SPEED_MEAS_ANL)),...
+        prctile(tmp_data.(SPEED_MEAS_ANL),97)+std(tmp_data.(SPEED_MEAS_ANL))];
+    switch des_i
+        case 1
+            color_dark = COLORS_MAPS_TERRAIN;
+            color_light = COLORS_MAPS_TERRAIN;
+            xtick_label_g = {'flat','low','med','high'};
+            x_label = 'terrain';
+            cond_offsets = [-0.35,-0.1,0.15,0.40];
+        case 2
+            color_dark = COLOR_MAPS_SPEED; %color.speed;
+            color_light = COLOR_MAPS_SPEED+0.15; %color.speed_shade;
+            xtick_label_g = {'0.25','0.50','0.75','1.0'};
+            x_label = 'speed (m/s)';
+            cond_offsets = [-0.35,-0.1,0.15,0.40];
+    end
+    ax = axes();
     VIOLIN_PARAMS = {'width',0.1,...
         'ShowWhiskers',false,'ShowNotches',false,'ShowBox',true,...
         'ShowMedian',true,'Bandwidth',0.15,'QuartileStyle','shadow',...
         'HalfViolin','full','DataStyle','scatter','MarkerSize',8,...
         'EdgeColor',[0.5,0.5,0.5],'ViolinAlpha',{0.2 0.3}};
-    PLOT_PARAMS = struct('color_map',linspecer(3),...
-        'cond_labels',unique(tmp_data.design_id),'group_labels',unique(tmp_data.group_char),...
+    PLOT_STRUCT = struct('color_map',color_dark,...
+        'cond_labels',categorical({'.'}),'group_labels',categorical(g_chars_subp),...
         'cond_offsets',[0],...
         'group_offsets',[0.125,0.475,0.812],...
-        'y_label','10*log_{10}(Flattened PSD)',...
-        'title','','font_size',7,'ylim',[-0.5,6],...
-        'font_name','Arial','x_label','group','do_combine_groups',false);
+        'y_label',SPEED_MEAS_ANL,...
+        'title','Terrain Treadmill Speed by Group','font_size',10,'ylim',y_lim_calc,...
+        'font_name','Arial','x_label',{''},'do_combine_groups',false,...
+        'regresslab_txt_size',8);
     axax = group_violin(tmp_data,SPEED_MEAS_ANL,'design_id','group_id',...
-        fig,...
+        ax,...
         'VIOLIN_PARAMS',VIOLIN_PARAMS,...
-        'PLOT_STRUCT',PLOT_PARAMS);
-    set(axax,'OuterPosition',[0,0,1,1]);
-    set(gca,'Position',[AX_INIT_HORIZ+horiz_shift,AX_INIT_VERT+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE]);  %[left bottom width height]
-    %##
-    PLOT_PARAMS.ylim = [-0.5,1.5];
-    horiz_shift = AX_INIT_HORIZ + AX_W*IM_RESIZE + AX_HORIZ_SHIFT*IM_RESIZE;
-    axax = group_violin(tmp_data,'speed_ms','design_id','group_id',...
-        fig,...
-        'VIOLIN_PARAMS',VIOLIN_PARAMS,...
-        'PLOT_STRUCT',PLOT_PARAMS);
+        'PLOT_STRUCT',PLOT_STRUCT);
     set(axax,'OuterPosition',[0,0,1,1]);
     set(gca,'Position',[AX_INIT_HORIZ+horiz_shift,AX_INIT_VERT+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE]);  %[left bottom width height]
 
     hold off;
     %##
-    % exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_g%i_eeg-speeddiffstat_quadtestp.tiff',string(clusters(cl_i)),groups(group_i))],'Resolution',300)
+    exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_eeg-%s_lin.tiff',string(clusters(cl_i)),SPEED_MEAS_ANL)],'Resolution',300)
     % exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_g%i_eeg-speeddiffstat_linetestp.tiff',string(clusters(cl_i)),groups(group_i))],'Resolution',300)
     % close(fig)
 end
@@ -442,11 +443,12 @@ end
 %-
 AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
 des_i = 2;
-group_i = 1;
+g_i = 1;
 % designs = unique(FOOOF_TABLE.design_id);
 % clusters = unique(FOOOF_TABLE.cluster_id);
 % SPEED_MEAS_ANL = 'speed_diff_stat';
-SPEED_MEAS_ANL = 'speed_div_stat';
+% SPEED_MEAS_ANL = 'speed_div_stat';
+SPEED_MEAS_ANL = 'log_speed_div_stat';
 % SPEED_MEAS_ANL = 'speed_diffdiv_stat';
 %-
 COLORS = linspecer(2);
@@ -477,7 +479,7 @@ LEG_VERT_SHIFT =  0.125;
 LEG_TXT_SIZE = 9;
 LEG_TOKEN_SIZE = 20;
 AX_MAX = 3;
-tmp_savedir = [save_dir filesep sprintf('lme_P%s_stat-Reeg',SPEED_MEAS_ANL)];
+tmp_savedir = [save_dir filesep sprintf('lme_P%s_stat-Reeg_linear',SPEED_MEAS_ANL)];
 mkdir(tmp_savedir);
 %-
 %-
@@ -485,7 +487,7 @@ groups = unique(FOOOF_TABLE.group_id);
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
 for cl_i = 1:length(clusters)
-    for group_i = 1:length(groups)
+    for g_i = 1:length(groups)
         %##
         atlas_name = atlas_name_store{cl_i};
         fig = figure('color','white');
@@ -498,46 +500,36 @@ for cl_i = 1:length(clusters)
         horiz_shift = 0;
         plot_leg = [];
         for meas_i = 1:length(MEASURES_ANALYZE)
+            tmptmp_table = FOOOF_TABLE(FOOOF_TABLE.cluster_id == clusters(cl_i) &...
+                FOOOF_TABLE.design_id == designs(des_i),:);
+            y_lim_calc = [prctile(tmptmp_table.(MEASURES_ANALYZE{meas_i}),3)-std(tmptmp_table.(MEASURES_ANALYZE{meas_i})),...
+                        prctile(tmptmp_table.(MEASURES_ANALYZE{meas_i}),97)+std(tmptmp_table.(MEASURES_ANALYZE{meas_i}))];
             % figure;
             %##
             cond_plot_store = [];
             group_plot_store = [];
             %- data
-            if ~isempty(group_i)
-                inds = FOOOF_TABLE.design_id == designs(des_i) & FOOOF_TABLE.cluster_id == clusters(cl_i) & FOOOF_TABLE.group_id == groups(group_i);
-            else
-                inds = FOOOF_TABLE.design_id == designs(des_i) & FOOOF_TABLE.cluster_id == clusters(cl_i);
-            end
-            tmp_data = FOOOF_TABLE(inds,:);
-            y_lim_calc = [min(tmp_data.(MEASURES_ANALYZE{meas_i}))-std(tmp_data.(MEASURES_ANALYZE{meas_i})),...
-                max(tmp_data.(MEASURES_ANALYZE{meas_i}))+std(tmp_data.(MEASURES_ANALYZE{meas_i}))];
-            %## STATS
-            % inds = (psd_feature_stats.cluster == clusters(cl_i) & psd_feature_stats.design == designs(des_i) & ...
-            %     psd_feature_stats.group == groups(group_i) & strcmp(psd_feature_stats.measure_tag,MEASURES_ANALYZE{meas_i}));
-            % tmp_stats = psd_feature_stats(inds,:);
-            % anova_p_var = tmp_stats.anova_speed_p{1};
-            % R2 = tmp_stats.R2{1};
-            %## STATS
-            %- NOTE: need to reassign to new table because of how
-            %categorical variables will hold onto removed
-            %entries causing rank defiecencies.
-            %- speed factors
-            % tmp = table(categorical(string(tmptmp.subj_char)),double(tmptmp.(MEASURES_ANALYZE{meas_i})),...
-            %     categorical(string(tmptmp.cond_id)),'VariableNames',{'subj_char',MEASURES_ANALYZE{meas_i},'cond_id'});
-            %- speed cont.
-            % tmp = table(categorical(string(tmptmp.subj_char)),double(tmptmp.(MEASURES_ANALYZE{meas_i})),...
-            %     double(string(tmptmp.cond_id)),'VariableNames',{'subj_char',MEASURES_ANALYZE{meas_i},'cond_id'});
-            %- speed_diff_stat.
-            tmp = table(categorical(string(tmp_data.subj_char)),double(tmp_data.(MEASURES_ANALYZE{meas_i})),...
-                double(string(tmp_data.(SPEED_MEAS_ANL))),'VariableNames',{'subj_char',MEASURES_ANALYZE{meas_i},'cond_id'});
+            tmptmp_table = FOOOF_TABLE(FOOOF_TABLE.group_id == groups(g_i) & FOOOF_TABLE.cluster_id == clusters(cl_i) &...
+                FOOOF_TABLE.design_id == designs(des_i),:);
+            % tmptmp_table = table(categorical(string(tmptmp_table.subj_char)),double(tmptmp_table.(MEASURES_ANALYZE{meas_i})),...
+            %     double(string(tmptmp_table.cond_char)),...
+            %     categorical(string(tmptmp_table.group_id)),'VariableNames',{'subj_char',MEASURES_ANALYZE{meas_i},'cond_id','group_id'});
+            tmptmp_table = table(categorical(string(tmptmp_table.subj_char)),double(tmptmp_table.(MEASURES_ANALYZE{meas_i})),...
+                double(string(tmptmp_table.(SPEED_MEAS_ANL))),double(tmptmp_table.(SPEED_MEAS_ANL)),...
+                categorical(string(tmptmp_table.group_id)),'VariableNames',{'subj_char',MEASURES_ANALYZE{meas_i},'cond_id',SPEED_MEAS_ANL,'group_id'});
+    
             %## LINEAR MODEL
-            % t1.log_avg_power= log(t1.(MEASURES_ANALYZE{meas_i})+5);
-            mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',MEASURES_ANALYZE{meas_i});
-            % mod_lme = sprintf('%s ~ 1 + cond_id^2 + cond_id + (1 + cond_id + cond_id^2 | subj_char)',MEASURES_ANALYZE{meas_i});
-            % mod_lme = sprintf('%s ~ 1 + cond_id + (1 | subj_char)',MEASURES_ANALYZE{meas_i});
+            % mod_lme = sprintf('%s ~ 1 + cond_char + (1|subj_char)',MEASURES_ANALYZE{meas_i});
             % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
-            stats_out = fitlme(tmp,mod_lme,'FitMethod','REML');
-            anova_out = anova(stats_out);
+            % stats_out = fitlme(tmptmp_table,mod_lme,'FitMethod','REML');
+            % anova_out = anova(stats_out);
+            mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',MEASURES_ANALYZE{meas_i});
+            % mod_lme = sprintf('%s ~ 1 + cond_id^2 + cond_id + (1|subj_char)',MEASURES_ANALYZE{meas_i});
+            % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
+            stats_out = fitlme(tmptmp_table,mod_lme,'FitMethod','REML');
+            % anova_out = anova(stats_out);
+            [p,t,anova_out,terms] = anovan(tmptmp_table.(MEASURES_ANALYZE{meas_i}),{tmptmp_table.cond_id},...
+            'sstype',3,'varnames',{'cond_id'},'model','linear','Display','off');
             %## GATHER STATS
             %- test normality
             [norm_h,norm_p] = lillietest(stats_out.residuals);
@@ -549,19 +541,53 @@ for cl_i = 1:length(clusters)
             % altstats_out = fitlme(T_vals_plot,altmod_lme,'DummyVarCoding','effects');
             % R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
             R2 = stats_out.Rsquared.Adjusted;
-            %##
-            anova_p_var = anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
-            anova_p_var2 = anova_out.pValue(strcmp(anova_out.Term,'cond_id^2'));
+            %- intercept only model
+            altmod_out = sprintf('%s ~ 1 + (1|subj_char)',MEASURES_ANALYZE{meas_i});
+            altstats_out = fitlme(tmptmp_table,altmod_out);
+            %- alternative f2?
+            R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
+            R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
+            alt_f2 = (R22-R21)/(1-R22);
+            %- populate struct
+            stats_struct(cnts).stat_test_mod = mod_lme;
+            stats_struct(cnts).measure_tag = categorical({MEASURES_ANALYZE{meas_i}});
+            stats_struct(cnts).design_tag = categorical(des_i);
+            stats_struct(cnts).mod_tag = categorical(2);
+            % stats_struct(cnts).resp_terms = MEASURES_PLOT(meas_i);
+            stats_struct(cnts).mod_resp_terms = MEASURES_ANALYZE{meas_i};
+            stats_struct(cnts).anova_preds_terms = t(:,1)';
+            tmp = t(:,7)';
+            tmp = tmp(~cellfun(@isempty,tmp));
+            stats_struct(cnts).anova_preds_p = tmp;
+            tmp = t(:,6)';
+            tmp = tmp(~cellfun(@isempty,tmp));
+            stats_struct(cnts).anova_preds_stat = tmp;
+            tmp = t(:,3)';
+            tmp = tmp(~cellfun(@isempty,tmp));
+            stats_struct(cnts).anova_preds_df =tmp;
+            stats_struct(cnts).mod_preds_p = stats_out.Coefficients.pValue;
+            stats_struct(cnts).mod_preds_terms = stats_out.Coefficients.Name';
+            stats_struct(cnts).mod_preds_stat = stats_out.Coefficients.tStat;
+            stats_struct(cnts).mod_preds_coeff = stats_out.Coefficients.Estimate;
+            stats_struct(cnts).mod_r2 = stats_out.Rsquared.Adjusted;
+            stats_struct(cnts).norm_test_p = norm_p;
+            stats_struct(cnts).norm_test_h = norm_h;
+            stats_struct(cnts).effect_size = alt_f2;
+            stats_struct(cnts).effect_size_calc = '(R2_full-R2_null)/(1-R2_full)';
+            cnts = cnts + 1;
+            stats_struct(cnts) = DEF_STATS_TRACK_STRUCT;
+            %## PLOT =============================================================== %%
+            tmp = t(:,7)';
+            anova_p_var = tmp{2};
             lme_speed_coeff = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id')));
-            lme_speed_coeff2 = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id^2')));
             lme_inter_coeff = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
             rnd_eff = bretable;
             %## SCATTER
             %- plot
-            figure;
+            % figure;
             axes();
             hold on;
-            data = tmp_data;
+            data = tmptmp_table;
             [~,inds] = sort(data.(MEASURES_ANALYZE{meas_i}));
             data = data(inds,:);
             % ss = scatter(data,'speed_diff_stat',MEASURES_ANALYZE{meas_i},'DisplayName',sprintf('%s',cond_chars(cond_i)));
@@ -571,58 +597,38 @@ for cl_i = 1:length(clusters)
             ss.MarkerEdgeAlpha = 0.6;
             %## LINEAR MODEL FIT
             hold on;
-            data = tmp_data;
+            data = tmptmp_table;
             [vals,inds] = sort(data.(SPEED_MEAS_ANL));
             data = data(inds,:);
             if anova_p_var < ALPHA 
-            % if anova_p_var2 < ALPHA
                 %## PLOT RANDOM EFFECTS
-                % rnd_eff = tmp_stats.lme_rnd_effects{1}{1};
                 subjects = unique(rnd_eff.Level);
                 rnd_colors = linspecer(length(subjects));
                 % cnt = 1;
                 inter = '(Intercept)';
                 x1 = 'cond_id';
-                x2 = 'cond_id^2';
                 for subj_i = 1:length(subjects)
                     inds = strcmp(rnd_eff.Level, subjects{subj_i});
                     est = rnd_eff.Estimate(inds);
                     levels = rnd_eff.Name(inds);
                     interv = est(strcmp(levels,inter));
                     x1v = est(strcmp(levels,x1));
-                    x2v = est(strcmp(levels,x2));
                     % x = unique(data.(SPEED_MEAS_ANL));
                     subj_inds = data.subj_char == categorical(subjects(subj_i));
                     x = data(subj_inds,:);
                     x = x.(SPEED_MEAS_ANL);
                     %## LINEAR
-                    % y = lme_speed_coeff.*x + lme_inter_coeff + interv;
-                    % y = zeros(length(x),1);
-                    % for i = 1:length(x)
-                    %     y(i) = lme_speed_coeff*x(i) + lme_inter_coeff + interv;
-                    % end
-                    %## QUADRATIC
-                    y = lme_speed_coeff.*x + lme_speed_coeff2.*(x.^2) + lme_inter_coeff + interv + x1v.*x + x2v.*(x.^2);
-                    % y = zeros(length(x),1);
-                    % for i = 1:length(x)
-                    %     y(i) = lme_speed_coeff*x(i) + lme_speed_coeff2*(x(i)^2) + lme_inter_coeff + interv + x1v*x(i) + x2v*(x(i).^2);
-                    % end
+                    y = lme_speed_coeff.*x + lme_inter_coeff + interv;
                     pps = plot(x,y,...
                         'DisplayName',sprintf('subj. %s',subjects{subj_i}),...
                         'LineWidth',LINE_WIDTH_REFF);
                     pps.Color = rnd_colors(subj_i,:)*0.8;
-                    % pps.Color = [COLORS(2,:),0.35];
                     pps.LineStyle = ':';
-                    % cnt = cnt + 3;
                 end
                 %## PLOT MAIN EFFECTS
-                % x = unique(data.(SPEED_MEAS_ANL));
                 x = data.(SPEED_MEAS_ANL);
                 %## LINEAR
-                % y = lme_speed_coeff.*x + lme_inter_coeff;
-                %## QUADRATIC
-                y = lme_speed_coeff.*x + lme_speed_coeff2.*(x.^2) + lme_inter_coeff;
-                
+                y = lme_speed_coeff.*x + lme_inter_coeff;                
                 pp = plot(x,y,...
                     'DisplayName',sprintf('pvalue_{%s}=(%0.2f)','sp',anova_p_var),...
                     'LineWidth',LINE_WIDTH_MEFF);
@@ -658,9 +664,13 @@ for cl_i = 1:length(clusters)
             else
                 ylabel('')
             end
-            xlabel('\DeltaSpeed_{OG} (%)');
-            title(MEASURE_NAME_LABS{meas_i});
+            % xlabel('\DeltaSpeed_{OG} (%)');
+            % xlabel('log_{10}(Speed_{ms}/OG_{ms})')
+            % xlabel('$\log_{10}$$\frac{Trial_{ms}}{Subject_{ms}}$','Interpreter','latex');
+            xlabel('$\log_{10} ( \frac{Trial_{ms}}{Subject_{ms}} )$','Interpreter','latex','FontSize',14,'FontWeight','bold');
             set(gca,'FontWeight','bold','FontSize',AX_TXT_SIZE);
+            % xlab = xlabel(['$(log_{10})$','$(\frac{x}{x})$','(%)'],'FontSize',8,'Interpreter','latex');
+            title(MEASURE_NAME_LABS{meas_i});
             ylim(y_lim_calc)
             % xlim([-1,max(data.(SPEED_MEAS_ANL))])
             %## legend
@@ -688,8 +698,7 @@ for cl_i = 1:length(clusters)
         hold off;
         %##
         % exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_g%i_eeg-speeddiffstat_quadtestp.tiff',string(clusters(cl_i)),groups(group_i))],'Resolution',300)
-        exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_g%i_eeg-speeddiffstat_linetestp.tiff',string(clusters(cl_i)),groups(group_i))],'Resolution',300)
-        
+        exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_g%i_%s_linetestp.tiff',string(clusters(cl_i)),groups(g_i),SPEED_MEAS_ANL)],'Resolution',300)
         close(fig)
     end
 end
@@ -756,11 +765,11 @@ LEG_VERT_SHIFT =  0.125;
 LEG_TXT_SIZE = 9;
 LEG_TOKEN_SIZE = 20;
 AX_MAX = 3;
-tmp_savedir = [save_dir filesep sprintf('lmquad_P%s_nostat-Reeg',SPEED_MEAS_ANL)];
+tmp_savedir = [save_dir filesep sprintf('lmquad_P%s_nostat-Reeg_linear',SPEED_MEAS_ANL)];
 mkdir(tmp_savedir);
 for cl_i = 1:length(clusters)
     %##
-    for group_i = 1:length(groups)
+    for g_i = 1:length(groups)
         
         fig = figure('color','white');
         
@@ -777,19 +786,19 @@ for cl_i = 1:length(clusters)
             group_plot_store = [];
             %- get flat eeg power
             inds = (FOOOF_TABLE.cluster_id == clusters(cl_i) &...
-                FOOOF_TABLE.group_id == groups(group_i) & FOOOF_TABLE.cond_char == 'flat');
+                FOOOF_TABLE.group_id == groups(g_i) & FOOOF_TABLE.cond_char == 'flat');
             flat_vals = FOOOF_TABLE(inds,:);
             %- data
-            if ~isempty(group_i)
+            if ~isempty(g_i)
                 inds = FOOOF_TABLE.design_id == designs(des_i) & FOOOF_TABLE.cluster_id == clusters(cl_i)...
-                    & FOOOF_TABLE.group_id == groups(group_i);
+                    & FOOOF_TABLE.group_id == groups(g_i);
             else
                 inds = FOOOF_TABLE.design_id == designs(des_i) & FOOOF_TABLE.cluster_id == clusters(cl_i);
             end
             tmp_data = FOOOF_TABLE(inds,:);
             %## TITLE
             subjects = unique(tmp_data.subj_id);
-            atlas_name = sprintf('%s, N=%i) %s',group_chars(group_i),length(subjects),atlas_name_store{cl_i});
+            atlas_name = sprintf('%s, N=%i) %s',group_chars(g_i),length(subjects),atlas_name_store{cl_i});
             sgtitle(atlas_name,'FontName',AX_FONT_NAME,'FontSize',TITLE_TXT_SIZE,'FontWeight','bold','Interpreter','none');
             %## NORMALIZE MEASURE
             for subj_i = 1:length(subjects)
@@ -797,7 +806,7 @@ for cl_i = 1:length(clusters)
                 indsd = tmp_data.subj_id == subjects(subj_i);
                 datad = tmp_data(indsd,:);
                 %- grab subjects data on flat terrain
-                inds_flat = flat_val4ts.subj_id == subjects(subj_i);
+                inds_flat = flat_vals.subj_id == subjects(subj_i);
                 data_flat = flat_vals(inds_flat,:);
                 %- get eeg data and normalize to flat's eeg data.
                 indv = strcmp(tmp_data.Properties.VariableNames,MEASURES_ANALYZE{meas_i});
@@ -841,7 +850,6 @@ for cl_i = 1:length(clusters)
                 max(tmp_data.(MEASURES_ANALYZE{meas_i}))+std(tmp_data.(MEASURES_ANALYZE{meas_i}))];
             %## SCATTER
             %- plot
-            
             axes();
             hold on;
             data = tmp_data;
@@ -895,8 +903,8 @@ for cl_i = 1:length(clusters)
                 FIT_STRUCT(cnt).subject = subjects(subj_i);
                 FIT_STRUCT(cnt).cluster = clusters(cl_i);
                 FIT_STRUCT(cnt).design = designs(des_i);
-                FIT_STRUCT(cnt).group = groups(group_i);
-                FIT_STRUCT(cnt).group_char = group_chars(group_i);
+                FIT_STRUCT(cnt).group = groups(g_i);
+                FIT_STRUCT(cnt).group_char = group_chars(g_i);
                 FIT_STRUCT(cnt).measure_char = MEASURES_ANALYZE{meas_i};
                 FIT_STRUCT(cnt).measure = categorical(meas_i);
                 FIT_STRUCT(cnt).b1 = b1;
@@ -946,7 +954,7 @@ for cl_i = 1:length(clusters)
         end
         hold off;
         %##
-        exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_eeg-speeddiffstat_smooth_normal.tiff',string(clusters(cl_i)),string(group_chars(group_i)))],'Resolution',450)
+        exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_eeg-speeddiffstat_smooth_normal.tiff',string(clusters(cl_i)),string(group_chars(g_i)))],'Resolution',450)
         
         % exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_eeg-speeddiffstat_smooth_nonormal.tiff',string(clusters(cl_i)),string(group_chars(group_i)))],'Resolution',450)
         close(fig)
@@ -995,7 +1003,7 @@ LEG_VERT_SHIFT =  0.125;
 LEG_TXT_SIZE = 9;
 LEG_TOKEN_SIZE = 20;
 AX_MAX = 3;
-tmp_savedir = [save_dir filesep sprintf('lmquad_P%s_meanstat_manova-Reeg',SPEED_MEAS_ANL)];
+tmp_savedir = [save_dir filesep sprintf('lmquad_P%s_meanstat_manova-Reeg_linear',SPEED_MEAS_ANL)];
 mkdir(tmp_savedir);
 %-
 groups = unique(FIT_STRUCT.group);
@@ -1154,7 +1162,7 @@ for cl_i = 1:length(clusters)
     hold off;
     %##
     % exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_eeg-speeddiffstat_smooth_nonormal.tiff',string(clusters(cl_i)))],'Resolution',450)
-    exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_eeg-speeddiffstat_smooth_normal.tiff',string(clusters(cl_i)))],'Resolution',450)
+    exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_eeg-speeddiffstat_smooth_normal.tiff',string(clusters(cl_i)),SPEED_MEAS_ANL)],'Resolution',450)
 
     close(fig)
 end

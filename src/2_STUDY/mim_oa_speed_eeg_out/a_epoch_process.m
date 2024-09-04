@@ -16,24 +16,32 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR%#ok<GVMIS>
+global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
-    STUDY_DIR = getenv('STUDY_DIR');
-    SCRIPT_DIR = getenv('SCRIPT_DIR');
-    SRC_DIR = getenv('SRC_DIR');
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = SCRIPT_DIR; % change this if in sub folder
+        SRC_DIR = fileparts(fileparts(STUDY_DIR));
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
+        STUDY_DIR = getenv('STUDY_DIR');
+        SCRIPT_DIR = getenv('SCRIPT_DIR');
+        SRC_DIR = getenv('SRC_DIR');
+    end
 else
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
     catch e
-        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
-    STUDY_DIR = SCRIPT_DIR;
-    SRC_DIR = filesep(filesep(STUDY_DIR));
+    STUDY_DIR = SCRIPT_DIR; % change this if in sub folder
+    SRC_DIR = fileparts(fileparts(STUDY_DIR));
 end
 %## Add Study, Src, & Script Paths
 addpath(SRC_DIR);
@@ -43,6 +51,7 @@ fprintf(1,'Current folder: %s\n',SRC_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
+% [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
 [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
 %% (PARAMETERS) ======================================================== %%
 %## hard define
@@ -208,6 +217,47 @@ rmv_subj = zeros(1,length(MAIN_ALLEEG));
 alleeg_fpaths = cell(length(MAIN_ALLEEG),1);
 %- clear vars for memory
 % clear MAIN_ALLEEG
+%% UNIT TEST =========================================================== %%
+EEG = pop_loadset('filepath',[fPaths{1}],'filename',[fNames{1}]);
+%- Recalculate ICA Matrices && Book Keeping
+EEG = eeg_checkset(EEG,'loaddata');
+if isempty(EEG.icaact)
+    fprintf('%s) Recalculating ICA activations\n',EEG.subject);
+    EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
+    EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
+end
+%## PARSE TRIALS
+epoched_fPath = [save_dir filesep EEG.subject];
+fPath = [epoched_fPath filesep [DEF_EPOCH_PARAMS.gait_trial_chars{:}]];
+fName = sprintf('%s_%s_EPOCH_TMPEEG.set',EEG.subject,[DEF_EPOCH_PARAMS.gait_trial_chars{:}]);
+if ~exist(fPath,'dir')
+    mkdir(fPath)
+end
+%- parse
+%## REMOVE USELESS EVENT FIELDS (Improve Load Time)
+for i = 1:length(EEG)
+    if isfield(EEG.event,'trialName')
+        EEG.event = rmfield(EEG.event,'trialName');
+    end
+    if isfield(EEG.event,'channel')
+        EEG.event = rmfield(EEG.event,'channel');
+    end
+    if isfield(EEG.event,'code')
+        EEG.event = rmfield(EEG.event,'code');
+    end
+    if isfield(EEG.event,'bvtime')
+        EEG.event = rmfield(EEG.event,'bvtime');
+    end
+    if isfield(EEG.event,'bvmknum')
+        EEG.event = rmfield(EEG.event,'bvmknum');
+    end
+    if isfield(EEG.event,'datetime')
+        EEG.event = rmfield(EEG.event,'datetime');
+    end
+end
+%## EPOCH
+[ALLEEG,timewarp_struct] = mim_parse_trials(EEG,'EPOCH_PARAMS',DEF_EPOCH_PARAMS);
+
 %% GENERATE EPOCH MAIN FUNC
 %## PARFOR LOOP
 parfor (subj_i = LOOP_VAR,SLURM_POOL_SIZE)
