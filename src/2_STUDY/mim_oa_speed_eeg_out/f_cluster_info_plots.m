@@ -56,62 +56,12 @@ set_workspace
 fprintf('Assigning Params\n');
 %## Hard Define
 DATA_SET = 'MIM_dataset';
-TRIAL_TYPES = {'0p25','0p5','0p75','1p0','flat','low','med','high'};
-%- compute measures for spectrum and ersp
-FORCE_RECALC_SPEC = true;
-FORCE_RECALC_ERSP = true;
-DO_TIMEWARP = true;
-DO_BASELINE_CORRECTION = false; 
-DO_SUBJ_PLOTS = false;
-%- statistics & conditions
-speed_trials = {'0p25','0p5','0p75','1p0'};
-terrain_trials = {'flat','low','med','high'};
-COND_DESIGNS = {speed_trials,terrain_trials};
-%##
-%* ERSP PARAMS
-ERSP_STAT_PARAMS = struct('condstats','on',... % ['on'|'off]
-    'groupstats','off',... %['on'|'off']
-    'method','perm',... % ['param'|'perm'|'bootstrap']
-    'singletrials','off',... % ['on'|'off'] load single trials spectral data (if available). Default is 'off'.
-    'mode','fieldtrip',... % ['eeglab'|'fieldtrip']
-    'fieldtripalpha',0.05,... % [NaN|alpha], Significance threshold (0<alpha<<1)
-    'fieldtripmethod','montecarlo',... %[('montecarlo'/'permutation')|'parametric']
-    'fieldtripmcorrect','fdr',...  % ['cluster'|'fdr']
-    'fieldtripnaccu',2000);
-% (07/16/2023) JS, updating mcorrect to fdr as per CL YA paper
-% (07/16/2023) JS, updating method to bootstrap as per CL YA paper
-% (07/19/2023) JS, subbaseline set to off 
-% (07/20/2023) JS, subbaseline set to on, generates different result?
-% (07/31/2023) JS, changing fieldtripnaccu from 2000 to 10000 to match CL's
-% (08/03/2023) JS, changing fieldtripnaccu to 10,000; changing
-% fieldtripmcorrect to cluster; method to perm; (these are the parameters
-% set inside CL's PlotAndSaveERSP_CL_V3.m...
-% pipeline although this doesn't align with her YA manuscript methods?
-% (08/06/2023) JS, changing fieldtripnaccu to 2000 again and mcorrect to fdr...
-SPEC_PARAMS = struct('freqrange',[1,200],...
-    'subject','',...
-    'specmode','psd',...
-    'freqfac',4,...
-    'logtrials','on',...
-    'comps','all');
-ERSP_PARAMS = struct('subbaseline','off',...
-    'timerange',[],...
-    'ersplim',[-2,2],...
-    'freqfac',4,...
-    'cycles',[3,0.8],...
-    'freqrange',[1,200]);
-%## Soft Define
-STUDIES_DIR = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
-%- datset name
-DATA_SET = 'MIM_dataset';
 %- cluster directory for study
 % study_dir_name = '03232023_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
-
-%- study info
-SUB_GROUP_FNAME = 'group_spec';
+%## Soft Define
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
@@ -121,6 +71,11 @@ CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
+%- save dir
+save_dir = [cluster_dir filesep 'topo_dip_inf'];
+if ~exist(save_dir,'dir')
+    mkdir(save_dir);
+end
 %% ================================================================== %%
 %## LOAD STUDY
 if ~ispc
@@ -128,42 +83,97 @@ if ~ispc
 else
     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',cluster_study_fpath);
 end
+%## LOAD STUDY
+% if ~ispc
+%     tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
+%     STUDY = tmp.STUDY;
+% else
+%     tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s.study',CLUSTER_STUDY_NAME)]);
+%     STUDY = tmp.STUDY;
+% end
 cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
 [comps_out,main_cl_inds,outlier_cl_inds,valid_clusters] = eeglab_get_cluster_comps(STUDY);
-CLUSTER_PICKS = main_cl_inds(2:end);
+cluster_inds = main_cl_inds(2:end);
 % CLUSTER_PICKS = [12,7,4,8,11,6,3];
-%## TOPO PLOTS
-tmp_study = STUDY;
-RE_CALC = true;
-if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
-end
-if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
-designs = unique(FOOOF_TABLE.design_id);
-clusters = unique(FOOOF_TABLE.cluster_id);
-for i = 1:length(designs)
-    des_i = string(designs(i));
-    for j = 1:length(clusters) % For each cluster requested
-        cl_i = double(string(clusters(j)));
-        if isempty(tmp_study.cluster(cl_i).topo) || RE_CALC
-            inds = find(FOOOF_TABLE.design_id == des_i & FOOOF_TABLE.cluster_id == string(cl_i));
-            sets_i = unique([FOOOF_TABLE.subj_cl_ind(inds)]);
-            tmp_study.cluster(cl_i).sets = tmp_study.cluster(cl_i).sets(sets_i);
-            tmp_study.cluster(cl_i).comps = tmp_study.cluster(cl_i).comps(sets_i);
-            tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cl_i);% Using this custom modified code to allow taking average within participant for each cluster
-            STUDY.cluster(cl_i).topox = tmp_study.cluster(cl_i).topox;
-            STUDY.cluster(cl_i).topoy = tmp_study.cluster(cl_i).topoy;
-            STUDY.cluster(cl_i).topoall = tmp_study.cluster(cl_i).topoall;
-            STUDY.cluster(cl_i).topo = tmp_study.cluster(cl_i).topo;
-            STUDY.cluster(cl_i).topopol = tmp_study.cluster(cl_i).topopol;
+%% LOAD TOPO & DIP INFO ================================================ %%
+% dipfit_structs = par_load(STUDY.filepath,'dipfit_structs.mat');
+% topo_cells = par_load(STUDY.filepath,'topo_cells.mat');
+CALC_STRUCT = struct('cluster_inds',(2:length(STUDY.cluster)),...
+    'save_inf',true,...
+    'recalculate',true);
+[STUDY,dipfit_structs,topo_cells] = eeglab_get_topodip(STUDY,...
+    'CALC_STRUCT',CALC_STRUCT,...
+    'ALLEEG',ALLEEG);
+%% TOPO ================================================================ %%
+AX_HORIZ_SHIFT = 0.2;
+AX_VERT_SHIFT = 0.05;
+DIP_IM_DPI = 1000;
+AX_INIT_HORIZ_TOPO = 0.085;
+AX_INIT_VERT_TOPO = 0.75;
+FIGURE_POSITION =[1,1,6.5,9];
+PG_SIZE = [6.5,9];
+FONT_NAME = 'Arial';
+TOPO_FONTSIZE = 7;
+HZ_DIM = 3;
+g_chars = unique({STUDY.datasetinfo.group});
+g_chars_topo = {'Young Adults','Older High Mobility Adults','Older Low Mobility Adults'};
+AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],...
+        'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
+AX_H = 0.25;
+AX_W = 0.225;
+IM_RESIZE = 0.7;
+horiz_shift = 0;
+vert_shift = 0;
+hz = 1;
+%## TOPO PLOT
+fig = figure('color','white','renderer','Painters');
+set(fig,'Units','inches','Position',FIGURE_POSITION)
+set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+set(gca,AXES_DEFAULT_PROPS{:});
+hold on;
+for k_i = 1:length(cluster_inds)
+    cl_i = double(string(cluster_inds(k_i)));
+    %## TOPO PLOT
+    axes();
+    set(gca,AXES_DEFAULT_PROPS{:});
+    std_topoplot_CL(STUDY,cl_i,'together');
+    colormap(linspecer); %colormap_ersp)
+    fig_i = get(groot,'CurrentFigure');
+    set(fig_i,'color','w')
+    g_counts = cell(length(g_chars),1);
+    for group_i = 1:length(g_chars)
+        g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+        if length(g_chars_topo{group_i}) == 1 || ischar(g_chars_topo{group_i})
+            g_counts{group_i} =sprintf('%s N=%i',g_chars_topo{group_i},sum(g_inds));
+        else
+            g_counts{group_i} =sprintf('%s\n%s N=%i',g_chars_topo{group_i}{1},g_chars_topo{group_i}{2},sum(g_inds));
         end
     end
+    obj_i = findobj(fig_i,'type','Axes');
+    obj_i(1).Title.String = [{sprintf('CL%i',cl_i)};g_counts]; %sprintf('N=%i',length(STUDY.cluster(cl_i).sets));
+    obj_i(1).Title.Interpreter = 'none';
+    obj_i(1).FontSize = TOPO_FONTSIZE; %PLOT_STRUCT.font_size;
+    obj_i(1).FontName = FONT_NAME;
+    obj_i(1).FontWeight = 'bold';
+    obj_i(1).OuterPosition = [0,0,1,1];
+    obj_i(1).Units = 'Normalized';
+    obj_i(1).Position = [AX_INIT_HORIZ_TOPO+horiz_shift,AX_INIT_VERT_TOPO+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE];  %[left bottom width height]
+    %##
+    if hz < HZ_DIM
+        horiz_shift = horiz_shift + AX_W*IM_RESIZE + AX_HORIZ_SHIFT*IM_RESIZE;
+    else
+        vert_shift = vert_shift - (AX_H*IM_RESIZE + AX_VERT_SHIFT*IM_RESIZE);
+        horiz_shift = 0;
+        hz = 0;
+    end
+    hz = hz + 1;
 end
+hold off;
+drawnow;
+exportgraphics(fig,[save_dir filesep 'topo_plots.tiff'],'Resolution',300)
+savefig(fig,[save_dir filesep 'topo_plots.fig'])
+% close(fig);
 %% NEW DIPOLE IMPLEMENTATION
 HIRES_TEMPLATE = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\_resources\mni_icbm152_nlin_sym_09a\mni_icbm152_t1_tal_nlin_sym_09a.nii';
 if ~ispc
@@ -204,7 +214,6 @@ vol = MNI_VOL;
 %                      0,1,0,-135;...
 %                      0,0,1,-73;...
 %                      0,0,0,1];
-save_dir = cluster_dir;
 DIPPLOT_STRUCT = struct('rvrange',[0,30],... % this is a value from 0 to 100 (e.g., rv = 0.15 is 15)
         'summary','off',...
         'mri',mri,...
@@ -236,7 +245,7 @@ DIPPLOT_STRUCT = struct('rvrange',[0,30],... % this is a value from 0 to 100 (e.
         'camera','auto',...
         'density','off');
 %## ALL DIPOLES FOR CLUSTERS
-[fig] = eeglab_dipplot(STUDY,ALLEEG,CLUSTER_PICKS,...
+[fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_inds,...
     'PLOT_TYPE','all_nogroup',...
     'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
 pause(2);
@@ -250,7 +259,7 @@ exportgraphics(fig,[save_dir filesep sprintf('dipplot_alldipspc_sagittal.tiff')]
 drawnow;
 close(fig);
 %## AVERAGE DIPOLE FOR CLUSTERS
-[fig] = eeglab_dipplot(STUDY,ALLEEG,CLUSTER_PICKS,...
+[fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_inds,...
     'PLOT_TYPE','average_nogroup',...
     'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
 %     zoom(1.05)
@@ -265,8 +274,8 @@ exportgraphics(fig,[save_dir filesep sprintf('dipplot_avgdipspc_sagittal.tiff')]
 pause(2);
 close(fig);
 %##
-for i = 1:length(CLUSTER_PICKS)
-    cluster_i = CLUSTER_PICKS(i);
+for i = 1:length(cluster_inds)
+    cluster_i = cluster_inds(i);
     [fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_i,...
         'PLOT_TYPE','all_nogroup',...
         'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
@@ -279,7 +288,7 @@ for i = 1:length(CLUSTER_PICKS)
     exportgraphics(fig,[save_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cluster_i)],'Resolution',1000);
     pause(2);
     close(fig);
-    cluster_i = CLUSTER_PICKS(i);
+    cluster_i = cluster_inds(i);
     [fig] = eeglab_dipplot(STUDY,ALLEEG,cluster_i,...
         'PLOT_TYPE','all_group',...
         'DIPPLOT_STRUCT',DIPPLOT_STRUCT);

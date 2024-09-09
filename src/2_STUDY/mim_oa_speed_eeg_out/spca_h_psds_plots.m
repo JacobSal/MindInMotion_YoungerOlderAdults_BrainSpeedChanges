@@ -98,9 +98,8 @@ DATA_SET = 'MIM_dataset';
 % study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
 % study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
-
 %- study info
-SUB_GROUP_FNAME = 'group_spec';
+SUB_GROUP_FNAME = ['group_spec' filesep 'split_band_test'];
 % SUB_GROUP_FNAME = 'all_spec';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
@@ -113,13 +112,21 @@ cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% ================================================================== %%
 %## SET STUDY PATHS
 cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
+% if ~isempty(SUB_GROUP_FNAME)
+%     spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
+% else
+%     spec_data_dir = [cluster_dir filesep 'spec_data'];
+% end
+% % save_dir = [spec_data_dir filesep 'psd_calcs'];
+% save_dir = [spec_data_dir filesep 'psd_calcs' filesep 'split_band_test'];
+% if ~exist(save_dir,'dir')
+%     mkdir(save_dir);
+% end
 if ~isempty(SUB_GROUP_FNAME)
-    spec_data_dir = [cluster_dir filesep 'spec_data' filesep SUB_GROUP_FNAME];
+    save_dir = [cluster_dir filesep 'psd_calcs' filesep SUB_GROUP_FNAME];
 else
-    spec_data_dir = [cluster_dir filesep 'spec_data'];
+    save_dir = [cluster_dir filesep 'psd_calcs'];
 end
-% save_dir = [spec_data_dir filesep 'psd_calcs'];
-save_dir = [spec_data_dir filesep 'psd_calcs' filesep 'split_band_test'];
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
@@ -134,20 +141,30 @@ else
 end
 %}
 if ~ispc
-    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',spec_data_dir);
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',cluster_study_fpath);
 else
-    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',spec_data_dir);
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',cluster_study_fpath);
 end
 cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
 %% RE-POP PARAMS
+STUDY_DESI_PARAMS = {{'subjselect',{},...
+            'variable2','cond','values2',{'flat','low','med','high'},...
+            'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}},...
+            {'subjselect',{},...
+            'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
+            'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}}};
 STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
-    'groupstats',ERSP_STAT_PARAMS.groupstats,...
-    'method',ERSP_STAT_PARAMS.method,...
-    'singletrials',ERSP_STAT_PARAMS.singletrials,'mode',ERSP_STAT_PARAMS.mode,...
-    'fieldtripalpha',ERSP_STAT_PARAMS.fieldtripalpha,...
-    'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
-    'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
+        'groupstats',ERSP_STAT_PARAMS.groupstats,...
+        'method',ERSP_STAT_PARAMS.method,...
+        'singletrials',ERSP_STAT_PARAMS.singletrials,'mode',ERSP_STAT_PARAMS.mode,...
+        'fieldtripalpha',ERSP_STAT_PARAMS.fieldtripalpha,...
+        'fieldtripmethod',ERSP_STAT_PARAMS.fieldtripmethod,...
+        'fieldtripmcorrect',ERSP_STAT_PARAMS.fieldtripmcorrect,'fieldtripnaccu',ERSP_STAT_PARAMS.fieldtripnaccu);
+STUDY.cache = [];
+for des_i = 1:length(STUDY_DESI_PARAMS)
+    [STUDY] = std_makedesign(STUDY,ALLEEG,des_i,STUDY_DESI_PARAMS{des_i}{:});
+end
 %% (LOAD EXISTING TALBES && FORMAT STUDY)
 tmp = load([save_dir filesep 'psd_feature_table.mat']);
 FOOOF_TABLE = tmp.FOOOF_TABLE;
@@ -201,29 +218,35 @@ fooof_freq = fooof_results{1}{1,1}{1}.freqs;
 %         end
 %     end
 % end
-tmp_study = STUDY;
-RE_CALC = true;
-if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
-    tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
-end
-if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
-% designs = unique(FOOOF_TABLE.design_id);
-clusters = unique(FOOOF_TABLE.cluster_id);
-for j = 1:length(clusters) % For each cluster requested
-    cluster_i = double(string(clusters(j)));
-    if isempty(tmp_study.cluster(cluster_i).topo) || RE_CALC
-        tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cluster_i);% Using this custom modified code to allow taking average within participant for each cluster
-        STUDY.cluster(cluster_i).topox = tmp_study.cluster(cluster_i).topox;
-        STUDY.cluster(cluster_i).topoy = tmp_study.cluster(cluster_i).topoy;
-        STUDY.cluster(cluster_i).topoall = tmp_study.cluster(cluster_i).topoall;
-        STUDY.cluster(cluster_i).topo = tmp_study.cluster(cluster_i).topo;
-        STUDY.cluster(cluster_i).topopol = tmp_study.cluster(cluster_i).topopol;
-    end
-end
+% tmp_study = STUDY;
+% RE_CALC = true;
+% if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
+%     tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
+% end
+% if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
+% % designs = unique(FOOOF_TABLE.design_id);
+% clusters = unique(FOOOF_TABLE.cluster_id);
+% for j = 1:length(clusters) % For each cluster requested
+%     cluster_i = double(string(clusters(j)));
+%     if isempty(tmp_study.cluster(cluster_i).topo) || RE_CALC
+%         tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cluster_i);% Using this custom modified code to allow taking average within participant for each cluster
+%         STUDY.cluster(cluster_i).topox = tmp_study.cluster(cluster_i).topox;
+%         STUDY.cluster(cluster_i).topoy = tmp_study.cluster(cluster_i).topoy;
+%         STUDY.cluster(cluster_i).topoall = tmp_study.cluster(cluster_i).topoall;
+%         STUDY.cluster(cluster_i).topo = tmp_study.cluster(cluster_i).topo;
+%         STUDY.cluster(cluster_i).topopol = tmp_study.cluster(cluster_i).topopol;
+%     end
+% end
+CALC_STRUCT = struct('cluster_inds',(2:length(STUDY.cluster)),...
+    'save_inf',true,...
+    'recalculate',true);
+[STUDY,dipfit_structs,topo_cells] = eeglab_get_topodip(STUDY,...
+    'CALC_STRUCT',CALC_STRUCT,...
+    'ALLEEG',ALLEEG);
 %## STATS
 iter = 200; % in eeglab, the fdr stats will automatically *20
 try
@@ -236,7 +259,6 @@ STUDY = pop_statparams(STUDY, 'groupstats','off','condstats', 'on',...
             'method','perm',...
             'singletrials','off','mode','fieldtrip','fieldtripalpha',NaN,...
             'fieldtripmethod','montecarlo','fieldtripmcorrect','fdr','fieldtripnaccu',iter*20);
-
 stats = STUDY.etc.statistics;
 stats.paired{1} = 'on'; % Condition stats
 stats.paired{2} = 'off'; % Group stats
@@ -257,8 +279,6 @@ atlas_name_store={anatomy_struct(inds).anatomy_label};
 % meas_names_ls = {'nanmean_StepDur','nanmean_StepDur_cov','nanmean_GaitCycleDur_cov','nanmean_GaitCycleDur',};
 %##
 SCATTER_BOTTOM = 0.65;
-IM_RESIZE = 0.7;
-AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
 tmp = load([save_dir filesep 'psd_feature_table.mat']);
 FOOOF_TABLE = tmp.FOOOF_TABLE;
 designs = unique(FOOOF_TABLE.design_id);
@@ -280,10 +300,6 @@ title_plot = {'Mean \theta','Mean \alpha','Mean \beta'};
 % measure_name_plot = {'med_sub_flat','low_sub_flat','high_sub_flat'};
 %% ===================================================================== %%
 %## SPEED MANUSCRIPT GROUP PLOT
-% CLUSTERS_TO_PLOT = double(string(clusters)); %main_cl_inds(2:end); %valid_clusters(1:end-1); %main_cl_inds(2:end);
-% VIOLIN_BOTTOM = 0.375;
-% PSD_BOTTOM = 0.575;
-AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
 %- 
 IM_RESIZE = 0.7;
 TITLE_TXT_SIZE = 14;
@@ -342,57 +358,41 @@ FIGURE_POSITION =[1,1,6.5,9];
 PG_SIZE = [6.5,9];
 FONT_NAME = 'Arial';
 FONT_WEIGHT_PSD = 'normal';
+
+YLABEL_FONT_SIZE_PSD = 10;
+YLABEL_FONT_SIZE_PSDFF = 10;
+XLABEL_FONT_SIZE_PSDFF = 10;
 TOPO_FONTSIZE = 7;
-FONT_SIZE_PSD = 10;
-FONT_SIZE_PSD_LEG = 10;
-FONT_SIZE_VIO = 10;
-FONT_SIZE_VIO_REG = 5;
+FONT_SIZE_PSD = 9;
+FONT_SIZE_PSD_LEG = 9;
 % PSD_GROUP_TITLE_FONTSIZE = 12;
 PSD_GROUP_TITLE_FONTSIZE = 10;
 LEG_TOKEN_SIZE_PSD = 20;
-%##
-% im_resize= 0.9;
-    IM_RESIZE = 0.9;
-    AX_H  = 0.2;
-    AX_W = 0.275;
-    AX_HORIZ_SHIFT = 0.06;
-    %- set ylabel & title
-    AXES_FONT_SIZE_VIO = 10;
-    GROUP_LAB_FONTSIZE = AXES_FONT_SIZE_VIO;
-    GROUP_LAB_FONTWEIGHT = 'bold ';
-    XLAB_FONTSIZE = AXES_FONT_SIZE_VIO;
-    YLAB_FONTSIZE = AXES_FONT_SIZE_VIO;
-    XTICK_FONTSIZE = AXES_FONT_SIZE_VIO;
-    XLAB_FONTWEIGHT = 'bold';
-    YLAB_FONTWEIGHT = 'bold';
-    TITLE_FONTSIZE = AXES_FONT_SIZE_VIO;
-    TITLE_FONTWEIGHT = 'bold';
-    XLABEL_OFFSET = -.05;
-    GROUP_LAB_YOFFSET = -0.05;
+%##    
 VIO_PLOT_STRUCT = struct('color_map',[],...
-            'cond_labels',{'0.25','0.50','0.75','1.0'},...
+            'cond_labels',{{'0.25','0.50','0.75','1.0'}},...
             'cond_offsets',[-0.35,-0.1,0.15,0.40],...
-            'group_labels',{'YA','OHMA','OLMA'},...
+            'group_labels',{{'YA','OHMA','OLMA'}},...
             'group_offsets',[0.125,0.475,0.812],...
-            'group_lab_yoffset',-0.285,...
+            'group_lab_yoffset',-0.23,...
             'group_lab_fontweight','normal',...
             'group_lab_fontsize',10,...
             'y_label','unit',...
             'y_label_fontsize',10,...
-            'y_label_fontweight','normal',...
+            'y_label_fontweight','bold',...
             'ylim',[],...
-            'x_label','x',...
+            'x_label','Speed (m/s)',...
             'x_label_fontsize',10,...
             'x_label_fontweight','bold',...
-            'x_label_yoffset',-0.1,...
+            'x_label_yoffset',-.14,...
             'xlim',[],...
             'title','',...
             'title_fontsize',10,...
-            'title_fontweight','normal',...
-            'font_size',10,...
+            'title_fontweight','bold',...
+            'font_size',9,...
             'font_name','Arial',...
             'do_combine_groups',false,...
-            'regresslab_txt_size',7,...
+            'regresslab_txt_size',6,...
             'ax_position',[0,0,1,1],...
             'ax_line_width',1);
 %-
@@ -415,11 +415,13 @@ end
 % cluster_titles = {'Precuneus','Right Sensorimotor',...
 %     'Left Occipital','Left Supplementary Motor','Left Sensorimotor','Left Posterior Parietal',...
 %     'Eye','Left Temporal','Mid Cingulate','Right Supplementary Motor','Right Temporal'};
-% cluster_titles = atlas_name_store;
+cluster_titles = atlas_name_store;
 %- (09/04/2024) ICLabel Chosen Brain Areas
-cluster_titles = {'Precuneus','Right Supplementary Motor',...
-    'Left Sensorimotor','Left Occipital','Right Temporal','Right Sensorimotor',...
-    'Left Temporal','Mid Cingulate','Left Posterior Parietal','Right Posterior Parietal','Left Supplementary Motor'};
+% cluster_titles = {'Precuneus','Right Supplementary Motor',...
+%     'Left Sensorimotor','Left Occipital','Right Temporal','Right Sensorimotor',...
+%     'Left Temporal','Mid Cingulate','Left Posterior Parietal','Right Posterior Parietal','Left Supplementary Motor'};
+%- (09/8/2024) ICLabel & kmeans bug fix
+
 % psd_ylimits = {[-31.5,-10],[-32.5,-15],...
 %     [-30,-12.5], [-32.5,-15], [-32.5,-15],[-30,-12.5],...
 %     [-30,-10],[-30,-10],[-30,-10],[-32.5,-15],[-30,-10]};
@@ -439,9 +441,9 @@ c_chars = {'0.25 m/s','0.50 m/s','0.75 m/s','1.0 m/s'};
 % g_chars_topo = {'Young Adult',{'Older Adult','High Mobility'},{'Older Adult','Low Mobility'}};
 g_chars_topo = {'Young Adults','Older High Mobility Adults','Older Low Mobility Adults'};
 g_chars_subp = {'YA','OHMA','OLMA'};
-VIOLIN_XTICK_CHARS = {'0.25','0.50','0.75','1.0'};
 AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],...
         'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
+dip_dir = [cluster_dir filesep 'topo_dip_inf'];
 %%
 des_i = 2;
 %## TOPO & DIPOLE PLOTS
@@ -449,7 +451,7 @@ for k_i = 1:length(clusters)
     %%
     cl_i = double(string(clusters(k_i)));
     %## ANATOMY
-    atlas_name = cluster_titles{k_i}; %atlas_name_store{k_i};
+    atlas_name = cluster_titles{k_i};
     %## AXES LIMITS
     fig = figure('color','white','renderer','Painters');
     TITLE_XSHIFT = 0.4;
@@ -510,9 +512,10 @@ for k_i = 1:length(clusters)
     %-
     target_sz = 1.25; %inch
     target_dim = 1; %2==width, 1==height
-    im1 = imread([cluster_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cl_i)]);
-    im2 = imread([cluster_dir filesep sprintf('%i_dipplot_alldipspc_top.tiff',cl_i)]);
-    im3 = imread([cluster_dir filesep sprintf('%i_dipplot_alldipspc_coronal.tiff',cl_i)]);
+    
+    im1 = imread([dip_dir filesep sprintf('%i_dipplot_alldipspc_sagittal.tiff',cl_i)]);
+    im2 = imread([dip_dir filesep sprintf('%i_dipplot_alldipspc_top.tiff',cl_i)]);
+    im3 = imread([dip_dir filesep sprintf('%i_dipplot_alldipspc_coronal.tiff',cl_i)]);
     im1d1 = size(im1,1)/DIP_IM_DPI;
     im1d2 = size(im1,2)/DIP_IM_DPI;
     im2d1 = size(im2,1)/DIP_IM_DPI;
@@ -718,9 +721,9 @@ for k_i = 1:length(clusters)
         % xlabel('Frequency(Hz)','FontWeight','bold');
         xlabel('');
         if j == 1
-            ylabel('10*log_{10}(PSD)','FontWeight','bold','FontSize',FONT_SIZE_PSD);
+            ylabel('10*log_{10}(PSD)','FontWeight','bold','FontSize',YLABEL_FONT_SIZE_PSD);
         else
-            ylabel('','FontWeight','bold','FontSize',FONT_SIZE_PSD);
+            ylabel('','FontWeight','bold','FontSize',YLABEL_FONT_SIZE_PSD);
         end
         %## TITLE
         % title('PSD','FontSize',10)
@@ -812,12 +815,12 @@ for k_i = 1:length(clusters)
                 LEG_VERT_SHIFT_PSDFF+AX_INIT_VERT_PSDFF+vert_shift,lg2.Position(3),lg2.Position(4)]);
             lg2.ItemTokenSize(1) = LEG_TOKEN_SIZE_PSD;
         end
-        %## LABELS
-        xlabel('Frequency(Hz)','FontWeight','bold','FontSize',FONT_SIZE_PSD);
+        %##
+        xlabel('Frequency(Hz)','FontWeight','bold','FontSize',XLABEL_FONT_SIZE_PSDFF);
         if j == 1
-            ylabel('10*log_{10}(PSD) - AP. Fit','FontWeight','bold','FontSize',FONT_SIZE_PSD);
+            ylabel('10*log_{10}(PSD) - AP. Fit','FontWeight','bold','FontSize',YLABEL_FONT_SIZE_PSDFF);
         else
-            ylabel('','FontWeight','bold','FontSize',FONT_SIZE_PSD);
+            ylabel('','FontWeight','bold','FontSize',YLABEL_FONT_SIZE_PSDFF);
         end
         %## TITLE
         % title('Flattened PSD','FontSize',10)
@@ -843,8 +846,11 @@ for k_i = 1:length(clusters)
         'FontSize',14,'FontWeight','Bold','Units','normalized');
     hold on;
     %## VIOLIN PLOTS) ================================================== %%
-    %%
-    figure;
+    IM_RESIZE = 0.9;
+    AX_H  = 0.2;
+    AX_W = 0.275;
+    AX_HORIZ_SHIFT = 0.06;
+    % figure;
     switch des_i
         case 1
             color_dark = COLORS_MAPS_TERRAIN;
@@ -960,7 +966,6 @@ for k_i = 1:length(clusters)
         %-
         VIO_PLOT_STRUCT.color_map = color_dark;
         VIO_PLOT_STRUCT.cond_labels = xtick_label_g;
-        VIO_PLOT_STRUCT.cond_labels = xtick_label_g;
         VIO_PLOT_STRUCT.title = title_plot{meas_i};
         if meas_i == 1
             VIO_PLOT_STRUCT.y_label ='10*log_{10}(PSD) - AP. Fit';
@@ -988,7 +993,7 @@ for k_i = 1:length(clusters)
         'FontSize',14,'FontWeight','Bold','Units','normalized');
     hold off;
     drawnow;
-    % exportgraphics(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i_des%i.tiff',cl_i,des_i)],'Resolution',1000)
+    exportgraphics(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i_des%i.tiff',cl_i,des_i)],'Resolution',1000)
     % exportgraphics(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i_des%i.png',cl_i,des_i)],'Resolution',300)
     savefig(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i_des%i.fig',cl_i,des_i)])
     % exportgraphics(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i.tiff',cl_i)],'Resolution',300)
