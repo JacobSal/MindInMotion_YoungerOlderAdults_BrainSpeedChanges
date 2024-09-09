@@ -42,6 +42,8 @@ CLUSTER_STRUCT = p.Results.CLUSTER_STRUCT;
 CLUSTER_STRUCT = set_defaults_struct(CLUSTER_STRUCT,DEF_CLUSTER_STRUCT);
 %% ===================================================================== %%
 if CLUSTER_STRUCT.do_eval_clusters
+    p = progressbar();
+    prog = 0;
     cnt = 1;
     cluster_idx = zeros(length([STUDY.datasetinfo.comps]),length(CLUSTER_STRUCT.clust_k_evals));
     %## cluster using std_preclust weightings for each K desired (deafault here is kmeans with no outlier rejection).
@@ -53,6 +55,8 @@ if CLUSTER_STRUCT.do_eval_clusters
         [~, clust_out] = cluster_dips(STUDY,ALLEEG,params);
         cluster_idx(1:length(clust_out.IDX),cnt) = clust_out.IDX;
         cnt = cnt+1;
+        prog = prog + 1/length(CLUSTER_STRUCT.clust_k_evals);
+        p = setStatus(p,prog);
     end
     % cluster_idx = cluster_idx(:,all(cluster_idx ~= 0));
     %##
@@ -73,24 +77,32 @@ for i = 1:length(CLUSTER_STRUCT.clust_k_num)
     params.clust_k_num = cl_i;
     solutions = cell(CLUSTER_STRUCT.clust_k_repeat_iters,1);
     %- iterate
-    for iter = 1:CLUSTER_STRUCT.clust_k_repeat_iters
+    % Initialize the progressbar
+    % p = progressbar();
+    % prog = 0;
+    parfor iter = 1:CLUSTER_STRUCT.clust_k_repeat_iters
         % start time
         tic
-        fprintf('Iteration %d of %d \n',iter,CLUSTER_STRUCT.clust_k_repeat_iters)
+        tmp_cs = CLUSTER_STRUCT;
+        tmp_st = STUDY;
+        tmp_al = ALLEEG;
+        fprintf('Iteration %d of %d \n',iter,tmp_cs.clust_k_repeat_iters)
         % clustering according to parameters - Note by Chang Liu, basically
         % doing the robust_kmeans cluster in pop_clust.m, I prefer not
         % overwrite the original STUDY
-        [TMP_STUDY,~] = cluster_dips(STUDY,ALLEEG,params); 
+        [tmp_st,~] = cluster_dips(tmp_st,tmp_al,params); 
         % store info in output struct
         solutions{iter} = TMP_STUDY.cluster;
         % stop checking the time and plot estimated time of arrival
+        % prog = prog + 1/tmp_cs.clust_k_repeat_iters;
+        % p = setStatus(p,iter+1/tmp_cs.clust_k_repeat_iters);
         lastduration = toc; 
-        eta = lastduration*(CLUSTER_STRUCT.clust_k_repeat_iters-iter);
+        eta = lastduration*(tmp_cs.clust_k_repeat_iters-iter);
         fprintf('Last duration: %1.2f s \n',round(lastduration,2))
-        fprintf('ETA: %d h, %d min \n', floor(eta/3600), round(((eta/3600)-floor(eta/3600))*60))
+        % fprintf('ETA: %d h, %d min \n', floor(eta/3600), round(((eta/3600)-floor(eta/3600))*60))
     end
     %- store clustering info
-    param_struct = struct('preclustparams',TMP_STUDY.etc.preclust,...
+    param_struct = struct('preclustparams',STUDY.etc.preclust,...
         'outlier_sigma',CLUSTER_STRUCT.clust_k_repeat_std,...
         'cluster_params',CLUSTER_STRUCT);
     tmp_clust_sol = struct('parameters',param_struct,...

@@ -147,6 +147,7 @@ else
 end
 cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
+% cl_struct = par_load(cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
 %% RE-POP PARAMS
 STUDY_DESI_PARAMS = {{'subjselect',{},...
             'variable2','cond','values2',{'flat','low','med','high'},...
@@ -187,119 +188,52 @@ spec_data_original = tmp.spec_data_original;
 tmp = load([save_dir filesep 'fooof_results.mat']);
 fooof_results = tmp.fooof_results;
 fooof_freq = fooof_results{1}{1,1}{1}.freqs;
-%## TOPO PLOTS
-% tmp_study = STUDY;
-% RE_CALC = true;
-% if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
-% end
-% if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
-% designs = unique(FOOOF_TABLE.design_id);
-% clusters = unique(FOOOF_TABLE.cluster_id);
-% for i = 1:length(designs)
-%     des_i = string(designs(i));
-%     for j = 1:length(clusters) % For each cluster requested
-%         cl_i = double(string(clusters(j)));
-%         if isempty(tmp_study.cluster(cl_i).topo) || RE_CALC
-%             inds = find(FOOOF_TABLE.design_id == des_i & FOOOF_TABLE.cluster_id == string(cl_i));
-%             sets_i = unique([FOOOF_TABLE.subj_cl_ind(inds)]);
-%             tmp_study.cluster(cl_i).sets = tmp_study.cluster(cl_i).sets(sets_i);
-%             tmp_study.cluster(cl_i).comps = tmp_study.cluster(cl_i).comps(sets_i);
-%             tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cl_i);% Using this custom modified code to allow taking average within participant for each cluster
-%             STUDY.cluster(cl_i).topox = tmp_study.cluster(cl_i).topox;
-%             STUDY.cluster(cl_i).topoy = tmp_study.cluster(cl_i).topoy;
-%             STUDY.cluster(cl_i).topoall = tmp_study.cluster(cl_i).topoall;
-%             STUDY.cluster(cl_i).topo = tmp_study.cluster(cl_i).topo;
-%             STUDY.cluster(cl_i).topopol = tmp_study.cluster(cl_i).topopol;
-%         end
-%     end
-% end
-% tmp_study = STUDY;
-% RE_CALC = true;
-% if isfield(tmp_study.cluster,'topox') || isfield(tmp_study.cluster,'topoall') || isfield(tmp_study.cluster,'topopol') 
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topox');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoy');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topoall');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topo');
-%     tmp_study.cluster = rmfield(tmp_study.cluster,'topopol');
-% end
-% if ~isfield(tmp_study.cluster,'topo'), tmp_study.cluster(1).topo = [];end
-% % designs = unique(FOOOF_TABLE.design_id);
-% clusters = unique(FOOOF_TABLE.cluster_id);
-% for j = 1:length(clusters) % For each cluster requested
-%     cluster_i = double(string(clusters(j)));
-%     if isempty(tmp_study.cluster(cluster_i).topo) || RE_CALC
-%         tmp_study = std_readtopoclust_CL(tmp_study,ALLEEG,cluster_i);% Using this custom modified code to allow taking average within participant for each cluster
-%         STUDY.cluster(cluster_i).topox = tmp_study.cluster(cluster_i).topox;
-%         STUDY.cluster(cluster_i).topoy = tmp_study.cluster(cluster_i).topoy;
-%         STUDY.cluster(cluster_i).topoall = tmp_study.cluster(cluster_i).topoall;
-%         STUDY.cluster(cluster_i).topo = tmp_study.cluster(cluster_i).topo;
-%         STUDY.cluster(cluster_i).topopol = tmp_study.cluster(cluster_i).topopol;
-%     end
-% end
+%% (TOPO PLOTS) ======================================================== %%
 CALC_STRUCT = struct('cluster_inds',(2:length(STUDY.cluster)),...
     'save_inf',true,...
     'recalculate',true);
 [STUDY,dipfit_structs,topo_cells] = eeglab_get_topodip(STUDY,...
     'CALC_STRUCT',CALC_STRUCT,...
     'ALLEEG',ALLEEG);
-%## STATS
-iter = 200; % in eeglab, the fdr stats will automatically *20
-try
-    STUDY.etc = rmfield(STUDY.etc,'statistics');
-end
-% STUDY = pop_statparams(STUDY,'groupstats','on','condstats','on','statistics','perm',...
-%     'singletrials','off','mode','eeglab','effect','main','alpha',NaN,'mcorrect','fdr','naccu',iter);% If not using mcorrect, use none, Not sure why, if using fdr correction, none of these are significant
-% 
-STUDY = pop_statparams(STUDY, 'groupstats','off','condstats', 'on',...
-            'method','perm',...
-            'singletrials','off','mode','fieldtrip','fieldtripalpha',NaN,...
-            'fieldtripmethod','montecarlo','fieldtripmcorrect','fdr','fieldtripnaccu',iter*20);
-stats = STUDY.etc.statistics;
-stats.paired{1} = 'on'; % Condition stats
-stats.paired{2} = 'off'; % Group stats
 %% (ANATOMY) =========================================================== %%
 addpath([PATHS.submods_dir filesep 'AAL3']);
-[STUDY,~,centroid_topo,centroid_dip] = eeglab_get_anatomy(STUDY,'ALLEEG',ALLEEG);
-% save([save_dir filesep 'anatomy_chars.mat'],'txt_store','atlas_name_store');
+clusters = unique(FOOOF_TABLE.cluster_id);
+ANATOMY_STRUCT = struct('atlas_fpath',{{[PATHS.submods_dir filesep 'AAL3' filesep 'AAL3v1.nii']}},...
+    'group_chars',{unique({STUDY.datasetinfo.group})},...
+    'cluster_inds',double(string(clusters)),...
+    'anatomy_calcs','all centroid',... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
+    'save_inf',true);
+[STUDY,anat_struct,~,~,txt_out] = eeglab_get_anatomy(STUDY,...
+    'ALLEEG',ALLEEG,...
+    'ANATOMY_STRUCT',ANATOMY_STRUCT);
+%-
+% atlas_char = 'AAL3v1.nii';
+% inds = strcmp({anat_struct.atlas_label},atlas_char) & strcmp({anat_struct.calculation},'aggregate label for all');
+% at_out={anat_struct(inds).anatomy_label};
+% cl_tmp = STUDY.cluster;
+% [cl_tmp(2:length(at_out)).agg_anat_all] = at_out{:};
+%-
+% inds = strcmp({anat_struct.atlas_label},atlas_char) & strcmp({anat_struct.calculation},'centroid label for all');
+% at_out={anat_struct(inds).anatomy_label};
+% at_ind = [anat_struct(inds).cluster];
+% cl_tmp = STUDY.cluster;
+% [cl_tmp(at_ind).ctr_anat_all] = at_out{:};
 %% (LOAD) ============================================================== %%
 atlas_char = 'AAL3v1.nii';
-tmp = load([STUDY.filepath filesep 'anatomy_struct_out.mat']);
-anatomy_struct = tmp.anatomy_struct;
-inds = strcmp({anatomy_struct.atlas_label},atlas_char) & strcmp({anatomy_struct.calculation},'aggregate label for all');
-atlas_name_store={anatomy_struct(inds).anatomy_label};
-
+inds = strcmp({anat_struct.atlas_label},atlas_char) & strcmp({anat_struct.calculation},'centroid label for all');
+at_out = {anat_struct(inds).anatomy_label};
+atlas_name_store = at_out;
+% cl_struct = STUDY.cluster;
+% par_save(cl_struct,cluster_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
 %% ===================================================================== %%
-%## MIM KINEMATICS
-% meas_names_imu = {'nanmean_APexc_mean','nanmean_MLexc_mean','nanmean_APexc_COV','nanmean_MLexc_COV'}; %{'APexc_COV','MLexc_COV'};
-% meas_names_ls = {'nanmean_StepDur','nanmean_StepDur_cov','nanmean_GaitCycleDur_cov','nanmean_GaitCycleDur',};
-%##
-SCATTER_BOTTOM = 0.65;
-tmp = load([save_dir filesep 'psd_feature_table.mat']);
-FOOOF_TABLE = tmp.FOOOF_TABLE;
+%## SPEED MANUSCRIPT GROUP PLOT
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
 groups = unique(FOOOF_TABLE.group_id);
-subjects = unique(FOOOF_TABLE.subj_id);
-design_chars = {'terrain','speed'};
-group_chars = unique(FOOOF_TABLE.group_char);
-conditions = unique(FOOOF_TABLE.cond_char);
-PLOT_PARAMS = struct('color_map',linspecer(4),...
-                'cond_labels',unique(FOOOF_TABLE.cond_char),'group_labels',unique(FOOOF_TABLE.group_char),...
-                'cond_offsets',[-0.3,-0.1,0.1,0.3],'y_label','10*log_{10}(Flattened PSD)',...
-                'title','','font_size',9,'y_lim',[-1,15],...
-                'font_name','Arial','x_label','');
 measure_name_plot = {'theta_avg_power','alpha_avg_power','beta_avg_power'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
 % measure_name_plot = {'theta_avg_power','alpha2_avg_power','beta2_avg_power'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
-
 title_plot = {'Mean \theta','Mean \alpha','Mean \beta'};
 % measure_name_plot = {'med_sub_flat','low_sub_flat','high_sub_flat'};
-%% ===================================================================== %%
-%## SPEED MANUSCRIPT GROUP PLOT
 %- 
 IM_RESIZE = 0.7;
 TITLE_TXT_SIZE = 14;
@@ -415,13 +349,16 @@ end
 % cluster_titles = {'Precuneus','Right Sensorimotor',...
 %     'Left Occipital','Left Supplementary Motor','Left Sensorimotor','Left Posterior Parietal',...
 %     'Eye','Left Temporal','Mid Cingulate','Right Supplementary Motor','Right Temporal'};
-cluster_titles = atlas_name_store;
+% cluster_titles = atlas_name_store;
 %- (09/04/2024) ICLabel Chosen Brain Areas
 % cluster_titles = {'Precuneus','Right Supplementary Motor',...
 %     'Left Sensorimotor','Left Occipital','Right Temporal','Right Sensorimotor',...
 %     'Left Temporal','Mid Cingulate','Left Posterior Parietal','Right Posterior Parietal','Left Supplementary Motor'};
 %- (09/8/2024) ICLabel & kmeans bug fix
 
+cluster_titles = {'Right Occipital','Left Occipital','Mid Cingulate',...
+    'Right Sensorimotor','Right Supplementary','Precuneus','Left Temporal','Left Sensorimotor',...
+    'Right Posterior Parietal','Left Posterior Parietal','Right Temporal'};
 % psd_ylimits = {[-31.5,-10],[-32.5,-15],...
 %     [-30,-12.5], [-32.5,-15], [-32.5,-15],[-30,-12.5],...
 %     [-30,-10],[-30,-10],[-30,-10],[-32.5,-15],[-30,-10]};

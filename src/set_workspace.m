@@ -44,7 +44,7 @@ else
     submodules_dir = [strjoin(tmp(1:src_ind-1),filesep) filesep 'submodules'];
 end
 %## FUNCTIONS FOLDER
-FUNC_FPATH = [src_dir filesep '_functions' filesep 'v2_0'];
+FUNC_FPATH = [src_dir filesep '_functions'];
 %##
 path(path,src_dir)
 path(path,FUNC_FPATH);
@@ -244,7 +244,8 @@ function [p] = unix_genpath(d)
              ~strncmp( dirname,packagesep,1) && ...
              ~strcmp( dirname,'private')    && ...
              ~strcmp( dirname,'resources') && ...
-             ~strcmp( dirname,'__archive')
+             ~strcmp( dirname,'__archive') && ...
+             ~strcmp( dirname,'_compiles')
           p = [p genpath([d filesep dirname])]; % recursive calling of this function.
        end
     end

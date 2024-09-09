@@ -1729,6 +1729,289 @@ save([save_dir filesep 'STATS_TRACK_STRUCT_speedlin.mat'],'stats_struct');
 % groups = unique(FOOOF_TABLE.group_id);
 % inds = psd_feature_stats.study == num2str(des_i) & psd_feature_stats.cluster == num2str(cl_i) & psd_feature_stats.group==groups(k);
 % T_stats_plot = psd_feature_stats(inds,:);
+%% (STATISTICS CALCULATIONS) =========================================== %%
+%## STRUCT IMPLEMENTATION
+DEF_STATS_TRACK_STRUCT = struct('design',categorical({''}),...
+    'cluster',categorical({''}),...
+    'group',categorical({''}),...
+    'stat_test_mod',{{''}},...
+    'measure_tag',{{''}},...
+    'measure_vals',[],...
+    'resp_terms',{{''}},...
+    'pred_terms',{{''}},...
+    'pred_terms_wt',{{''}},...
+    'rnd_terms',{{''}},...
+    'rnd_terms_wt',{{''}},...
+    'anova_grp_p',[],...
+    'anova_terr_p',[],...
+    'anova_speed_p',[],...
+    'anova_speed_p2',{{}},...
+    'anova_speed_p2_wt',{{''}},...
+    'anova_inter_p',[],...
+    'anova_grp_f',[],...
+    'anova_terr_f',[],...
+    'anova_speed_f',[],...
+    'anova_speed_f2',{{}},...
+    'anova_speed_f2_wt',{{''}},...
+    'anova_inter_f',[],...
+    'anova_grp_df',[],...
+    'anova_terr_df',[],...
+    'anova_speed_df',[],...,''
+    'anova_speed_df2',{{}},...
+    'anova_speed_df2_wt',{{''}},...
+    'anova_inter_df',[],...
+    'lme_grp_p',{{}},...
+    'lme_terr_p',{{}},...
+    'lme_terr_p_wt',{{''}},...
+    'lme_speed_p',[],...
+    'lme_speed_p2',{{}},...
+    'lme_speed_p2_wt',{{''}},...
+    'lme_inter_p',[],...
+    'lme_grp_coeff',{{}},...
+    'lme_terr_coeff',{{}},...
+    'lme_terr_coeff_wt',{{''}},...
+    'lme_speed_coeff',[],...
+    'lme_speed_coeff2',{{}},...
+    'lme_speed_coeff2_wt',{{''}},...
+    'lme_inter_coeff',[],...
+    'lme_rnd_effects',{{}},...
+    'R2',[],...
+    'norm_test_h',[],...
+    'norm_test_p',[],...
+    'log_avg_power',[],...
+    'effect_size',[],...
+    'effect_size_calc',{{''}});
+stats_struct = DEF_STATS_TRACK_STRUCT;
+cnts = 1;
+%-
+TERRAIN_DES_ID = 1;
+SPEED_DES_ID = 2;
+% MEASURE_NAMES = {'theta_avg_power','alpha_avg_power','beta_avg_power'};
+MEASURE_NAMES = {'theta_avg_power','alpha_avg_power','beta_avg_power','alpha1_avg_power','alpha2_avg_power','beta1_avg_power','beta2_avg_power'};
+LOG_MEASURE_NAMES = {'log_theta_avg_power','log_alpha_avg_power','log_beta_avg_power'};
+%% ===================================================================== %%
+SPEED_MEAS_ANL = 'cond_char';
+% SPEED_MEAS_ANL = 'speed_div_stat';
+designs = unique(FOOOF_TABLE.design_id);
+clusters = unique(FOOOF_TABLE.cluster_id);
+groups = unique(FOOOF_TABLE.group_id);
+cntsts = 1;
+%-
+for des_i = 1:length(designs)
+    for cl_i = 1:length(clusters)
+        for g_i = 1:length(groups)
+            %##
+            %- extract table for cluster and design
+            inds = FOOOF_TABLE.cluster_id == clusters(cl_i) &...
+                FOOOF_TABLE.design_id == designs(des_i) & FOOOF_TABLE.group_id == groups(g_i);
+            tmptmp = FOOOF_TABLE(inds,:);
+            switch double(string(des_i))
+                case TERRAIN_DES_ID
+                    for meas_i = 1:length(MEASURE_NAMES)
+                        %- NOTE: need to reassign to new table because of how
+                        %categorical variables will hold onto removed
+                        %entries causing rank defiecencies.
+                        tmp = table(categorical(string(tmptmp.subj_char)),double(tmptmp.(MEASURE_NAMES{meas_i})),...
+                            categorical(string(tmptmp.cond_id)),'VariableNames',{'subj_char',MEASURE_NAMES{meas_i},'cond_id'});
+                        %## LINEAR MODEL
+                        % t1.log_avg_power= log(t1.(MEASURE_NAMES{meas_i})+5);
+                        mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',MEASURE_NAMES{meas_i});
+                        % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
+                        stats_out = fitlme(tmp,mod_lme);
+                        anova_out = anova(stats_out);
+                        %## GATHER STATS
+                        %- test normality
+                        [norm_h,norm_p] = lillietest(stats_out.residuals);
+                        %- get effects
+                        [~,bnames,~] = stats_out.fixedEffects();
+                        [~,brnames,bretable] = stats_out.randomEffects();
+                        %- intercept only model
+                        % altmod_lme = sprintf('%s ~ 1 + (1|subj_char)',measure_name);
+                        % altstats_out = fitlme(T_vals_plot,altmod_lme,'DummyVarCoding','effects');
+                        % R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+                        R2 = stats_out.Rsquared.Adjusted;
+                        %- intercept only model
+                        altmod_out = sprintf('%s ~ 1 + (1|subj_char)',MEASURE_NAMES{meas_i});
+                        altstats_out = fitlme(tmp,altmod_out);
+                        %- alternative f2?
+                        R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
+                        R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
+                        alt_f2 = (R22-R21)/(1-R22);
+                        %- store
+                        stats_struct(cntsts).group = groups(g_i);
+                        stats_struct(cntsts).design = designs(des_i);
+                        stats_struct(cntsts).cluster = clusters(cl_i);
+                        stats_struct(cntsts).measure_tag = {MEASURE_NAMES{meas_i}};
+                        stats_struct(cntsts).measure_vals = tmp.(MEASURE_NAMES{meas_i});
+                        stats_struct(cntsts).log_avg_power = log(tmp.(MEASURE_NAMES{meas_i})+5);
+                        %-
+                        stats_struct(cntsts).stat_test_mod = {mod_lme};
+                        stats_struct(cntsts).resp_terms = {MEASURE_NAMES{meas_i}};
+                        stats_struct(cntsts).pred_terms = bnames.Name';
+                        stats_struct(cntsts).pred_terms_wt = sprintf('%s, ',bnames.Name{:}); %
+                        stats_struct(cntsts).rnd_terms = brnames.Level';
+                        stats_struct(cntsts).rnd_terms_wt = sprintf('%s, ',brnames.Level{:}); %
+                        %- coefficients & pvals
+                        stats_struct(cntsts).anova_terr_p = anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
+                        stats_struct(cntsts).anova_terr_df = anova_out.DF2(strcmp(anova_out.Term,'cond_id'));
+                        stats_struct(cntsts).anova_terr_f = anova_out.FStat(strcmp(anova_out.Term,'cond_id'));
+                        %-
+                        pval_flat = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
+                        pval_low = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id_2'));
+                        pval_med = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id_3'));
+                        pval_high = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id_4'));
+                        stats_struct(cntsts).lme_terr_p = {[pval_low,pval_med,pval_high]};
+                        stats_struct(cntsts).lme_terr_p_wt = sprintf('%0.4f, ',[pval_low,pval_med,pval_high]);
+                        stats_struct(cntsts).lme_inter_p = pval_flat;
+                        %-
+                        slope_low = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id_2')));
+                        slope_med = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id_3')));
+                        slope_high = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id_4')));
+                        inter_mn = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
+                        stats_struct(cntsts).lme_terr_coeff = {[slope_low,slope_med,slope_high]};
+                        stats_struct(cntsts).lme_terr_coeff_wt = sprintf('%0.4f, ',[slope_low,slope_med,slope_high]);
+                        stats_struct(cntsts).lme_inter_coeff = inter_mn;
+                        %-
+                        stats_struct(cntsts).lme_rnd_effects = {bretable};
+                        stats_struct(cntsts).norm_test_h = norm_h;
+                        stats_struct(cntsts).norm_test_p = norm_p;
+                        stats_struct(cntsts).R2 = R2;
+                        stats_struct(cntsts).effect_size = alt_f2;
+                        stats_struct(cntsts).effect_size_calc = 'cohensf2 = (R22-R21)/(1-R22)';
+                        cntsts = cntsts + 1;
+                        stats_struct(cntsts) = DEF_STATS_TRACK_STRUCT;
+                    end
+                case SPEED_DES_ID
+                    for meas_i = 1:length(MEASURE_NAMES)
+                        %- NOTE: need to reassign to new table because of how
+                        %categorical variables will hold onto removed
+                        %entries causing rank defiecencies.
+                        %- speed factors
+                        % tmp = table(categorical(string(tmptmp.subj_char)),double(tmptmp.(MEASURE_NAMES{meas_i})),...
+                        %     categorical(string(tmptmp.cond_id)),'VariableNames',{'subj_char',MEASURE_NAMES{meas_i},'cond_id'});
+                        %- speed cont.
+                        % tmp = table(categorical(string(tmptmp.subj_char)),double(tmptmp.(MEASURE_NAMES{meas_i})),...
+                        %     double(string(tmptmp.cond_id)),'VariableNames',{'subj_char',MEASURE_NAMES{meas_i},'cond_id'});
+                        %- speed_diff_stat.
+                        tmp = table(categorical(string(tmptmp.subj_char)),double(tmptmp.(MEASURE_NAMES{meas_i})),...
+                            double(string(tmptmp.(SPEED_MEAS_ANL))),'VariableNames',{'subj_char',MEASURE_NAMES{meas_i},'cond_id'});
+                        %## LINEAR MODEL
+                        % t1.log_avg_power= log(t1.(MEASURE_NAMES{meas_i})+5);
+                        mod_lme = sprintf('%s ~ 1 + cond_id + (1|subj_char)',MEASURE_NAMES{meas_i});
+                        % mod_lme = sprintf('%s ~ 1 + cond_id^2 + cond_id + (1|subj_char)',MEASURE_NAMES{meas_i});
+                        % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
+                        stats_out = fitlme(tmp,mod_lme,'FitMethod','REML');
+                        anova_out = anova(stats_out);
+                        % [p,t,anova_out,terms] = anovan(tmp.(MEASURE_NAMES{meas_i}),{tmp.cond_id},...
+                        % 'sstype',3,'varnames',{'cond_id'},'model','linear','Display','off');
+                        % [comparisons,means,~,gnames] = multcompare(anova_out,'Dimension',[2],...
+                        %     'display','off','Alpha',0.05); % comparisons columns: [pred1,pred2,lowerCI,estimate,upperCI,p-val]
+                        disp(stats_out)
+                        %## GATHER STATS
+                        %- test normality
+                        [norm_h,norm_p] = lillietest(stats_out.residuals);
+                        %- get effects
+                        [~,bnames,~] = stats_out.fixedEffects();
+                        [~,brnames,bretable] = stats_out.randomEffects();
+                        %- intercept only model
+                        % altmod_lme = sprintf('%s ~ 1 + (1|subj_char)',measure_name);
+                        % altstats_out = fitlme(T_vals_plot,altmod_lme,'DummyVarCoding','effects');
+                        % R2 = 1-(altstats_out.LogLikelihood/stats_out.LogLikelihood)^(2/stats_out.NumVariables);
+                        R2 = stats_out.Rsquared.Adjusted;
+                        %- intercept only model
+                        altmod_out = sprintf('%s ~ 1 + (1|subj_char)',MEASURE_NAMES{meas_i});
+                        altstats_out = fitlme(tmp,altmod_out);
+                        %- alternative f2?
+                        R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
+                        R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
+                        alt_f2 = (R22-R21)/(1-R22);
+                        %## LINEAR
+                        % %- coefficients & pvals
+                        stats_struct(cntsts).anova_speed_p = anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
+                        stats_struct(cntsts).anova_speed_df = anova_out.DF2(strcmp(anova_out.Term,'cond_id'));
+                        stats_struct(cntsts).anova_speed_f = anova_out.FStat(strcmp(anova_out.Term,'cond_id'));
+                        %-
+                        stats_struct(cntsts).lme_speed_p = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id')));
+                        stats_struct(cntsts).lme_inter_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
+                        %-
+                        stats_struct(cntsts).lme_speed_coeff = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id')));
+                        stats_struct(cntsts).lme_inter_coeff = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
+                        %## QUADRATIC
+                        % ap1 = anova_out.pValue(strcmp(anova_out.Term,'cond_id'));
+                        % af1 = anova_out.DF2(strcmp(anova_out.Term,'cond_id'));
+                        % adf1 = anova_out.FStat(strcmp(anova_out.Term,'cond_id'));
+                        % ap2 = anova_out.pValue(strcmp(anova_out.Term,'cond_id^2'));
+                        % af2 = anova_out.DF2(strcmp(anova_out.Term,'cond_id^2'));
+                        % adf2 = anova_out.FStat(strcmp(anova_out.Term,'cond_id^2'));
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_p2 = {[ap1,ap2]};
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_f2 = {[af1,af2]};
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_df2 = {[adf1,adf2]};
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_p2_wt = sprintf('%s, ',[ap1,ap2]);
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_f2_wt = sprintf('%s, ',[af1,af2]);
+                        % STATS_TRACK_STRUCT(cntsts).anova_speed_df2_wt = sprintf('%s, ',[adf1,adf2]);
+                        % p1 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id'));
+                        % p2 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'cond_id^2'));
+                        % STATS_TRACK_STRUCT(cntsts).lme_speed_p2 = {[p1,p2]};
+                        % STATS_TRACK_STRUCT(cntsts).lme_speed_p2_wt = sprintf('%s, ',[p1,p2]);
+                        % STATS_TRACK_STRUCT(cntsts).lme_inter_p = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Name,'(Intercept)'));
+                        % c1 = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id')));
+                        % c2 = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'cond_id^2')));
+                        % STATS_TRACK_STRUCT(cntsts).lme_speed_coeff2 = {[c1,c2]};
+                        % STATS_TRACK_STRUCT(cntsts).lme_speed_coeff2_wt = sprintf('%s, ',[c1,c2]);
+                        % STATS_TRACK_STRUCT(cntsts).lme_inter_coeff = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Name,'(Intercept)')));
+                        %- store
+                        stats_struct(cntsts).group = groups(g_i);
+                        stats_struct(cntsts).design = designs(des_i);
+                        stats_struct(cntsts).cluster = clusters(cl_i);
+                        stats_struct(cntsts).measure_tag = {MEASURE_NAMES{meas_i}};
+                        stats_struct(cntsts).measure_vals = tmp.(MEASURE_NAMES{meas_i});
+                        stats_struct(cntsts).log_avg_power = log(tmp.(MEASURE_NAMES{meas_i})+5);
+                        %-
+                        stats_struct(cntsts).stat_test_mod = {mod_lme};
+                        stats_struct(cntsts).resp_terms = {MEASURE_NAMES{meas_i}};
+                        stats_struct(cntsts).pred_terms = bnames.Name';
+                        stats_struct(cntsts).pred_terms_wt = sprintf('%s, ',bnames.Name{:}); %
+                        stats_struct(cntsts).rnd_terms = brnames.Level';
+                        stats_struct(cntsts).rnd_terms_wt = sprintf('%s, ',brnames.Level{:}); %
+                        stats_struct(cntsts).lme_rnd_effects = {bretable};
+                        stats_struct(cntsts).norm_test_h = norm_h;
+                        stats_struct(cntsts).norm_test_p = norm_p;
+                        stats_struct(cntsts).R2 = R2;
+                        stats_struct(cntsts).effect_size = alt_f2;
+                        stats_struct(cntsts).effect_size_calc = 'cohensf2 = (R22-R21)/(1-R22)';
+                        
+                        cntsts = cntsts + 1;
+                        stats_struct(cntsts) = DEF_STATS_TRACK_STRUCT;
+                    end
+                otherwise
+                    error('Design %i not defined...\n',des_i);
+            end
+            
+        end
+    end
+end
+%%
+tmp_table = struct2table(stats_struct);
+tmp_table.measure_vals = [];
+tmp_table.log_avg_power = [];
+tmp_table.pred_terms = [];
+tmp_table.rnd_terms = [];
+tmp_table.lme_rnd_effects = [];
+writetable(tmp_table,[save_dir filesep 'STATS_TRACK_STRUCT_TABLE_speedlin_alt.xlsx']);
+% writetable(tmp_table,[save_dir filesep 'STATS_TRACK_STRUCT_TABLE_speedquad.xlsx']);
+stats_struct = struct2table(stats_struct);
+stats_struct(isundefined(stats_struct.cluster),:) = [];
+save([save_dir filesep 'STATS_TRACK_STRUCT_speedlin_alt.mat'],'stats_struct');
+% save([save_dir filesep 'STATS_TRACK_STRUCT_speedquad.mat'],'STATS_TRACK_STRUCT');
+% %% VISUALIZE 
+% CLUSTER_I = 3;
+% DESIGN_I = 1;
+% GROUP_I = 2;
+% designs = unique(FOOOF_TABLE.design_id);
+% clusters = unique(FOOOF_TABLE.cluster_id);
+% groups = unique(FOOOF_TABLE.group_id);
+% inds = psd_feature_stats.study == num2str(des_i) & psd_feature_stats.cluster == num2str(cl_i) & psd_feature_stats.group==groups(k);
+% T_stats_plot = psd_feature_stats(inds,:);
 %% CONDENSED ANOVA PLOTS FOR EEG POWER
 %## (STATS STRUCT) ====================================================== %%
 DEF_STATS_TRACK_STRUCT = struct('stat_test_mod',{{''}},...
@@ -2469,19 +2752,23 @@ end
 stats_struct_table = struct2table(stats_struct);
 %}
 %% Perform time series stats on the flattened curve
-iter = 200; % in eeglab, the fdr stats will automatically *20
+%## STATS
 try
     STUDY.etc = rmfield(STUDY.etc,'statistics');
 end
-STUDY = pop_statparams(STUDY, 'groupstats','off','condstats', 'on',...
-            'method','perm',...
-            'singletrials','off','mode','fieldtrip','fieldtripalpha',NaN,...
-            'fieldtripmethod','montecarlo','fieldtripmcorrect','fdr','fieldtripnaccu',iter*20);
-
+STUDY = pop_statparams(STUDY,...
+    'groupstats','off',...
+    'condstats','on',...
+    'method','perm',...
+    'singletrials','off',...
+    'mode','fieldtrip',...
+    'fieldtripalpha',NaN,...
+    'fieldtripmethod','montecarlo',...
+    'fieldtripmcorrect','fdr',...
+    'fieldtripnaccu',4000);
 stats = STUDY.etc.statistics;
 stats.paired{1} = 'on'; % Condition stats
 stats.paired{2} = 'off'; % Group stats
-
 %% ===================================================================== %%
 %-
 designs = unique(FOOOF_TABLE.design_id);
@@ -2512,6 +2799,8 @@ for i = 1:length(designs)
     des_i = double(string(designs(i)));
     for j = 1:length(clusters)
         cl_i = double(string(clusters(j)));
+        %## Ho : all samples come from the same distribution
+        %## Ha : all samples come from different distributions
         [temp_pcond, temp_pgroup, temp_pinter, temp_statcond, temp_statgroup, temp_statinter] = std_stat(fooof_diff_store{des_i}{cl_i}, stats);
         %- 
         clust_t{cnt} = cl_i;
