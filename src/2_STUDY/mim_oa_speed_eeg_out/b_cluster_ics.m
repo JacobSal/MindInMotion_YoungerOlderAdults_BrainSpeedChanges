@@ -89,13 +89,13 @@ ERSP_PARAMS = struct('subbaseline','off',...
 MIN_ICS_SUBJ = 5; %[2,3,4,5,6,7,8]; % iterative clustering
 DO_K_ICPRUNE = true;
 CLUSTER_STRUCT = struct('algorithm','kmeans',...
-    'clust_k_num',[10,11,12],... %(10-12 seems ideal, see. Makoto's PCA test)
-    'clust_k_evals',(5:25),...
+    'clust_k_num',[11],... %(10-12 seems ideal, see. Makoto's PCA test)
+    'clust_k_evals',(11),...
     'clust_k_maxiter',10000,...
     'clust_k_replicates',1000,...
-    'clust_k_repeat_iters',50,...
+    'clust_k_repeat_iters',1,...
     'clust_k_repeat_std',3,... % (inf | INT), INT uses robust_kmeans_CL
-    'clust_k_robust_maxiter',5,...
+    'clust_k_robust_maxiter',3,...
     'clust_k_empty_action','drop',...
     'do_eval_clusters',true);
 %{
@@ -105,7 +105,7 @@ CLUSTER_STRUCT = struct('algorithm','kmeans',...
     'clust_k_evals',(10:12),...
     'clust_k_maxiter',10000,...
     'clust_k_replicates',1000,...
-    'clust_k_repeat_iters',50,...
+    'clust_k_repeat_iters',10,...
     'clust_k_repeat_std',3,... % (inf | INT), INT uses robust_kmeans_CL
     'clust_k_robust_maxiter',5,...
     'clust_k_empty_action','drop',...
@@ -124,7 +124,8 @@ STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
 % study_fName_1 = sprintf('%s_EPOCH_study',[TRIAL_TYPES{:}]);
 study_fName_1 = 'epoch_study';
 % TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
+save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt'];
+save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt_rb3'];
 % save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name) filesep 'cluster'];
 load_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name)];
 %- create new study directory
@@ -243,63 +244,64 @@ if DO_K_ICPRUNE
         all_solutions = mim_cluster_process(TMP_STUDY,TMP_ALLEEG,...
             'CLUSTER_STRUCT',CLUSTER_STRUCT);
         %## EVALUATE CLUSTER SOLUTIONS
-        tmp = TMP_STUDY;
-        CLUST_MIN = length(tmp.datasetinfo)/2;
-        GROUP_MIN = 15;
-        g_chars = unique({tmp.datasetinfo.group});
-        cl_chks = zeros(length(CLUSTER_STRUCT.clust_k_num),CLUSTER_STRUCT.clust_k_repeat_iters);
-        anat_chks = cell(length(CLUSTER_STRUCT.clust_k_num),CLUSTER_STRUCT.clust_k_repeat_iters,CLUSTER_STRUCT.clust_k_num);
-        dip_chks = cell(length(CLUSTER_STRUCT.clust_k_num),CLUSTER_STRUCT.clust_k_repeat_iters,CLUSTER_STRUCT.clust_k_num);
-        for j = 1:length(CLUSTER_STRUCT.clust_k_num)
-            for k = 1:CLUSTER_STRUCT.clust_k_repeat_iters
-                %## Calculate dipole positions
-                cluster_update = cluster_comp_dipole(TMP_ALLEEG, all_solutions{j}.solutions{k});
-                tmp.cluster = cluster_update;
-                %## REMOVE BASED ON ICLABEL
-                [tmptmp,~,~] = cluster_iclabel_reduce(tmp,TMP_ALLEEG);
-                %## ANATOMY CALCULATION
-                CALC_STRUCT = struct('save_inf',false,...
-                    'recalculate',true);
-                [tmptmp,~,~] = eeglab_get_topodip(tmptmp,...
-                    'CALC_STRUCT',CALC_STRUCT,...
-                    'ALLEEG',TMP_ALLEEG);
-                ANATOMY_STRUCT = struct('atlas_fpath',{{[PATHS.submods_dir filesep 'AAL3' filesep 'AAL3v1.nii']}},...
-                    'anatomy_calcs','all aggregate',... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
-                    'save_inf',true);
-                [tmptmp,anat_struct,~,~,txt_out] = eeglab_get_anatomy(tmptmp,...
-                    'ALLEEG',TMP_ALLEEG,...
-                    'ANATOMY_STRUCT',ANATOMY_STRUCT);
-                %-
-                atlas_char = 'AAL3v1.nii';
-                inds = strcmp({anat_struct.atlas_label},atlas_char) & strcmp({anat_struct.calculation},'aggregate label for all');
-                at_out = {anat_struct(inds).anatomy_label};
-                at_ind = [anat_struct(inds).cluster];
-                dip_out = [tmptmp.cluster(at_ind).dipole];
-                dip_out = {dip_out.posxyz};
-                %##
-                cl_bools = zeros(length(inds),length(g_chars)+1);
-                inds = find(cellfun(@(x) contains(x,'Outlier','IgnoreCase',true) ||...
-                    contains(x,'Parentcluster'),{tmp.cluster.name}));
-                for l = 1:length(inds)
-                    cl_i = inds(l);
-                    if length(tmptmp.cluster(cl_i)) < CLUST_MIN
-                        cl_bools(l,1) = true;
-                    end
-                    for g_i = 1:length(g_chars)
-                        g_inds = cellfun(@(x) strcmp(x,g_chars{g_i}),{tmptmp.datasetinfo(tmptmp.cluster(cl_i).sets).group});
-                        if sum(g_inds) < GROUP_MIN
-                            cl_bools(l,g_i+1) = true;
-                        end
-                    end
-                end
-                t_bools = sum(all(cl_bools,2),1)*4;
-                tt_bools = sum(any(cl_bools,2),1);
-                cl_chks(j,k) = t_bools+tt_bools;
-                cl_chks(j,k) = sum(cl_bools,[2,1]);
-                anat_chks(j,k,:) = at_out;
-                dip_chks(j,k,:) = dip_out;
-            end
-        end
+        % tmp = TMP_STUDY;
+        % CLUST_MIN = length(tmp.datasetinfo)/2;
+        % GROUP_MIN = 15;
+        % g_chars = unique({tmp.datasetinfo.group});
+        % cl_chks = zeros(length(CLUSTER_STRUCT.clust_k_num),CLUSTER_STRUCT.clust_k_repeat_iters);
+        % anat_chks = cell(length(CLUSTER_STRUCT.clust_k_num),CLUSTER_STRUCT.clust_k_repeat_iters,CLUSTER_STRUCT.clust_k_num);
+        % dip_chks = cell(length(CLUSTER_STRUCT.clust_k_num),CLUSTER_STRUCT.clust_k_repeat_iters,CLUSTER_STRUCT.clust_k_num);
+        % for j = 1:length(CLUSTER_STRUCT.clust_k_num)
+        %     for k = 1:CLUSTER_STRUCT.clust_k_repeat_iters
+        %         %## Calculate dipole positions
+        %         cluster_update = cluster_comp_dipole(TMP_ALLEEG, all_solutions{j}.solutions{k});
+        %         tmp.cluster = cluster_update;
+        %         %## REMOVE BASED ON ICLABEL
+        %         [tmptmp,~,~] = cluster_iclabel_reduce(tmp,TMP_ALLEEG);
+        %         %## ANATOMY CALCULATION
+        %         CALC_STRUCT = struct('save_inf',false,...
+        %             'recalculate',true);
+        %         [tmptmp,~,~] = eeglab_get_topodip(tmptmp,...
+        %             'CALC_STRUCT',CALC_STRUCT,...
+        %             'ALLEEG',TMP_ALLEEG);
+        %         ANATOMY_STRUCT = struct('atlas_fpath',{{[PATHS.submods_dir filesep 'AAL3' filesep 'AAL3v1.nii']}},...
+        %             'anatomy_calcs','all aggregate',... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
+        %             'save_inf',true);
+        %         [tmptmp,anat_struct,~,~,txt_out] = eeglab_get_anatomy(tmptmp,...
+        %             'ALLEEG',TMP_ALLEEG,...
+        %             'ANATOMY_STRUCT',ANATOMY_STRUCT);
+        %         %-
+        %         atlas_char = 'AAL3v1.nii';
+        %         inds = strcmp({anat_struct.atlas_label},atlas_char) & strcmp({anat_struct.calculation},'aggregate label for all');
+        %         at_out = {anat_struct(inds).anatomy_label};
+        %         at_ind = [anat_struct(inds).cluster];
+        %         dip_out = [tmptmp.cluster(at_ind).dipole];
+        %         dip_out = {dip_out.posxyz};
+        %         %##
+        %         cl_bools = zeros(length(inds),length(g_chars)+1);
+        %         inds = find(cellfun(@(x) contains(x,'Outlier','IgnoreCase',true) ||...
+        %             contains(x,'Parentcluster'),{tmp.cluster.name}));
+        %         for l = 1:length(inds)
+        %             cl_i = inds(l);
+        %             if length(tmptmp.cluster(cl_i)) < CLUST_MIN
+        %                 cl_bools(l,1) = true;
+        %             end
+        %             for g_i = 1:length(g_chars)
+        %                 g_inds = cellfun(@(x) strcmp(x,g_chars{g_i}),{tmptmp.datasetinfo(tmptmp.cluster(cl_i).sets).group});
+        %                 if sum(g_inds) < GROUP_MIN
+        %                     cl_bools(l,g_i+1) = true;
+        %                 end
+        %             end
+        %         end
+        %         t_bools = sum(all(cl_bools,2),1)*4;
+        %         tt_bools = sum(any(cl_bools,2),1);
+        %         cl_chks(j,k) = t_bools+tt_bools;
+        %         cl_chks(j,k) = sum(cl_bools,[2,1]);
+        %         anat_chks(j,k,:) = at_out;
+        %         dip_chks(j,k,:) = dip_out;
+        %     end
+        % end
+        %## REDUCE CLUSTER & GET INFORMATION
         TMP_STUDY.etc.cluster_vars = [];
         for j = 1:length(CLUSTER_STRUCT.clust_k_num)
             %-
@@ -342,7 +344,7 @@ if DO_K_ICPRUNE
             end
             %}
             %## ANATOMY CALCULATION
-            TMP_STUDY = struct('cluster_inds',(2:length(TMP_STUDY.cluster)),...
+            CALC_STRUCT = struct('cluster_inds',(2:length(TMP_STUDY.cluster)),...
                 'save_inf',false,...
                 'recalculate',true);
             [TMP_STUDY,dipfit_structs,topo_cells] = eeglab_get_topodip(TMP_STUDY,...
@@ -350,8 +352,9 @@ if DO_K_ICPRUNE
                 'ALLEEG',TMP_ALLEEG);
             ANATOMY_STRUCT = struct('atlas_fpath',{{[PATHS.submods_dir filesep 'AAL3' filesep 'AAL3v1.nii']}},...
                 'group_chars',{unique({TMP_STUDY.datasetinfo.group})},...
-                'cluster_inds',1:length(TMP_STUDY.cluster),...
-                'anatomy_calcs','all aggregate',... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
+                'cluster_inds',2:length(TMP_STUDY.cluster),...
+                'anatomy_calcs',{{'all aggregate'}},... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
+                'save_dir',cluster_dir,...
                 'save_inf',true);
             [TMP_STUDY,anat_struct,~,~,txt_out] = eeglab_get_anatomy(TMP_STUDY,...
                 'ALLEEG',TMP_ALLEEG,...
@@ -370,13 +373,13 @@ if DO_K_ICPRUNE
             % [cl_tmp(at_ind).ctr_anat_all] = at_out{:};
             %## OLD ANATOMY CALC (USES MNI ATLAS)
             [~,atlas_names,~] = add_anatomical_labels(TMP_STUDY,TMP_ALLEEG);
-            for k = 1:length(cluster_update)
-                cluster_update(k).analabel = atlas_names{k,2};
+            for k = 1:length(cl_tmp)
+                cl_tmp(k).analabel = atlas_names{k,2};
             end
             %## UPDATE
-            TMP_STUDY.cluster = cluster_update;
+            TMP_STUDY.cluster = cl_tmp;
             
-            par_save(cluster_update,cluster_dir,sprintf('cl_inf_%i.mat',clust_i));
+            par_save(cl_tmp,cluster_dir,sprintf('cl_inf_%i.mat',clust_i));
             TMP_STUDY.etc.cluster_vars(j).fpath = [cluster_dir filesep sprintf('cl_inf_%i.mat',clust_i)];
             TMP_STUDY.etc.cluster_vars(j).inf = {'type','kmeans','k',clust_i,'params',CLUSTER_STRUCT};
         end

@@ -16,8 +16,8 @@ tic
 %## DEFINE DEFAULTS
 %- FONTS
 ax = [];
-GROUP_LAB_FONTSIZE = 10;
-GROUP_LAB_FONTWEIGHT = 'normal';
+% GROUP_LAB_FONTSIZE = 10;
+% GROUP_LAB_FONTWEIGHT = 'normal';
 % XLAB_FONTSIZE = 10;
 % YLAB_FONTSIZE = 10;
 % XTICK_FONTSIZE = 10;
@@ -53,16 +53,16 @@ DEFAULT_PLOT_STRUCT = struct('color_map',linspecer(length(unique(table_in.(cond_
     'group_lab_yoffset',-0.285,...
     'group_lab_fontweight','normal',...
     'group_lab_fontsize',12,...
-    'y_label','unit',...
+    'y_label','',...
     'y_label_fontsize',12,...
     'y_label_fontweight','bold',...
     'ylim',prc_ylim,...
-    'x_label','x',...
+    'x_label','',...
     'x_label_fontsize',12,...
     'x_label_fontweight','bold',...
     'x_label_yoffset',-0.1,...
     'xlim',[],...
-    'title','',...
+    'title',{{''}},...
     'title_fontsize',12,...
     'title_fontweight','normal',...
     'font_size',12,...
@@ -87,20 +87,16 @@ DEFAULT_STATS_STRUCT = struct('anova',{{}},...
                           'regress_pval',{{}},...
                           'regress_line',{{}},...
                           'line_type',{'best_fit'},... % ('best_fit' | 'means')
-                          'r2_coeff',{[]},... % this may become depricated
                           'regress_xvals',0,...
                           'subject_char',[],... % this option when filled prints removal of nan() info
                           'group_order',categorical({''}),...
-                          'do_include_intercept',false,... % this may become depricated
-                          'display_one_regress',true,... % this may become depricated
                           'display_stats_char',false,... 
                           'stats_char',{{}},...
-                          'bracket_yshift_perc',0.6,...
-                          'bracket_y_perc',1,...
+                          'bracket_conn_yshift',repmat(1.1,[length(unique(table_in.(group_char))),1]),...
                           'bracket_rawshifty_upper',0,...
                           'bracket_rawshifty_lower',0,...
-                          'grp_sig_offset_x',0,...
-                          'grp_sig_offset_y',0); 
+                          'grp_sig_offset_x',zeros(length(unique(table_in.(group_char))),1),...
+                          'grp_sig_offset_y',zeros(length(unique(table_in.(group_char))),1)); 
 
 %- STATS_STRUCT EXAMPLE:
 % STATS_STRUCT = struct('anova',{0.02,0.1},...
@@ -272,12 +268,11 @@ cnt_g = 1;
 hold_xlim = get(gca,'xlim');
 annotes = [];
 set_y = true;
-sig_offset_x = STATS_STRUCT.grp_sig_offset_x;
-sig_offset_y = STATS_STRUCT.grp_sig_offset_y;
+% bracket_conn_y_init = STATS_STRUCT.bracket_y_perc;
 bracket_rawshifty_upper = STATS_STRUCT.bracket_rawshifty_upper;
 bracket_rawshifty_lower = STATS_STRUCT.bracket_rawshifty_lower;
-bracket_yshift_perc = STATS_STRUCT.bracket_yshift_perc ;
-bracket_y_perc = STATS_STRUCT.bracket_y_perc;
+% bracket_conn_yshift_perc = STATS_STRUCT.bracket_yshift_perc;
+% bracket_conn_y_perc = STATS_STRUCT.bracket_y_perc;
 for i=1:length(groups)
     %- GROUP STATISTICS
     if ~isempty(STATS_STRUCT.anova_grp)
@@ -322,15 +317,32 @@ for i=1:length(groups)
                         bx1(tt) = violins{bx1(tt)}.MedianPlot.XData;
                         bx2(tt) = violins{bx2(tt)}.MedianPlot.XData;
                     end
+                    %## USER ADJUSTMENTS
                     by1(1,2) = by1(1,2) + bracket_rawshifty_upper;
                     by2(1,2) = by2(1,2) + bracket_rawshifty_upper;
                     by1(1,1) = by1(1,1) + bracket_rawshifty_lower;
                     by2(1,1) = by2(1,1) + bracket_rawshifty_lower;
+                    if length(STATS_STRUCT.grp_sig_offset_x) > 1 
+                        sig_offset_x = STATS_STRUCT.grp_sig_offset_x(i);
+                    else
+                        sig_offset_x = STATS_STRUCT.grp_sig_offset_x;
+                    end
+                    if length(STATS_STRUCT.grp_sig_offset_y) > 1
+                        sig_offset_y = STATS_STRUCT.grp_sig_offset_y(i);
+                    else
+                        sig_offset_y = STATS_STRUCT.grp_sig_offset_y;
+                    end
+                    if length(STATS_STRUCT.bracket_conn_yshift) > 1
+                        bracket_conn_yshift = STATS_STRUCT.bracket_conn_yshift(i);
+                    else
+                        bracket_conn_yshift = STATS_STRUCT.bracket_conn_yshift;
+                    end
+                    %## PLOT BRACKET
                     pp = cus_sigbracket('+',STATS_STRUCT.pvals_grp{i},bx1,bx2,by1,by2,...
-                        bracket_y_perc,sig_offset_x,sig_offset_y);
+                        bracket_conn_yshift,sig_offset_x,sig_offset_y);
                     y = gety(pp);
                     set_y = false;
-                    bracket_y_perc = bracket_y_perc*(1+bracket_yshift_perc)^2;
+                    % bracket_conn_y_init = bracket_conn_y_init*(1+bracket_conn_yshift_perc)^2;
                 % end
             end
         end
@@ -445,6 +457,17 @@ else
 end
 set(ax,'XTick',sort(xticks));
 set(ax,'XTickLabel',xtick_labs);
+% if ischar(PLOT_STRUCT.xtick_labs{1})
+%     if isempty(PLOT_STRUCT.xtick_labs{1})
+%         set(ax,'XTickLabel',PLOT_STRUCT.xtick_labs{1});
+%     else
+%         set(ax,'XTickLabel',PLOT_STRUCT.xtick_labs);
+%     end
+% elseif PLOT_STRUCT.xtick_labs{1}
+%     set(ax,'XTickLabel',xtick_labs);
+% else
+%     set(ax,'XTickLabel',xtick_labs);
+% end
 xtickangle(75);
 %- set ylabel
 ylabel(ax,PLOT_STRUCT.y_label,'FontSize',PLOT_STRUCT.y_label_fontsize,...
@@ -492,16 +515,25 @@ end
 % hold off;
 end
 %% ================================================================== %%
-function pp = cus_sigbracket(lbl,pVal,bx1,bx2,by1,by2,bracket_offset,sig_offset_x,sig_offset_y)
-    
-    bxx1 = [bx1(1),bx1(1),bx1(2),bx1(2)];
-    bxx2 = [bx2(1),bx2(1),bx2(2),bx2(2)];
-    byy1 = [by1(1),by1(2),by1(2),by1(1)];
+function pp = cus_sigbracket(lbl,pVal,bx1,bx2,by1,by2,connector_offset,sig_offset_x,sig_offset_y)
+    %- bx1(1) are x points for group 1's first vertical line
+    %- bx1(2) are x points for gorup 1's second vertical line (spanning)
+    %- bx2(1) are x points for group 2's first vertical line
+    %- bx2(2) are x points for group 2's second vertical line (spanning)
+    %- by1(1) are the lower y points for the beginning of the horizontal"box", for group 1
+    %- by1(2) are the uppper y points for the end of the horizontal "box", for group 1
+    %- by2(1) & by2(2) are for group 2.
+    %- bracket 1
+    bxx1 = [bx1(1),bx1(1),bx1(2),bx1(2)]; %[bx1 is x 1st vert line, x for 2nd vert line]
+    byy1 = [by1(1),by1(2),by1(2),by1(1)]; 
+    %- bracket 2
+    bxx2 = [bx2(1),bx2(1),bx2(2),bx2(2)]; 
     byy2 = [by2(1),by2(2),by2(2),by2(1)];
+    %- connector 
     bm1 = mean(bx1);
     bm2 = mean(bx2);
     [byymax,~] = max([by1,by2]);
-    boffset = abs(by2(2)-by2(1))*bracket_offset;
+    boffset = abs(by2(2)-by2(1))*connector_offset;
     byconn = [max(by1),byymax+boffset,byymax+boffset,max(by2)];
     bxconn = [bm1,bm1,bm2,bm2];
     % Now plot the sig line on the current axis

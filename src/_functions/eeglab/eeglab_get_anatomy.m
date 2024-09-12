@@ -85,8 +85,9 @@ inds = cellfun(@(x) contains(x,'Outlier','IgnoreCase',true) || contains(x,'Paren
 DEF_ANATOMY_STRUCT = struct('atlas_fpath',{{[path_aal3 filesep 'AAL3v1.nii']}},...
     'group_chars',{unique({STUDY.datasetinfo.group})},...
     'cluster_inds',find(~inds),...
-    'anatomy_calcs','all centroid',... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
+    'anatomy_calcs',{{'all centroid','all aggregate'}},... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
     'save_inf',true,...
+    'save_dir',STUDY.filepath,...
     'topo_cells',{{}},...
     'dipfit_structs',struct.empty);
 %## ALLEEG DEFAULT
@@ -135,10 +136,14 @@ cnt = 1;
 % atlas_name_store = cell(length(cluster_inds),1);
 if ANATOMY_STRUCT.save_inf
     txt_store = cell(length(cluster_inds),1);
-    f = fopen([STUDY.filepath filesep 'anatomy_output.txt'],'w');
+    f = fopen([ANATOMY_STRUCT.save_dir filesep 'anatomy_output.txt'],'w');
 end
 cnttxt = 1;
-chk_a = strcmp(ANATOMY_STRUCT.anatomy_calcs,'all calcs');
+chk_a = any(strcmp(ANATOMY_STRUCT.anatomy_calcs,'all calcs'));
+chk_aa = any(strcmp(ANATOMY_STRUCT.anatomy_calcs,'all aggregate'));
+chk_ac = any(strcmp(ANATOMY_STRUCT.anatomy_calcs,'all centroid'));
+chk_gc = any(strcmp(ANATOMY_STRUCT.anatomy_calcs,'group centroid'));
+chk_ga = any(strcmp(ANATOMY_STRUCT.anatomy_calcs,'group aggregate'));
 for atlas_i = 1:length(ANATOMY_STRUCT.atlas_fpath)
     atlas_fpath = ANATOMY_STRUCT.atlas_fpath{atlas_i};
     tmp = strsplit(atlas_fpath,filesep);
@@ -171,7 +176,7 @@ for atlas_i = 1:length(ANATOMY_STRUCT.atlas_fpath)
     %## GET LABELS
     for cl_i = 1:length(cluster_inds)
         %## AGGREGATE ANATOMY FOR ALL DIPS IN CL
-        if chk_a || strcmp(ANATOMY_STRUCT.anatomy_calcs,'all aggregate')
+        if chk_a || chk_aa
             dip_in = STUDY.cluster(cluster_inds(cl_i)).all_diplocs;
             STUDY.cluster(cluster_inds(cl_i)).centroid.dipole.posxyz = mean(dip_in);
             atlas = ft_read_atlas(atlas_fpath);
@@ -217,7 +222,7 @@ for atlas_i = 1:length(ANATOMY_STRUCT.atlas_fpath)
             anatomy_struct(cnt) = def_anatomy_struct;
         end
         %## CENTROID ANATOMY FOR MEAN DIP
-        if chk_a || strcmp(ANATOMY_STRUCT.anatomy_calcs,'all centroid')
+        if chk_a || chk_ac
             dip_in = STUDY.cluster(cluster_inds(cl_i)).centroid.dipole.posxyz;
             atlas = ft_read_atlas(atlas_fpath);
             atlas_name_ct = 'error';
@@ -262,7 +267,7 @@ for atlas_i = 1:length(ANATOMY_STRUCT.atlas_fpath)
             anatomy_struct(cnt) = def_anatomy_struct;
         end
         %## GROUP ANATOMY FOR AGGREGATE GROUP IN CL
-        if chk_a || strcmp(ANATOMY_STRUCT.anatomy_calcs,'group aggregate')
+        if chk_a || chk_ga
             atlas_name_gag = cell(1,length(group_chars));
             centroid_gct = cell(1,length(group_chars));
             for g_i = 1:length(group_chars)
@@ -315,7 +320,7 @@ for atlas_i = 1:length(ANATOMY_STRUCT.atlas_fpath)
             end
         end
         %## GROUP CENTROID ANATOMY FOR GROUP IN CL
-        if chk_a || strcmp(ANATOMY_STRUCT.anatomy_calcs,'group centroid')
+        if chk_a || chk_gc
             atlas_name_gct = cell(1,length(group_chars));
             centroid_gct = cell(1,length(group_chars));
             for g_i = 1:length(group_chars)
@@ -373,27 +378,27 @@ for atlas_i = 1:length(ANATOMY_STRUCT.atlas_fpath)
             g_inds = cellfun(@(x) strcmp(x,group_chars{g_i}),{STUDY.datasetinfo(STUDY.cluster(cluster_inds(cl_i)).sets).group});
             str_ctg = [str_ctg, sprintf('Group %s N=%i\n',group_chars{g_i},sum(g_inds))];
             %-
-            if chk_a || strcmp(ANATOMY_STRUCT.anatomy_calcs,'group aggregate') || strcmp(ANATOMY_STRUCT.anatomy_calcs,'group centroid')
+            if chk_a || chk_ga || chk_gc
                 str_ctg = [str_ctg, sprintf('Group %s Centroid Dip: [%0.1f,%0.1f,%0.1f]\n',group_chars{g_i},centroid_gct{g_i})];
             end
             %-
-            if chk_a || strcmp(ANATOMY_STRUCT.anatomy_calcs,'group aggregate')
+            if chk_a || chk_ga
                 str_ctg = [str_ctg, sprintf('Group %s Aggregate Label: CL%i: %s\n',group_chars{g_i},cluster_inds(cl_i),atlas_name_gag{g_i})];
             end
             %-
-            if chk_a || strcmp(ANATOMY_STRUCT.anatomy_calcs,'group centroid')
+            if chk_a || chk_gc
                 str_ctg = [str_ctg, sprintf('Group %s Centroid: CL%i: %s\n',group_chars{g_i},cluster_inds(cl_i),atlas_name_gct{g_i})];
             end
         end
         str_cta = [];
-        if chk_a || strcmp(ANATOMY_STRUCT.anatomy_calcs,'all centroid') || strcmp(ANATOMY_STRUCT.anatomy_calcs,'all aggregate')
+        if chk_a || chk_ac || chk_aa
             str_cta = [str_cta,sprintf('\n\nAtlas %s; CL%i: N=%i\n',char(nn_xml.item(0).getFirstChild.getData),cluster_inds(cl_i),length(STUDY.cluster(cluster_inds(cl_i)).sets)),...
                 sprintf('All Centroid Dip: [%0.1f,%0.1f,%0.1f]\n',STUDY.cluster(cluster_inds(cl_i)).centroid.dipole.posxyz)];
         end
-        if chk_a || strcmp(ANATOMY_STRUCT.anatomy_calcs,'all centroid')
+        if chk_a || chk_ac
              str_cta = [str_cta, sprintf('ALL Centroid Label: %s\n',atlas_name_ct)];
         end
-        if chk_a || strcmp(ANATOMY_STRUCT.anatomy_calcs,'all aggregate')
+        if chk_a || chk_aa
             str_cta = [str_cta, sprintf('ALL Aggregate Label: %s\n',anatomy_out)];
         end
         txt_store{cnttxt} = [str_cta,...
@@ -406,7 +411,7 @@ if ANATOMY_STRUCT.save_inf
     txt_store = txt_store(~cellfun(@isempty,txt_store));
     cellfun(@(x) fprintf(f,x),txt_store);
     fclose(f);
-    save([STUDY.filepath filesep 'anatomy_struct_out.mat'],'anatomy_struct');
+    save([ANATOMY_STRUCT.save_dir filesep 'anatomy_struct_out.mat'],'anatomy_struct');
 end
 fprintf('eeglab_get_anatomy.m done: %0.1f\n\n',toc(tt));
 end

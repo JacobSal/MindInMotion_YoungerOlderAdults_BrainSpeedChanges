@@ -74,7 +74,10 @@ OUTSIDE_DATA_DIR = [studies_fpath filesep ica_orig_dir]; % JACOB,SAL(02/23/2023)
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 % cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
-cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt'];
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt_rb3'];
+
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %- create new study directory
 if ~exist(save_dir,'dir')
@@ -112,7 +115,7 @@ CL_DIM = length(TMP_STUDY.cluster);
 %%
 loop_store = cell(length(subject_chars),1);
 parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
-% for subj_i = 1:length(subject_chars)
+% for subj_i = 1:3
     %## INITIATION
     %-
     cond_c          = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
@@ -221,7 +224,7 @@ parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
                     cond_c{cnt} = condition_gait{cond_i};
                     subj_c{cnt} = subject_chars{subj_i};
                     tmp = regexp(subject_chars{subj_i},'\d','match');
-                    group_n(cnt) = str2num(tmp{1});
+                    group_n(cnt) = double(string(tmp{1}));
                     cluster_n(cnt) = cl_i;
                     comp_c{cnt} = sprintf('study_ic, %i; unmix_ic, %i; keep_ic, %i; cluster_ic, %i',comp_i,tmp_c,ic_keep(comp_i),comp_i);
                                 %struct('eeglab_study',comp_i,...
@@ -242,5 +245,5 @@ parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
 end
 % tt = table(subj_c,group_c,cluster_c,cond_c,tf_erspcorr_c,tf_gpmcorr_c,tf_erporig_c,tf_gpmorig_c,tf_pc1_c,tf_coeff_c);
 tt = cat(1,loop_store{:});
-tt = tt(~all(cellfun(@isempty,tt{:,:}),2),:);
+tt = tt(~cellfun(@isempty,tt.subj_c),:);
 par_save(tt,[cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],'spca_cluster_table_psd.mat');

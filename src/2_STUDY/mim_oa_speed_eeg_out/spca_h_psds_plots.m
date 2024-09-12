@@ -107,7 +107,9 @@ studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studie
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 % cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
-cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt'];
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt_rb3'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% ================================================================== %%
 %## SET STUDY PATHS
@@ -169,10 +171,11 @@ end
 %% (LOAD EXISTING TALBES && FORMAT STUDY)
 tmp = load([save_dir filesep 'psd_feature_table.mat']);
 FOOOF_TABLE = tmp.FOOOF_TABLE;
-tmp = load([save_dir filesep 'STATS_TRACK_STRUCT_speedlin.mat']);
+% tmp = load([save_dir filesep 'STATS_TRACK_STRUCT_speedlin.mat']);
+tmp = load([save_dir filesep 'STATS_TRACK_STRUCT_speedlin_alt.mat']);
 % STATS_TRACK_STRUCT = tmp.STATS_TRACK_STRUCT;
 % STATS_TRACK_STRUCT = struct2table(STATS_TRACK_STRUCT);
-STATS_TRACK_STRUCT = tmp.stats_struct;
+vio_stats_struct = tmp.stats_struct;
 tmp = load([save_dir filesep 'fooof_pcond.mat']);
 pcond = tmp.pcond;
 tmp = load([save_dir filesep 'org_pcond.mat']);
@@ -189,22 +192,27 @@ tmp = load([save_dir filesep 'fooof_results.mat']);
 fooof_results = tmp.fooof_results;
 fooof_freq = fooof_results{1}{1,1}{1}.freqs;
 %% (TOPO PLOTS) ======================================================== %%
-CALC_STRUCT = struct('cluster_inds',(2:length(STUDY.cluster)),...
-    'save_inf',true,...
-    'recalculate',true);
-[STUDY,dipfit_structs,topo_cells] = eeglab_get_topodip(STUDY,...
-    'CALC_STRUCT',CALC_STRUCT,...
-    'ALLEEG',ALLEEG);
+% CALC_STRUCT = struct('cluster_inds',(2:length(STUDY.cluster)),...
+%     'save_inf',true,...
+%     'recalculate',true);
+% [STUDY,dipfit_structs,topo_cells] = eeglab_get_topodip(STUDY,...
+%     'CALC_STRUCT',CALC_STRUCT,...
+%     'ALLEEG',ALLEEG);
 %% (ANATOMY) =========================================================== %%
 addpath([PATHS.submods_dir filesep 'AAL3']);
 clusters = unique(FOOOF_TABLE.cluster_id);
+% ANATOMY_STRUCT = struct('atlas_fpath',{{[PATHS.submods_dir filesep 'AAL3' filesep 'AAL3v1.nii']}},...
+%     'group_chars',{unique({STUDY.datasetinfo.group})},...
+%     'cluster_inds',double(string(clusters)),...
+%     'anatomy_calcs','all centroid',... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
+%     'save_inf',false);
 ANATOMY_STRUCT = struct('atlas_fpath',{{[PATHS.submods_dir filesep 'AAL3' filesep 'AAL3v1.nii']}},...
     'group_chars',{unique({STUDY.datasetinfo.group})},...
-    'cluster_inds',double(string(clusters)),...
-    'anatomy_calcs','all centroid',... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
+    'cluster_inds',2:length(STUDY.cluster),...
+    'anatomy_calcs',{{'all aggregate','all centroid'}},... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
+    'save_dir',cluster_dir,...
     'save_inf',true);
 [STUDY,anat_struct,~,~,txt_out] = eeglab_get_anatomy(STUDY,...
-    'ALLEEG',ALLEEG,...
     'ANATOMY_STRUCT',ANATOMY_STRUCT);
 %-
 % atlas_char = 'AAL3v1.nii';
@@ -230,7 +238,7 @@ atlas_name_store = at_out;
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
 groups = unique(FOOOF_TABLE.group_id);
-measure_name_plot = {'theta_avg_power','alpha_avg_power','beta_avg_power'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
+meas_names = {'theta_avg_power','alpha_avg_power','beta_avg_power'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
 % measure_name_plot = {'theta_avg_power','alpha2_avg_power','beta2_avg_power'}; % walking speed, stride duration, step variability, sacrum excursion variability for ML and AP
 title_plot = {'Mean \theta','Mean \alpha','Mean \beta'};
 % measure_name_plot = {'med_sub_flat','low_sub_flat','high_sub_flat'};
@@ -320,7 +328,7 @@ VIO_PLOT_STRUCT = struct('color_map',[],...
             'x_label_fontweight','bold',...
             'x_label_yoffset',-.14,...
             'xlim',[],...
-            'title','',...
+            'title',{{''}},...
             'title_fontsize',10,...
             'title_fontweight','bold',...
             'font_size',9,...
@@ -349,16 +357,16 @@ end
 % cluster_titles = {'Precuneus','Right Sensorimotor',...
 %     'Left Occipital','Left Supplementary Motor','Left Sensorimotor','Left Posterior Parietal',...
 %     'Eye','Left Temporal','Mid Cingulate','Right Supplementary Motor','Right Temporal'};
-% cluster_titles = atlas_name_store;
+cluster_titles = atlas_name_store;
 %- (09/04/2024) ICLabel Chosen Brain Areas
 % cluster_titles = {'Precuneus','Right Supplementary Motor',...
 %     'Left Sensorimotor','Left Occipital','Right Temporal','Right Sensorimotor',...
 %     'Left Temporal','Mid Cingulate','Left Posterior Parietal','Right Posterior Parietal','Left Supplementary Motor'};
 %- (09/8/2024) ICLabel & kmeans bug fix
-
-cluster_titles = {'Right Occipital','Left Occipital','Mid Cingulate',...
-    'Right Sensorimotor','Right Supplementary','Precuneus','Left Temporal','Left Sensorimotor',...
-    'Right Posterior Parietal','Left Posterior Parietal','Right Temporal'};
+% cluster_titles = {'Right Occipital','Left Occipital','Mid Cingulate',...
+%     'Right Sensorimotor','Right Supplementary','Precuneus','Left Temporal','Left Sensorimotor',...
+%     'Right Posterior Parietal','Left Posterior Parietal','Right Temporal'};
+%## 
 % psd_ylimits = {[-31.5,-10],[-32.5,-15],...
 %     [-30,-12.5], [-32.5,-15], [-32.5,-15],[-30,-12.5],...
 %     [-30,-10],[-30,-10],[-30,-10],[-32.5,-15],[-30,-10]};
@@ -374,6 +382,7 @@ cluster_titles = {'Right Occipital','Left Occipital','Mid Cingulate',...
 % violin_ylimits_beta = {[-1,7],[-1,9],...
 %     [-1.5,7], [], [],[],...
 %     [],[],[],[],[]};
+speed_xvals = (0:5)*0.25;
 c_chars = {'0.25 m/s','0.50 m/s','0.75 m/s','1.0 m/s'};
 % g_chars_topo = {'Young Adult',{'Older Adult','High Mobility'},{'Older Adult','Low Mobility'}};
 g_chars_topo = {'Young Adults','Older High Mobility Adults','Older Low Mobility Adults'};
@@ -418,12 +427,12 @@ for k_i = 1:length(clusters)
     fig_i = get(groot,'CurrentFigure');
     set(fig_i,'color','w')
     g_counts = cell(length(groups),1);
-    for group_i = 1:length(groups)
-        g_inds = cellfun(@(x) strcmp(x,g_chars{group_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
-        if length(g_chars_topo{group_i}) == 1 || ischar(g_chars_topo{group_i})
-            g_counts{group_i} =sprintf('%s N=%i',g_chars_topo{group_i},sum(g_inds));
+    for g_i = 1:length(groups)
+        g_inds = cellfun(@(x) strcmp(x,g_chars{g_i}),{STUDY.datasetinfo(STUDY.cluster(cl_i).sets).group});
+        if length(g_chars_topo{g_i}) == 1 || ischar(g_chars_topo{g_i})
+            g_counts{g_i} =sprintf('%s N=%i',g_chars_topo{g_i},sum(g_inds));
         else
-            g_counts{group_i} =sprintf('%s\n%s N=%i',g_chars_topo{group_i}{1},g_chars_topo{group_i}{2},sum(g_inds));
+            g_counts{g_i} =sprintf('%s\n%s N=%i',g_chars_topo{g_i}{1},g_chars_topo{g_i}{2},sum(g_inds));
         end
     end
     % fig_i.Children(1).Title.String = g_counts; %sprintf('N=%i',length(STUDY.cluster(cl_i).sets));
@@ -801,52 +810,54 @@ for k_i = 1:length(clusters)
             xtick_label_g = {'0.25','0.50','0.75','1.0'};
             x_label = 'speed (m/s)';
             cond_offsets = [-0.35,-0.1,0.15,0.40];
+            speed_xvals = []
     end
     %## violin plot's theta/alpha/beta (speed)
     DEFAULT_STATS_STRUCT = struct('anova',{{}},...
-                              'anova_grp',{{}},...
-                              'pvals',{{}},...
-                              'pvals_pairs',{{}},...
-                              'pvals_grp',{{}},...
-                              'pvals_grp_pairs',{{}},...
-                              'regress_pval',{{}},...
-                              'regress_line',{{}},...
-                              'line_type',{'best_fit'},... % ('best_fit' | 'means')
-                              'r2_coeff',{[]},... % this may become depricated
-                              'regress_xvals',0,...
-                              'subject_char',[],... % this option when filled prints removal of nan() info
-                              'group_order',categorical({''}),...
-                              'do_include_intercept',false,... % this may become depricated
-                              'display_one_regress',true,... % this may become depricated
-                              'display_stats_char',false,... 
-                              'stats_char',{{}},...
-                              'bracket_yshift_perc',0.6,...
-                              'bracket_y_perc',1,...
-                              'bracket_rawshifty_upper',0,...
-                              'bracket_rawshifty_lower',0,...
-                              'grp_sig_offset_x',0,...
-                              'grp_sig_offset_y',0); 
+        'anova_grp',{{}},...
+        'pvals',{{}},...
+        'pvals_pairs',{{}},...
+        'pvals_grp',{{}},...
+        'pvals_grp_pairs',{{}},...
+        'regress_pval',{{}},...
+        'regress_line',{{}},...
+        'line_type',{'best_fit'},... % ('best_fit' | 'means')
+        'regress_xvals',speed_xvals,...
+        'subject_char',[],... % this option when filled prints removal of nan() info
+        'group_order',categorical({''}),...
+        'display_stats_char',true,...
+        'stats_char',{{}},...
+        'bracket_conn_yshift',[1,1,1],...
+        'bracket_rawshifty_upper',0,...
+        'bracket_rawshifty_lower',0,...
+        'grp_sig_offset_x',[0,0,0],... %zeros(length(unique(tmp_table.(GROUP_TABLE_VAR)))),...
+        'grp_sig_offset_y',[0,0,0]);
     %
     %##
     STATS_STRUCT = DEFAULT_STATS_STRUCT;
     cnt = 1;
     vert_shift = 0;    
     horiz_shift= 0;
-    prc_ylim = zeros(length(measure_name_plot),2);
-    for meas_i = 1:length(measure_name_plot)
+    prc_ylim = zeros(length(meas_names),2);
+    for meas_i = 1:length(meas_names)
         % measure_name_plot{meas_i} = measure_name_plot{meas_i};
         inds = FOOOF_TABLE.design_id == num2str(des_i) & FOOOF_TABLE.cluster_id == num2str(cl_i);
         tmp_fooof_t = FOOOF_TABLE(inds,:);
-        prc_ylim(meas_i,:) = [floor(prctile(tmp_fooof_t.(measure_name_plot{meas_i}),1))-floor(std(tmp_fooof_t.(measure_name_plot{meas_i}))),...
-            ceil(prctile(tmp_fooof_t.(measure_name_plot{meas_i}),99))+ceil(std(tmp_fooof_t.(measure_name_plot{meas_i})))*1.5];
+        prc_ylim(meas_i,:) = [floor(prctile(tmp_fooof_t.(meas_names{meas_i}),1))-floor(std(tmp_fooof_t.(meas_names{meas_i}))),...
+            ceil(prctile(tmp_fooof_t.(meas_names{meas_i}),99))+ceil(std(tmp_fooof_t.(meas_names{meas_i})))*1.5];
         disp(prc_ylim)
         STATS_STRUCT(cnt) = DEFAULT_STATS_STRUCT;
-        for group_i = 1:length(groups)
-            inds = STATS_TRACK_STRUCT.design == designs(des_i) & STATS_TRACK_STRUCT.cluster == clusters(k_i) &...
-                STATS_TRACK_STRUCT.group == groups(group_i) & strcmp(STATS_TRACK_STRUCT.measure_tag,measure_name_plot{meas_i});
-            tmp_table = STATS_TRACK_STRUCT(inds,:);
+        for g_i = 1:length(groups)
+            inds = vio_stats_struct.design_tag == designs(des_i) & vio_stats_struct.cluster_tag == clusters(k_i) &...
+                vio_stats_struct.group_tag == groups(g_i) & vio_stats_struct.measure_tag==meas_names{meas_i};
+            tmp_table = vio_stats_struct(inds,:);
             switch des_i
                 case 1
+                    anova_p = tmp_table.anova_preds_p{2};
+                    terr_p = tmp_table.mod_preds_p(2:4);
+                    speed_r2 = tmp_table.mod_r2;
+                    coeffs = tmp_table.mod_preds_coeff(1:4);
+
                     aa = tmp_table.anova_terr_p{1};
                     c2s = tmp_table.lme_terr_p{1}{1}(1);
                     c3s = tmp_table.lme_terr_p{1}{1}(2);
@@ -856,17 +867,18 @@ for k_i = 1:length(clusters)
                         tmp_table.lme_terr_coeff{1}{1}(2), tmp_table.lme_terr_coeff{1}{1}(3)]; 
                     r2 = tmp_table.R2{1};
                     norm_p = tmp_table.norm_test_p;
-                    STATS_STRUCT(cnt).anova{group_i}=aa;
-                    STATS_STRUCT(cnt).pvals{group_i}=[1,c2s,c3s,c4s];
-                    STATS_STRUCT(cnt).pvals_pairs{group_i}={[1,1],[1,2],[1,3],[1,4]};
+                    STATS_STRUCT(cnt).anova{g_i}=aa;
+                    STATS_STRUCT(cnt).pvals{g_i}=[1,c2s,c3s,c4s];
+                    STATS_STRUCT(cnt).pvals_pairs{g_i}={[1,1],[1,2],[1,3],[1,4]};
                 case 2
-                    aa = tmp_table.anova_speed_p{1};
-                    c2s = [];
-                    c3s = [];
-                    c4s = [];
-                    rs = tmp_table.lme_speed_p{1};
-                    rls = [tmp_table.lme_inter_coeff{1}, tmp_table.lme_speed_coeff{1}]; 
-                    r2 = tmp_table.R2{1};
+                    anova_p = tmp_table.anova_preds_p{1}(2);
+                    reg_p = tmp_table.mod_preds_p{1}(2);
+                    reg_lin = [tmp_table.mod_preds_coeff{:}];
+                    r2 = tmp_table.mod_r2{1};
+                    aa = anova_p; %tmp_table.anova_speed_p{1};
+                    rs = reg_p; %tmp_table.lme_speed_p{1};
+                    rls = reg_lin; %[tmp_table.lme_inter_coeff{1}, tmp_table.lme_speed_coeff{1}]; 
+                    % r2 = r2; %tmp_table.R2{1};
                     if aa > 0.01 && aa < 0.05
                         % str = sprintf('* %0.1g\{times}<speed>+%0.1g\nR^2=%0.2g',rls(2),rls(1),r2);
                         % str = [sprintf('* %0.1g',rls(2)),'\times<speed>+',sprintf('%0.1g\nR^2=%0.2g',rls(1),r2)];
@@ -882,12 +894,12 @@ for k_i = 1:length(clusters)
                         str = '';
                     end
                     STATS_STRUCT(cnt).line_type = 'best_fit';
-                    STATS_STRUCT(cnt).stats_char{group_i} = str;
+                    STATS_STRUCT(cnt).stats_char{g_i} = str;
                     STATS_STRUCT(cnt).display_stats_char = true;
                     norm_p = tmp_table.norm_test_p;
-                    STATS_STRUCT(cnt).anova{group_i}=aa;
-                    STATS_STRUCT(cnt).regress_pval{group_i}=rs;
-                    STATS_STRUCT(cnt).regress_line{group_i}=rls;
+                    STATS_STRUCT(cnt).anova{g_i}=aa;
+                    STATS_STRUCT(cnt).regress_pval{g_i}=rs;
+                    STATS_STRUCT(cnt).regress_line{g_i}=rls;
                     % STATS_STRUCT(cnt).r2_coeff(group_i)=r2;
                     STATS_STRUCT(cnt).regress_xvals=(0:5)*0.25;
             end
@@ -903,7 +915,7 @@ for k_i = 1:length(clusters)
         %-
         VIO_PLOT_STRUCT.color_map = color_dark;
         VIO_PLOT_STRUCT.cond_labels = xtick_label_g;
-        VIO_PLOT_STRUCT.title = title_plot{meas_i};
+        VIO_PLOT_STRUCT.title = title_plot(meas_i);
         if meas_i == 1
             VIO_PLOT_STRUCT.y_label ='10*log_{10}(PSD) - AP. Fit';
         else
@@ -912,7 +924,7 @@ for k_i = 1:length(clusters)
         VIO_PLOT_STRUCT.ylim = prc_ylim(meas_i,:);
         VIO_PLOT_STRUCT.ax_position = [AX_INIT_HORIZ+horiz_shift,AX_INIT_VERT_VIO+vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE];
         %-
-        ax = group_violin(tmp_fooof_t,measure_name_plot{meas_i},'cond_id','group_id',...
+        ax = group_violin(tmp_fooof_t,meas_names{meas_i},'cond_id','group_id',...
             ax,...
             'VIOLIN_PARAMS',VIO_PARAMS,...
             'PLOT_STRUCT',VIO_PLOT_STRUCT,...

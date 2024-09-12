@@ -42,8 +42,6 @@ CLUSTER_STRUCT = p.Results.CLUSTER_STRUCT;
 CLUSTER_STRUCT = set_defaults_struct(CLUSTER_STRUCT,DEF_CLUSTER_STRUCT);
 %% ===================================================================== %%
 if CLUSTER_STRUCT.do_eval_clusters
-    p = progressbar();
-    prog = 0;
     cnt = 1;
     cluster_idx = zeros(length([STUDY.datasetinfo.comps]),length(CLUSTER_STRUCT.clust_k_evals));
     %## cluster using std_preclust weightings for each K desired (deafault here is kmeans with no outlier rejection).
@@ -55,8 +53,6 @@ if CLUSTER_STRUCT.do_eval_clusters
         [~, clust_out] = cluster_dips(STUDY,ALLEEG,params);
         cluster_idx(1:length(clust_out.IDX),cnt) = clust_out.IDX;
         cnt = cnt+1;
-        prog = prog + 1/length(CLUSTER_STRUCT.clust_k_evals);
-        p = setStatus(p,prog);
     end
     % cluster_idx = cluster_idx(:,all(cluster_idx ~= 0));
     %##
@@ -71,15 +67,13 @@ cluster_solutions = cell(length(CLUSTER_STRUCT.clust_k_num),1);
 % parfor i = 1:length(CLUSTER_STRUCT.clust_k_evals)
 for i = 1:length(CLUSTER_STRUCT.clust_k_num)
     cl_i = CLUSTER_STRUCT.clust_k_num(i);
-    fprintf('Running clustering for k=%i',cl_i);
+    fprintf('Running clustering for k=%i\n',cl_i);
     %- temp variables
     params = CLUSTER_STRUCT;
     params.clust_k_num = cl_i;
     solutions = cell(CLUSTER_STRUCT.clust_k_repeat_iters,1);
     %- iterate
     % Initialize the progressbar
-    % p = progressbar();
-    % prog = 0;
     parfor iter = 1:CLUSTER_STRUCT.clust_k_repeat_iters
         % start time
         tic
@@ -92,13 +86,10 @@ for i = 1:length(CLUSTER_STRUCT.clust_k_num)
         % overwrite the original STUDY
         [tmp_st,~] = cluster_dips(tmp_st,tmp_al,params); 
         % store info in output struct
-        solutions{iter} = TMP_STUDY.cluster;
+        solutions{iter} = tmp_st.cluster;
         % stop checking the time and plot estimated time of arrival
-        % prog = prog + 1/tmp_cs.clust_k_repeat_iters;
-        % p = setStatus(p,iter+1/tmp_cs.clust_k_repeat_iters);
-        lastduration = toc; 
-        eta = lastduration*(tmp_cs.clust_k_repeat_iters-iter);
-        fprintf('Last duration: %1.2f s \n',round(lastduration,2))
+        lastduration = toc;
+        fprintf('Last duration: %1.2f s \n\n',round(lastduration,2))
         % fprintf('ETA: %d h, %d min \n', floor(eta/3600), round(((eta/3600)-floor(eta/3600))*60))
     end
     %- store clustering info
@@ -273,66 +264,83 @@ function  [IDX,C,sumd,D,outliers] = robust_kmeans_override(data,N,STD,max_iter,m
     not_outliers = 1:size(data,1);
     old_outliers = [];
     if strcmpi(method, 'kmeans')
+        %- Cluster using K-means algorithm
         [IDX,C,sumd,D] = kmeans(data,N,...
             'replicates',k_reps,...
             'maxiter',k_max_iter,...
-            'emptyaction',k_empty_action); % Cluster using K-means algorithm % CL: editted
+            'emptyaction',k_empty_action);
     else
-        [IDX,C,sumd,D] = kmeanscluster(data,N); % Cluster using K-means algorithm
-    end   
-    if STD >= 2 % STD for returned outlier
+        %- Cluster using K-means algorithm
+        [IDX,C,sumd,D] = kmeanscluster(data,N);
+    end
+    %- STD of returned outlier
+    if STD >= 2
         rSTD = STD - 1;
     else
         rSTD = STD;
     end
+    %## RECOMPUTE KMEANS UNTILL NO OUTLIERS
     loop = 0;
+    flag = true;
     while flag
         loop =  loop + 1;
-	    std_all = [];
-        ref_D = 0;
-	    for k = 1:N
-            tmp = ['cls' num2str(k) ' = find(IDX=='  num2str(k) ')''; ' ]; %find the component indices belonging to each cluster (cls1 = ...).
-            eval(tmp);
-            tmp = ['std' num2str(k) ' = std(D(cls'  num2str(k) ' ,' num2str(k) ')); ' ]; %compute the std of each cluster
-            eval(tmp);
-            std_all = [std_all ['std' num2str(k)  '  ']];
-            tmp = [ 'ref_D = ' num2str(ref_D) ' + mean(D(cls'  num2str(k) ' ,' num2str(k) '));' ];
-            eval(tmp);
-	    end
-	    std_all = [ '[ ' std_all ' ]' ];
-        std_all = eval(std_all);
-        
-	    % Find the outliers
+        ref_d = 0;
+        cl_nums = cell(N,1);
+        std_nums = zeros(N,1);
+        %## GET COMPONENTS IN CLUSTER, STDS, & MEANS
+        for k = 1:N
+            %- find component indices belogning to each cluster
+            cl_nums{k} = find(IDX==k)';
+            %- compute std of each cluster
+            std_nums(k) = std(D(cl_nums{k},k));
+            %- compounding mean
+            ref_d = ref_d + mean(D(cl_nums{k},k));
+        end
+
+	    %## FIND OUTLIERS
         % Outlier definition - its distance from its cluster center is bigger
         % than STD times the std of the cluster, as long as the distance is bigger
         % than the mean distance times STD (avoid problems where all points turn to be outliers).
-	    outliers = [];
-        ref_D = ref_D/N;
-	    for k = 1:N
-            tmp = ['cls' num2str(k) '(find(D(find(IDX=='  num2str(k) ')'' , ' num2str(k) ') > ' num2str(STD)  '*std' num2str(k) ')); ' ];
-            optionalO = eval(tmp);
-            Oind = find(D(optionalO,k) >  ref_D*STD);
-            outliers = [outliers optionalO(Oind)];
-	    end
-        if isempty(outliers) || (loop == max_iter)
-            flag = 0;
+
+        outliers = cell(k,1);
+        ref_d = ref_d/N;
+        for k = 1:N
+            tmp = cl_nums{k};
+            opt_arr = tmp(D(find(IDX==k)',k) > STD*std_nums(k));
+            inds = (D(opt_arr,k) > ref_d*STD);
+            outliers{k} = opt_arr(inds);
         end
-        l = length(old_outliers);
-        returned_outliers = [];
-     
-        
-        for k = 1:l
-            tmp = sum((C-ones(N,1)*data(old_outliers(k),:)).^2,2)'; % Find the distance of each former outlier to the current cluster
-            if isempty(find(tmp <= std_all*rSTD))  %Check if the outlier is still an outlier (far from each cluster center more than STD-1 times its std).
-                returned_outliers = [returned_outliers old_outliers(k)];
+        outliers = cat(2,outliers{:});
+        %- check outliers
+        % (09/10/2024) JS, this is odd logic maybe if-else is more
+        % appropriate? Maybe not, I think it still needs to reconcile
+        % previous determination of outliers.
+        if isempty(outliers) || (loop == max_iter)
+            flag = false;
+            if loop == max_iter
+                fprintf('robust_kmeans reached max_iter during while-loop\n');
+            else
+                fprintf('robust_kmeans found stable clusters at iter %i',loop)
             end
         end
+        %## GET PREVIOUS OUTLIER INFORMATION
+        l = length(old_outliers);
+        returned_outliers = cell(l,1);
+        for k = 1:l
+            % Find the distance of each former outlier to the current cluster
+            tmp = sum((C-ones(N,1)*data(old_outliers(k),:)).^2,2)'; 
+            % Check if the outlier is still an outlier (far from each cluster center more than STD-1 times its std).
+            if isempty((tmp <= std_nums*rSTD))  
+                returned_outliers{k} = old_outliers(k);
+            end
+        end
+        returned_outliers = cat(2,returned_outliers{:});
+        %## RECOMPUTE KMEANS W/ NEW DATA
         outliers = not_outliers(outliers);
-        outliers = [outliers returned_outliers ];
+        outliers = cat(2,outliers,returned_outliers);
 	    tmp = ones(1,size(data,1));
 	    tmp(outliers) = 0;
 	    not_outliers = (find(tmp==1));
-        
         if strcmpi(method, 'kmeans')
             [IDX,C,sumd,D] = kmeans(data(not_outliers,:),N,...
                 'replicates',k_reps,...

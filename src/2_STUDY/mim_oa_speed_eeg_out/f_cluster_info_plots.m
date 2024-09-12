@@ -68,7 +68,10 @@ studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studie
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 % cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
-cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt'];
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt_rb3'];
+
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 cluster_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 %- save dir
@@ -95,7 +98,8 @@ cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprin
 STUDY.cluster = cl_struct;
 [comps_out,main_cl_inds,outlier_cl_inds,valid_clusters] = eeglab_get_cluster_comps(STUDY);
 cluster_inds = main_cl_inds(2:end);
-% CLUSTER_PICKS = [12,7,4,8,11,6,3];
+% cluster_inds = [12,7,4,8,11,6,3];
+% cluster_inds = [10,6,12,11,7,5,13,8];
 %% LOAD TOPO & DIP INFO ================================================ %%
 % dipfit_structs = par_load(STUDY.filepath,'dipfit_structs.mat');
 % topo_cells = par_load(STUDY.filepath,'topo_cells.mat');
