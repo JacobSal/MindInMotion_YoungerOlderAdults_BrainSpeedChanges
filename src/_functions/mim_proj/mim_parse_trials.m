@@ -45,7 +45,6 @@ DEF_EPOCH_PARAMS = struct('epoch_method','timewarp',...
     'appx_cond_len',3*60,...
     'slide_cond_chars',{{}},...
     'gait_trial_chars',{{'0p25','0p5','0p75','1p0','flat','low','med','high'}},...
-    'rest_trial_char',{{}},...
     'do_recalc_epoch',true);
 %- soft defines
 %## TIME
@@ -57,36 +56,19 @@ addRequired(p,'EEG',@isstruct);
 %## OPTIONAL
 %## PARAMETER
 addParameter(p,'EPOCH_PARAMS',DEF_EPOCH_PARAMS,@(x) validate_struct(x,DEF_EPOCH_PARAMS))
-% addParameter(p,'COND_CHARS',COND_CHARS,@iscell);
-% addParameter(p,'WINDOW_LENGTH',window_length,@isnumeric);
-% addParameter(p,'PERCENT_OVERLAP',PERCENT_OVERLAP,@isnumeric);
-% addParameter(p,'EPOCH_TIME_LIMITS',EPOCH_TIME_LIMITS,@isnumeric);
-% addParameter(p,'EVENTS_TIMEWARP',EVENTS_TIMEWARP,@iscell);
-% addParameter(p,'STD_TIMEWARP',STD_TIMEWARP,@isnumeric);
-% addParameter(p,'BASELINE_TIMELIMITS',BASELINE_TIMELIMITS,(@(x) isnumeric(x) || isempty(x)));
 parse(p,EEG,varargin{:});
 %## SET DEFAULTS
 %- PARAMETER
 EPOCH_PARAMS = p.Results.EPOCH_PARAMS;
 EPOCH_PARAMS = set_defaults_struct(EPOCH_PARAMS,DEF_EPOCH_PARAMS);
-% %* sliding window params
-% EPOCH_PARMS.percent_overlap = p.Results.PERCENT_OVERLAP;
-% window_length = EPOCH_PARAMS.epoch_time_lims(2)-EPOCH_PARAMS.epoch_time_lims(1); 
-% COND_CHARS = p.Results.COND_CHARS;
-% %* gait params
-% EPOCH_PARMS.epoch_time_lims = p.Results.EPOCH_PARMS.epoch_time_lims;
-% EVENTS_TIMEWARP = p.Results.EVENTS_TIMEWARP;
-% STD_TIMEWARP = p.Results.STD_TIMEWARP;
-% EPOCH_PARMS.baseline_time_lims = p.Results.BASELINE_TIMELIMITS;
-% if isempty(BASELINE_TIMELIMITS)
-%     BASELINE_TIMELIMITS = [EPOCH_PARMS.epoch_time_lims(1),EPOCH_PARMS.epoch_time_lims(2)-1000*(1/EEG.srate)]; % time in milliseconds
-% end
+
 %% ===================================================================== %%
 switch EPOCH_PARAMS.epoch_method
     case 'sliding_window'
         %- (MIND IN MOTION) sliding window
         ALLEEG = cell(1,length(EPOCH_PARAMS.slide_cond_chars)); 
         timewarp_struct = cell(1,length(EPOCH_PARAMS.slide_cond_chars));
+        window_length = EPOCH_PARAMS.epoch_time_lims(2)-EPOCH_PARAMS.epoch_time_lims(1);
         for i = 1:length(EPOCH_PARAMS.slide_cond_chars)
             fprintf(1,'\n==== %s: Processing trial %s ====\n',EEG.subject,EPOCH_PARAMS.slide_cond_chars{i});
             [TMP_EEG] = sliding_window_epoch(EEG,EPOCH_PARAMS.slide_cond_chars{i},window_length,EPOCH_PARAMS.percent_overlap,...

@@ -3,7 +3,7 @@
     stats = STUDY.etc.statistics;
     stats.fieldtrip.channelneighbor = struct([]); % assumes one channel or 1 component
     if isempty(STUDY.design(STUDY.currentdesign).variable)
-        stats.paired = { };
+        stats.paired = {};
     else
         stats.paired = { STUDY.design(STUDY.currentdesign).variable(:).pairing };
     end

@@ -112,7 +112,7 @@ study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skul
 spca_study_dir = '03232024_spca_analysis_OA';
 %- study info
 % SUB_GROUP_FNAME = 'all_spec';
-SUB_GROUP_FNAME = ['group_spec' filesep 'split_band_test'];
+SUB_GROUP_FNAME = ['group_spec' filesep 'rtests'];
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 spca_dir = [studies_fpath filesep sprintf('%s',spca_study_dir)];
@@ -120,9 +120,9 @@ spca_dir = [studies_fpath filesep sprintf('%s',spca_study_dir)];
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 % cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
-% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
 % cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt'];
-cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt_rb3'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt_rb3'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% ================================================================== %%
 %## LOAD STUDY
@@ -577,7 +577,7 @@ save([save_dir filesep 'fooof_results.mat'],'fooof_results');
 % fooof_results = tmp.fooof_results;
 
 %% MULTI-CLUSTER PLOT OF ALL SUBJECTS ================================== %%
-
+%{
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
 conditions = unique(FOOOF_TABLE.cond_char);
@@ -668,8 +668,9 @@ for j = 1:length(designs)
         end
     end
 end
-
+%}
 %% SANITY CHECK: APERIODIC EXP., TERRAIN WALKING SPEED, APERIODIC OFFSET
+%{
 %## (STATS STRUCT) ====================================================== %%
 DEF_STATS_TRACK_STRUCT = struct('stat_test_mod',{{''}},...
     'measure_tag',categorical({''}),...
@@ -1166,7 +1167,7 @@ for k = 1:length(MEASURES_PLOT)
         close(fig);
     end
 end
-
+%}
 %% (JS) DETERMINE PEAK FREQUENCIES
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
@@ -1800,7 +1801,8 @@ for des_i = 1:length(designs)
                         % t1.log_avg_power= log(t1.(MEASURE_NAMES{meas_i})+5);
                         mod_out = sprintf('%s ~ 1 + cond_id + (1|subj_char)',meas_names{meas_i});
                         % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
-                        stats_out = fitlme(tmp,mod_out,'FitMethod','ML','DummyVarCoding','effects');
+                        % stats_out = fitlme(tmp,mod_out,'FitMethod','ML','DummyVarCoding','effects');
+                        stats_out = fitlme(tmp,mod_out,'FitMethod','REML','DummyVarCoding','effects');
                         anova_out = anova(stats_out);
                         %## GATHER STATS
                         %- test normality
@@ -1815,7 +1817,8 @@ for des_i = 1:length(designs)
                         R2 = stats_out.Rsquared.Adjusted;
                         %- intercept only model
                         altmod_out = sprintf('%s ~ 1 + (1|subj_char)',meas_names{meas_i});
-                        altstats_out = fitlme(tmp,altmod_out);
+                        % altstats_out = fitlme(tmp,altmod_out);
+                        altstats_out = fitlme(tmp,altmod_out,'FitMethod','REML','DummyVarCoding','effects');
                         %- alternative f2?
                         R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
                         R22 = stats_out.SSR/stats_out.SST; % coefficient of determination
@@ -1902,13 +1905,14 @@ for des_i = 1:length(designs)
                         mod_out = sprintf('%s ~ 1 + cond_id + (1|subj_char)',meas_names{meas_i});
                         % mod_lme = sprintf('%s ~ 1 + cond_id^2 + cond_id + (1|subj_char)',MEASURE_NAMES{meas_i});
                         % mod_lme = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
-                        stats_out = fitlme(tmp,mod_out,'FitMethod','ML','DummyVarCoding','effects');
+                        % stats_out = fitlme(tmp,mod_out,'FitMethod','ML','DummyVarCoding','effects');
+                        stats_out = fitlme(tmp,mod_out,'FitMethod','REML','DummyVarCoding','effects');
                         anova_out = anova(stats_out);
                         % [p,t,anova_out,terms] = anovan(tmp.(meas_names{meas_i}),{tmp.cond_id},...
                         %     'sstype',3,'varnames',{'cond_id'},'model','linear','Display','off');
                         % [comparisons,means,~,gnames] = multcompare(anova_out,'Dimension',[1,2],...
                         %     'display','off','Alpha',0.05); % comparisons columns: [pred1,pred2,lowerCI,estimate,upperCI,p-val]
-                        disp(stats_out)
+                        % disp(stats_out)
                         %## GATHER STATS
                         %- test normality
                         [norm_h,norm_p] = lillietest(stats_out.residuals);
@@ -1922,7 +1926,8 @@ for des_i = 1:length(designs)
                         R2 = stats_out.Rsquared.Adjusted;
                         %- intercept only model
                         altmod_out = sprintf('%s ~ 1 + (1|subj_char)',meas_names{meas_i});
-                        altstats_out = fitlme(tmp,altmod_out);
+                        % altstats_out = fitlme(tmp,altmod_out);
+                        altstats_out = fitlme(tmp,altmod_out,'FitMethod','REML','DummyVarCoding','effects');
                         %- alternative f2?
                         R21 = altstats_out.SSR/altstats_out.SST; % coefficient of determination
                         R22 = stats_out.SSR/stats_out.SST; % coefficient of determination

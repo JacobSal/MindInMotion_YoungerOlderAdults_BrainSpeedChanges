@@ -14,12 +14,16 @@ elseif isnumeric(cell_arr)
     cell_arr = cellstr(cell_arr);
 end
 
-if sz(1) > 1
+if sz(1) > 1 && sz(2) == 1
     for i = 1:sz(1)
         char{i,1} = [sprintf('%s,',cell_arr{i,1:sz(2)-1}), sprintf('%s;',cell_arr{i,sz(2)})];
     end
-elseif sz(2) > 1
+elseif sz(2) > 1 && sz(1) == 1
     char{1,1} = [sprintf('%s,',cell_arr{1,1:sz(2)-1}), sprintf('%s;',cell_arr{1,sz(2)})];
+elseif sz(1) > 1 && sz(2) > 1
+    char{1,1} = [sprintf('%s,',cell_arr{1,1:sz(2)-1}), sprintf('%s;',cell_arr{1,sz(2)})];
+else
+    char{1,1} = [sprintf('%s',cell_arr{1})];
 end
 char = [char{:}];
 end

@@ -107,9 +107,9 @@ studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studie
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 % cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
-% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
+cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
 % cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt'];
-cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt_rb3'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt_rb3'];
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 %% ================================================================== %%
 %## SET STUDY PATHS
@@ -192,20 +192,14 @@ tmp = load([save_dir filesep 'fooof_results.mat']);
 fooof_results = tmp.fooof_results;
 fooof_freq = fooof_results{1}{1,1}{1}.freqs;
 %% (TOPO PLOTS) ======================================================== %%
-% CALC_STRUCT = struct('cluster_inds',(2:length(STUDY.cluster)),...
-%     'save_inf',true,...
-%     'recalculate',true);
-% [STUDY,dipfit_structs,topo_cells] = eeglab_get_topodip(STUDY,...
-%     'CALC_STRUCT',CALC_STRUCT,...
-%     'ALLEEG',ALLEEG);
+CALC_STRUCT = struct('cluster_inds',(2:length(STUDY.cluster)),...
+    'save_inf',true,...
+    'recalculate',true);
+[STUDY,dipfit_structs,topo_cells] = eeglab_get_topodip(STUDY,...
+    'CALC_STRUCT',CALC_STRUCT,...
+    'ALLEEG',ALLEEG);
 %% (ANATOMY) =========================================================== %%
 addpath([PATHS.submods_dir filesep 'AAL3']);
-clusters = unique(FOOOF_TABLE.cluster_id);
-% ANATOMY_STRUCT = struct('atlas_fpath',{{[PATHS.submods_dir filesep 'AAL3' filesep 'AAL3v1.nii']}},...
-%     'group_chars',{unique({STUDY.datasetinfo.group})},...
-%     'cluster_inds',double(string(clusters)),...
-%     'anatomy_calcs','all centroid',... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
-%     'save_inf',false);
 ANATOMY_STRUCT = struct('atlas_fpath',{{[PATHS.submods_dir filesep 'AAL3' filesep 'AAL3v1.nii']}},...
     'group_chars',{unique({STUDY.datasetinfo.group})},...
     'cluster_inds',2:length(STUDY.cluster),...
@@ -357,15 +351,15 @@ end
 % cluster_titles = {'Precuneus','Right Sensorimotor',...
 %     'Left Occipital','Left Supplementary Motor','Left Sensorimotor','Left Posterior Parietal',...
 %     'Eye','Left Temporal','Mid Cingulate','Right Supplementary Motor','Right Temporal'};
-cluster_titles = atlas_name_store;
+% cluster_titles = atlas_name_store;
 %- (09/04/2024) ICLabel Chosen Brain Areas
 % cluster_titles = {'Precuneus','Right Supplementary Motor',...
 %     'Left Sensorimotor','Left Occipital','Right Temporal','Right Sensorimotor',...
 %     'Left Temporal','Mid Cingulate','Left Posterior Parietal','Right Posterior Parietal','Left Supplementary Motor'};
 %- (09/8/2024) ICLabel & kmeans bug fix
-% cluster_titles = {'Right Occipital','Left Occipital','Mid Cingulate',...
-%     'Right Sensorimotor','Right Supplementary','Precuneus','Left Temporal','Left Sensorimotor',...
-%     'Right Posterior Parietal','Left Posterior Parietal','Right Temporal'};
+cluster_titles = {'Right Occipital','Left Occipital','Mid Cingulate',...
+    'Right Sensorimotor','Left Supplementary','Precuneus','Left Temporal','Left Sensorimotor',...
+    'Right Posterior Parietal','Left Posterior Parietal','Right Temporal'};
 %## 
 % psd_ylimits = {[-31.5,-10],[-32.5,-15],...
 %     [-30,-12.5], [-32.5,-15], [-32.5,-15],[-30,-12.5],...
@@ -948,3 +942,104 @@ for k_i = 1:length(clusters)
     % exportgraphics(fig,[save_dir filesep sprintf('Group_speed_violin_psds_cl%i.tiff',cl_i)],'Resolution',300)
     % close(fig);
 end
+
+%% MULTI-CLUSTER PLOT OF ALL SUBJECTS ================================== %%
+designs = unique(FOOOF_TABLE.design_id);
+clusters = unique(FOOOF_TABLE.cluster_id);
+conditions = unique(FOOOF_TABLE.cond_char);
+groups = unique(FOOOF_TABLE.group_char);
+%- (09/8/2024) ICLabel & kmeans bug fix
+cluster_titles = {'Right Occipital','Left Occipital','Mid Cingulate',...
+    'Right Sensorimotor','Left Supplementary','Precuneus','Left Temporal','Left Sensorimotor',...
+    'Right Posterior Parietal','Left Posterior Parietal','Right Temporal'};
+%-
+des_i = 2;
+cl_i = 8;
+clust_i = double(string(clusters(cl_i)));
+%-
+c_chars = {'0.25 m/s','0.50 m/s','0.75 m/s','1.0 m/s'};
+g_chars_subp = {'YA','OHMA','OLMA'};
+AX_W = 0.4;
+AX_H = 0.25;
+IM_RESIZE = 0.5;
+HZ_DIM = 3;
+VERTICAL_SHIFT =  0.45;
+HORIZONTAL_SHIFT = 0.5;
+AX_INIT_HORIZ = 0.175;
+AX_INIT_VERTICAL = 0.75;
+AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
+%## PLOT ============================================================ %%
+fig = figure('color','white','renderer','Painters');
+sgtitle(sprintf('%s',cluster_titles{cl_i}),'FontSize',14,'FontName','Arial','FontWeight','Bold')
+set(fig,'Units','inches','Position',[0.5,0.5,6,9.5])
+set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+set(gca,AXES_DEFAULT_PROPS{:})
+hold on;
+%-
+horiz_shift = AX_INIT_HORIZ;
+hz = 0;
+vert_shift = AX_INIT_VERTICAL;
+%##
+switch des_i
+    case 1
+        color_dark = COLOR_MAPS_TERRAIN;
+        color_light = COLOR_MAPS_TERRAIN;
+        GROUP_CMAP_OFFSET = [0,0.1,0.1];
+        xtick_label_g = {'flat','low','med','high'};
+    case 2
+        color_dark = COLOR_MAPS_SPEED;
+        color_light = COLOR_MAPS_SPEED+0.15;
+        GROUP_CMAP_OFFSET = [0.15,0,0];
+        xtick_label_g = {'0.25','0.50','0.75','1.0'};
+end
+
+for c_i = 1:4
+    cond_i = c_i; %double(string(conditions(c_i)));
+    cond_char = string(conditions(c_i));
+    for g_i = 1:length(groups)
+        group_i = g_i; %double(string(groups(g_i)));
+        %-
+        hz = hz + 1;
+        ax = axes();
+        hold on;
+        plot([0 40],[0 0],'--','color','black');
+        xlim([4 40]);
+        ylim([-2 10]);
+        %-
+        fooof_psd = fooof_diff_store{des_i}{clust_i}{cond_i,group_i}';
+        fooof_psd_mean = mean(fooof_psd);
+        subjs = plot(fooof_freq,fooof_psd,'color',[0,0,0,0.15],'linestyle','-','linewidth',2,'displayname','orig. subj psd');
+        mean_plot = plot(fooof_freq,fooof_psd_mean,'color',color_dark(cond_i,:),'linestyle','-','linewidth',4,'displayname','orig. subj psd');
+        %-
+        xlabel('Frequency(Hz)');
+        if hz ~= 1
+            ylabel('');
+        else
+            ylabel('10*log_{10}(PSD) - AP. Fit');
+        end
+        set(ax,'FontName','Arial',...
+            'FontSize',12,...
+            'FontWeight','bold')
+        xline(3,'--'); xline(8,'--'); xline(13,'--'); xline(30,'--');
+        set(ax,'FontName','Arial','FontSize',10,...
+            'FontWeight','bold')
+        title(sprintf('%s',g_chars_subp{group_i}),'FontWeight','normal')
+        set(ax,'OuterPosition',[0,0,1,1]);
+        set(ax,'Position',[horiz_shift,vert_shift,AX_W*IM_RESIZE,AX_H*IM_RESIZE]);  %[left bottom width height]
+        %## TITLE CONDITION
+        annotation('textbox',[0.5-(0.1/2),vert_shift-(0.1/2)+AX_H*IM_RESIZE,.1,.1],...
+            'String',sprintf('%s',c_chars{cond_i}),'HorizontalAlignment','left',...
+            'VerticalAlignment','top','LineStyle','none','FontName',FONT_NAME,...
+            'FontSize',12,'FontWeight','Bold','Units','normalized');
+        if hz < HZ_DIM
+            horiz_shift = horiz_shift + HORIZONTAL_SHIFT*IM_RESIZE;
+        else
+            vert_shift = vert_shift - VERTICAL_SHIFT*IM_RESIZE;
+            horiz_shift = AX_INIT_HORIZ;
+            hz = 0;
+        end
+    end
+end
+hold off;
+exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_1group_comparison_cluster_fooofs_subjs_means.tiff',cl_i,des_i,cond_i,group_i)],'Resolution',1000)
+% close(fig);

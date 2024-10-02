@@ -101,21 +101,16 @@ DEF_EPOCH_PARAMS = struct('epoch_method','timewarp',...
     'gait_trial_chars',{{'0p25','0p5','0p75','1p0','flat','low','med','high'}},...
     'rest_trial_char',{{}},...
     'do_recalc_epoch',true);
-%- datetime override
-% dt = '03232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-% study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
+%- Study Name
+STUDY_DIR_FNAME = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 %- Subject Directory information
-OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
-% OA_PREP_FPATH = '01132024_antsnorm_iccREEG0p65_iccREMG0p4_skull0p0042'
+ICA_DIR_FNAME = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
+STUDY_FNAME_ALLCOMP = 'all_comps_study';
+STUDY_FNAME_EPOCH = 'epoch_study';
 %## soft define
-DATA_DIR = [PATHS.src_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
-study_fName_1 = 'all_comps_study';
-study_fName_2 = 'epoch_study';
-% TRIAL_OVERRIDE_FPATH = [STUDIES_DIR filesep 'subject_mgmt' filesep 'trial_event_indices_override.xlsx'];
-save_dir = [STUDIES_DIR filesep sprintf('%s',study_dir_name)];
+studies_dir = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
+ica_data_dir = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies' filesep ICA_DIR_FNAME]; % JACOB,SAL(02/23/2023)
+save_dir = [studies_dir filesep sprintf('%s',STUDY_DIR_FNAME)];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
@@ -139,14 +134,14 @@ for group_i = 1:length(SUBJ_ITERS)
     %## Assigning paths for .set, headmodel,& channel file
     for subj_i = sub_idx
         %- ICA fPaths
-        fPaths{cnt} = [OUTSIDE_DATA_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'clean'];
+        fPaths{cnt} = [ica_data_dir filesep SUBJ_PICS{group_i}{subj_i} filesep 'clean'];
 %         fPaths{cnt} = [load_dir filesep SUBJ_PICS{group_i}{subj_i} filesep 'ICA'];
         tmp = dir([fPaths{cnt} filesep '*.set']);
         try
             fNames{cnt} = tmp.name;
             %- Chanlocs fPaths
-    %         chanlocs_fPaths{cnt} = [DATA_DIR filesep DATA_SET filesep SUBJ_PICS{group_i}{subj_i} filesep 'EEG' filesep 'HeadScan' filesep 'CustomElectrodeLocations.mat'];
-            chanlocs_fPaths{cnt} = [DATA_DIR filesep DATA_SET filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'CustomElectrodeLocations.mat'];
+    %         chanlocs_fPaths{cnt} = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep SUBJ_PICS{group_i}{subj_i} filesep 'EEG' filesep 'HeadScan' filesep 'CustomElectrodeLocations.mat'];
+            chanlocs_fPaths{cnt} = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep SUBJ_PICS{group_i}{subj_i} filesep 'MRI' filesep 'CustomElectrodeLocations.mat'];
     %         dipfit_fPaths{cnt} = [OUTSIDE_DATA_DIR filesep SUBJ_PICS{group_i}{subj_i} filesep 'head_model' filesep 'dipfit_struct.mat'];
 %             dipfit_norm_fPaths{cnt} = [fPaths{cnt} filesep 'dipfit_fem_norm.mat'];
             dipfit_norm_fPaths{cnt} = [fPaths{cnt} filesep 'dipfit_fem_norm_ants.mat'];
@@ -186,13 +181,13 @@ groups = groups(inds);
 conditions = conditions(inds);
 subjectNames = subjectNames(inds);
 %% Create STUDY & ALLEEG structs
-if ~exist([save_dir filesep study_fName_1 '.study'],'file') || RECALC_ICA_STUDY
+if ~exist([save_dir filesep STUDY_FNAME_ALLCOMP '.study'],'file') || RECALC_ICA_STUDY
     try
         fprintf('Creating ALLEEG...\n');
         [MAIN_ALLEEG] = mim_create_alleeg(fNames,fPaths,subjectNames,save_dir,...
                             conditions,groups,sessions);
         fprintf('Generating STUDY...\n');
-        [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,study_fName_1,save_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = mim_create_study(MAIN_ALLEEG,STUDY_FNAME_ALLCOMP,save_dir);
         [MAIN_STUDY,MAIN_ALLEEG] = parfunc_save_study(MAIN_STUDY,MAIN_ALLEEG,...
                                         MAIN_STUDY.filename,MAIN_STUDY.filepath,...
                                         'RESAVE_DATASETS','on');
@@ -202,9 +197,9 @@ if ~exist([save_dir filesep study_fName_1 '.study'],'file') || RECALC_ICA_STUDY
     end
 else
     if ~ispc
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '_UNIX.study'],'filepath',save_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_ALLCOMP '_UNIX.study'],'filepath',save_dir);
     else
-        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fName_1 '.study'],'filepath',save_dir);
+        [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME_ALLCOMP '.study'],'filepath',save_dir);
     end
 end
 
@@ -383,8 +378,8 @@ tmp = util_resolve_struct(tmp,{tmp.subject});
 [STUDY, ALLEEG] = std_editset([],tmp,...
                                 'updatedat','off',...
                                 'savedat','off',...
-                                'name',study_fName_2,...
-                                'filename',study_fName_2,...
+                                'name',STUDY_FNAME_EPOCH,...
+                                'filename',STUDY_FNAME_EPOCH,...
                                 'filepath',save_dir);
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
 STUDY.etc.a_epoch_process.epoch_params = DEF_EPOCH_PARAMS;

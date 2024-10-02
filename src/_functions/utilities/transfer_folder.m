@@ -1,4 +1,4 @@
-function [msg] = transfer_folder(from_folder,to_folder,varargin)
+function [msg] = transfer_folder(folder_from,folder_to,file_regexp)
 %TRANSFERFOLDER Summary of this function goes here
 %   Detailed explanation goes here
 %   
@@ -18,43 +18,39 @@ function [msg] = transfer_folder(from_folder,to_folder,varargin)
 %## TIME
 tic
 %## DEFINE DEFAULTS
-REGEXP = '';
 msg = '';
 p = inputParser;
 %## REQUIRED
-addRequired(p,'from_folder',@ischar)
-addRequired(p,'to_folder',@ischar)
-%## OPTIONAL
-addOptional(p,'REGEXP',REGEXP,@ischar);
+addRequired(p,'folder_from',@ischar)
+addRequired(p,'folder_to',@ischar)
+addRequired(p,'file_regexp',@ischar)
 %## PARAMETER
-parse(p, from_folder, to_folder, varargin{:});
-
-%## SET DEFAULTS
-REGEXP = p.Results.REGEXP;
-% FNAME = 'tmpEEG';
-%## SAVE FOLDER HANDLER (HIGHEST ORDER FUNCTION ONLY)
+parse(p, folder_from, folder_to, file_regexp);
 %% ===================================================================== %%
 %## save to new path
 fprintf('Transfering files. This might take awhile...\n');
 % if dirOut doesn't exist, create it.
-if ~exist(to_folder,'dir')
-    fprintf('Making directory: %s\n',to_folder);
-    mkdir(to_folder);
+if ~exist(folder_to,'dir')
+    fprintf('Making directory: %s\n',folder_to);
+    mkdir(folder_to);
 end
 % dont copy if float/set files already exist
-dirFrom = dir([from_folder filesep REGEXP]);
-if ~isempty(dirFrom)
-    tmpF = [dirFrom(1).folder];
-    try
-        copyfile(tmpF,to_folder);
-    catch
-        fprintf('Not copied: %s\n',tmpF);
-        return;
+dir_from = dir([folder_from filesep file_regexp]);
+fprintf('Transfering %0.2g GB of data...\n',sum([dir_from.bytes])/(1e9))
+if ~isempty(dir_from)
+    for fi = 1:length(dir_from)
+        tmpf = [dir_from(fi).folder filesep dir_from(fi).name];
+        try
+            copyfile(tmpf,folder_to);
+        catch e
+            fprintf('Not copied: %s\n%s\n\n',tmpf,getReport(e));
+            return;
+        end
     end
 else
-    error('Folder or regexp ''%s'' does not exist!',[from_folder filesep REGEXP]);
+    error('Folder or regexp ''%s'' does not exist!',[folder_from filesep file_regexp]);
 end
-fprintf('done!\n')
+fprintf('transfer_folder.m done.\n')
 %## TIME
 toc
 end
