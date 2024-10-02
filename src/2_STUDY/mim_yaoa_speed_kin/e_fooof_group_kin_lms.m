@@ -632,6 +632,241 @@ for cl_i = 1:length(clusters)
         close(fig)
    end
 end
+%% PREDICTORS: SPEED Factor, Kinematics. RESPONSE: BRAIN ACTIVITY, STATS TEST
+REGRESS_TXT_SIZE = 8;
+% REGRESS_TXT_XMULTI = 0.9;
+% REGRESS_TXT_YMULTI = 1.0;
+im_resize = 0.7;
+AX_W = 0.35;
+AX_H = 0.25*3;
+SCATTER_BOTTOM = 0.175;
+GROUP_SHORTS = {'YA','HO','FO'};
+GROUP_MARKS = {'o','x','^'};
+GROUP_LINESTYLES = {'-','-.',':'};
+MEASURE_NAME_LABS = {'Mean \theta','Mean \alpha','Mean \beta'};
+PLOT_STRUCT = struct('color_map',[],...
+        'cond_labels',unique(TMP_FOOOF_T.cond_char),'group_labels',unique(TMP_FOOOF_T.group_char),...
+        'cond_offsets',[-0.3,-0.1,0.1,0.3],'y_label',[],...
+        'title',[],'font_size',10,'ylim',[],...
+        'font_name','Arial','x_label','speed','do_combine_groups',true);
+tmp_savedir = [save_dir filesep 'Pspeedf-Pkin-Reeg'];
+mkdir(tmp_savedir);
+for cl_i = 1:length(clusters)
+    %##
+    for var_i = 1:length(varnames)
+        %##
+        atlas_name = atlas_name_store{cl_i};
+        fig = figure('color','white','renderer','Painters');
+        sgtitle(atlas_name,'FontName',PLOT_STRUCT.font_name,'FontSize',14,'FontWeight','bold','Interpreter','none');
+        set(fig,'Units','inches','Position',[0.5,0.5,6.5,3])
+        set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+        hold on;
+        set(gca,AXES_DEFAULT_PROPS{:})
+        vert_shift = 0;
+        for des_i = 2
+            switch des_i
+                case 1
+                    color_dark = COLORS_MAPS_TERRAIN;
+                    color_light = COLORS_MAPS_TERRAIN;
+                    GROUP_CMAP_OFFSET = [0,0.1,0.1];
+                    xtick_label_g = {'flat','low','med','high'};
+                case 2
+                    color_dark = COLOR_MAPS_SPEED;
+                    color_light = COLOR_MAPS_SPEED+0.15;
+                    GROUP_CMAP_OFFSET = [0.15,0,0];
+                    xtick_label_g = {'0.25','0.50','0.75','1.0'};
+            end
+            horiz_shift = 0;
+            stats_store = [];
+            for meas_i = 1:length(measure_name_plot)
+                measure_name = measure_name_plot{meas_i};
+                %##
+                cond_plot_store = [];
+                % inds = psd_feature_stats.study == num2str(des_i) & psd_feature_stats.cluster == num2str(cl_i) & psd_feature_stats.group==groups(group_i);
+                % T_stats_plot = psd_feature_stats(inds,:);
+                inds = TMP_FOOOF_T.design_id == designs(des_i) & TMP_FOOOF_T.cluster_id == clusters(cl_i);
+                T_vals_plot = TMP_FOOOF_T(inds,:);
+                % T_vals_plot.cond_char = double(string(T_vals_plot.cond_char));
+                loc_cond_chars = unique(T_vals_plot.cond_char);
+                y_lim_calc = [min(T_vals_plot.(measure_name))-std(T_vals_plot.(measure_name)),max(T_vals_plot.(measure_name))+std(T_vals_plot.(measure_name))];
+                T_vals_plot = table(double(T_vals_plot.(measure_name)),categorical(string(T_vals_plot.cond_char)),categorical(string(T_vals_plot.group_char)),double(T_vals_plot.(varnames{var_i})),...
+                    'VariableNames',{measure_name,'cond_char','group_char',varnames{var_i}});
+                try
+                    mod = sprintf('%s ~ 1 + cond_char + %s',measure_name,varnames{var_i});
+                    % stats_out = fitlme(T_vals_plot,mod);
+                    stats_out = fitlm(T_vals_plot,mod);
+                    % anova_out = anova(stats_out);
+                    out = anova(T_vals_plot,mod,'SumOfSquaresType',"three",'CategoricalFactors',{'cond_char'},...
+                            'ModelSpecification','interactions');
+                    anova_out = out.stats();
+                    % anova_out = anovan(double(T_vals_plot.(measure_name)),{T_vals_plot.group_char,T_vals_plot.cond_char},...
+                    %         'model','interaction',...
+                    %         'model',2,...
+                    %         'sstype',3,...
+                    %         'varnames',strvcat('group','speed'));
+                    R2 = stats_out.Rsquared.Adjusted;
+                    %## PRINT TABLES
+                    t = sprintf_table(anova_out);
+                    t.saveToFile([tmp_savedir filesep sprintf('cl%s_%s_%s_ANOVA.txt',string(clusters(cl_i)),varnames{var_i},measure_name)]);
+                    t = sprintf_table(stats_out.Coefficients);
+                    t.saveToFile([tmp_savedir filesep sprintf('cl%s_%s_%s_LM.txt',string(clusters(cl_i)),varnames{var_i},measure_name)]);
+                    %-
+                    anova_p_cond = anova_out.pValue(strcmp(anova_out.Properties.RowNames,'cond_char'));
+                    anova_p_var = anova_out.pValue(strcmp(anova_out.Properties.RowNames,varnames{var_i}));
+                    %-
+                    pval_inter = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,'(Intercept)')));
+                    pval_0p5 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_0.5'));
+                    pval_0p75 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_0.75'));
+                    pval_1p0 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_1.0'));
+                    pval_var = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,varnames{var_i}));
+                    %-
+                    slope_inter = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,'(Intercept)')));
+                    slope_0p5 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_0.5'));
+                    slope_0p75 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_0.75'));
+                    slope_1p0 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_1.0'));
+                    slope_var = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,varnames{var_i}));
+                catch e
+                    fprintf('Error. Cluster %s\n\n%s\n',string(clusters(cl_i)),getReport(e))
+                    R2 = 0;
+                    pval = 1;
+                    slope = 0;
+                    inter = 0;
+                end
+                %## SCATTER
+                axes();
+                hold on;
+                for cond_i = 1:length(loc_cond_chars)
+                    inds = T_vals_plot.cond_char==loc_cond_chars(cond_i);
+                    data = T_vals_plot(inds,:);
+                    [vals,inds] = sort(data.(varnames{var_i}));
+                    data = data(inds,:);
+                    ss = scatter(data,varnames{var_i},measure_name,'DisplayName',sprintf('%s',GROUP_SHORTS{group_i}));
+                    ss.CData = color_dark(cond_i,:);
+                    ss.SizeData = 15;
+                    ss.Marker = GROUP_MARKS{group_i};
+                    if meas_i == 1
+                        cond_plot_store = [cond_plot_store, ss];
+                    end
+                end
+                %## LINEAR MODEL FIT
+                hold on;
+                for cond_i = 1:length(loc_cond_chars)
+                    switch cond_i
+                        case 1
+                            c2 = 0;
+                            c3 = 0;
+                            c4 = 0;
+                        case 2
+                            c2 = 1;
+                            c3 = 0;
+                            c4 = 0;
+                        case 3
+                            c2 = 0;
+                            c3 = 1;
+                            c4 = 0;
+                        case 4
+                            c2 = 0;
+                            c3 = 0;
+                            c4 = 1;
+                    end
+                    inds = T_vals_plot.cond_char==loc_cond_chars(cond_i);
+                    data = T_vals_plot(inds,:);
+                    [vals,inds] = sort(data.(varnames{var_i}));
+                    data = data(inds,:);
+                    if anova_p_var < 0.1 || anova_p_cond < 0.1
+                        x = unique(data.(varnames{var_i}));
+                        y = [];
+                        for i = 1:length(x)
+                            y(i) = x(i)*slope_var + slope_0p5*c2 + slope_0p75*c3 + slope_1p0*c4 + slope_inter ;
+                        end
+                        pp = plot(x,y,...
+                            'DisplayName',sprintf('p_{%s}=(%0.2f,%0.2f)',MEASURE_NAME_LABS{meas_i},anova_p_var,anova_p_cond),...
+                            'LineWidth',2);
+                        pp.LineStyle = GROUP_LINESTYLES{group_i};
+                        pp.Color = color_light(cond_i,:);
+                        if cond_i == 1
+                            % eq = sprintf('y=(%0.1g)*x+(%0.1g)*%0.2f+(%0.1g)*x+(%0.1g)',slope_var,slope_cnd,loc_cond_chars(cond_i),slope_grp,inter_mn);
+                            % eq = sprintf('y=(%0.1g)*x+(%0.1g)*c_i\n%6s+(%0.1g)',slope_var,slope_cnd,'',inter_mn);
+                            eq = '';
+                            x_txt = 0.15;
+                            y_txt = 0.7;
+                            if anova_p_var > 0.01 & anova_p_var < 0.05
+                                text(x_txt,y_txt,sprintf('* %s\nR^2=%0.2g',eq,R2),...
+                                    'FontSize',REGRESS_TXT_SIZE,...
+                                    'FontName',PLOT_STRUCT.font_name,...
+                                    'FontWeight','bold','Units','normalized');
+                            elseif anova_p_var <= 0.01 & anova_p_var > 0.001 
+                                text(x_txt,y_txt,sprintf('** %s\nR^2=%0.2g',eq,R2),...
+                                    'FontSize',REGRESS_TXT_SIZE,...
+                                    'FontName',PLOT_STRUCT.font_name,...
+                                    'FontWeight','bold','Units','normalized');
+                            else
+                                text(x_txt,y_txt,sprintf('*** %s\nR^2=%0.2g',eq,R2),...
+                                    'FontSize',REGRESS_TXT_SIZE,...
+                                    'FontName',PLOT_STRUCT.font_name,...
+                                    'FontWeight','bold','Units','normalized');
+                            end
+                            stats_store = [stats_store, pp];
+                        end
+                    end
+                end
+                ylabel('10*log_{10}(Flattened PSD)');
+                xlabel(varnames_labs{var_i});
+                title(MEASURE_NAME_LABS{meas_i});
+                set(gca,'FontWeight','bold');
+                ylim(y_lim_calc)
+                %## legend
+                if meas_i == 1
+                    %- lg2
+                    legend(gca,cond_plot_store);
+                    [lg2,icons,plots,txt]  = legend('boxoff');
+                    tmp = get(lg2,'String');
+                    cnt = 1;
+                    for i = 1:length(cond_plot_store)
+                        tmp{i} = sprintf('%0.2g',double(string(loc_cond_chars(cnt))));
+                        cnt = cnt + 1;
+                    end
+                    set(lg2,'String',tmp,'FontName','Arial','FontSize',9)
+                    set(lg2,'Orientation','horizontal')
+                    set(lg2,'Position',[0.1,0.84,lg2.Position(3),lg2.Position(4)]);
+                    lg2.ItemTokenSize(1) = 18;
+                elseif meas_i == 2
+                    % %- lg1
+                    % legend(gca,group_plot_store);
+                    % [lg1,icons,plots,txt] = legend('boxoff');
+                    % set(lg1,'Orientation','horizontal')
+                    % set(lg1,'FontName','Arial','FontSize',9)
+                    % % set(lg1,'Position',[0.1,SCATTER_BOTTOM+AX_W*im_resize-vert_shift,lg1.Position(3),lg1.Position(4)]);
+                    % set(lg1,'Position',[0.1,SCATTER_BOTTOM+AX_W*im_resize-vert_shift+0.025,lg1.Position(3),lg1.Position(4)]);
+                    % lg1.ItemTokenSize(1) = 18;
+                elseif meas_i == 3
+                    %- lg3
+                    if ~isempty(stats_store)
+                        legend(gca,stats_store);
+                        [lg3,~,~,~] = legend('boxoff');
+                        set(lg3,'Orientation','horizontal')
+                        set(lg3,'FontName','Arial','FontSize',9)
+                        % set(lg1,'Position',[0.1,SCATTER_BOTTOM+AX_W*im_resize-vert_shift,lg1.Position(3),lg1.Position(4)]);
+                        set(lg3,'Position',[0.1,0.775,lg3.Position(3),lg3.Position(4)]);
+                        lg3.ItemTokenSize(1) = 18;
+                    end
+                end
+                set(gca,'Position',[horiz_shift+0.1,SCATTER_BOTTOM-vert_shift,AX_W*im_resize,AX_H*im_resize]);  %[left bottom width height]
+                horiz_shift = horiz_shift + AX_W*im_resize + 0.05;
+            end
+            %## TITLE
+            % annotation('textbox',[0.5-0.1,SCATTER_BOTTOM-vert_shift-0.05+AX_H*im_resize,0.2,0.2],...
+            %     'String',string(design_chars(des_i)),'HorizontalAlignment','center',...
+            %     'VerticalAlignment','middle','LineStyle','none','FontName',PLOT_STRUCT.font_name,...
+            %     'FontSize',14,'FontWeight','Bold','Units','normalized');
+            % vert_shift = vert_shift + AX_H*im_resize+0.1;
+        end
+        hold off;
+        %##
+        exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_eeg-kin-speedf.tiff',string(clusters(cl_i)),varnames{var_i})],'Resolution',300)
+        close(fig)
+    end
+end
 %% PREDICTORS: SPEED CONDITION, RESPONSE: KINEMATICS, STATS TEST
 STATS_OUT = [];
 im_resize= 1.2;
@@ -769,29 +1004,6 @@ for var_i = 1:length(varnames)
         %- iterate
    end
 end
-%% ===================================================================== %%
-%{
-pval_out = zeros(length(STATS_OUT),1);
-lens = zeros(length(STATS_OUT),1);
-for i = 1:length(STATS_OUT)
-    pval_out(i) = STATS_OUT(i).anova{1};
-    lens(i) = length(varnames{i});
-end
-[val,ind] = sort(pval_out);
-varnames = varnames(ind);
-format = sprintf('\n\n   %%s%%%is\t\t%%s\n',max(lens)-length('Name'));
-fid = fopen([kin_savedir filesep 'kinematics_pvals.txt']);
-fprintf(fid,format,'Name','','pValue');
-for i = 1:length(varnames)
-    format = sprintf('%i) %%s%%%is\t\t%%0.2g\n',i,max(lens)-length(varnames{i}));
-    fprintf(fid,format,varnames{i},'',val(i));
-end
-fclose(fid);
-varnames = varnames(1:3);
-varnames = unique([varnames, vv_main_anl]);
-inds = cellfun(@(x) find(strcmp(x,varnames_hold)),varnames);
-varnames_labs = varnames_labs(inds);
-%}
 %% PREDICTORS: SPEED factor, GROUP, & INTERACTION; RESPONSE: KINEMATICS, STATS TEST
 STATS_OUT = [];
 im_resize= 1.2;
@@ -1330,241 +1542,7 @@ for cl_i = 1:length(clusters)
         % close(fig)
     end
 end
-%% PREDICTORS: SPEED Factor, Kinematics. RESPONSE: BRAIN ACTIVITY, STATS TEST
-REGRESS_TXT_SIZE = 8;
-% REGRESS_TXT_XMULTI = 0.9;
-% REGRESS_TXT_YMULTI = 1.0;
-im_resize = 0.7;
-AX_W = 0.35;
-AX_H = 0.25*3;
-SCATTER_BOTTOM = 0.175;
-GROUP_SHORTS = {'YA','HO','FO'};
-GROUP_MARKS = {'o','x','^'};
-GROUP_LINESTYLES = {'-','-.',':'};
-MEASURE_NAME_LABS = {'Mean \theta','Mean \alpha','Mean \beta'};
-PLOT_STRUCT = struct('color_map',[],...
-        'cond_labels',unique(TMP_FOOOF_T.cond_char),'group_labels',unique(TMP_FOOOF_T.group_char),...
-        'cond_offsets',[-0.3,-0.1,0.1,0.3],'y_label',[],...
-        'title',[],'font_size',10,'ylim',[],...
-        'font_name','Arial','x_label','speed','do_combine_groups',true);
-tmp_savedir = [save_dir filesep 'Pspeedf-Pkin-Reeg'];
-mkdir(tmp_savedir);
-for cl_i = 1:length(clusters)
-    %##
-    for var_i = 1:length(varnames)
-        %%
-        atlas_name = atlas_name_store{cl_i};
-        fig = figure('color','white','renderer','Painters');
-        sgtitle(atlas_name,'FontName',PLOT_STRUCT.font_name,'FontSize',14,'FontWeight','bold','Interpreter','none');
-        set(fig,'Units','inches','Position',[0.5,0.5,6.5,3])
-        set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
-        hold on;
-        set(gca,AXES_DEFAULT_PROPS{:})
-        vert_shift = 0;
-        for des_i = 2
-            switch des_i
-                case 1
-                    color_dark = COLORS_MAPS_TERRAIN;
-                    color_light = COLORS_MAPS_TERRAIN;
-                    GROUP_CMAP_OFFSET = [0,0.1,0.1];
-                    xtick_label_g = {'flat','low','med','high'};
-                case 2
-                    color_dark = COLOR_MAPS_SPEED;
-                    color_light = COLOR_MAPS_SPEED+0.15;
-                    GROUP_CMAP_OFFSET = [0.15,0,0];
-                    xtick_label_g = {'0.25','0.50','0.75','1.0'};
-            end
-            horiz_shift = 0;
-            stats_store = [];
-            for meas_i = 1:length(measure_name_plot)
-                measure_name = measure_name_plot{meas_i};
-                %##
-                cond_plot_store = [];
-                % inds = psd_feature_stats.study == num2str(des_i) & psd_feature_stats.cluster == num2str(cl_i) & psd_feature_stats.group==groups(group_i);
-                % T_stats_plot = psd_feature_stats(inds,:);
-                inds = TMP_FOOOF_T.design_id == designs(des_i) & TMP_FOOOF_T.cluster_id == clusters(cl_i);
-                T_vals_plot = TMP_FOOOF_T(inds,:);
-                % T_vals_plot.cond_char = double(string(T_vals_plot.cond_char));
-                loc_cond_chars = unique(T_vals_plot.cond_char);
-                y_lim_calc = [min(T_vals_plot.(measure_name))-std(T_vals_plot.(measure_name)),max(T_vals_plot.(measure_name))+std(T_vals_plot.(measure_name))];
-                T_vals_plot = table(double(T_vals_plot.(measure_name)),categorical(string(T_vals_plot.cond_char)),categorical(string(T_vals_plot.group_char)),double(T_vals_plot.(varnames{var_i})),...
-                    'VariableNames',{measure_name,'cond_char','group_char',varnames{var_i}});
-                try
-                    mod = sprintf('%s ~ 1 + cond_char + %s',measure_name,varnames{var_i});
-                    % stats_out = fitlme(T_vals_plot,mod);
-                    stats_out = fitlm(T_vals_plot,mod);
-                    % anova_out = anova(stats_out);
-                    out = anova(T_vals_plot,mod,'SumOfSquaresType',"three",'CategoricalFactors',{'cond_char'},...
-                            'ModelSpecification','interactions');
-                    anova_out = out.stats();
-                    % anova_out = anovan(double(T_vals_plot.(measure_name)),{T_vals_plot.group_char,T_vals_plot.cond_char},...
-                    %         'model','interaction',...
-                    %         'model',2,...
-                    %         'sstype',3,...
-                    %         'varnames',strvcat('group','speed'));
-                    R2 = stats_out.Rsquared.Adjusted;
-                    %## PRINT TABLES
-                    t = sprintf_table(anova_out);
-                    t.saveToFile([tmp_savedir filesep sprintf('cl%s_%s_%s_ANOVA.txt',string(clusters(cl_i)),varnames{var_i},measure_name)]);
-                    t = sprintf_table(stats_out.Coefficients);
-                    t.saveToFile([tmp_savedir filesep sprintf('cl%s_%s_%s_LM.txt',string(clusters(cl_i)),varnames{var_i},measure_name)]);
-                    %-
-                    anova_p_cond = anova_out.pValue(strcmp(anova_out.Properties.RowNames,'cond_char'));
-                    anova_p_var = anova_out.pValue(strcmp(anova_out.Properties.RowNames,varnames{var_i}));
-                    %-
-                    pval_inter = double(stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,'(Intercept)')));
-                    pval_0p5 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_0.5'));
-                    pval_0p75 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_0.75'));
-                    pval_1p0 = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_1.0'));
-                    pval_var = stats_out.Coefficients.pValue(strcmp(stats_out.Coefficients.Properties.RowNames,varnames{var_i}));
-                    %-
-                    slope_inter = double(stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,'(Intercept)')));
-                    slope_0p5 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_0.5'));
-                    slope_0p75 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_0.75'));
-                    slope_1p0 = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,'cond_char_1.0'));
-                    slope_var = stats_out.Coefficients.Estimate(strcmp(stats_out.Coefficients.Properties.RowNames,varnames{var_i}));
-                catch e
-                    fprintf('Error. Cluster %s\n\n%s\n',string(clusters(cl_i)),getReport(e))
-                    R2 = 0;
-                    pval = 1;
-                    slope = 0;
-                    inter = 0;
-                end
-                %## SCATTER
-                axes();
-                hold on;
-                for cond_i = 1:length(loc_cond_chars)
-                    inds = T_vals_plot.cond_char==loc_cond_chars(cond_i);
-                    data = T_vals_plot(inds,:);
-                    [vals,inds] = sort(data.(varnames{var_i}));
-                    data = data(inds,:);
-                    ss = scatter(data,varnames{var_i},measure_name,'DisplayName',sprintf('%s',GROUP_SHORTS{group_i}));
-                    ss.CData = color_dark(cond_i,:);
-                    ss.SizeData = 15;
-                    ss.Marker = GROUP_MARKS{group_i};
-                    if meas_i == 1
-                        cond_plot_store = [cond_plot_store, ss];
-                    end
-                end
-                %## LINEAR MODEL FIT
-                hold on;
-                for cond_i = 1:length(loc_cond_chars)
-                    switch cond_i
-                        case 1
-                            c2 = 0;
-                            c3 = 0;
-                            c4 = 0;
-                        case 2
-                            c2 = 1;
-                            c3 = 0;
-                            c4 = 0;
-                        case 3
-                            c2 = 0;
-                            c3 = 1;
-                            c4 = 0;
-                        case 4
-                            c2 = 0;
-                            c3 = 0;
-                            c4 = 1;
-                    end
-                    inds = T_vals_plot.cond_char==loc_cond_chars(cond_i);
-                    data = T_vals_plot(inds,:);
-                    [vals,inds] = sort(data.(varnames{var_i}));
-                    data = data(inds,:);
-                    if anova_p_var < 0.1 || anova_p_cond < 0.1
-                        x = unique(data.(varnames{var_i}));
-                        y = [];
-                        for i = 1:length(x)
-                            y(i) = x(i)*slope_var + slope_0p5*c2 + slope_0p75*c3 + slope_1p0*c4 + slope_inter ;
-                        end
-                        pp = plot(x,y,...
-                            'DisplayName',sprintf('p_{%s}=(%0.2f,%0.2f)',MEASURE_NAME_LABS{meas_i},anova_p_var,anova_p_cond),...
-                            'LineWidth',2);
-                        pp.LineStyle = GROUP_LINESTYLES{group_i};
-                        pp.Color = color_light(cond_i,:);
-                        if cond_i == 1
-                            % eq = sprintf('y=(%0.1g)*x+(%0.1g)*%0.2f+(%0.1g)*x+(%0.1g)',slope_var,slope_cnd,loc_cond_chars(cond_i),slope_grp,inter_mn);
-                            % eq = sprintf('y=(%0.1g)*x+(%0.1g)*c_i\n%6s+(%0.1g)',slope_var,slope_cnd,'',inter_mn);
-                            eq = '';
-                            x_txt = 0.15;
-                            y_txt = 0.7;
-                            if anova_p_var > 0.01 & anova_p_var < 0.05
-                                text(x_txt,y_txt,sprintf('* %s\nR^2=%0.2g',eq,R2),...
-                                    'FontSize',REGRESS_TXT_SIZE,...
-                                    'FontName',PLOT_STRUCT.font_name,...
-                                    'FontWeight','bold','Units','normalized');
-                            elseif anova_p_var <= 0.01 & anova_p_var > 0.001 
-                                text(x_txt,y_txt,sprintf('** %s\nR^2=%0.2g',eq,R2),...
-                                    'FontSize',REGRESS_TXT_SIZE,...
-                                    'FontName',PLOT_STRUCT.font_name,...
-                                    'FontWeight','bold','Units','normalized');
-                            else
-                                text(x_txt,y_txt,sprintf('*** %s\nR^2=%0.2g',eq,R2),...
-                                    'FontSize',REGRESS_TXT_SIZE,...
-                                    'FontName',PLOT_STRUCT.font_name,...
-                                    'FontWeight','bold','Units','normalized');
-                            end
-                            stats_store = [stats_store, pp];
-                        end
-                    end
-                end
-                ylabel('10*log_{10}(Flattened PSD)');
-                xlabel(varnames_labs{var_i});
-                title(MEASURE_NAME_LABS{meas_i});
-                set(gca,'FontWeight','bold');
-                ylim(y_lim_calc)
-                %## legend
-                if meas_i == 1
-                    %- lg2
-                    legend(gca,cond_plot_store);
-                    [lg2,icons,plots,txt]  = legend('boxoff');
-                    tmp = get(lg2,'String');
-                    cnt = 1;
-                    for i = 1:length(cond_plot_store)
-                        tmp{i} = sprintf('%0.2g',double(string(loc_cond_chars(cnt))));
-                        cnt = cnt + 1;
-                    end
-                    set(lg2,'String',tmp,'FontName','Arial','FontSize',9)
-                    set(lg2,'Orientation','horizontal')
-                    set(lg2,'Position',[0.1,0.84,lg2.Position(3),lg2.Position(4)]);
-                    lg2.ItemTokenSize(1) = 18;
-                elseif meas_i == 2
-                    % %- lg1
-                    % legend(gca,group_plot_store);
-                    % [lg1,icons,plots,txt] = legend('boxoff');
-                    % set(lg1,'Orientation','horizontal')
-                    % set(lg1,'FontName','Arial','FontSize',9)
-                    % % set(lg1,'Position',[0.1,SCATTER_BOTTOM+AX_W*im_resize-vert_shift,lg1.Position(3),lg1.Position(4)]);
-                    % set(lg1,'Position',[0.1,SCATTER_BOTTOM+AX_W*im_resize-vert_shift+0.025,lg1.Position(3),lg1.Position(4)]);
-                    % lg1.ItemTokenSize(1) = 18;
-                elseif meas_i == 3
-                    %- lg3
-                    if ~isempty(stats_store)
-                        legend(gca,stats_store);
-                        [lg3,~,~,~] = legend('boxoff');
-                        set(lg3,'Orientation','horizontal')
-                        set(lg3,'FontName','Arial','FontSize',9)
-                        % set(lg1,'Position',[0.1,SCATTER_BOTTOM+AX_W*im_resize-vert_shift,lg1.Position(3),lg1.Position(4)]);
-                        set(lg3,'Position',[0.1,0.775,lg3.Position(3),lg3.Position(4)]);
-                        lg3.ItemTokenSize(1) = 18;
-                    end
-                end
-                set(gca,'Position',[horiz_shift+0.1,SCATTER_BOTTOM-vert_shift,AX_W*im_resize,AX_H*im_resize]);  %[left bottom width height]
-                horiz_shift = horiz_shift + AX_W*im_resize + 0.05;
-            end
-            %## TITLE
-            % annotation('textbox',[0.5-0.1,SCATTER_BOTTOM-vert_shift-0.05+AX_H*im_resize,0.2,0.2],...
-            %     'String',string(design_chars(des_i)),'HorizontalAlignment','center',...
-            %     'VerticalAlignment','middle','LineStyle','none','FontName',PLOT_STRUCT.font_name,...
-            %     'FontSize',14,'FontWeight','Bold','Units','normalized');
-            % vert_shift = vert_shift + AX_H*im_resize+0.1;
-        end
-        hold off;
-        %##
-        exportgraphics(fig,[tmp_savedir filesep sprintf('cl%s_%s_eeg-kin-speedf.tiff',string(clusters(cl_i)),varnames{var_i})],'Resolution',300)
-        close(fig)
-    end
-end
+
 
 %% PREDICTORS: SPEED Factor, GROUP, INTERACTION. RESPONSE: BRAIN ACTIVITY, STATS TEST
 im_resize = 0.8;

@@ -25,9 +25,17 @@ global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
-    STUDY_DIR = getenv('STUDY_DIR');
-    SCRIPT_DIR = getenv('SCRIPT_DIR');
-    SRC_DIR = getenv('SRC_DIR');
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = SCRIPT_DIR;
+        SRC_DIR = fileparts(fileparts(STUDY_DIR));
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',e)
+        STUDY_DIR = getenv('STUDY_DIR');
+        SCRIPT_DIR = getenv('SCRIPT_DIR');
+        SRC_DIR = getenv('SRC_DIR');
+    end
 else
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;

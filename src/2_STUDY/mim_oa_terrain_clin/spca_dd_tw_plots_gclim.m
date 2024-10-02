@@ -190,7 +190,7 @@ hardcode_freqs = tmpf.freqs;
 %## hard define
 BOOT_NITERS = 2000;
 BOOT_ALPHA = 0.05;
-BOOT_CLUST_THRESH = 300;
+BOOT_CLUST_THRESH = 150;
 %##
 % allfreqs = 1:size(spca_table.tf_erspcorr_c{1},2); %4:100; %1:size(allersp_com{1},2);
 % alltimes = 1:size(spca_table.tf_erspcorr_c{1},1);
@@ -523,7 +523,7 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         [fig] = plot_txf_mask_contourf(clust_ersp,alltimes,allfreqs,clust_maskedersp,clust_maskedersp,{},...
             'PLOT_STRUCT',PLOT_STRUCT_PAR);
         drawnow;
-        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_group_bootstraps_ersp_sb.tiff',cl_i,des_i],'Resolution',1000);
+        exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_group_bootstraps_ersp_sb.tiff',cl_i,des_i)],'Resolution',1000);
         % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_bootstraps_ersp_sb.jpg',cl_i,des_i)],'Resolution',300);
         close(fig);
         PLOT_STRUCT_PAR = PLOT_STRUCT;

@@ -10,7 +10,9 @@
 restoredefaultpath;
 clc;
 close all;
-clearvars
+% clearvars;
+clear all;
+clear classes
 %}
 %% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
@@ -60,7 +62,7 @@ DEF_EPOCH_PARAMS = struct('epoch_method','timewarp',...
     'appx_cond_len',3*60,...
     'slide_cond_chars',{{}},...
     'gait_trial_chars',{{'0p25','0p5','0p75','1p0','flat','low','med','high'}},...
-    'rest_trial_char',{{}},...
+    'rest_trial_char',{{'rest'}},...
     'do_recalc_epoch',true);
 PREPROC_DIR_NAME = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
 study_dir_name_from = '03232024_spca_analysis_OA';
@@ -83,17 +85,6 @@ end
 % [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('test');
 subjects_to = [SUBJ_PICS{:}];
 %% ===================================================================== %%
-%## LOAD STUDIES && ALLEEGS
-%- Create STUDY & ALLEEG structs
-% if ~exist([load_dir filesep study_fname_from '.study'],'file')
-%     error('ERROR. study file does not exist');
-% else
-%     if ~ispc
-%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fname_rest_from '_UNIX.study'],'filepath',load_dir);
-%     else
-%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fname_rest_from '.study'],'filepath',load_dir);
-%     end
-% end
 %## LOAD STUDY
 % if ~ispc
 %     tmp = load('-mat',[load_dir filesep sprintf('%s_UNIX.study',study_fname_rest_from)]);
@@ -103,30 +94,15 @@ subjects_to = [SUBJ_PICS{:}];
 %     MAIN_STUDY = tmp.STUDY;
 % end
 %% INITIALIZE PARFOR LOOP VARS
-% fPaths = {MAIN_STUDY.datasetinfo.filepath};
-% fNames = {MAIN_STUDY.datasetinfo.filename};
-% subjects_from = {MAIN_STUDY.datasetinfo.subject};
-% alleeg_fpaths = cell(length(MAIN_STUDY.datasetinfo),1);
-% inds = zeros(length(subjects_from),1);
-% for i = 1:length(subjects_to)
-%     if any(strcmp(subjects_to{i},subjects_from))
-%         inds(strcmp(subjects_to{i},subjects_from)) = 1;
-%     end
-% end
-% inds = find(inds);
-% inds = cellfun(@(x) find(strcmp(x,subjects_from)),subjects_to);
 ALLEEG = cell(length(subjects_to),1);
-% for i = 1:length(ALLEEG)
-% path_ext = ['GAIT_EPOCHED' filesep DEF_EPOCH_PARAMS.gait_trial_chars{:}];
-parfor (i = 1:length(ALLEEG),SLURM_POOL_SIZE)
-% for i = 1:length(ALLEEG)
-    EEG = pop_loadset('filepath',[load_dir filesep sprintf('%s',subjects_to{i}) filesep 'GAIT_EPOCHED' filesep [DEF_EPOCH_PARAMS.gait_trial_chars{:}]],...
-        'filename',sprintf('%s_%s_EPOCH_TMPEEG.set',subjects_to{i},[DEF_EPOCH_PARAMS.gait_trial_chars{:}]));
+% parfor (i = 1:length(ALLEEG),SLURM_POOL_SIZE)
+for i = 1:length(ALLEEG)
+    %- define tmps
+    tmp_epoch_params = DEF_EPOCH_PARAMS;
+    %- grab subjects
+    EEG = pop_loadset('filepath',[load_dir filesep sprintf('%s',subjects_to{i}) filesep 'GAIT_EPOCHED' filesep [tmp_epoch_params.rest_trial_char{:}]],...
+        'filename',sprintf('%s_%s_EPOCH_TMPEEG.set',subjects_to{i},[tmp_epoch_params.rest_trial_char{:}]));
     fprintf('Adding subject: %s\n',EEG.subject);
-    % tmp = strsplit(EEG.filepath,filesep);
-    % ind = find(strcmp(tmp,study_dir_name_from));
-    % tmp = strjoin(tmp(ind+1:end),filesep);
-    %-
     EEG = eeg_checkset(EEG,'loaddata');
     if isempty(EEG.icaact)
         fprintf('%s) Recalculating ICA activations\n',EEG.subject);
@@ -134,15 +110,9 @@ parfor (i = 1:length(ALLEEG),SLURM_POOL_SIZE)
         EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     end
     ALLEEG{i} = EEG;
-    % EEG.filepath = [save_dir filesep tmp];
-    % mkdir(EEG.filepath);
-    % pop_saveset(EEG,'filepath',EEG.filepath,...
-    %     'filename',EEG.filename,...
-    %     'savemode','twofiles');
-    
 end
-ALLEEG = cat(1,ALLEEG{:});
 %%
+ALLEEG = util_resolve_struct(ALLEEG,cellfun(@(x) x.subject,ALLEEG,'UniformOutput',false));
 %##
 [STUDY, ALLEEG] = std_editset([],ALLEEG,...
                                 'updatedat','off',...
@@ -151,23 +121,12 @@ ALLEEG = cat(1,ALLEEG{:});
                                 'filename',study_fname_rest_to,...
                                 'filepath',save_dir);
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
-% STUDY.etc.a_epoch_process = MAIN_STUDY.etc.a_epoch_process;
-[STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
+% STUDY.etc = MAIN_STUDY.etc;
+[~,~] = parfunc_save_study(STUDY,ALLEEG,...
                                         STUDY.filename,STUDY.filepath,...
                                         'RESAVE_DATASETS','on');
                                         
 %% ===================================================================== %%
-%## LOAD STUDIES && ALLEEGS
-%- Create STUDY & ALLEEG structs
-% if ~exist([load_dir filesep study_fname_from '.study'],'file')
-%     error('ERROR. study file does not exist');
-% else
-%     if ~ispc
-%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fname_rest_from '_UNIX.study'],'filepath',load_dir);
-%     else
-%         [MAIN_STUDY,MAIN_ALLEEG] = pop_loadstudy('filename',[study_fname_rest_from '.study'],'filepath',load_dir);
-%     end
-% end
 %## LOAD STUDY
 % if ~ispc
 %     tmp = load('-mat',[load_dir filesep sprintf('%s_UNIX.study',study_fname_gait_from)]);
@@ -177,28 +136,14 @@ ALLEEG = cat(1,ALLEEG{:});
 %     MAIN_STUDY = tmp.STUDY;
 % end
 %% INITIALIZE PARFOR LOOP VARS
-% fPaths = {MAIN_STUDY.datasetinfo.filepath};
-% fNames = {MAIN_STUDY.datasetinfo.filename};
-% subjects_from = {MAIN_STUDY.datasetinfo.subject};
-% alleeg_fpaths = cell(length(MAIN_STUDY.datasetinfo),1);
-% inds = zeros(length(subjects_from),1);
-% for i = 1:length(subjects_to)
-%     if any(strcmp(subjects_to{i},subjects_from))
-%         inds(strcmp(subjects_to{i},subjects_from)) = 1;
-%     end
-% end
-% inds = find(inds);
-% inds = cellfun(@(x) find(strcmp(x,subjects_from)),subjects_to);
 ALLEEG = cell(length(subjects_to),1);
 % for i = 1:length(ALLEEG)
-% path_ext = ['GAIT_EPOCHED' filesep DEF_EPOCH_PARAMS.gait_trial_chars{:}];
 parfor (i = 1:length(ALLEEG),SLURM_POOL_SIZE)
-    EEG = pop_loadset('filepath',[load_dir filesep sprintf('%s',subjects_to{i}) filesep 'GAIT_EPOCHED' filesep [DEF_EPOCH_PARAMS.gait_trial_chars{:}]],...
-        'filename',sprintf('%s_%s_EPOCH_TMPEEG.set',subjects_to{i},[DEF_EPOCH_PARAMS.gait_trial_chars{:}]));
+    %- define tmps
+    tmp_epoch_params = DEF_EPOCH_PARAMS;
+    EEG = pop_loadset('filepath',[load_dir filesep sprintf('%s',subjects_to{i}) filesep 'GAIT_EPOCHED' filesep [tmp_epoch_params.gait_trial_chars{:}]],...
+        'filename',sprintf('%s_%s_EPOCH_TMPEEG.set',subjects_to{i},[tmp_epoch_params.gait_trial_chars{:}]));
     fprintf('Adding subject: %s\n',EEG.subject);
-    % tmp = strsplit(EEG.filepath,filesep);
-    % ind = find(strcmp(tmp,study_dir_name_from));
-    % tmp = strjoin(tmp(ind+1:end),filesep);
     %-
     EEG = eeg_checkset(EEG,'loaddata');
     if isempty(EEG.icaact)
@@ -206,16 +151,10 @@ parfor (i = 1:length(ALLEEG),SLURM_POOL_SIZE)
         EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:);
         EEG.icaact = reshape( EEG.icaact, size(EEG.icaact,1), EEG.pnts, EEG.trials);
     end
-    ALLEEG{i} = EEG;
-    % EEG.filepath = [save_dir filesep tmp];
-    % mkdir(EEG.filepath);
-    % pop_saveset(EEG,'filepath',EEG.filepath,...
-    %     'filename',EEG.filename,...
-    %     'savemode','twofiles');
-    
+    ALLEEG{i} = EEG;    
 end
-ALLEEG = cat(1,ALLEEG{:});
 %%
+ALLEEG = util_resolve_struct(ALLEEG,cellfun(@(x) x.subject,ALLEEG,'UniformOutput',false));
 %##
 [STUDY, ALLEEG] = std_editset([],ALLEEG,...
                                 'updatedat','off',...
@@ -224,7 +163,7 @@ ALLEEG = cat(1,ALLEEG{:});
                                 'filename',study_fname_gait_to,...
                                 'filepath',save_dir);
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
-% STUDY.etc.a_epoch_process = MAIN_STUDY.etc.a_epoch_process;
+% STUDY.etc = MAIN_STUDY.etc;
 [STUDY,ALLEEG] = parfunc_save_study(STUDY,ALLEEG,...
                                         STUDY.filename,STUDY.filepath,...
                                         'RESAVE_DATASETS','on');

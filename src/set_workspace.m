@@ -43,7 +43,7 @@ else
     submodules_dir = [strjoin(tmp(1:src_ind-1),filesep) filesep 'submodules'];
 end
 %## FUNCTIONS FOLDER
-FUNC_FPATH = [src_dir filesep '_functions' filesep 'v2_0'];
+FUNC_FPATH = [src_dir filesep '_functions'];
 %##
 path(path,src_dir)
 path(path,FUNC_FPATH);
@@ -87,7 +87,7 @@ elseif ADD_DIPFIT_COMPILE_SUBMODS
 else
     %- Conn SUBMODS
     SUBMODULES = {'fieldtrip','eeglab','SIFT','postAmicaUtility',...
-        'Granger_Geweke_Causality',...
+        'Granger_Geweke_Causality','AAL3'...
         'ICLabel','Viewprops1.5.4','PowPowCAT3.0'};
     SUBMODULES_GENPATH = {};
     SUBMODULES_ITERS = (1:length(SUBMODULES));
@@ -109,6 +109,10 @@ for ss = SUBMODULES_ITERS
     else
         fprintf('Adding submodule: %s...\n',[submodules_dir filesep SUBMODULES{ss}]);
         path(path,[submodules_dir filesep SUBMODULES{ss}]);
+    end
+    %- spm12 exception
+    if strcmp(SUBMODULES{ss},'spm12')
+        path(path,[submodules_dir filesep SUBMODULES{ss} filesep SUBMODULES{ss}]);
     end
     PATHS.PATHS{ss} = [submodules_dir filesep SUBMODULES{ss}];
 end
@@ -239,7 +243,8 @@ function [p] = unix_genpath(d)
              ~strncmp( dirname,packagesep,1) && ...
              ~strcmp( dirname,'private')    && ...
              ~strcmp( dirname,'resources') && ...
-             ~strcmp( dirname,'__archive')
+             ~strcmp( dirname,'__archive') && ...
+             ~strcmp( dirname,'_compiles')
           p = [p genpath([d filesep dirname])]; % recursive calling of this function.
        end
     end

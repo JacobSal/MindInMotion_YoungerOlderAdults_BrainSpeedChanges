@@ -639,6 +639,7 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
         TMP_STUDY = pop_statparams(TMP_STUDY,args{:});
         for data_i = 1:length(data_to_proc)
             allersp_in = data_to_proc{data_i};
+            allersp_out = cell(size(allersp_in));
             for group_i = 1:size(allersp_in,2)
                 chk_1 = any(strcmp(TERRAIN_REF_CHAR,trial_order),2);
                 chk_2 = any(strcmp(SPEED_REF_CHAR,trial_order),2);
@@ -717,18 +718,20 @@ parfor (ii = 1:length(CLUSTER_PICKS),SLURM_POOL_SIZE)
                     cc = inds_to_comp(j);
                     plot_alltitles{j} = sprintf('%s - %s',alltitles{cc},refErspCond);
                 end
+                allersp_out{:,group_i} = ersp_raw
     %             PLOT_STRUCT_PAR.figure_title = sprintf('%s based',data_chars{data_i});
-                PLOT_STRUCT_PAR.alltitles = plot_alltitles;
-                PLOT_STRUCT_PAR.clim = data_clim{data_i};
-                PLOT_STRUCT_PAR.group_titles = {groups{groups_ind(group_i)},'Group Stats'};
-                [fig] = plot_txf_mask_contourf(ersp_raw,alltimes,allfreqs,ersp_masked,ersp_pcond,{},...
-                    'PLOT_STRUCT',PLOT_STRUCT_PAR);
-                pause(2);
-                % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_group%s_spcadiff_%s.tiff',cl_i,des_i,groups{group_i},data_chars{data_i})],'Resolution',1000);
-                exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_group%s_spcadiff_%s.tiff',cl_i,des_i,groups{groups_ind(group_i)},data_chars{data_i})],'Resolution',300);
-    %             exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spcadiff_%s.jpg',cl_i,des_i,data_chars{data_i})],'Resolution',300);
-                close(fig);
+                
             end
+            PLOT_STRUCT_PAR.alltitles = plot_alltitles;
+            PLOT_STRUCT_PAR.clim = data_clim{data_i};
+            PLOT_STRUCT_PAR.group_titles = {groups{groups_ind(group_i)},'Group Stats'};
+            [fig] = plot_txf_mask_contourf(ersp_raw,alltimes,allfreqs,ersp_masked,ersp_pcond,{},...
+                'PLOT_STRUCT',PLOT_STRUCT_PAR);
+            pause(2);
+            % exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_group%s_spcadiff_%s.tiff',cl_i,des_i,groups{group_i},data_chars{data_i})],'Resolution',1000);
+            exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_group%s_spcadiff_%s.tiff',cl_i,des_i,groups{groups_ind(group_i)},data_chars{data_i})],'Resolution',300);
+%             exportgraphics(fig,[save_dir filesep sprintf('cl%i_des%i_spcadiff_%s.jpg',cl_i,des_i,data_chars{data_i})],'Resolution',300);
+            close(fig);
         end
     end
 end

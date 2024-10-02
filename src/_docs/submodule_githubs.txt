@@ -1,0 +1,14 @@
+cd M:/jsalminen/GitHub/par_EEGProcessing/
+git submodule add https://github.com/sccn/BCILAB.git ./submods/bcilab
+git submodule add https://github.com/sccn/BCILAB.git ./submods/bcilab
+git submodule add https://github.com/sccn/BCILAB.git ./submods/bcilab
+git submodule add https://github.com/sccn/BCILAB.git ./submods/bcilab
+git submodule add https://github.com/sccn/BCILAB.git ./submods/bcilab
+git submodule add https://github.com/sccn/BCILAB.git ./submods/bcilab
+git submodule add https://github.com/sccn/BCILAB.git ./submods/bcilab
+
+
+SUBMODULES = {'eeglab','SIFT','fieldtrip','spm12','postAmicaUtility',
+ 'Granger_Geweke_Causality','MindInMotion','bemobil-pipeline-master','bids-matlab-tools5.3.1','Cleanline2.00','firfilt','ICLabel','LIMO3.2','PowPowCAT3.0','bva-io1.7',’EEGLAB-specparam-master','iCanClean','Viewprops1.5.4','trimOutlier-master','Gait Tracking With x-IMU'};
+    SUBMODULES_GENPATH = {'Cleanline2.00','Gait Tracking With x-IMU'};
+

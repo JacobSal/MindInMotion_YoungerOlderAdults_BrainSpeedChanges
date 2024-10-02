@@ -92,8 +92,8 @@ DATA_SET = 'MIM_dataset';
 % study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
 %- study info
-SUB_GROUP_FNAME = 'all_spec';
-% SUB_GROUP_FNAME = 'group_spec';
+% SUB_GROUP_FNAME = 'all_spec';
+SUB_GROUP_FNAME = 'group_spec';
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
 %- load cluster
@@ -760,7 +760,8 @@ for i = 1:length(designs)
             t1.log_theta_avg_power = log(t1.theta_avg_power+5);
             %## theta
             %- test lienar model
-            mod = 'theta_avg_power ~ 1 + cond + (1|subj_id)';
+            % mod = 'theta_avg_power ~ 1 + cond + (1|subj_id)';
+            mod = 'theta_avg_power ~ 1 + cond + (1|speed_ms)';
             lme_theta_avg_power = fitlme(t1,mod,'FitMethod','ML');
     %         lme_theta_avg_power = fitlme(t1,'theta_avg_power ~ cond + (1|speed_ms)');
             %-
@@ -775,14 +776,18 @@ for i = 1:length(designs)
             % end
             %## alpha
             %- test linear model
-            lme_alpha_avg_power = fitlme(t1,'alpha_avg_power ~ cond + (1|subj_id)');
+            % mod = 'theta_avg_power ~ 1 + cond + (1|subj_id)';
+            mod = 'alpha_avg_power ~ 1 + cond + (1|speed_ms)';
+            lme_alpha_avg_power = fitlme(t1,mod);
     %         lme_alpha_avg_power = fitlme(t1,'alpha_avg_power ~ cond + (1|speed_ms)');
             %-
             alpha_anova = anova(lme_alpha_avg_power); 
             %- test normality
             [alpha_h,alpha_p] = lillietest(lme_alpha_avg_power.residuals);
             %## beta
-            lme_beta_avg_power = fitlme(t1,'beta_avg_power ~ cond + (1|subj_id)');
+            % mod = 'theta_avg_power ~ 1 + cond + (1|subj_id)';
+            mod = 'beta_avg_power ~ 1 + cond + (1|speed_ms)';
+            lme_beta_avg_power = fitlme(t1,mod);
     %         lme_beta_avg_power = fitlme(t1,'beta_avg_power ~ cond + (1|speed_ms)');
             %-
             beta_anova = anova(lme_beta_avg_power); 

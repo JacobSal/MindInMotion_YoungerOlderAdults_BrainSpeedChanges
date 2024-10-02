@@ -5,6 +5,9 @@
 *.log
 **.DS_Store
 *.asv
+*.png
+*.jpg
+*.tiff
 
 # .gitignore folders
 **/TEST
@@ -16,4 +19,5 @@
 **/install
 **/installer
 **/_compiles
+**/venv
 .Rproj.user

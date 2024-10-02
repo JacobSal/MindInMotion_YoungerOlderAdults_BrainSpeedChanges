@@ -1,0 +1,530 @@
+---
+title: "lme_mods_kin_eeg_speed"
+author: "Jacob Salminen"
+date: "2024-04-19"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+# ERROR. png() device not found bug try: dev.off()
+# ERROR. png() device not found fixed by changing cell names to a simple "windows friendlY" format so that knitr could save files.
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Packages & Setup
+```{r}
+# install.packages(c("tidyverse","purrr","R.matlab","readxl","dplyr"))
+library(readxl);
+library(purrr);
+library(tidyverse);
+library(tibble);
+library(knitr);
+library(gtsummary);
+library(kableExtra);
+library(lme4);
+library(MuMIn);
+# library(effects);
+library(sjPlot);
+# library(rgl);
+library(plotly);
+```
+
+## GTSUMMARY THEME
+``` {r}
+# my_theme <-
+#   list(
+#     "tbl_summary-str:default_con_type" = "continuous2",
+#     "tbl_summary-str:continuous_stat" = c(
+#       "{median} ({p25} - {p75})",
+#       "{mean} ({sd})",
+#       "{min} - {max}"
+#     ),
+#     "tbl_summary-str:categorical_stat" = "{n} / {N} ({p}%)",
+#     "style_number-arg:big.mark" = "",
+#     "tbl_summary-fn:percent_fun" = function(x) style_percent(x, digits = 3)
+#   )
+# my_theme <-
+#   list()
+# gtsummary::set_gtsummary_theme(my_theme)
+gtsummary::set_gtsummary_theme(theme_gtsummary_journal("jama"))
+# reset_gtsummary_theme()
+```
+
+## load table 
+```{r} 
+# excel_dir <-"M:/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01/cluster/icrej_5/12/spec_data/group_spec/psd_calcs/fooof_kinematics_table.xlsx";
+excel_dir_ls <-"M:/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej/behavioral_data/ls_table_meantrial.xlsx";
+ls_t <- read_excel(excel_dir_ls,sheet="Sheet1")
+excel_dir_imu <-"M:/jsalminen/GitHub/par_EEGProcessing/src/_data/MIM_dataset/_studies/04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej/behavioral_data/imu_table_meantrial.xlsx";
+imu_t <- read_excel(excel_dir_imu,sheet="Sheet1") 
+```
+
+## get unique entries 
+```{r} 
+#%% KIN PARAMS
+imu_measures = c('mean_APexc_COV','mean_MLexc_COV');
+imu_title_chars = c("AP Exc. COV","ML Exc. COV")
+imu_inds_plot = c(1,2);
+ls_measures = c('mean_StepDur_cov');
+ls_title_chars = c("Step Dur. COV")
+ls_inds_plot = c(1);
+#%% GROUP PARAMS
+subjects = unique(imu_t$subj_char);
+groups = unique(imu_t$subj_cat);
+flat_speeds = unique(imu_t$trial_char);
+```
+
+## get speeds only 
+```{r}
+#%% OG TABLE
+og_t <- filter_at(ls_t,vars('trial_char'), any_vars(. %in% c('flat')))
+og_t$trial_char <- as.factor(og_t$trial_char)
+og_t$subj_cat_tib <- mutate(og_t,across(c('subj_cat'), factor))
+og_t$subj_char_tib <- mutate(og_t,across(c('subj_char'), factor))
+og_t$group_char <- as.factor(og_t$mean_group_id);
+og_t$subj_cat <- as.factor(og_t$subj_cat);
+og_t$subj_char <- as.factor(og_t$subj_char);
+head(og_t)
+#%% IMU TABLE
+imu_t <- filter_at(imu_t,vars('trial_char'), any_vars(. %in% c('0.25','0.5','0.75','1.0')))
+imu_t$trial_char <- as.numeric(imu_t$trial_char)
+imu_t$speed_cond_num <- as.numeric(imu_t$trial_char)
+imu_t$subj_cat_tib <- mutate(imu_t,across(c('subj_cat'), factor))
+imu_t$subj_char_tib <- mutate(imu_t,across(c('subj_char'), factor))
+imu_t$group_char <- as.factor(imu_t$mean_group_id);
+imu_t$subj_cat <- as.factor(imu_t$subj_cat);
+imu_t$subj_char <- as.factor(imu_t$subj_char);
+# head(imu_t)
+#%% LS TABLE
+ls_t <- filter_at(ls_t,vars('trial_char'), any_vars(. %in% c('0.25','0.5','0.75','1.0')))
+ls_t$trial_char <- as.numeric(ls_t$trial_char)
+ls_t$speed_cond_num <- as.numeric(ls_t$trial_char)
+ls_t$subj_cat_tib <- mutate(ls_t,across(c('subj_cat'), factor))
+ls_t$subj_char_tib <- mutate(ls_t,across(c('subj_char'), factor))
+ls_t$group_char <- as.factor(ls_t$mean_group_id);
+ls_t$subj_cat <- as.factor(ls_t$subj_cat);
+ls_t$subj_char <- as.factor(ls_t$subj_char);
+# head(ls_t)
+
+```
+# KINEMATIC SPEED TESTS: SPEED, GROUP, INTERACTION
+
+## LME imu ~ 1+speed+group+speed:group
+```{r imuspeedgroupint, echo=FALSE, message=FALSE, results="asis"}
+library(gtsummary)
+# inter_pvalue = vector(mode="logical");
+tmpt = imu_t
+for(ki in imu_inds_plot){
+  tmpt = tmpt[complete.cases(tmpt[[imu_measures[ki]]]),]
+}
+tbl <- tibble(outcome=imu_measures[imu_inds_plot]) %>%
+  rowwise() %>%
+  mutate(
+    tbl = 
+      lmer(str_glue("{outcome} ~ 1 + speed_cond_num + group_char + speed_cond_num:group_char + (1|subj_char)"), data=tmpt) %>%
+      tbl_regression(tidy_fun = broom.mixed::tidy,
+                     pvalue_fun = purrr::partial(style_pvalue, digits = 3),
+                     intercept=TRUE) %>%
+      add_global_p() %>%
+      add_q() %>%
+      list()
+    ) %>%
+  pull(tbl) %>%
+  tbl_merge(tab_spanner=imu_title_chars[imu_inds_plot])
+
+t_out <- as_gt(tbl) %>%
+  gt::tab_header(title=c("kinematic ~ 1+speed+group+speed:group")) %>%
+  gt::as_raw_html()
+print(t_out)
+
+rsq <- tibble(outcome=imu_measures[imu_inds_plot]) %>%
+  rowwise() %>%
+  mutate(
+      mod = 
+        lmer(str_glue("{outcome} ~ 1 + speed_cond_num + group_char + speed_cond_num:group_char + (1|subj_char)"), data=tmpt) %>%
+        r.squaredGLMM(),
+        print(str_glue("{outcome}\n R2m: {round(mod[1],4)},\tR2c: {round(mod[2],4)}\n\n"))
+  )
+
+#%% VISUALIZATION OF MODELS
+theme_set(theme_classic()) # This sets the default ggplot theme
+fitfit <- tibble(outcome=imu_measures[imu_inds_plot]) %>%
+  rowwise() %>%
+  mutate(
+      mod = 
+        lmer(str_glue("{outcome} ~ 1 + speed_cond_num + group_char + speed_cond_num:group_char + (1|subj_char)"), data=tmpt)%>%
+        list()
+  )
+
+for(modi in 1:length(imu_measures[imu_inds_plot])){
+  kini = imu_inds_plot[modi]
+  tmpt <- tmpt %>%
+    mutate(fit.m = predict(fitfit$mod[[modi]], re.form = NA),
+           fit.c = predict(fitfit$mod[[modi]], re.form = NULL))
+  
+  print(plot_model(fitfit$mod[[modi]], type = 'diag'))
+  
+  print(
+    tmpt %>%
+      ggplot(aes(x = speed_cond_num, y = .data[[imu_measures[kini]]], group = subj_char, col=group_char)) +
+      geom_point(pch=16, size=2, alpha=0.5) +
+      geom_line(aes(x= speed_cond_num, y=fit.c, group = subj_char),color="grey", size = .1) +
+      geom_line(aes(x= speed_cond_num, y=fit.m, col = group_char), size = 2)+
+      facet_wrap(vars(group_char))+
+      ggtitle(imu_measures[kini])+ 
+      guides(group="none")
+  )
+}
+```
+
+## LME loadsol ~ 1+speed+group+speed:group
+```{r lsspeedgroupint, echo=FALSE, message=FALSE, results="asis"}
+library(gtsummary)
+# inter_pvalue = vector(mode="logical");
+tmpt = ls_t
+for(ki in ls_inds_plot){
+  tmpt = tmpt[complete.cases(tmpt[[ls_measures[ki]]]),]
+}
+tbl <- tibble(outcome=ls_measures[ls_inds_plot]) %>%
+  rowwise() %>%
+  mutate(
+    tbl = 
+      lmer(str_glue("{outcome} ~ 1 + speed_cond_num + group_char + speed_cond_num:group_char + (1|subj_char)"), data=tmpt) %>%
+      tbl_regression(tidy_fun = broom.mixed::tidy,
+                     pvalue_fun = purrr::partial(style_pvalue, digits = 3),
+                     intercept=TRUE) %>%
+      add_global_p() %>%
+      add_q() %>%
+      list()
+    ) %>%
+  pull(tbl) %>%
+  tbl_merge(tab_spanner=ls_title_chars[ls_inds_plot])
+
+t_out <- as_gt(tbl) %>%
+  gt::tab_header(title=c("kinematic ~ 1+speed+group+speed:group")) %>%
+  gt::as_raw_html()
+print(t_out)
+
+rsq <- tibble(outcome=ls_measures[ls_inds_plot]) %>%
+  rowwise() %>%
+  mutate(
+      mod = 
+        lmer(str_glue("{outcome} ~ 1 + speed_cond_num + group_char + speed_cond_num:group_char + (1|subj_char)"), data=tmpt) %>%
+        r.squaredGLMM(),
+        print(str_glue("{outcome}\n R2m: {round(mod[1],4)},\tR2c: {round(mod[2],4)}\n\n"))
+  )
+
+#%% VISUALIZATION OF MODELS
+theme_set(theme_classic()) # This sets the default ggplot theme
+fitfit <- tibble(outcome=ls_measures[ls_inds_plot]) %>%
+  rowwise() %>%
+  mutate(
+      mod = 
+        lmer(str_glue("{outcome} ~ 1 + speed_cond_num + group_char + speed_cond_num:group_char + (1|subj_char)"), data=tmpt)%>%
+        list()
+  )
+
+for(modi in 1:length(ls_measures[ls_inds_plot])){
+  kini = ls_inds_plot[modi]
+  tmpt <- tmpt %>%
+    mutate(fit.m = predict(fitfit$mod[[modi]], re.form = NA),
+           fit.c = predict(fitfit$mod[[modi]], re.form = NULL))
+  
+  print(plot_model(fitfit$mod[[modi]], type = 'diag'))
+  
+  print(
+    tmpt %>%
+      ggplot(aes(x = speed_cond_num, y = .data[[ls_measures[kini]]], group = subj_char, col=group_char)) +
+      geom_point(pch=16, size=2, alpha=0.5) +
+      geom_line(aes(x= speed_cond_num, y=fit.c, group = subj_char),color="grey", size = .1) +
+      geom_line(aes(x= speed_cond_num, y=fit.m, col = group_char), size = 2)+
+      facet_wrap(vars(group_char))+
+      ggtitle(ls_measures[kini])+ 
+      guides(group="none")
+  )
+}
+```
+
+# KINEMATIC SPEED TESTS: SPEED, GROUP
+
+## LME imu ~ 1+speed+group
+```{r imuspeedgroup, echo=FALSE, message=FALSE, results="asis"}
+library(gtsummary)
+# inter_pvalue = vector(mode="logical");
+tmpt = imu_t
+for(ki in imu_inds_plot){
+  tmpt = tmpt[complete.cases(tmpt[[imu_measures[ki]]]),]
+}
+tbl <- tibble(outcome=imu_measures[imu_inds_plot]) %>%
+  rowwise() %>%
+  mutate(
+    tbl = 
+      lmer(str_glue("{outcome} ~ 1 + speed_cond_num + group_char + (1|subj_char)"), data=tmpt) %>%
+      tbl_regression(tidy_fun = broom.mixed::tidy,
+                     pvalue_fun = purrr::partial(style_pvalue, digits = 3),
+                     intercept=TRUE) %>%
+      add_global_p() %>%
+      add_q() %>%
+      list()
+    ) %>%
+  pull(tbl) %>%
+  tbl_merge(tab_spanner=imu_title_chars[imu_inds_plot])
+
+t_out <- as_gt(tbl) %>%
+  gt::tab_header(title=c("kinematic ~ 1+speed+group+speed:group")) %>%
+  gt::as_raw_html()
+print(t_out)
+
+rsq <- tibble(outcome=imu_measures[imu_inds_plot]) %>%
+  rowwise() %>%
+  mutate(
+      mod = 
+        lmer(str_glue("{outcome} ~ 1 + speed_cond_num + group_char + (1|subj_char)"), data=tmpt) %>%
+        r.squaredGLMM(),
+        print(str_glue("{outcome}\n R2m: {round(mod[1],4)},\tR2c: {round(mod[2],4)}\n\n"))
+  )
+
+#%% VISUALIZATION OF MODELS
+theme_set(theme_classic()) # This sets the default ggplot theme
+fitfit <- tibble(outcome=imu_measures[imu_inds_plot]) %>%
+  rowwise() %>%
+  mutate(
+      mod = 
+        lmer(str_glue("{outcome} ~ 1 + speed_cond_num + group_char + (1|subj_char)"), data=tmpt)%>%
+        list()
+  )
+
+for(modi in 1:length(imu_measures[imu_inds_plot])){
+  kini = imu_inds_plot[modi]
+  tmpt <- tmpt %>%
+    mutate(fit.m = predict(fitfit$mod[[modi]], re.form = NA),
+           fit.c = predict(fitfit$mod[[modi]], re.form = NULL))
+  
+  print(plot_model(fitfit$mod[[modi]], type = 'diag'))
+  
+  print(
+    tmpt %>%
+      ggplot(aes(x = speed_cond_num, y = .data[[imu_measures[kini]]], group = subj_char, col=group_char)) +
+      geom_point(pch=16, size=2, alpha=0.5) +
+      geom_line(aes(x= speed_cond_num, y=fit.c, group = subj_char),color="grey", size = .1) +
+      geom_line(aes(x= speed_cond_num, y=fit.m, col = group_char), size = 2)+
+      facet_wrap(vars(group_char))+
+      ggtitle(imu_measures[kini])+ 
+      guides(group="none")
+  )
+}
+```
+
+## LME loadsol ~ 1+speed+group
+```{r lsspeedgroup, echo=FALSE, message=FALSE, results="asis"}
+library(gtsummary)
+# inter_pvalue = vector(mode="logical");
+tmpt = ls_t
+for(ki in ls_inds_plot){
+  tmpt = tmpt[complete.cases(tmpt[[ls_measures[ki]]]),]
+}
+tbl <- tibble(outcome=ls_measures[ls_inds_plot]) %>%
+  rowwise() %>%
+  mutate(
+    tbl = 
+      lmer(str_glue("{outcome} ~ 1 + speed_cond_num + group_char + (1|subj_char)"), data=tmpt) %>%
+      tbl_regression(tidy_fun = broom.mixed::tidy,
+                     pvalue_fun = purrr::partial(style_pvalue, digits = 3),
+                     intercept=TRUE) %>%
+      add_global_p() %>%
+      add_q() %>%
+      list()
+    ) %>%
+  pull(tbl) %>%
+  tbl_merge(tab_spanner=ls_title_chars[ls_inds_plot])
+
+t_out <- as_gt(tbl) %>%
+  gt::tab_header(title=c("kinematic ~ 1+speed+group+speed:group")) %>%
+  gt::as_raw_html()
+print(t_out)
+
+rsq <- tibble(outcome=ls_measures[ls_inds_plot]) %>%
+  rowwise() %>%
+  mutate(
+      mod = 
+        lmer(str_glue("{outcome} ~ 1 + speed_cond_num + group_char + (1|subj_char)"), data=tmpt) %>%
+        r.squaredGLMM(),
+        print(str_glue("{outcome}\n R2m: {round(mod[1],4)},\tR2c: {round(mod[2],4)}\n\n"))
+  )
+
+#%% VISUALIZATION OF MODELS
+theme_set(theme_classic()) # This sets the default ggplot theme
+fitfit <- tibble(outcome=ls_measures[ls_inds_plot]) %>%
+  rowwise() %>%
+  mutate(
+      mod = 
+        lmer(str_glue("{outcome} ~ 1 + speed_cond_num + group_char + (1|subj_char)"), data=tmpt)%>%
+        list()
+  )
+
+for(modi in 1:length(ls_measures[ls_inds_plot])){
+  kini = ls_inds_plot[modi]
+  tmpt <- tmpt %>%
+    mutate(fit.m = predict(fitfit$mod[[modi]], re.form = NA),
+           fit.c = predict(fitfit$mod[[modi]], re.form = NULL))
+  
+  print(plot_model(fitfit$mod[[modi]], type = 'diag'))
+  
+  print(
+    tmpt %>%
+      ggplot(aes(x = speed_cond_num, y = .data[[ls_measures[kini]]], group = subj_char, col=group_char)) +
+      geom_point(pch=16, size=2, alpha=0.5) +
+      geom_line(aes(x= speed_cond_num, y=fit.c, group = subj_char),color="grey", size = .1) +
+      geom_line(aes(x= speed_cond_num, y=fit.m, col = group_char), size = 2)+
+      facet_wrap(vars(group_char))+
+      ggtitle(ls_measures[kini])+ 
+      guides(group="none")
+  )
+}
+```
+
+# MULTIPLE COMPARISSONS
+
+## LME imu multcomp
+```{r imumultcomp, echo=TRUE}
+library(gtsummary)
+library(lme4)
+library(nlme)
+library(emmeans)
+# library(multcomp)
+# library(lsmeans)
+# library(pwr)
+# library(easystats)
+#%% REMOVE NANS IMU
+tmpt = imu_t
+for(ki in imu_inds_plot){
+  tmpt = tmpt[complete.cases(tmpt[[imu_measures[ki]]]),]
+}
+tmpt$group_char <- relevel(tmpt$group_char,ref="2")
+#%% ML COV
+tbl = lmer("mean_MLexc_COV ~ 1 + speed_cond_num + group_char + speed_cond_num:group_char + (1|subj_char)", data=tmpt);
+tblalt = lmer("mean_MLexc_COV ~ 1 + (1|subj_char)", data=tmpt);
+anova_out = car::Anova(tbl,type=3);
+#%% pairwise comparissons - tried lsmeans, glht. People seem to favor emmeans: https://www.researchgate.net/post/What-about-Multiple-comparisons-in-a-linear-mixed-model-in-R
+# glht(tbl, mcp(group_char="Tukey"))
+# lsmeans(tbl, pairwise ~ group_char)
+# lsmeans(tbl, pairwise ~ speed_cond_num:group_char)
+em = emmeans(tbl,"group_char")
+bfc = contrast(em,adjutst="bonferroni")
+pwc = contrast(em,method = "pairwise")
+r2_out = r.squaredGLMM(tbl);
+r2_outalt = r.squaredGLMM(tblalt);
+R2m = r2_out[1] # input your R2
+f2m = R2m/(1 - R2m)
+R2c = r2_out[2] # input your R2
+f2c = R2c/(1 - R2c)
+f2m = (r2_out[1]-r2_outalt[1])/(1-r2_out[1]);
+f2c = (r2_out[2]-r2_outalt[2])/(1-r2_out[2]);
+print("ML COV")
+tbl
+anova_out
+bfc
+pwc
+# print(tbl)
+# print(anova_out)
+# print(bfc)
+# print(pwc)
+print(str_glue("f2m: {round(f2m,4)},\tf2c: {round(f2c,4)}\n\n"))
+#%% AP COV
+tbl = lmer("mean_APexc_COV ~ 1 + speed_cond_num + group_char + (1|subj_char)", data=tmpt);
+tblalt = lmer("mean_APexc_COV ~ 1 + (1|subj_char)", data=tmpt);
+anova_out = car::Anova(tbl,type=3);
+em = emmeans(tbl,"group_char")
+bfc = contrast(em,adjutst="bonferroni")
+pwc = contrast(em,method = "pairwise")
+r2_out = r.squaredGLMM(tbl);
+r2_outalt = r.squaredGLMM(tblalt);
+R2m = r2_out[1] # input your R2
+f2m = R2m/(1 - R2m)
+R2c = r2_out[2] # input your R2
+f2c = R2c/(1 - R2c)
+f2m = (r2_out[1]-r2_outalt[1])/(1-r2_out[1]);
+f2c = (r2_out[2]-r2_outalt[2])/(1-r2_out[2]);
+                        
+print("AP COV")
+tbl
+anova_out
+bfc
+pwc
+# print(tbl)
+# print(anova_out)
+# print(bfc)
+# print(pwc)
+print(str_glue("f2m: {round(f2m,4)},\tf2c: {round(f2c,4)}\n\n"))
+```
+
+## LME ls multcomp
+```{r lsmultcomp, echo=TRUE}
+library(gtsummary)
+#%%
+# imu_measures = c('mean_APexc_COV','mean_MLexc_COV');
+# imu_title_chars = c("AP Exc. COV","ML Exc. COV");
+# imu_inds_plot = c(1,2);
+# ls_measures = c('mean_StepDur_cov');
+# ls_title_chars = c("Step Dur. COV");
+
+#%% REMOVE NANS LS
+tmpt = ls_t
+for(ki in ls_inds_plot){
+  tmpt = tmpt[complete.cases(tmpt[[ls_measures[ki]]]),]
+}
+tbl = lmer("mean_StepDur_cov ~ 1 + speed_cond_num + group_char + (1|subj_char)", data=tmpt);
+tblalt = lmer("mean_StepDur_cov ~ 1 + (1|subj_char)", data=tmpt);
+anova_out = car::Anova(tbl,type=3);
+em = emmeans(tbl,"group_char")
+bfc = contrast(em,adjutst="bonferroni")
+pwc = contrast(em,method = "pairwise")
+r2_out = r.squaredGLMM(tbl);
+r2_outalt = r.squaredGLMM(tblalt);
+R2m = r2_out[1] # input your R2
+f2m = R2m/(1 - R2m)
+R2c = r2_out[2] # input your R2
+f2c = R2c/(1 - R2c)
+f2m = (r2_out[1]-r2_outalt[1])/(1-r2_out[1]);
+f2c = (r2_out[2]-r2_outalt[2])/(1-r2_out[2]);
+print("Step Duration COV")
+tbl
+anova_out
+bfc
+pwc
+# print(tbl)
+# print(anova_out)
+# print(bfc)
+# print(pwc)
+print(str_glue("f2m: {round(f2m,4)},\tf2c: {round(f2c,4)}\n\n"))
+#%% REMOVE NANS LS
+tmpt = og_t
+tmpt = tmpt[complete.cases(tmpt[['mean_og_mean_ms']]),]
+#%%
+tbl = lm("mean_og_mean_ms ~ 1 + group_char", data=tmpt);
+tblalt = lm("mean_og_mean_ms ~ 1", data=tmpt);
+anova_out = car::Anova(tbl,type=3);
+em = emmeans(tbl,"group_char")
+bfc = contrast(em,adjutst="bonferroni")
+pwc = contrast(em,method = "pairwise")
+r2_out = r.squaredGLMM(tbl);
+r2_outalt = r.squaredGLMM(tblalt);
+R2m = r2_out[1] # input your R2
+f2m = R2m/(1 - R2m)
+R2c = r2_out[2] # input your R2
+f2c = R2c/(1 - R2c)
+f2m = (r2_out[1]-r2_outalt[1])/(1-r2_out[1]);
+f2c = (r2_out[2]-r2_outalt[2])/(1-r2_out[2]);
+print("OG WALKING")
+tbl
+anova_out
+bfc
+pwc
+# print(tbl)
+# print(anova_out)
+# print(bfc)
+# print(pwc)
+print(str_glue("f2m: {round(f2m,4)},\tf2c: {round(f2c,4)}\n\n"))
+```
