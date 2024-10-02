@@ -1,0 +1,2 @@
+cd M:/jsalminen/GitHub/par_EEGProcessing/
+git submodule add https://github.com/sccn/BCILAB.git ./submods/bcilab

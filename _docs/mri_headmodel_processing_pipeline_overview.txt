@@ -1,0 +1,34 @@
+
+start: T1.nii 
+NOTE: we do not use any of the biascorrected images.
+1) volume alignment to acpc & ctf coordinate system
+2) reslice each re-aligned volume, acpc & ctf: 
+3) use simNIBS's headreco functions: preparevols, preparecat, and cleanvols
+4) normalize mri using spm8 nonlinear. Output Example:
+"""
+Performing the parameter estimation
+Warping the individual anatomy to the template anatomy, using non-linear transformations
+Smoothing by 0 & 8mm..
+Coarse Affine Registration..
+Fine Affine Registration..
+3D CT Norm...
+ iteration  1:  FWHM =  18.82 Var = 56.0614
+ iteration  2:  FWHM =  16.59 Var = 29.5147
+ iteration  3:  FWHM =  16.03 Var = 24.8131
+ iteration  4:  FWHM =   15.8 Var = 22.9783
+ iteration  5:  FWHM =   15.7 Var = 22.1378
+ iteration  6:  FWHM =  15.66 Var = 21.7198
+ iteration  7:  FWHM =  15.61 Var = 21.3916
+ iteration  8:  FWHM =  15.58 Var = 21.1311
+ iteration  9:  FWHM =  15.54 Var = 20.8858
+ iteration 10:  FWHM =  15.51 Var = 20.6806
+ iteration 11:  FWHM =  15.47 Var = 20.4645
+ iteration 12:  FWHM =  15.44 Var = 20.2446
+ iteration 13:  FWHM =   15.4 Var = 20.0346
+ iteration 14:  FWHM =  15.36 Var = 19.8117
+ iteration 15:  FWHM =  15.32 Var = 19.593
+ iteration 16:  FWHM =  15.29 Var = 19.3717
+creating the normalized volumes
+"""
+NOTE: it does perform smoothing.
+5) create finite element model

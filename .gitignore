@@ -1,0 +1,19 @@
+# .gitignore files
+*.mat
+*.set
+*.fdt
+*.log
+**.DS_Store
+*.asv
+
+# .gitignore folders
+**/TEST
+**/submodules
+**/_data
+**/__archive
+**/_test
+**/Job*
+**/install
+**/installer
+**/_compiles
+.Rproj.user

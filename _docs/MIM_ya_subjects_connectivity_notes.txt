@@ -1,0 +1,14 @@
+Path: M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset\_studies\26122022\_figs\avg_across_conditions\3-60
+subjects with outlying connectivity values:
+Subject H1007; ACC->RSM plot (3-60hz) (co21->co18), 
+Subject H1009; PFC->LSM plot (3-60hz) (co31->32), PFC->ACC plot (3-60hz) (co31->29), LSM->ACC plot (3-60hz) (co32->29), 
+Subject H1010; LPPa->Cerr plot (3-60hz) (co30->co31), RPPa->RSM plot (3-60hz) (co42->co60), PFC->ACC plot (3-60hz) (co58->50), LSM->ACC plot (3-60hz) (co70->50), LPPa->RSM plot (3-60hz) (co30-60), LPPa->ROc plot (3-60hz) (co30->28)
+Subject H1012; ACC->Cerr plot (3-60hz) (co12->co13), RPPa->ROc plot (3-60hz) (co61->53), LPPa->ROc plot (3-60hz) (co80->53),
+Subject H1017; LPPa->ACC plot (3-60hz) (co17->co11), RPPa->RSM plot (3-60hz) (co20->79),
+Subject H1020; PFC->RSM plot (3-60hz) (co48->43), LPPa->ROc plot (3-60hz) (co26->29),
+Subject H1022; RPPa->RSM plot (3-60hz) (co34->69), ROc->RSM plot (3-60hz) (co31->29),
+Subject H1026; ACC->RSM plot (3-60hz) (co64->co27), LPPa->ACC plot (3-60hz) (co40->co64),
+Subject H1027; RPPa->LSM plot (3-60hz) (co28->37),
+Subject H1034; LPPa->RSM plot (3-60hz) (co9->40), LPPa->ROc plot (3-60hz) (co9->54),
+
+General Notes: The ROc & Cerr cluster connections, for most subjects, is highly variable: H1010, H1020, H1012, and H1034 seem to be most affected. 
