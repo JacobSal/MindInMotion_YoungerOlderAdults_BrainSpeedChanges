@@ -1,7 +1,0 @@
-Need to add:
-1) Liveamp merging script (see. R:\...\Share\MindInMotion\mergeLiveAmpsOneSubj.m, it has dependencies in the same folder)
-2) Liveamp merging to loadsol script (see. R:\...\Share\MindInMotion\mergeLiveAmpswithLoadsolOneSubj.m, it has dependencies in the same folder)
-3) Liveamp merging to IMU script (see. R:\...\Share\MindInMotion\mergeLiveAmpswithIMUOneSubj.m, it has dependencies in the same folder)
-4) Measure generation IMU script (see. R:\...\Share\MindInMotion\analyzeIMUallTrials_ManySubj.m, it has dependencies in the same folder)
-5) Measure generation script Loadsol (see. R:\...\Share\MindInMotion\ analyzeLoadsolManySubj.m, it has dependencies in the same folder)
-6) 
