@@ -1,0 +1,149 @@
+CORRESPONDENCES
+Email from Sumire:
+"""
+ml gcc/5.2.0 
+ml ants
+
+should load ants. Check if loading was successful by entering "antsRegistation"  if it displays you a manual it was correctly loaded.
+
+# APPLICATION
+MNI_Template=/Users/sumiresato/Documents/MR_Templates/ANTs_c0Template_T1_IXI555_MNI152_GS_brain.nii 
+antsRegistrationSyNQuick.sh -d 3 -f $MNI_template -m ./cat_brain.nii -t s -o ants | tee myRegOutput.txt
+
+Briefly, -f is your MNI template (fixed), -m is your image in native space (moving) -o is the prefix for your output images.
+
+"""
+
+Emails from Martin S.
+
+"""
+
+Hi Jacob,
+
+The basic idea of the psca approach is to remove EMG/muscular artifacts captured by your EEG channels. The reason for identifying the 1st component is because EMG signals are much stronger than eeg signals and should be present at many channels, given the larger relative distance to muscular versus cortical signals. A check whether this assumption is fulfilled is to check the spectral profile of the 1st psca and its topography or source distribution. In contrast to cortical sources, EMG is broadband usually with little power for lower frequencies (<20 Hz) and similar power (and time course) for the frequencies higher than that. So mathematically we would like to identify a strong (power >> EEG) component with a spectral profile characteristic for EMG. If the algorithm is successful identifying such a component it can be removed (again assuming it does not contain EEG). In contrast, physiological cortical activities are more frequency-characteristic and spatially more local. All analyses should be followed with some sanity check to see if the properties of the data make sense, given the fundamental ideas of the processing approach.
+This approach has several limitations; i.) In "clean" data the 1psca is not necessary EMG, ii) In very noisy data removing 1 component might be not enough, given more complex activation patterns of the muscles, iii) broadband-like, physiological activity might be removed.
+
+Back in the days I thought this correction approach is a first step before I got 'distracted' working on other topics. So there is still lots of room for improvement but I rarely dedicated enough time to furthermore focus on improving these cleaning algorithms. Next logical steps to develop it further would be making it work on scalp data (enabling subsequent source modeling) and maybe using other unmixing procedures (maybe ICA) instead of PCA to identify the spectral profiles to potentially remove more than 1 component.
+As for Figure 3 in my paper, panel a) shows the rhythms that are most co-modulated with the gait cycles, one ~24-40 Hz and another one at ~70-90 Hz. Both are clearly frequency-specific. Panel b) shows the cross-correlation (correcting for the magnitude) between all frequencies. Given the frequency-specificity shown in a) and the source localization in Fig. 3 we argued this is physiological mid/high gamma activity during walking. Also double-check the ~70 Hz sustained power increase in the lower right panel of Fig. 3 and the comparison of pre-/post- artifact correction TF plots and related sources in Fig. 1.
+The action plan sounds good to me. Fingers crossed that the above mentioned assumptions hold true across conditions; using the same decomposition for all conditions grants comparability across conditions with the risk that the EMG profiles might change with different levels of contamination.
+
+Good luck with your analyses!
+
+Happy Holidays!
+
+Best, Martin
+Salminen,Jacob S
+?
+Martin Seeber <seeber@ucla.edu>
+?"""
+"""
+?Hey Martin,
+
+Thank you for your reply. Yeah that’s what I was thinking as well, but hearing you say it makes me feel better, lol.
+
+Just so I can understand the math a little better I have a couple questions:
+
+I do wonder if you had reviewers or others question the method as a way of biasing data plots to a specific image (i.e., showing just the 2:N PCAs). In layman terms, how might you describe this process?
+What is the proportion of muscle, brain, and other artifact that’s being captured in the 1st PC? My understanding is that PCA pulls out the most prominent wave form that explains the most variance in the data, and I could imagine that this waveform could contain a mix of information. Or am I thinking about this wrong?
+How might I interpret your 2015 Neuroimage paper’s figure 4? (https://www.sciencedirect.com/science/article/pii/S105381191500227X?via%3Dihub
+
+High and low gamma EEG oscillations in central sensorimotor areas are conversely modulated during the human gait cycle
+Investigating human brain function is essential to develop models of cortical involvement during walking. Such models could advance the analysis of mo…
+www.sciencedirect.com
+) The cross-frequency plot makes me believe that the ERSP still contains underlying muscle in the higher frequency bands (>120Hz), and I’m not sure how to make sense of the large negative correlation in the 30-50Hz range.
+ 
+Currently my plan is to run the algorithm as this:
+
+For each subject
+
+From component space epoch out gait trials (I have walking at different speeds and terrains)
+From component space epoch out sitting rest trial
+Produce averaged time-freq of resting data
+Produce time-freq decomp of gait data, epoch into gait events, and average across gait cycles.
+Baseline gait time-freq epochs to resting state average
+Run sPCA on baselined gait ERSP, and get coefficient array from PCA.
+(for each condition) Epoch each individual walking conditions (at each speed and terrain), perform time-freq decomp and baseline to rest.
+(for each condition) Run sPCA using the coefficients from 6 on the resting state baselined average ERSP to get subject’s gait ERSP for that condition.
+End
+
+My rationale being to capture all gait related muscle in the initial sPCA analysis, then pass that to the conditions to get my per condition results.
+
+Take your time in replying if needed, no rush, and happy holidays!
+
+Jacob
+"""
+"""
+Martin Seeber
+Tue 12/12/2023 7:54 PM
+[External Email] Hi Jacob, so sorry for the late reply! It is not yet possible to apply ICA or source location after psca, because the methods is based on relative amplitude or power changes (non-linear operations). For source separation only linear methods
+Salminen,Jacob S
+?
+Martin Seeber <seeber@ucla.edu>
+?"""
+"""
+Hey Martin,
+
+Again, thank you for answering my questions! I have a couple more.
+
+How would I use this sPCA method to clean my channel level data knowing that I have a resting condition and 8 different walking conditions?
+
+How I’d imagine integrating sPCA is like this:
+
+High pass filter Raw EEG
+Cleanline
+Average rereference
+Channel rejection
+Average rereference
+iCanClean (an algorithm that looks for correlations between channels to detect noisy epochs)
+Channel rejection
+sPCA to remove muscle artifact at channel level
+ICA w/ head models derived from subject MRI to localize sources.
+ 
+From the paper you shared I wasn’t able to quite understand where sPCA was implemented, but I did notice a reference to ASR & this paper that Sarah Blum published on rASR: Frontiers | A Riemannian Modification of Artifact Subspace Reconstruction for EEG Artifact Handling (frontiersin.org) which seems similar to your sPCA? Just trying to figure out the quickest way to get rid of this muscle artifact that’s troubling my data.
+
+Thank you again for your help ??
+
+Jacob
+
+Salminen,Jacob S
+Wed 11/29/2023 12:50 PM
+Thank you, Martin!
+"""
+"""
+Martin Seeber
+Wed 11/29/2023 12:39 PM
+[External Email] Hi Jacob, In general, source localization is not a necessary requirement to apply principal spectral component analyses; nor is gait cycle warping. It could be used on any ERSP analysis containing two time periods, i) with and ii) without or
+Salminen,Jacob S
+?
+seeber@ucla.edu
+?"""
+"""
+Goodmorning Dr. Seeber,
+
+I’m trying to implement your sPCA algorithm, but I have a few questions. As I understand this is how you should implement the algorithm, please correct me at any point.
+
+STEPS:
+
+With gathered EEG channel data, clean artifacts, and localize to sources.
+With a chosen source localized signal, perform a time-frequency decomposition (Morlet wavelets  seem to be the one you used).
+Using time-locked gait events, segment source level time-frequency data into gait cycles (right heel strike to right heel strike).
+For each subject’s gait cycle time-frequency data, perform your sPCA algorithm and subtract out the 1st PCA to remove the muscle artifact.
+With each subject’s corrected time-frequency data in a particular source, average across subjects to get resulting ERSP for gait activity.
+Be happy that your data can finally be accepted for publication.
+
+QUESTIONS:
+
+Why do you resample the gait cycle after the wavelet transform instead of using a time-warping procedure? Or am I misunderstanding the resampling operation? Could I use EEGLAB’s ERSP generation algorithm (pop_precomp()) then use just your sPCA algorithm on that ERSP data?
+Would I perform the sPCA on the channel level or source level? I guess my worry is a reviewer questioning how the algorithm may bias one result over another as you would be “deleting” information.
+Would I perform the sPCA on all components/channels or does the algorithm not take into account neighbors in the input? My thinking is that the PCA would “find” the muscle artifact more easily if it had more information across the whole “brain”.
+When I’m looking at the group level, would I input all subject’s gait cycle ERSPs together into the sPCA then use the resulting PCA to perform the subtraction, or would I perform it on a per subject basis?
+Similar to number 3, but a slightly different reasoning) I noticed the output from the sPCA to provide a correlation ERSP for each channel/component input, would I want to concatenate all the gait cycles from all channels/components then perform the sPCA procedure. My reasoning is that I’d like to understand the common high power artifact across all the channels then subtract that out instead of a channel by channel basis.
+There is a function “morlet_transform_fast()” that I can’t find on the internet nor in support packages. What is this and where can I find it? I’m currently using the morlet_transform() function from brain storm, but if the “fast” version is faster that would be nice to have.
+What is the difference between the ERSP_corr & GPM_corr outputs for the specPCAdenoising() algorithm?
+Do I need a standing baseline for correction? Would your algorithm perform its duties without it? The best we have for all our subjects is a sitting rest trial of 3 minutes, would this suffice?
+ 
+Thank you for your time Dr. Seeber, I hope you have a great day,
+
+Jacob
+"""
+
