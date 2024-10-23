@@ -1,0 +1,15 @@
+[submodule "submods/bcilab"]
+	path = submods/bcilab
+	url = https://github.com/sccn/BCILAB.git
+[submodule "submods/bemobil_pipeline"]
+	path = submods/bemobil_pipeline
+	url = https://github.com/BeMoBIL/bemobil-pipeline.git
+[submodule "submods/bidstool"]
+	path = submods/bidstool
+	url = https://github.com/sccn/bids-matlab-tools.git
+[submodule "submods/bvatool"]
+	path = submods/bvatool
+	url = https://github.com/sccn/bva-io.git
+[submodule "submods/clean_rawdata"]
+	path = submods/clean_rawdata
+	url = https://github.com/sccn/clean_rawdata.git
