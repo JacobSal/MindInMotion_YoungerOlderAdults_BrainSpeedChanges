@@ -84,13 +84,14 @@
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Built With
-* [![MATLAB][matlab.com]][matlab-url]
-* [![eeglab][eeglab.com]][eeglab-url]
-* [![fieldtrip][fieldtrip.com]][fieldtrip-url]
-* [![spm][spm.com]][spm-url]
-* [![groupSIFT][groupSIFT.com]][groupSIFT-url]
-* [![SIFT][SIFT.com]][SIFT-url]
-* [![postAmicaUtility][postAmicaUtility.com]][postAmicaUtility-url]
+* [![matlab][matlab-badge]][matlab-url]
+* [![eeglab][eeglab-badge]][eeglab-url]
+* [![fieldtrip][fieldtrip-badge]][fieldtrip-url]
+* [![spm][spm-badge]][spm-url]
+* [![postamicautility][postAmicaUtility-badge]][postAmicaUtility-url]
+* [![cleanline][postAmicaUtility-badge]][postAmicaUtility-url]
+* [![icanclean][postAmicaUtility-badge]][postAmicaUtility-url]
+* [![postamicautility][postAmicaUtility-badge]][postAmicaUtility-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -181,18 +182,14 @@ Project Link: [https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_Brain
 [license-url]: https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/jacob-salminen-124a50129
-[matlab.com]: ./images/matlab_logo.png
+[matlab-badge]: ./images/matlab_logo.png
 [matlab-url]: https://www.mathworks.com/products/matlab.html?style=for-the-badge
-[eeglab.com]: ./images/eeglab_logo.svg
+[eeglab-badge]: ./images/eeglab_logo.svg
 [eeglab-url]: https://eeglab.org/#The_EEGLAB_Tutorial_Outline
-[fieldtrip.com]: ./images/fieldtirp_logo.png
+[fieldtrip-badge]: ./images/fieldtirp_logo.png
 [fieldtrip-url]: https://www.fieldtriptoolbox.org/
-[spm.com]: https://avatars.githubusercontent.com/u/14014701?s=200&v=4?style=for-the-badge
+[spm-badge]: https://avatars.githubusercontent.com/u/14014701?s=200&v=4?style=for-the-badge
 [spm-url]: https://github.com/spm/
-[groupSIFT.com]: 
-[groupSIFT-url]: https://github.com/sccn/groupSIFT
-[SIFT.com]:
-[SIFT-url]: https://github.com/sccn/sift
 [postAmicaUtility-url]: 
-[postAmicaUtility.com]: https://github.com/sccn/postAmicaUtility
+[postAmicaUtility-badge]: https://github.com/sccn/postAmicaUtility
 [product-screenshot]: images/screenshot.png
