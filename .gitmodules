@@ -10,3 +10,51 @@
 [submodule "submods/clean_rawdata"]
 	path = submods/clean_rawdata
 	url = https://github.com/sccn/clean_rawdata.git
+[submodule "submods/cleanline"]
+	path = submods/cleanline
+	url = https://github.com/sccn/cleanline.git
+[submodule "submods/dipfit"]
+	path = submods/dipfit
+	url = https://github.com/sccn/dipfit.git
+[submodule "submods/eeglab"]
+	path = submods/eeglab
+	url = https://github.com/sccn/eeglab.git
+[submodule "submods/eeglab_specparam"]
+	path = submods/eeglab_specparam
+	url = https://github.com/bfbarry/EEGLAB-specparam.git
+[submodule "submods/fieldtrip"]
+	path = submods/fieldtrip
+	url = https://github.com/fieldtrip/fieldtrip.git
+[submodule "submods/firfilt"]
+	path = submods/firfilt
+	url = https://github.com/widmann/firfilt.git
+[submodule "submods/icanclean"]
+	path = submods/icanclean
+	url = https://github.com/downeyryanj/iCanClean.git
+[submodule "submods/iclabel"]
+	path = submods/iclabel
+	url = https://github.com/sccn/ICLabel.git
+[submodule "submods/limo_tools"]
+	path = submods/limo_tools
+	url = https://github.com/LIMO-EEG-Toolbox/limo_tools.git
+[submodule "submods/postamicautility"]
+	path = submods/postamicautility
+	url = https://github.com/sccn/postAmicaUtility.git
+[submodule "submods/powpowcat"]
+	path = submods/powpowcat
+	url = https://github.com/sccn/PowPowCAT.git
+[submodule "submods/sift"]
+	path = submods/sift
+	url = https://github.com/sccn/SIFT.git
+[submodule "submods/spm12"]
+	path = submods/spm12
+	url = https://github.com/spm/spm12.git
+[submodule "submods/trimoutlier"]
+	path = submods/trimoutlier
+	url = https://github.com/sccn/trimOutlier.git
+[submodule "submods/viewprops"]
+	path = submods/viewprops
+	url = https://github.com/sccn/viewprops.git
+[submodule "submods/gait_tracking_w_imu"]
+	path = submods/gait_tracking_w_imu
+	url = https://github.com/xioTechnologies/Gait-Tracking-With-x-IMU.git
