@@ -5,9 +5,9 @@
 *.log
 **.DS_Store
 *.asv
-*.png
-*.jpg
-*.tiff
+src/**/*.png
+src/**/*.jpg
+src/**/*.tiff
 
 # .gitignore folders
 **/TEST
