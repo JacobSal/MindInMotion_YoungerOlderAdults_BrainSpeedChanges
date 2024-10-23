@@ -27,21 +27,21 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/JacobSal/slurm_eeglab_wrapper-m">
+  <a href="https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges">
     <img src="images/logo.png" alt="Logo" width="80" height="80">
   </a>
 <h3 align="center">project_title</h3>
   <p align="center">
     project_description
     <br />
-    <a href="https://github.com/JacobSal/slurm_eeglab_wrapper-m"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/JacobSal/slurm_eeglab_wrapper-m">View Demo</a>
+    <a href="https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges">View Demo</a>
     ·
-    <a href="https://github.com/JacobSal/slurm_eeglab_wrapper-m/issues">Report Bug</a>
+    <a href="https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges/issues">Report Bug</a>
     ·
-    <a href="https://github.com/JacobSal/slurm_eeglab_wrapper-m/issues">Request Feature</a>
+    <a href="https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges/issues">Request Feature</a>
   </p>
 </div>
 
@@ -121,7 +121,7 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 - [ ] Feature 3
     - [ ] Nested Feature
 
-See the [open issues](https://github.com/JacobSal/slurm_eeglab_wrapper-m/issues) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -153,7 +153,7 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Project Link: [https://github.com/JacobSal/slurm_eeglab_wrapper-m](https://github.com/JacobSal/slurm_eeglab_wrapper-m)
+Project Link: [https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges](https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -168,23 +168,23 @@ Project Link: [https://github.com/JacobSal/slurm_eeglab_wrapper-m](https://githu
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/JacobSal/slurm_eeglab_wrapper-m.svg?style=for-the-badge
-[contributors-url]: https://github.com/JacobSal/slurm_eeglab_wrapper-m/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/JacobSal/slurm_eeglab_wrapper-m.svg?style=for-the-badge
-[forks-url]: https://github.com/JacobSal/slurm_eeglab_wrapper-m/network/members
-[stars-shield]: https://img.shields.io/github/stars/JacobSal/slurm_eeglab_wrapper-m.svg?style=for-the-badge
-[stars-url]: https://github.com/JacobSal/slurm_eeglab_wrapper-m/stargazers
-[issues-shield]: https://img.shields.io/github/issues/JacobSal/slurm_eeglab_wrapper-m.svg?style=for-the-badge
-[issues-url]: https://github.com/JacobSal/slurm_eeglab_wrapper-m/issues
-[license-shield]: https://img.shields.io/github/license/JacobSal/slurm_eeglab_wrapper-m.svg?style=for-the-badge
-[license-url]: https://github.com/JacobSal/slurm_eeglab_wrapper-m/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges.svg?style=for-the-badge
+[contributors-url]: https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges.svg?style=for-the-badge
+[forks-url]: https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges/network/members
+[stars-shield]: https://img.shields.io/github/stars/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges.svg?style=for-the-badge
+[stars-url]: https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges/stargazers
+[issues-shield]: https://img.shields.io/github/issues/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges.svg?style=for-the-badge
+[issues-url]: https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges/issues
+[license-shield]: https://img.shields.io/github/license/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges.svg?style=for-the-badge
+[license-url]: https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/jacob-salminen-124a50129
-[matlab.com]: https://www.mathworks.com/brand/_jcr_content/mainParsys/band_1065211270_copy_44377276/mainParsys/columns_copy/2/image.adapt.480.medium.svg/1590723997951.svg?style=for-the-badge
+[matlab.com]: ./images/matlab_logo.png
 [matlab-url]: https://www.mathworks.com/products/matlab.html?style=for-the-badge
-[eeglab.com]: https://sccn.ucsd.edu/images/sccn.svg?style=for-the-badge
+[eeglab.com]: ./images/eeglab_logo.svg
 [eeglab-url]: https://eeglab.org/#The_EEGLAB_Tutorial_Outline
-[fieldtrip.com]: https://www.fieldtriptoolbox.org/assets/img/blueyellow/fieldtriplogo-75.png?style=for-the-badge
+[fieldtrip.com]: ./images/fieldtirp_logo.png
 [fieldtrip-url]: https://www.fieldtriptoolbox.org/
 [spm.com]: https://avatars.githubusercontent.com/u/14014701?s=200&v=4?style=for-the-badge
 [spm-url]: https://github.com/spm/
