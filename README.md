@@ -186,7 +186,7 @@ Project Link: [https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_Brain
 [matlab-url]: https://www.mathworks.com/products/matlab.html?style=for-the-badge
 [eeglab-badge]: ./images/eeglab_logo.svg
 [eeglab-url]: https://eeglab.org/#The_EEGLAB_Tutorial_Outline
-[fieldtrip-badge]: ./images/fieldtirp_logo.png
+[fieldtrip-badge]: ./images/fieldtrip_logo.png
 [fieldtrip-url]: https://www.fieldtriptoolbox.org/
 [spm-badge]: https://avatars.githubusercontent.com/u/14014701?s=200&v=4?style=for-the-badge
 [spm-url]: https://github.com/spm/
