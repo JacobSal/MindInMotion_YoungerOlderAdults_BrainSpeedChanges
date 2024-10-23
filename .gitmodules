@@ -1,6 +1,3 @@
-[submodule "submods/bcilab"]
-	path = submods/bcilab
-	url = https://github.com/sccn/BCILAB.git
 [submodule "submods/bemobil_pipeline"]
 	path = submods/bemobil_pipeline
 	url = https://github.com/BeMoBIL/bemobil-pipeline.git
