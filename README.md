@@ -92,7 +92,9 @@ This study was supported by the National Institute of Health (U01AG061389) for a
 ### Built With
 | MATLAB | EEGLAB | FIELDTRIP | SPM 12 |
 | ------ | ------ | --------- | ------ |
-|<a href="https://www.mathworks.com/products/matlab.html?style=for-the-badge" target="_blank" rel="noopener noreferrer"><img src="/images/matlab_logo.png" width="50px"></a> | <a href="https://eeglab.org/#The_EEGLAB_Tutorial_Outline" target="_blank" rel="noopener noreferrer"><img src="/images/eeglab_logo.svg" width="50px"></a> | FieldTrip</br>[!<a href="https://www.fieldtriptoolbox.org/" target="_blank" rel="noopener noreferrer"><img src="/images/fieldtrip_logo.png" width="50px"></a> | <a href="https://github.com/spm/" target="_blank" rel="noopener noreferrer"><img src="https://avatars.githubusercontent.com/u/14014701?s=200&v=4?style=for-the-badge" width="50px"></a>
+| [![matlab][matlab-badge =50x][matlab-url]] | [![eeglab]eeglab-badge][eeglab-url]] | [![fieldtrip][fieldtrip-badge][fieldtrip-url]] | [![spm][spm-badge][spm-url]]
+| [![matlab][matlab-badge][matlab-url]] | [![eeglab]eeglab-badge][eeglab-url]] | [![fieldtrip][fieldtrip-badge][fieldtrip-url]] | [![spm][spm-badge][spm-url]]
+| <a href="https://www.mathworks.com/products/matlab.html?style=for-the-badge" target="_blank" rel="noopener noreferrer"><img src="/images/matlab_logo.png" width="50px"> </a> | <a href="https://eeglab.org/#The_EEGLAB_Tutorial_Outline" target="_blank" rel="noopener noreferrer"> <img src="/images/eeglab_logo.svg" width="50px"></a> | <a href="https://www.fieldtriptoolbox.org/" target="_blank" rel="noopener noreferrer"> <img src="/images/fieldtrip_logo.png" width="50px"> </a> | <a href="https://github.com/spm/" target="_blank" rel="noopener noreferrer"><img src="https://avatars.githubusercontent.com/u/14014701?s=200&v=4?style=for-the-badge" width="50px"></a>
 
 Additional Packages: BCILAB, bemobil-pipeline, bids-matlab-tools, bva-io, clean rawdata, cleanline, dipfit, EEGLAB-specparam, firfilt, iCanClean, ICLabel, limo_tools, postAmicaUtility, PowPowCAT, trimOutlier, viewprops, Gait-Tracking-With-x-IMU
 
