@@ -10,9 +10,6 @@
 [submodule "submods/clean_rawdata"]
 	path = submods/clean_rawdata
 	url = https://github.com/sccn/clean_rawdata.git
-[submodule "submods/cleanline"]
-	path = submods/cleanline
-	url = https://github.com/sccn/cleanline.git
 [submodule "submods/dipfit"]
 	path = submods/dipfit
 	url = https://github.com/sccn/dipfit.git
