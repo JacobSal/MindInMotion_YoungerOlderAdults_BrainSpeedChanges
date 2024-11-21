@@ -1,5 +1,5 @@
 <!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" type="text/css" href="styles.css" />
 <a name="readme-top"></a>
 <!--
 *** Thanks for checking out the Best-README-Template. If you have a suggestion
@@ -85,7 +85,7 @@ This study was supported by the National Institute of Health (U01AG061389) for a
 ### Built With
 | MATLAB | EEGLAB | FIELDTRIP | SPM 12 |
 | ------ | ------ | --------- | ------ |
-|[![matlab][matlab-badge]][matlab-url] | [![eeglab][eeglab-badge]][eeglab-url] | FieldTrip</br>[![fieldtrip][fieldtrip-badge]][fieldtrip-url] | [![spm][spm-badge]][spm-url]
+|<a href="https://www.mathworks.com/products/matlab.html?style=for-the-badge" target="_blank" rel="noopener noreferrer"> <img src="/images/matlab_logo.png" class="styled-image"> </a>| [![eeglab][eeglab-badge]][eeglab-url] | FieldTrip</br>[![fieldtrip][fieldtrip-badge]][fieldtrip-url] | [![spm][spm-badge]][spm-url]
 
 Additional Packages: BCILAB, bemobil-pipeline, bids-matlab-tools, bva-io, clean rawdata, cleanline, dipfit, EEGLAB-specparam, firfilt, iCanClean, ICLabel, limo_tools, postAmicaUtility, PowPowCAT, trimOutlier, viewprops, Gait-Tracking-With-x-IMU
 
