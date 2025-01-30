@@ -8,7 +8,7 @@
 #SBATCH --mem-per-cpu=45000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
 #SBATCH --time=12:00:00 # Time limit hrs:min:sec
-#SBATCH --output=/blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_oa_speed_eeg_out/_slurm_logs/%j_c_fooof_spec_precomp.log # Standard output
+#SBATCH --output=/blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdult_BrainSpeedChanges/src/_slurm_logs/%j_c_fooof_spec_precomp.log # Standard output
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=hpg-default # cluster to run on, use slurm command 'sinfo -s'

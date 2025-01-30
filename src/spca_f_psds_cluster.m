@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_oa_speed_eeg_out/run_spca_f_psds_cluster.sh
+% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_yaoa_speed_kin/run_spca_f_psds_cluster.sh
 
 %{
 %## RESTORE MATLAB
@@ -16,7 +16,6 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-global ADD_CLEANING_SUBMODS STUDY_DIR SCRIPT_DIR %#ok<GVMIS>
 ADD_CLEANING_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
@@ -53,111 +52,110 @@ set_workspace
 %% (DATASET INFORMATION) =============================================== %%
 [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
 %% (PARAMETERS) ======================================================== %%
-%## hard define
+%- file regexps
+ICA_REGEXP = '%s_cleanEEG_EMG_HP3std_iCC0p65_iCCEMG0p4_ChanRej0p7_TimeRej0p4_winTol10.set';
 %- datset name
 DATA_SET = 'MIM_dataset';
-ica_orig_dir = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
-% cluster_study_dir = '12012023_OAYA104_icc0p65-0p2_changparams';
-% study_dir_name = '01232023_MIM_OAN70_antsnormalize_iccREMG0p4_powpow0p3';
-% study_dir_name = '04162024_MIM_OAN57_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-% study_dir_name = '04162024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01';
-% study_dir_name = '04232024_MIM_YAOAN89_antsnormalize_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
-study_dir_name = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
-spca_study_dir = '03232024_spca_analysis_OA';
+%- studies paths
+ICA_DNAME = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
+STUDY_DNAME = '10172024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej_speed';
+SPCA_STUDY_DNAME = '01102025_mim_yaoa_spca_calcs';
+STUDY_FNAME_GAIT = 'spca_gait_epoch_study';
+STUDY_FNAME_REST = 'spca_rest_slide_study';
 ICLABEL_EYE_CUTOFF = 0.75;
 %- study group and saving
 studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
-save_dir = [studies_fpath filesep sprintf('%s',study_dir_name)];
-load_dir = [studies_fpath filesep sprintf('%s',spca_study_dir)];
-OUTSIDE_DATA_DIR = [studies_fpath filesep ica_orig_dir]; % JACOB,SAL(02/23/2023)
+spca_dir = [studies_fpath filesep sprintf('%s',SPCA_STUDY_DNAME)];
+ica_data_dir = [studies_fpath filesep ICA_DNAME]; % JACOB,SAL(02/23/2023)
 %- load cluster
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
-% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'cluster'];
-% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster'];
-% cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt'];
-cluster_fpath = [studies_fpath filesep sprintf('%s',study_dir_name) filesep 'iclabel_cluster_kmeansalt_rb3'];
-
+cluster_fpath = [studies_fpath filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_kmeansalt_rb5']; % rb10 & rb3 available
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
-%- create new study directory
-if ~exist(save_dir,'dir')
-    mkdir(save_dir);
-end
+cluster_k_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 %% ===================================================================== %%
-%## LOAD STUDY
+%## LOAD CLUSTER STUDY
 if ~ispc
     tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
-    TMP_STUDY = tmp.STUDY;
+    STUDY = tmp.STUDY;
 else
     tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s.study',CLUSTER_STUDY_NAME)]);
-    TMP_STUDY = tmp.STUDY;
+    STUDY = tmp.STUDY;
 end
-cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
-TMP_STUDY.cluster = cl_struct;
-[comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(TMP_STUDY);
-subject_chars = {TMP_STUDY.datasetinfo.subject};
+cl_struct = par_load(cluster_k_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
+STUDY.cluster = cl_struct;
+[comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
+%% ===================================================================== %%
+%## LOAD SPCA STUDIES
+%- gait
+if ~ispc
+    tmp = load('-mat',[spca_dir filesep sprintf('%s_UNIX.study',STUDY_FNAME_GAIT)]);
+    STUDY_GAIT = tmp.STUDY;
+else
+    tmp = load('-mat',[spca_dir filesep sprintf('%s.study',STUDY_FNAME_GAIT)]);
+    STUDY_GAIT = tmp.STUDY;
+end
+% %- rest
+% if ~ispc
+%     tmp = load('-mat',[spca_dir filesep sprintf('%s_UNIX.study',STUDY_FNAME_REST)]);
+%     STUDY_REST = tmp.STUDY;
+% else
+%     tmp = load('-mat',[spca_dir filesep sprintf('%s.study',STUDY_FNAME_REST)]);
+%     STUDY_REST = tmp.STUDY;
+% end
+%% TEST LOAD
 %-
-fPaths = {TMP_STUDY.datasetinfo.filepath};
-fNames = {TMP_STUDY.datasetinfo.filename};
-%%
-condition_gait = unique({TMP_STUDY.datasetinfo(1).trialinfo.cond});
-CLUSTER_PICKS = main_cl_inds(2:end);
-subj_i = 35;
-cond_i = 1;
-tmpd = dir([load_dir filesep subject_chars{subj_i} filesep 'GAIT_EPOCHED' filesep '*' filesep sprintf('cond%s_spca_ersp.mat',condition_gait{cond_i})]);
-gait_epoch_subf = strsplit(tmpd.folder,filesep);
-gait_epoch_subf = gait_epoch_subf{end};
-spca_fpath = [load_dir filesep subject_chars{subj_i} filesep 'GAIT_EPOCHED' filesep gait_epoch_subf];
-spca_psd = par_load(spca_fpath,sprintf('cond%s_spca_psd.mat',condition_gait{cond_i}));
-T_DIM = size(spca_psd.psd_corr_based,1);
-F_DIM = size(spca_psd.psd_corr_based,3);
-CL_DIM = length(TMP_STUDY.cluster);
-%%
-loop_store = cell(length(subject_chars),1);
-parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
+gait_conds = unique({STUDY.datasetinfo(1).trialinfo.cond});
+subj_chars = {STUDY.datasetinfo.subject};
+eeg_fpaths = {STUDY.datasetinfo.filepath};
+eeg_fnames = {STUDY.datasetinfo.filename};
+spca_eeg_fpaths = {STUDY_GAIT.datasetinfo.filepath};
+spca_eeg_fnames = {STUDY_GAIT.datasetinfo.filename};
+%-
+% subj_i = 35;
+% cond_i = 1;
+% spca_fpath = STUDY_GAIT.datasetinfo(subj_i).filepath;
+% spca_psd = par_load(spca_fpath,sprintf('cond%s_spca_psd.mat',gait_conds{cond_i}));
+% T_DIM = size(spca_psd.psd_corr_based,1);
+% F_DIM = size(spca_psd.psd_corr_based,3);
+% CL_DIM = length(STUDY.cluster);
+%-
+def_spca_struct = struct('subj_c',{''}, ...
+    'group_n',[], ...
+    'cluster_n',[], ...
+    'cond_c',{''}, ...
+    'comp_c',{''}, ...
+    'psd_orig_avg_c',{[]}, ...
+    'psd_orig_baselined_c',{[]}, ...
+    'psd_rest_c',{[]}, ...
+    'psd_corr_based_c',{[]}, ...
+    'psd_corr_unbase_c',{[]}, ...
+    'psd_corr_psc1',{[]}, ...
+    'tf_coeff_c',{[]});
+%% TABLE CONSTRUCTION ================================================== %%
+struct_store = cell(length(subj_chars),1);
+parfor subj_i = 1:length(subj_chars)
 % for subj_i = 1:3
     %## INITIATION
-    %-
-    cond_c          = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    subj_c          = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    group_n         = zeros(length(condition_gait)*length(CLUSTER_PICKS),1);
-    cluster_n       = zeros(length(condition_gait)*length(CLUSTER_PICKS),1);
-    comp_c          = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    psd_corr_based_c       = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    psd_rest_c      = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    psd_corr_unbase_c  = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    psd_orig_baselined_c = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    % tf_gpmcorr_c    = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    psd_orig_avg_c       = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    % tf_gpmorig_c    = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    psd_corr_psc1        = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
-    tf_coeff_c      = cell(length(condition_gait)*length(CLUSTER_PICKS),1);
+    tmp_study = STUDY;
+    spca_struct = repmat(def_spca_struct,[1,length(main_cl_inds)*length(gait_conds)]);
     cnt = 1;
     %## LOAD EEG DATA
     try
-        %- get eye ic numbers
-        fpath = [OUTSIDE_DATA_DIR filesep subject_chars{subj_i} filesep 'clean'];
-        tmp = dir([fpath filesep '*.set']);
-        [~,EEG_full,~] = eeglab_loadICA(tmp.name,tmp.folder);
-        fprintf('Running subject %s\n',EEG_full.subject)
-        EEG_full = iclabel(EEG_full);
-        clssts = EEG_full.etc.ic_classification.ICLabel.classifications;
-        bad_eye_ics = find(clssts(:,3) > ICLABEL_EYE_CUTOFF);
-        %- figure out unmixing for cluster assignment
-        ics_orig = 1:size(EEG_full.icaweights,2);
-        tmp_cut = ics_orig;
-        tmp_cut(bad_eye_ics) = [];
-        [valc,ordc] = sort(tmp_cut);
-        unmix = [valc; ordc];
-        %- load spca data
-        spca_fpath = [load_dir filesep subject_chars{subj_i} filesep 'GAIT_EPOCHED' filesep gait_epoch_subf];
-        EEG = pop_loadset('filepath',fPaths{subj_i},'filename',fNames{subj_i});
-        fprintf('Running subject %s\n',EEG.subject)
+        %- load spca eeg
+        % EEG = pop_loadset('filepath',spca_eeg_fpaths{subj_i},'filename',spca_eeg_fnames{subj_i});
+        EEG = load([spca_eeg_fpaths{subj_i} filesep spca_eeg_fnames{subj_i}],'-mat');
+        unmix_mat = EEG.etc.spca.unmix_mat;
+        bad_eye_ics = EEG.etc.spca.eye_ic_rej;
+        %- load ica eeg
+        % EEG = pop_loadset('filepath',eeg_fpaths{subj_i},'filename',eeg_fnames{subj_i});
+        EEG_ICA = load([spca_eeg_fpaths{subj_i} filesep spca_eeg_fnames{subj_i}],'-mat');
+        fprintf('Running subject %s\n',EEG.subject)        
         ic_keep = EEG.etc.urreject.ic_keep;
         ic_rej = EEG.etc.urreject.ic_rej;
-        %- perhaps a new way of determining clusters
+        %- perhaps a new way of determining clusters 
         tmp1 = cat(1,EEG.dipfit.model.posxyz);
-        tmp2 = cat(1,EEG_full.dipfit.model.posxyz);
+        tmp2 = cat(1,EEG_ICA.dipfit.model.posxyz);
         dips = zeros(size(tmp2,1),1);
         for i = 1:size(tmp1,1)
             ind = find(all(tmp1(i,:)==tmp2,2));
@@ -166,51 +164,57 @@ parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
             end
         end
         dips = dips(dips~=0);
-        %- sanity checks
-        subj_ics = [];
-        subj_cls = [];
-        subj_unmix = [];
-        for k = 2:length(TMP_STUDY.cluster)
-%             cl_i = CLUSTER_PICKS(i)
-            set_i = (TMP_STUDY.cluster(k).sets == subj_i);
-            comp_i = TMP_STUDY.cluster(k).comps(set_i);
+        
+        %## SANITY CHECKS & IC TRANSFORMS
+        %- determine component transformation after eye ic removal
+        subj_ics = zeros(1,length(tmp_study.cluster));
+        subj_cls = zeros(1,length(tmp_study.cluster));
+        subj_unmix = zeros(1,length(tmp_study.cluster));
+        kk = 1;
+        jj = 1;
+        for k = 2:length(tmp_study.cluster)
+            set_i = (tmp_study.cluster(k).sets == subj_i);
+            comp_i = tmp_study.cluster(k).comps(set_i);
             if ~isempty(comp_i)
-                subj_ics = [subj_ics, comp_i];
-                subj_cls = [subj_cls, repmat(k,1,length(comp_i))];
+                subj_ics(kk:kk+length(comp_i)-1) = comp_i;
+                subj_cls(kk:kk+length(comp_i)-1) = repmat(k,1,length(comp_i));
+                kk = kk + length(comp_i);
                 for j = 1:length(comp_i)
-                    subj_unmix = [subj_unmix, unmix(2,ic_keep(comp_i(j)) == unmix(1,:))];
+                    subj_unmix(jj) = unmix_mat(2,ic_keep(comp_i(j)) == unmix_mat(1,:));
+                    jj = jj + 1;
                 end
             end
         end
-        % spca_ersp = par_load(spca_fpath,sprintf('cond%s_spca_ersp.mat',condition_gait{1}));
-        spca_psd = par_load(spca_fpath,sprintf('cond%s_spca_psd.mat',condition_gait{1}));
+        subj_ics = subj_ics(subj_ics~=0);
+        subj_cls = subj_cls(subj_cls~=0);
+        subj_unmix = subj_unmix(subj_unmix~=0);
+        %- load spca data
+        spca_psd = par_load(spca_eeg_fpaths{subj_i},sprintf('cond%s_spca_psd.mat',gait_conds{1}));
+        %- chk ic transforms
         chk = size(spca_psd.psd_corr_based,2) == (length([ic_keep,ic_rej])-length(bad_eye_ics));
-        chk2 = (length(ic_keep)==length(TMP_STUDY.datasetinfo(subj_i).comps));
+        chk2 = (length(ic_keep)==length(tmp_study.datasetinfo(subj_i).comps));
         fprintf('IC numbers check: %i\n',chk2&&chk);
-        fprintf('IC''s in clusters:\n'); fprintf('ICs: '); fprintf('%i,',subj_ics); fprintf('\n');
-        fprintf('Clusters:\t'); fprintf('%i,',subj_cls); fprintf('\n');
-        fprintf('New ICs:\t'); fprintf('%i,',dips(subj_ics)); fprintf('\n');
-        fprintf('Unmix ICs:\t'); fprintf('%i,',subj_unmix); fprintf('\n');
-        % rest_psd = par_load(spca_fpath,sprintf('gait_psd_spca.mat'));
-        % freqs = rest_psd.icatimefopts.freqs;
-        % rest_psd = rest_psd.F_Rest;
-        
-%         g_i = group_id(subj_i);
-        for cond_i = 1:length(condition_gait)
-            spca_psd = par_load(spca_fpath,sprintf('cond%s_spca_psd.mat',condition_gait{cond_i}));
-            for i = 1:length(CLUSTER_PICKS)
-                cl_i = CLUSTER_PICKS(i);
-                set_i = (TMP_STUDY.cluster(cl_i).sets == subj_i);
-                comp_i = TMP_STUDY.cluster(cl_i).comps(set_i);
+        fprintf('IC''s in clusters: %s\n',strjoin(string(subj_ics),','));
+        fprintf('Clusters: %s\t',strjoin(string(subj_cls),',')); 
+        fprintf('New ICs: %s\t',strjoin(string(dips(subj_ics)),',')); 
+        fprintf('Unmix ICs: %s\t',strjoin(string(subj_unmix),','));
+
+        %## EXTRACT SPCA PSD DATA
+        for cond_i = 1:length(gait_conds)
+            spca_psd = par_load(spca_eeg_fpaths{subj_i},sprintf('cond%s_spca_psd.mat',gait_conds{cond_i}));
+            for i = 1:length(main_cl_inds)
+                cl_i = main_cl_inds(i);
+                set_i = (tmp_study.cluster(cl_i).sets == subj_i);
+                comp_i = tmp_study.cluster(cl_i).comps(set_i);
                 if ~isempty(comp_i) && length(comp_i) < 2
-                    tmp_c = unmix(2,ic_keep(comp_i) == unmix(1,:));
-                    fprintf('%s) assigning IC(spca index,study index) %i(%i,%i) to cluster %i in condition %s...\n',subject_chars{subj_i},ic_keep(comp_i),comp_i,tmp_c,cl_i,condition_gait{cond_i});
-                    psd_corr_based_c{cnt} = squeeze(spca_psd.psd_corr_based(:,tmp_c,:));
-                    psd_orig_avg_c{cnt} = squeeze(spca_psd.psd_orig_avg(:,tmp_c,:));
-                    psd_orig_baselined_c{cnt} = squeeze(spca_psd.psd_orig_baselined(:,tmp_c,:));
-                    psd_rest_c{cnt} = squeeze(spca_psd.baseline_psd(:,tmp_c,:));
-                    psd_corr_unbase_c{cnt} = squeeze(spca_psd.psd_corr_based(:,tmp_c,:))+squeeze(spca_psd.baseline_psd(:,tmp_c,:));
-                    psd_corr_psc1{cnt} = squeeze(spca_psd.psd_corr_psc1(:,tmp_c,:));
+                    tmp_c = unmix_mat(2,ic_keep(comp_i) == unmix_mat(1,:));
+                    fprintf('%s) assigning IC(spca index,study index) %i(%i,%i) to cluster %i in condition %s...\n',subj_chars{subj_i},ic_keep(comp_i),comp_i,tmp_c,cl_i,gait_conds{cond_i});
+                    spca_struct(cnt).psd_corr_based_c = squeeze(spca_psd.psd_corr_based(:,tmp_c,:));
+                    spca_struct(cnt).psd_orig_avg_c = squeeze(spca_psd.psd_orig_avg(:,tmp_c,:));
+                    spca_struct(cnt).psd_orig_baselined_c = squeeze(spca_psd.psd_orig_baselined(:,tmp_c,:));
+                    spca_struct(cnt).psd_rest_c = squeeze(spca_psd.baseline_psd(:,tmp_c,:));
+                    spca_struct(cnt).psd_corr_unbase_c = squeeze(spca_psd.psd_corr_based(:,tmp_c,:))+squeeze(spca_psd.baseline_psd(:,tmp_c,:));
+                    spca_struct(cnt).psd_corr_psc1 = squeeze(spca_psd.psd_corr_psc1(:,tmp_c,:));
                     % tf_coeff_c{cnt} = spca_psd.coeffs;
                     %- validation
                     % figure;
@@ -221,29 +225,29 @@ parfor (subj_i = 1:length(subject_chars),SLURM_POOL_SIZE)
                     % plot(freqs,squeeze(spca_psd.apply_spca_cond.psc1(:,tmp_c,:)));
                     % hold off;
                     %-
-                    cond_c{cnt} = condition_gait{cond_i};
-                    subj_c{cnt} = subject_chars{subj_i};
-                    tmp = regexp(subject_chars{subj_i},'\d','match');
-                    group_n(cnt) = double(string(tmp{1}));
-                    cluster_n(cnt) = cl_i;
-                    comp_c{cnt} = sprintf('study_ic, %i; unmix_ic, %i; keep_ic, %i; cluster_ic, %i',comp_i,tmp_c,ic_keep(comp_i),comp_i);
-                                %struct('eeglab_study',comp_i,...
-%                                     'unmix',tmp_c,...
-%                                     'ic_keep',ic_keep(comp_i));
-                    cnt = cnt +1;
+                    spca_struct(cnt).cond_c = gait_conds{cond_i};
+                    spca_struct(cnt).subj_c = subj_chars{subj_i};
+                    tmp = regexp(subj_chars{subj_i},'\d','match');
+                    spca_struct(cnt).group_n = double(string(tmp{1}));
+                    spca_struct(cnt).cluster_n = cl_i;
+                    spca_struct(cnt).comp_c = sprintf('study_ic, %i; unmix_ic, %i; keep_ic, %i; cluster_ic, %i',comp_i,tmp_c,ic_keep(comp_i),comp_i);
+                    cnt = cnt + 1;
                 end
             end
         end
-        loop_store{subj_i} = table(subj_c,group_n,cluster_n,cond_c,comp_c,...
-            psd_orig_avg_c,psd_orig_baselined_c,psd_rest_c,psd_corr_based_c,...
-            psd_corr_unbase_c,psd_corr_psc1,tf_coeff_c);
-    
-        % loop_store{subj_i} = table(subj_c,group_c,cluster_c,cond_c,comp_c,tf_erspcorr_c,tf_gpmcorr_c,tf_ersporig_c,tf_gpmorig_c,tf_pc1_c,tf_coeff_c);
+        %- remove empty indices
+        chk = ~cellfun(@isempty,{spca_struct.subj_c});
+        spca_struct = spca_struct(chk);
+        struct_store{subj_i} = spca_struct;    
     catch e
-        fprintf('\nError occured on subject %s\n%s\n',subject_chars{subj_i},getReport(e));
+        fprintf(['error. identifier: %s\n',...
+                 'error. %s\n',...
+                 'error. on subject %s\n',...
+                 'stack. %s\n'],e.identifier,e.message,subj_chars{subj_i},getReport(e));
     end
 end
-% tt = table(subj_c,group_c,cluster_c,cond_c,tf_erspcorr_c,tf_gpmcorr_c,tf_erporig_c,tf_gpmorig_c,tf_pc1_c,tf_coeff_c);
-tt = cat(1,loop_store{:});
-tt = tt(~cellfun(@isempty,tt.subj_c),:);
-par_save(tt,[cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],'spca_cluster_table_psd.mat');
+struct_store = struct_store(~cellfun(@isempty,struct_store));
+tt = cat(2,struct_store{:});
+tt = struct2table(tt);
+par_save(tt,cluster_k_dir,'spca_cluster_table_psd.mat');
+

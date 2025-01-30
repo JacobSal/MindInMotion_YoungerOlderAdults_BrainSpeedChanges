@@ -1,18 +1,18 @@
 #!/bin/bash
-#SBATCH --job-name=B_CLUSTER # Job name
+#SBATCH --job-name=G_ANTS_UPDATE # Job name
 #SBATCH --mail-type=ALL # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=jsalminen@ufl.edu # Where to send mail
 #SBATCH --nodes=1 # Use one node
 #SBATCH --ntasks=1 # Run a single task
 #SBATCH --cpus-per-task=20 # Number of CPU cores per task
-#SBATCH --mem-per-cpu=20000mb# Total memory limit
+#SBATCH --mem-per-cpu=12000mb# Total memory limit
 #SBATCH --distribution=cyclic:cyclic # Distribute tasks cyclically first among nodes and then among sockets within a node
-#SBATCH --time=12:00:00 # Time limit hrs:min:sec
-#SBATCH --output=/blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdult_BrainSpeedChanges/src/_slurm_logs/%j_b_cluster_ics.log # Standard output
+#SBATCH --time=06:00:00 # Time limit hrs:min:sec
+#SBATCH --output=/blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdult_BrainSpeedChanges/src/_slurm_logs/%j_g_ants_update_eeg.log # Standard output
 #SBATCH --account=dferris # Account name
 #SBATCH --qos=dferris-b # Quality of service name
 #SBATCH --partition=hpg-default # cluster to run on, use slurm command 'sinfo -s'
-# sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/2_STUDY/mim_oa_speed_eeg_out/run_b_cluster_ics.sh
+# sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_PREPROC/mim/run_g_ants_update_eeg.sh
 module load matlab/2023b
 
 # set linux workspace
@@ -26,9 +26,9 @@ else
     # otherwise: started with bash. Get the real location.
     TMP_PATH=$(realpath $0)
 fi
-export SCRIPT_DIR=$(dirname $TMP_PATH)
-export STUDY_DIR=$SCRIPT_DIR
-export SRC_DIR=$(dirname $(dirname $STUDY_DIR))
+export SRC_DIR=$(dirname $(dirname $TMP_PATH))
+export SCRIPT_DIR=$SRC_DIR/prep_scripts
+export STUDY_DIR=$SRC_DIR
 cd $STUDY_DIR
 
 echo "Date              = $(date)"
@@ -44,7 +44,7 @@ echo "Number of Cores/Task Allocated = $SLURM_CPUS_PER_TASK"
 mkdir -p $STUDY_DIR/_slurm_scratch/$SLURM_JOB_ID
 
 # Kick off matlab
-matlab -nodisplay < $SCRIPT_DIR/b_cluster_ics.m
+matlab -nodisplay < $SCRIPT_DIR/g_ants_update_eeg.m
 
 # Cleanup local work directory
 rm -rf $STUDY_DIR/_slurm_scratch/$SLURM_JOB_ID
