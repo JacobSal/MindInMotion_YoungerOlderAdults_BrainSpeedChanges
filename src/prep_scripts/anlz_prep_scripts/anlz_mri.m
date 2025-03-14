@@ -1,52 +1,79 @@
-%% REQUIRED SETUP 4 ALL SCRIPTS
-%- DATE TIME
-dt = datetime;
-dt.Format = 'MMddyyyy';
-%- VARS
-USER_NAME = 'jsalminen'; %getenv('username');
-fprintf(1,'Current User: %s\n',USER_NAME);
-%- CD
-% cfname_path    = mfilename('fullpath');
-% cfpath = strsplit(cfname_path,filesep);
-% cd(cfpath);
-%% PATH TO YOUR GITHUB REPO
-%- GLOBAL VARS
-REPO_NAME = 'par_EEGProcessing';
-%- determine OS
-if strncmp(computer,'PC',2)
-    PATH_ROOT = ['M:' filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
-else  % isunix
-    PATH_ROOT = [filesep 'blue' filesep 'dferris',...
-        filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
+%   Project Title: MIM OA & YA SPEED & KINETICS ANALYSIS
+%
+%   Code Designer: Jacob salminen
+%## SBATCH (SLURM KICKOFF SCRIPT)
+% sbatch /blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdult_KinEEGCorrs/src/step_to_step_anlz/run_sts_b_epoch_eeg_kin.sh
+
+%{
+%## RESTORE MATLAB
+% WARNING: restores default pathing to matlab 
+restoredefaultpath;
+clc;
+close all;
+clearvars
+%}
+%% SET WORKSPACE ======================================================= %%
+% opengl('dsave', 'software') % might be needed to plot dipole plots?
+%## TIME
+tic
+ADD_ALL_SUBMODS = true;
+%## Determine Working Directories
+if ~ispc
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = fileparts(SCRIPT_DIR); % change this if in sub folder
+        SRC_DIR = STUDY_DIR;
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
+        STUDY_DIR = getenv('STUDY_DIR');
+        SCRIPT_DIR = getenv('SCRIPT_DIR');
+        SRC_DIR = getenv('SRC_DIR');
+    end
+else
+    try
+        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
+        SCRIPT_DIR = fileparts(SCRIPT_DIR);
+    catch e
+        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
+        SCRIPT_DIR = dir(['.' filesep]);
+        SCRIPT_DIR = SCRIPT_DIR(1).folder;
+    end
+    STUDY_DIR = fileparts(SCRIPT_DIR); % change this if in sub folder
+    SRC_DIR = STUDY_DIR;
 end
-%% SETWORKSPACE
-%- define the directory to the src folder
-source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
-run_dir = [source_dir filesep 'i_HEADMODEL' filesep '2_dipole_fit' filesep 'MIM'];
-%- cd to source directory
-cd(source_dir)
-%- addpath for local folder
-addpath(source_dir)
-addpath(run_dir)
-%- set workspace
-global ADD_CLEANING_SUBMODS
-ADD_CLEANING_SUBMODS = false;
-setWorkspace
-%% (PROCESSING PARAMS) ================================================= %%
-%## Hard Define
-%- subject choices (Combined OA & YA)
-% YA_PREP_FPATH = '04182023_YA_N37_prep_verified'; % JACOB,SAL(04/10/2023)
-% OA_PREP_FPATH = '07042023_OA_prep_verified'; % JACOB,SAL(04/10/2023)
-% OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
-% OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
-OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p3_newparams'; % JACOB,SAL(09/26/2023)
-%- hardcode data_dir
+%## Add Study, Src, & Script Paths
+addpath(SRC_DIR);
+addpath(STUDY_DIR);
+cd(SRC_DIR);
+fprintf(1,'Current folder: %s\n',SRC_DIR);
+%## Set PWD_DIR, EEGLAB path, _functions path, and others...
+set_workspace
+%% (DATASET INFORMATION) =============================================== %%
+% [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
+% subj_names = [SUBJ_PICS{:}];
+SUBJ_PICS = {{'H3046','H3047','H3073','H3077','H3092', ...
+    'NH3023','NH3025','NH3027',' NH3028', ...
+    'NH3051','NH3056','NH3071','NH3082','NH3123'}};
+subj_chars = [SUBJ_PICS{:}];
+%%
+%## hard define
+%- datset name
 DATA_SET = 'MIM_dataset';
-%- MRI normalization
-NORMALIZE_MRI = true;
-%## Soft Define
-DATA_DIR = [source_dir filesep '_data'];
-OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
+%- eeglab_cluster.m spectral params
+ica_data_dir = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams'; 
+%## soft define
+studies_dir = [PATHS.data_dir filesep DATA_SET filesep '_studies'];
+ica_data_dir = [PATHS.data_dir filesep DATA_SET filesep '_studies' filesep ica_data_dir]; % JACOB,SAL(02/23/2023)
+%%
+mri_fpaths = cell(length(subj_chars),1);
+mri_fnames = cell(length(subj_chars),1);
+%-- masks
+mask_regex = '%s_masks_contr.nii.gz';
+for subj_i = 1:length(subj_chars)
+    mri_fpaths{subj_i} = [PATHS.data_dir filesep DATA_SET filesep subj_chars{subj_i} filesep 'MRI'];
+    mri_fnames{subj_i} = sprintf(mask_regex,subj_chars{subj_i});
+end
 %%
 mri_fpath = 'C:\Users\jsalminen\Downloads\Adults\Head\ANTS80-84Years3T_t2w_head.nii.gz';
 unzip_out = gunzip(mri_fpath);

@@ -4,19 +4,28 @@
 %   Summary: 
 
 %- run script
-% sbatch /blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdults_BrainSpeedChanges/src/_bash_sh_files/prep_run_a_preprocess.sh
+% sbatch /blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdult_KinEEGCorrs/src/prep_scripts/run_prep_a_preprocess.sh
 
 %- run amica
-% sbatch /blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdults_BrainSpeedChanges/src/_bash_sh_files/b_run_singlenode_amica.sh
+% sbatch /blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdult_KinEEGCorrs/src/prep_scripts/b_run_singlenode_amica.sh
 
 %- mim dipfit
-% sbatch /blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdults_BrainSpeedChanges/src/_bash_sh_files/c_run_mim_mcc_dipfit.sh
+% sbatch /blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdult_KinEEGCorrs/src/prep_scripts/c_run_mim_mcc_dipfit.sh
 
+%{
+%## RESTORE MATLAB
+% WARNING: restores default pathing to matlab 
+restoredefaultpath;
+clc;
+close all;
+clearvars
+%}
 %% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
 %## Determine Working Directories
+ADD_ALL_SUBMODS = true;
 if ~ispc
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
@@ -46,9 +55,10 @@ fprintf(1,'Current folder: %s\n',SRC_DIR);
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
 % [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca');
-SUBJ_PICS = {{'H3046','H3047','H3073','H3077','H3092', ...
-    'NH3023','NH3025','NH3027',' NH3028', ...
-    'NH3051','NH3056','NH3071','NH3082','NH3123'}};
+% SUBJ_PICS = {{'H3046','H3047','H3073','H3077','H3092', ...
+%     'NH3023','NH3025','NH3027',' NH3028', ...
+%     'NH3051','NH3056','NH3071','NH3082','NH3123'}};
+SUBJ_PICS ={{'NH3028'}};
 %% (PROCESSING PARAMS) ================================================= %%
 %## hard define
 %- dataset name
@@ -105,10 +115,12 @@ parfor subj_i = 1:length(eeg_fpaths)
     if ~exist([save_dir filesep subj_chars{subj_i}],'dir')
         mkdir([save_dir filesep subj_chars{subj_i}]);
     end
-    %## RUN MAIN_FUNCvvv
+    %## RUN MAIN_FUNC
     try
-        [EEG,amica_cmd{subj_i},params{subj_i}] = mim_preproc_func(subj_chars{subj_i},eeg_fpaths{subj_i},...
-                [save_dir filesep subj_chars{subj_i}],studies_dir);
+        [EEG,amica_cmd{subj_i},params{subj_i}] = mim_preproc_func(subj_chars{subj_i},...
+            eeg_fpaths{subj_i}, ...
+            [save_dir filesep subj_chars{subj_i}], ...
+            studies_dir);
         % fprintf('%s\n',amica_cmd{subj_i}{2})
     catch e
         fprintf(['error. identifier: %s\n',...
@@ -116,4 +128,20 @@ parfor subj_i = 1:length(eeg_fpaths)
                  'error. on subject %s\n',...
                  'stack. %s\n'],e.identifier,e.message,subj_chars{subj_i},getReport(e));
     end
+end
+
+%% (AMICA PARAM FILE RECOVERY) 
+preprocess_pipeline = 'EMG_HP3std_iCC0p65_iCCEMG0p4_ChanRej0p7_TimeRej0p4_winTol10';
+for subj_i = 1:length(eeg_fpaths)
+    fpath = [save_dir filesep subj_chars{subj_i} filesep 'clean'];
+    float_fname = sprintf('%s_cleanEEG_%s.fdt',subj_chars{subj_i},preprocess_pipeline);    
+    set_fname = sprintf('%s_cleanEEG_%s.set',subj_chars{subj_i},preprocess_pipeline);
+    %-
+    EEG = pop_loadset('filepath',fpath,'filename',set_fname);
+    %-
+    [EEG,amica_cmd] = mim_prep_hpg_amica(EEG, ...
+        [fpath filesep float_fname], ...
+        fpath, ...
+        'jsalminen@ufl.edu', ...
+        1);
 end

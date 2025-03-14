@@ -137,9 +137,9 @@ if ~ispc
     fprintf('Number of workers: %i\n',pp.NumWorkers);
     fprintf('Number of threads: %i\n',pp.NumThreads);
     %- make meta data dire1ory for slurm
-    if exist(STUDY_DIR,'var')
-        mkdir([STUDY_DIR filesep '_slurm_scratch' filesep getenv('SLURM_JOB_ID')])
-        pp.JobStorageLocation = [STUDY_DIR filesep '_slurm_scratch' filesep getenv('SLURM_JOB_ID')];
+    if exist(SRC_DIR,'var')
+        mkdir([SRC_DIR filesep '_slurm_scratch' filesep getenv('SLURM_JOB_ID')])
+        pp.JobStorageLocation = [SRC_DIR filesep '_slurm_scratch' filesep getenv('SLURM_JOB_ID')];
     else
         fprintf('Slurm scratch location is not defined...\n\n');
     end

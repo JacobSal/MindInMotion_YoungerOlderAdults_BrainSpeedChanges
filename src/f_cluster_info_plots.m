@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdult_KinEEGCorrs/src/_bash_sh_files/run_f_cluster_info_plots.sh
+% sbatch /blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdult_KinEEGCorrs/src/run_f_cluster_info_plots.sh
 
 %{
 %## RESTORE MATLAB
@@ -55,8 +55,8 @@ set_workspace
 %## DATASET
 DATA_SET = 'MIM_dataset';
 %## STUDY INFO
-STUDY_DNAME = '10172024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej_speed';
-% STUDY_DNAME = '01192025_mim_yaoa_nopowpow_crit_speed';
+% STUDY_DNAME = '10172024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej_speed';
+STUDY_DNAME = '01192025_mim_yaoa_nopowpow_crit_speed';
 % STUDY_FNAME = 'epoch_study';
 %## soft define
 studies_dir = [PATHS.data_dir filesep DATA_SET filesep '_studies'];
@@ -67,35 +67,38 @@ cluster_fpath = [studies_dir filesep sprintf('%s',STUDY_DNAME) filesep '__iclabe
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 cluster_k_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 %- save dir
-save_dir = [cluster_k_dir filesep 'topo_dip_inf'];
+save_dir = [cluster_k_dir filesep 'topo_dip_inf' filesep 'keep_figure_gen'];
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
 %% ================================================================== %%
 %## LOAD STUDY
-% if ~ispc
-%     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',cluster_study_fpath);
-% else
-%     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',cluster_study_fpath);
-% end
-%## LOAD STUDY
 if ~ispc
-    tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
-    STUDY = tmp.STUDY;
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',cluster_study_fpath);
 else
-    tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s.study',CLUSTER_STUDY_NAME)]);
-    STUDY = tmp.STUDY;
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',cluster_study_fpath);
 end
+%## LOAD STUDY
+% if ~ispc
+%     tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s_UNIX.study',CLUSTER_STUDY_NAME)]);
+%     STUDY = tmp.STUDY;
+% else
+%     tmp = load('-mat',[cluster_study_fpath filesep sprintf('%s.study',CLUSTER_STUDY_NAME)]);
+%     STUDY = tmp.STUDY;
+% end
 cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
 [comps_out,main_cl_inds,outlier_cl_inds,valid_clusters] = eeglab_get_cluster_comps(STUDY);
-cluster_inds = main_cl_inds(1:end);
+% cluster_inds = main_cl_inds(1:end);
+% cluster_inds = valid_clusters;
+cluster_inds = [3,4,5,7,10,12,13]; % 01192025_mim_yaoa_nopowpow_crit_speed, rb3
+
 % cluster_inds = [3,4,6,7,8,9,10,13]; % 01192025_mim_yaoa_nopowpow_crit_speed, rb3
 %- save dir
-save_dir = [save_dir filesep 'figure_gen']; %sprintf('cl%i-cl%i',min(cluster_inds),max(cluster_inds))];
-if ~exist(save_dir,'dir')
-    mkdir(save_dir);
-end
+% save_dir = [save_dir filesep 'figure_gen']; %sprintf('cl%i-cl%i',min(cluster_inds),max(cluster_inds))];
+% if ~exist(save_dir,'dir')
+%     mkdir(save_dir);
+% end
 %% LOAD TOPO & DIP INFO ================================================ %%
 % dipfit_structs = par_load(STUDY.filepath,'dipfit_structs.mat');
 % topo_cells = par_load(STUDY.filepath,'topo_cells.mat');
@@ -108,27 +111,58 @@ end
 %     'ALLEEG',ALLEEG);
 %% (ANATOMY) =========================================================== %%
 % addpath([PATHS.submods_dir filesep 'AAL3']);
-ANATOMY_STRUCT = struct('atlas_fpath',{{[PATHS.submods_dir filesep 'AAL3' filesep 'AAL3v1.nii'],...
-    [PATHS.submods_dir filesep 'AAL3' filesep 'ROI_MNI_V7.nii']}},...
+% ANATOMY_STRUCT = struct('atlas_fpath',{{[PATHS.submods_dir filesep 'AAL3' filesep 'AAL3v1.nii'],...
+%     [PATHS.submods_dir filesep 'AAL3' filesep 'ROI_MNI_V7.nii']}},...
+%     'group_chars',{unique({STUDY.datasetinfo.group})},...
+%     'cluster_inds',(cluster_inds),...
+%     'anatomy_calcs',{{'all aggregate','all centroid'}},... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
+%     'save_dir',cluster_k_dir,...
+%     'save_inf',true);
+% [STUDY,anat_struct,~,~,txt_out] = eeglab_get_anatomy(STUDY,...
+%     'ANATOMY_STRUCT',ANATOMY_STRUCT,...
+%     'ALLEEG',ALLEEG);
+%## AAL3 PATH
+if ~ispc
+    tp = strsplit(path,':');
+else
+    tp = strsplit(path,';');
+end
+b1 = contains(tp,'AAL3','IgnoreCase',true);
+b2 = tp(b1);
+try
+    ind = regexp(b2(1),'AAL3','end');
+    path_aal3 = b2{1}(1:ind{1});
+    fprintf('ALL3 path: %s\n',path_aal3);
+catch ME
+    switch ME.identifier
+        case 'MATLAB:badsubscript'
+            fprintf('AAL3 path not found.\n');
+    end
+end
+addpath(path_aal3);
+ANATOMY_STRUCT = struct('atlas_fpath',{{[path_aal3 filesep 'AAL3v1.nii'], ...
+    [path_aal3 filesep 'ROI_MNI_V7.nii']}},...
     'group_chars',{unique({STUDY.datasetinfo.group})},...
-    'cluster_inds',(cluster_inds),...
+    'cluster_inds',3:length(STUDY.cluster),...
     'anatomy_calcs',{{'all aggregate','all centroid'}},... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
-    'save_dir',cluster_k_dir,...
+    'save_dir',save_dir,...
     'save_inf',true);
+%(01/16/2025) JS, 'all centroid' option has a bug where indexing
+%doesn't seem to want to work on line 535 in poi_box
 [STUDY,anat_struct,~,~,txt_out] = eeglab_get_anatomy(STUDY,...
-    'ANATOMY_STRUCT',ANATOMY_STRUCT,...
-    'ALLEEG',ALLEEG);
+    'ALLEEG',ALLEEG,...
+    'ANATOMY_STRUCT',ANATOMY_STRUCT);
 %% TOPO ================================================================ %%
 groups = unique({STUDY.datasetinfo.group});
 AX_HORIZ_SHIFT = 0.4;
 AX_VERT_SHIFT = 0.05;
-DIP_IM_DPI = 1200;
+DIP_IM_DPI = 900;
 AX_INIT_HORIZ_TOPO = 0.085;
 AX_INIT_VERT_TOPO = 0.75;
 FIGURE_POSITION =[1,1,6.5,9];
 PG_SIZE = [6.5,9];
 FONT_NAME = 'Arial';
-TOPO_FONTSIZE = 7;
+TOPO_FONTSIZE = 6;
 HZ_DIM = 3;
 g_chars = unique({STUDY.datasetinfo.group});
 g_chars_topo = {'Young Adults','Older High Mobility Adults','Older Low Mobility Adults'};

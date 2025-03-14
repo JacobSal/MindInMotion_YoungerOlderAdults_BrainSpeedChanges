@@ -4,45 +4,48 @@
 % Editted by Yiru to create automatic transfer to M drive 
 % 2022-11-1 create mesh for all MiM participants
 % 2023-02-09 create mesh for all MiM participants - including older adults
-%% SET WORKSPACE ======================================================= %%
-% opengl('dsave', 'software') % might be needed to plot dipole plots?
+%% Initialization
 %## TIME
 tic
-ADD_CLEANING_SUBMODS = false;
-%## Determine Working Directories
-if ~ispc
-    try
-        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
-        SCRIPT_DIR = fileparts(SCRIPT_DIR);
-        SRC_DIR = SCRIPT_DIR;
-    catch e
-        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
-        STUDY_DIR = getenv('STUDY_DIR');
-        SCRIPT_DIR = getenv('SCRIPT_DIR');
-        SRC_DIR = getenv('SRC_DIR');
-    end
-else
-    try
-        SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
-        SCRIPT_DIR = fileparts(SCRIPT_DIR);
-    catch e
-        fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
-        SCRIPT_DIR = dir(['.' filesep]);
-        SCRIPT_DIR = SCRIPT_DIR(1).folder;
-    end
-    STUDY_DIR = SCRIPT_DIR; % change this if in sub folder
-    SRC_DIR = STUDY_DIR;
+%% REQUIRED SETUP 4 ALL SCRIPTS
+%- DATE TIME
+dt = datetime;
+dt.Format = 'MMddyyyy';
+%- VARS
+USER_NAME = 'jsalminen'; %getenv('username');
+fprintf(1,'Current User: %s\n',USER_NAME);
+%- CD
+% cfname_path    = mfilename('fullpath');
+% cfpath = strsplit(cfname_path,filesep);
+% cd(cfpath);
+%% PATH TO YOUR GITHUB REPO
+%- GLOBAL VARS
+REPO_NAME = 'par_EEGProcessing';
+%- determine OS
+if strncmp(computer,'PC',2)
+    PATH_ROOT = ['M:' filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
+else  % isunix
+    PATH_ROOT = [filesep 'blue' filesep 'dferris',...
+        filesep USER_NAME filesep 'GitHub']; % path 2 your github folder
 end
-%## Add Study, Src, & Script Paths
-addpath(SRC_DIR);
-cd(SRC_DIR);
-fprintf(1,'Current folder: %s\n',SRC_DIR);
-%## Set PWD_DIR, EEGLAB path, _functions path, and others...
-set_workspace
+%% DEFINE SOURCE DIRECTORY & CD ======================================== %%
+%- define the directory to the src folder
+source_dir = [PATH_ROOT filesep REPO_NAME filesep 'src'];
+run_dir = [source_dir filesep '1_BATCH_PREP' filesep 'MIM_OA'];
+%- cd to source directory
+cd(source_dir)
+%- addpath for local folder
+addpath(source_dir)
+addpath(run_dir)
 %% SET WORKSPACE ======================================================= %%
+global ADD_CLEANING_SUBMODS
+ADD_CLEANING_SUBMODS = true;
+setWorkspace
 %-
 % [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('oa');
-SUBJ_PICS = {{'NH3023','NH3028'}};
+SUBJ_PICS = {{'H2012_FU','H2018_FU'},{'H3120','NH3129'}};
+% GROUP_NAMES = {'H2000''s','H3000''s'};
+% SUBJ_ITERS = {1:length(SUBJ_PICS{1}),1:length(SUBJ_PICS{2})};
 %- 
 MIM_RDRIVE = 'R:\Ferris-Lab\share\MindInMotion\Data\';
 MIM_MDRIVE = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\MIM_dataset';
