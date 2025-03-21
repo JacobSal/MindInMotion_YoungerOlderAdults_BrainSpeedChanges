@@ -56,22 +56,24 @@ set_workspace
 DATA_SET = 'MIM_dataset';
 %## STUDY INFO
 % STUDY_DNAME = '10172024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej_speed';
-STUDY_DNAME = '01192025_mim_yaoa_nopowpow_crit_speed';
+STUDY_DNAME = '02202025_mim_yaoa_powpow0p3_crit_speed';
 % STUDY_FNAME = 'epoch_study';
 %## soft define
 studies_dir = [PATHS.data_dir filesep DATA_SET filesep '_studies'];
 %## CLUSTER
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
-cluster_fpath = [studies_dir filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_kmeansalt_rb3'];
+% cluster_fpath = [studies_dir filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_kmeansalt_rb3'];
+cluster_fpath = [studies_dir filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_allcond_rb3'];
+
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 cluster_k_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 %- save dir
-save_dir = [cluster_k_dir filesep 'topo_dip_inf' filesep 'keep_figure_gen'];
+save_dir = [cluster_k_dir filesep 'topo_dip_inf' filesep 'all'];
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
-%% ================================================================== %%
+%% =============================================label_i===================== %%
 %## LOAD STUDY
 if ~ispc
     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '_UNIX.study'],'filepath',cluster_study_fpath);
@@ -89,9 +91,9 @@ end
 cl_struct = par_load([cluster_study_fpath filesep sprintf('%i',CLUSTER_K)],sprintf('cl_inf_%i.mat',CLUSTER_K));
 STUDY.cluster = cl_struct;
 [comps_out,main_cl_inds,outlier_cl_inds,valid_clusters] = eeglab_get_cluster_comps(STUDY);
-% cluster_inds = main_cl_inds(1:end);
+cluster_inds = main_cl_inds(1:end);
 % cluster_inds = valid_clusters;
-cluster_inds = [3,4,5,7,10,12,13]; % 01192025_mim_yaoa_nopowpow_crit_speed, rb3
+% cluster_inds = [3,4,5,7,10,12,13]; % 01192025_mim_yaoa_nopowpow_crit_speed, rb3
 
 % cluster_inds = [3,4,6,7,8,9,10,13]; % 01192025_mim_yaoa_nopowpow_crit_speed, rb3
 %- save dir
@@ -99,28 +101,8 @@ cluster_inds = [3,4,5,7,10,12,13]; % 01192025_mim_yaoa_nopowpow_crit_speed, rb3
 % if ~exist(save_dir,'dir')
 %     mkdir(save_dir);
 % end
-%% LOAD TOPO & DIP INFO ================================================ %%
-% dipfit_structs = par_load(STUDY.filepath,'dipfit_structs.mat');
-% topo_cells = par_load(STUDY.filepath,'topo_cells.mat');
-%--
-% CALC_STRUCT = struct('cluster_inds',(2:length(STUDY.cluster)),...
-%     'save_inf',true,...
-%     'recalculate',true);
-% [STUDY,dipfit_structs,topo_cells] = eeglab_get_topodip(STUDY,...
-%     'CALC_STRUCT',CALC_STRUCT,...
-%     'ALLEEG',ALLEEG);
 %% (ANATOMY) =========================================================== %%
-% addpath([PATHS.submods_dir filesep 'AAL3']);
-% ANATOMY_STRUCT = struct('atlas_fpath',{{[PATHS.submods_dir filesep 'AAL3' filesep 'AAL3v1.nii'],...
-%     [PATHS.submods_dir filesep 'AAL3' filesep 'ROI_MNI_V7.nii']}},...
-%     'group_chars',{unique({STUDY.datasetinfo.group})},...
-%     'cluster_inds',(cluster_inds),...
-%     'anatomy_calcs',{{'all aggregate','all centroid'}},... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
-%     'save_dir',cluster_k_dir,...
-%     'save_inf',true);
-% [STUDY,anat_struct,~,~,txt_out] = eeglab_get_anatomy(STUDY,...
-%     'ANATOMY_STRUCT',ANATOMY_STRUCT,...
-%     'ALLEEG',ALLEEG);
+%{
 %## AAL3 PATH
 if ~ispc
     tp = strsplit(path,':');
@@ -140,8 +122,10 @@ catch ME
     end
 end
 addpath(path_aal3);
-ANATOMY_STRUCT = struct('atlas_fpath',{{[path_aal3 filesep 'AAL3v1.nii'], ...
-    [path_aal3 filesep 'ROI_MNI_V7.nii']}},...
+%## ANATOMY CALCULATION
+% [path_aal3 filesep 'ROI_MNI_V7_1mm.nii']
+ANATOMY_STRUCT = struct('atlas_fpath',{{[path_aal3 filesep 'AAL3v1_1mm.nii.gz'], ...
+        [path_aal3 filesep 'ROI_MNI_V7_1mm.nii']}},...
     'group_chars',{unique({STUDY.datasetinfo.group})},...
     'cluster_inds',3:length(STUDY.cluster),...
     'anatomy_calcs',{{'all aggregate','all centroid'}},... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
@@ -149,9 +133,12 @@ ANATOMY_STRUCT = struct('atlas_fpath',{{[path_aal3 filesep 'AAL3v1.nii'], ...
     'save_inf',true);
 %(01/16/2025) JS, 'all centroid' option has a bug where indexing
 %doesn't seem to want to work on line 535 in poi_box
-[STUDY,anat_struct,~,~,txt_out] = eeglab_get_anatomy(STUDY,...
-    'ALLEEG',ALLEEG,...
+%(03/05/2025) JS, this seems to be fixed after some exception
+%handling changes
+[STUDY,anat_struct,~,~,txt_out] = eeglab_get_anatomy(STUDY, ...
+    'ALLEEG',ALLEEG, ...
     'ANATOMY_STRUCT',ANATOMY_STRUCT);
+%}
 %% TOPO ================================================================ %%
 groups = unique({STUDY.datasetinfo.group});
 AX_HORIZ_SHIFT = 0.4;

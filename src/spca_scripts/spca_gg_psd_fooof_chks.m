@@ -77,7 +77,11 @@ SPEC_PARAMS = struct('freqrange',[1,200],...
     'specmode','psd',...
     'freqfac',4,...
     'logtrials','on',...
-    'comps','all');
+    'comps','all',...
+    'plot_freqrange',[4,60],...
+    'plot_ylim',[-35,-8],...
+    'subtractsubjectmean','on',...
+    'plotmode','normal');
 %## hard define
 %- FOOOF
 % settings = struct('peak_width_limits',[1,8],...
@@ -97,19 +101,26 @@ beta2_band_lims = [20,30];
 %% (PATHS) ============================================================= %%
 %- datset name
 DATA_SET = 'MIM_dataset';
-%- study name
-STUDY_DNAME = '10172024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej_speed';
-studies_fpath = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
-%- load study file
-study_fpath = [studies_fpath filesep sprintf('%s',STUDY_DNAME)];
+%- study path
+SPCA_DNAME = '02202025_mim_yaoa_spca_calcs';
+% STUDY_DNAME = '10172024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej_speed';
+STUDY_DNAME =  '02202025_mim_yaoa_powpow0p3_crit_speed';
+ANALYSIS_DNAME = 'spca_fooof_psd_anl';
+STUDY_FNAME_GAIT = 'spca_gait_epoch_study_all';
+%-
+studies_fpath = [PATHS.data_dir filesep DATA_SET filesep '_studies'];
+spca_dir = [studies_fpath filesep sprintf('%s',SPCA_DNAME)];
 %- load cluster
 CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
-cluster_fpath = [study_fpath filesep '__iclabel_cluster_kmeansalt_rb5'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_kmeansalt_rb10'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_kmeansalt_rb5'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_kmeansalt_rb3'];
+cluster_fpath = [studies_fpath filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_allcond_rb3'];
+
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 cluster_k_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
-%- save directory 
-ANALYSIS_DNAME = 'spca_fooof_psd_anl';
+%-
 save_dir = [cluster_k_dir filesep ANALYSIS_DNAME];
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
@@ -127,19 +138,24 @@ end
 % else
 %     [STUDY,ALLEEG] = pop_loadstudy('filename',[CLUSTER_STUDY_NAME '.study'],'filepath',cluster_study_fpath);
 % end
-%-
-cl_struct = par_load(cluster_k_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
-STUDY.cluster = cl_struct;
-[comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
-CLUSTER_PICS = main_cl_inds;
-%%
-%## RE-POP PARAMS
+%--
+% STUDY_DESI_PARAMS = {{'subjselect',{},...
+%             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
+%             'variable1','group','values1',{'H1000','H2000','H3000'}}};
+%--
+% STUDY_DESI_PARAMS = {{'subjselect',{},...
+%             'variable2','cond','values2',{'flat','low','med','high'},...
+%             'variable1','group','values1',{'ya','oa'}},...
+%             {'subjselect',{},...
+%             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
+%             'variable1','group','values1',{'ya','oa'}}};
 STUDY_DESI_PARAMS = {{'subjselect',{},...
             'variable2','cond','values2',{'flat','low','med','high'},...
-            'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}},...
+            'variable1','group','values1',{'H1000','H2000','H3000'}},...
             {'subjselect',{},...
             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
-            'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}}};
+            'variable1','group','values1',{'H1000','H2000','H3000'}}};
+%% POP PARAMS
 STUDY = pop_statparams(STUDY,'condstats',ERSP_STAT_PARAMS.condstats,...
         'groupstats',ERSP_STAT_PARAMS.groupstats,...
         'method',ERSP_STAT_PARAMS.method,...
@@ -151,11 +167,19 @@ STUDY.cache = [];
 for des_i = 1:length(STUDY_DESI_PARAMS)
     [STUDY] = std_makedesign(STUDY,ALLEEG,des_i,STUDY_DESI_PARAMS{des_i}{:});
 end
+SPEC_PARAMS.subtractsubjectmean = 'on';
+STUDY = pop_specparams(STUDY,'subtractsubjectmean',SPEC_PARAMS.subtractsubjectmean,...
+    'freqrange',SPEC_PARAMS.plot_freqrange,'plotmode','condensed',...
+    'plotconditions','together','ylim',SPEC_PARAMS.plot_ylim,'plotgroups','together');
+%--
+cl_struct = par_load(cluster_k_dir,sprintf('cl_inf_%i.mat',CLUSTER_K));
+STUDY.cluster = cl_struct;
+[comps_out,main_cl_inds,outlier_cl_inds] = eeglab_get_cluster_comps(STUDY);
+CLUSTER_PICS = main_cl_inds;
 %% LOAD FOOOF DATA
-tmp = load([save_dir filesep 'psd_feature_table.mat']);
-FOOOF_TABLE = tmp.FOOOF_TABLE;
+FOOOF_TABLE = par_load([save_dir filesep 'psd_feature_table.mat']);
 %% MULTI-CLUSTER PLOT OF ALL SUBJECTS ================================== %%
-%{
+
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);
 conditions = unique(FOOOF_TABLE.cond_char);
@@ -246,7 +270,7 @@ for j = 1:length(designs)
         end
     end
 end
-%}
+
 %% SANITY CHECK: APERIODIC EXP., TERRAIN WALKING SPEED, APERIODIC OFFSET
 %{
 %## (STATS STRUCT) ====================================================== %%

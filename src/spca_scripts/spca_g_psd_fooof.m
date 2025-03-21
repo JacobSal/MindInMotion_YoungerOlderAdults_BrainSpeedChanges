@@ -11,21 +11,22 @@ restoredefaultpath;
 clc;
 close all;
 clearvars
-clear java;
 %}
 %% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-ADD_CLEANING_SUBMODS = false;
+ADD_ALL_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
-        SRC_DIR = fileparts(SRC_DIR);
+        STUDY_DIR = fileparts(SCRIPT_DIR); % change this if in sub folder
+        SRC_DIR = STUDY_DIR;
     catch e
         fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
+        STUDY_DIR = getenv('STUDY_DIR');
         SCRIPT_DIR = getenv('SCRIPT_DIR');
         SRC_DIR = getenv('SRC_DIR');
     end
@@ -38,10 +39,12 @@ else
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
-    SRC_DIR = fileparts(SCRIPT_DIR);    
+    STUDY_DIR = fileparts(SCRIPT_DIR); % change this if in sub folder
+    SRC_DIR = STUDY_DIR;
 end
 %## Add Study, Src, & Script Paths
 addpath(SRC_DIR);
+addpath(STUDY_DIR);
 cd(SRC_DIR);
 fprintf(1,'Current folder: %s\n',SRC_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
@@ -99,11 +102,11 @@ beta2_band_lims = [20,30];
 %- datset name
 DATA_SET = 'MIM_dataset';
 %- study path
-SPCA_DNAME = '01102025_mim_yaoa_spca_calcs';
+SPCA_DNAME = '02202025_mim_yaoa_spca_calcs';
 % STUDY_DNAME = '10172024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej_speed';
-STUDY_DNAME =  '01192025_mim_yaoa_nopowpow_crit_speed';
+STUDY_DNAME =  '02202025_mim_yaoa_powpow0p3_crit_speed';
 ANALYSIS_DNAME = 'spca_fooof_psd_anl';
-STUDY_FNAME_GAIT = 'spca_gait_epoch_study';
+STUDY_FNAME_GAIT = 'spca_gait_epoch_study_all';
 %-
 studies_fpath = [PATHS.data_dir filesep DATA_SET filesep '_studies'];
 spca_dir = [studies_fpath filesep sprintf('%s',SPCA_DNAME)];
@@ -112,7 +115,9 @@ CLUSTER_K = 11;
 CLUSTER_STUDY_NAME = 'temp_study_rejics5';
 % cluster_fpath = [studies_fpath filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_kmeansalt_rb10'];
 % cluster_fpath = [studies_fpath filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_kmeansalt_rb5'];
-cluster_fpath = [studies_fpath filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_kmeansalt_rb3'];
+% cluster_fpath = [studies_fpath filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_kmeansalt_rb3'];
+cluster_fpath = [studies_fpath filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_allcond_rb3'];
+
 cluster_study_fpath = [cluster_fpath filesep 'icrej_5'];
 cluster_k_dir = [cluster_study_fpath filesep sprintf('%i',CLUSTER_K)];
 %-
@@ -124,10 +129,10 @@ end
 %## SPCA STUDY
 if ~ispc
     tmp = load('-mat',[spca_dir filesep sprintf('%s_UNIX.study',STUDY_FNAME_GAIT)]);
-    SPCA_STUDY = tmp.STUDY;
+    STUDY_SPCA = tmp.STUDY;
 else
     tmp = load('-mat',[spca_dir filesep sprintf('%s.study',STUDY_FNAME_GAIT)]);
-    SPCA_STUDY = tmp.STUDY;
+    STUDY_SPCA = tmp.STUDY;
 end
 %## CLUSTER STUDY
 if ~ispc
@@ -160,6 +165,11 @@ STUDY_DESI_PARAMS = {{'subjselect',{},...
             {'subjselect',{},...
             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
             'variable1','group','values1',{'H1000','H2000','H3000'}}};
+%--
+% STUDY_DESI_PARAMS = {{'subjselect',{},...
+%             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
+%             'variable1','group','values1',{'H1000','H2000','H3000'}}};
+%--
 % STUDY_DESI_PARAMS = {{'subjselect',{},...
 %             'variable2','cond','values2',{'flat','low','med','high'},...
 %             'variable1','group','values1',{'ya','oa'}},...
@@ -190,7 +200,8 @@ STUDY.cluster = cl_struct;
 CLUSTER_PICS = main_cl_inds;
 %% ================================================================== %%
 %## READ IN SUBJECT SPECIFIC SPEEDS FOR TERRAIN
-MasterTable = mim_read_master_sheet();
+input_fPath = [studies_fpath filesep 'subject_mgmt' filesep 'subject_logging.xlsx'];
+MasterTable = mim_read_master_sheet(input_fPath);
 speed_table = table(categorical(MasterTable.subject_code),MasterTable.terrain_trials_speed_ms);
 speed_alleeg = cell(length(STUDY.datasetinfo),2);
 for i = 1:length(STUDY.datasetinfo)
@@ -207,7 +218,7 @@ speed_alleeg = speed_alleeg(~cellfun(@isempty,speed_alleeg(:,1)),:);
 %% LOAD IN TEST FILE & GRAB PARAMS
 condition_gait = unique({STUDY.datasetinfo(1).trialinfo.cond});
 subj_i = 35;
-rest_psd = par_load(STUDY_GAIT.datasetinfo(subj_i).filepath,sprintf('gait_psd_spca.mat'));
+rest_psd = par_load(STUDY_SPCA.datasetinfo(subj_i).filepath,sprintf('gait_psd_spca.mat'));
 freqs = rest_psd.icatimefopts.freqs;
 %-
 spca_table = par_load(cluster_k_dir,'spca_cluster_table_psd.mat');
@@ -432,8 +443,8 @@ for dd = 1:length(design_inds)
                 g_chars = STUDY.design(des_i).variable(i).value;
             end
         end
-        iif = (specfreqs{cond_i,group_i} < f_range(2) & specfreqs{cond_i,group_i} > f_range(1));
-        fooof_frequencies = specfreqs{cond_i,group_i}(iif);
+        f_inds = (specfreqs{cond_i,group_i} < f_range(2) & specfreqs{cond_i,group_i} > f_range(1));
+        fooof_frequencies = specfreqs{cond_i,group_i}(f_inds);
         if ~any(f_range(2) == fooof_frequencies)
             fooof_frequencies = [fooof_frequencies; f_range(2)];
         end
@@ -567,7 +578,7 @@ fclose(ff);
 disp(length(unique(subj_chk)));
 disp(length(unique(FOOOF_TABLE.subj_id)));
 FOOOF_TABLE = FOOOF_TABLE(FOOOF_TABLE.design_id~=categorical(0),:);
-par_save([save_dir filesep 'fooof_results.mat'],'fooof_results');
+par_save(fooof_results,[save_dir filesep 'fooof_results.mat']);
 %##
 % tmp = load([save_dir filesep 'fooof_results.mat']);
 % fooof_results = tmp.fooof_results;
@@ -670,6 +681,7 @@ end
 par_save([save_dir filesep 'rest_psd_feature_table.mat'],'tmp_fooof_table');
 %}
 %% (UPDATED FOOOF ALG.) ================================================ %%
+%{
 % fooof_save = FOOOF_TABLE;
 tmp_fooof_table = FOOOF_TABLE;
 subj_chars = unique(spca_table.subj_c);
@@ -769,7 +781,7 @@ for cc = 1:length(cluster_inds)
     end
 end
 par_save(tmp_fooof_table,[save_dir filesep 'new_psd_feature_table.mat']);
-
+%}
 %% (JS) DETERMINE PEAK FREQUENCIES
 designs = unique(FOOOF_TABLE.design_id);
 clusters = unique(FOOOF_TABLE.cluster_id);

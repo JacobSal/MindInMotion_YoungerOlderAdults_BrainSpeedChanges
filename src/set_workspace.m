@@ -8,47 +8,24 @@
 %   Summary: this script is an initializer and workspace variable setup for
 %   all scripts in this repository
 
-%% FLEXIBLE HANDLING OF SRC FOLDER
+%% SET PARAMETERS
 %## TIME
 TT = tic;
+
 %## folders
 if ~exist('ADD_ALL_SUBMODS','var')
     ADD_ALL_SUBMODS = false;
 end
-% TMP_PWD = dir(['.' filesep]);
-% TMP_PWD = TMP_PWD(1).folder;
-% fprintf(1,'Current folder: %s\n',TMP_PWD);
-% %## datetime
-% dt         = datetime;
-% dt.Format  = 'ddMMyyyy';
-% ----------------------------------------------------------------------- %
-%% PARAMS
-% tmp = strsplit(TMP_PWD,filesep);
-% src_ind = find(strcmp(tmp,'src'));
-% if ~ispc
-%     %- Add source directory where setup functions are 
-%     SRC_DIR = [filesep strjoin(tmp(1:src_ind),filesep)];
-% else
-%     %- Add source directory where setup functions are
-%     SRC_DIR = strjoin(tmp(1:src_ind),filesep);
-% end
-% if ~ispc
-%     %- Add submodules directory where packages are 
-%     SUBMODS_DIR = [filesep strjoin(tmp(1:src_ind-1),filesep) filesep 'submods'];
-% else
-%     %- Add submodules directory where packages are 
-%     SUBMODS_DIR = [strjoin(tmp(1:src_ind-1),filesep) filesep 'submods'];
-% end
-%## FUNCTIONS FOLDER
-% FUNCS_DIR = [SRC_DIR filesep 'MindInMotions_Functions'];
+
 %##
 SUBMODS_DIR = [fileparts(SRC_DIR) filesep 'submods'];
 FUNCS_DIR = [fileparts(fileparts(SRC_DIR)) filesep 'MindInMotion_Functions' filesep 'src'];
+
+%##
 path(path,SUBMODS_DIR)
 path(path,SRC_DIR)
 path(path,FUNCS_DIR);
-% ----------------------------------------------------------------------- %
-%% HARDCODE PATHS STRUCT
+%% HARDCODE PATHS STRUCT =============================================== %%
 PATHS = [];
 if ADD_ALL_SUBMODS
     SUBMODULES_GENPATH = {'cleanline'};
@@ -58,7 +35,10 @@ if ADD_ALL_SUBMODS
     SUBMODULES_ITERS = (1:length(SUBMODULES));
 else
     SUBMODULES = {'fieldtrip','eeglab','sift','postamicautility',...
-            'iclabel','viewprops','powpowcat'};
+            'iclabel','viewprops','powpowcat', ...
+            'bemobil_pipeline','gait_tracking_w_imu','eeglab_specparam', ...
+            'firfilt'};
+    %(03/18/2025) JS, removing dipfit and using the one in EEGLAB::'dipfit'
     SUBMODULES_GENPATH = {};
     SUBMODULES_ITERS = (1:length(SUBMODULES));
 end
@@ -81,10 +61,11 @@ for ss = SUBMODULES_ITERS
         fprintf('Adding submodule: %s...\n',[SUBMODS_DIR filesep SUBMODULES{ss}]);
         path(path,[SUBMODS_DIR filesep SUBMODULES{ss}]);
     end
-    %- spm12 exception
+    %-- spm12 exception
     if strcmp(SUBMODULES{ss},'spm12')
         path(path,[SUBMODS_DIR filesep SUBMODULES{ss} filesep SUBMODULES{ss}]);
     end
+    %(02/26/2025) JS, this could defintely use a robustness improvement
     PATHS.PATHS{ss} = [SUBMODS_DIR filesep SUBMODULES{ss}];
 end
 %## special paths
@@ -96,8 +77,6 @@ PATHS.submods_dir = SUBMODS_DIR;
 PATHS.src_dir = SRC_DIR;
 %- _data folder
 PATHS.data_dir = fullfile(fileparts(fileparts(SRC_DIR)),'_data');
-%- EEGLAB folder
-PATHS.eeglab_dir = [SUBMODS_DIR filesep 'eeglab'];
 %- _functions folder
 PATHS.functions_dir = FUNCS_DIR;
 a_ftmp = unix_genpath(PATHS.functions_dir);
@@ -108,23 +87,37 @@ cellfun(@(x) fprintf('Adding functions in: %s...\n',x),a_ftmp);
 a_ftmp = char.empty;
 % ----------------------------------------------------------------------- %
 %% ADDPATH for FIELDTRIP Toolboxbemobil
-if contains('fieldtrip',SUBMODULES)
+if contains('fieldtrip',SUBMODULES,'IgnoreCase',true)
+    fprintf('Starting fieldtrip...\n');
     ft_defaults;
 end
 %% INITIALIZE MIM & EEGLAB
 %start EEGLAB if necessary
-if contains('sift',SUBMODULES)
+if contains('sift',SUBMODULES,'IgnoreCase',true) %&& ~contains('cleanline',SUBMODULES,'IgnoreCase',true)
+    fprintf('Starting SIFT...\n');
     StartSIFT;
 end
 %- always start eeglab last.
 ALLEEG=[]; STUDY=[]; CURRENTSET=0; CURRENTSTUDY=0;
-eeglab;
+if contains('eeglab',SUBMODULES,'IgnoreCase',true)
+    fprintf('Starting EEGLAB...\n');
+    %- EEGLAB folder
+    PATHS.eeglab_dir = [SUBMODS_DIR filesep 'eeglab'];
+    eeglab nogui;
+    %(02/26/2025) JS, adding "nogui" keyword to see if improves scripting
+    %performance
+end
 
 %% PARPOOL SETUP ======================================================= %%
 if ~ispc
-    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
-    'option_single', 1, 'option_memmapdata', 0, ...
-    'option_computeica', 0,'option_saveversion6',1, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
+    pop_editoptions('option_storedisk',1, ...
+        'option_savetwofiles',1, ...
+        'option_single',1, ...
+        'option_memmapdata',0, ...
+        'option_computeica',0, ...
+        'option_saveversion6',1, ...
+        'option_scaleicarms',1, ...
+        'option_rememberfolder',1);
     disp(['SLURM_JOB_ID: ', getenv('SLURM_JOB_ID')]);
     disp(['SLURM_CPUS_ON_NODE: ', getenv('SLURM_CPUS_ON_NODE')]);
     %## allocate slurm resources to parpool in matlab
@@ -146,9 +139,14 @@ if ~ispc
     %- create your p-pool (NOTE: gross!!)
     pPool = parpool(pp, SLURM_POOL_SIZE, 'IdleTimeout', Inf);
 else
-    pop_editoptions( 'option_storedisk', 1, 'option_savetwofiles', 1, ...
-    'option_single', 1, 'option_memmapdata', 0,'option_saveversion6',1, ...
-    'option_computeica', 0, 'option_scaleicarms', 1, 'option_rememberfolder', 1);
+    pop_editoptions('option_storedisk',1, ...
+        'option_savetwofiles',1, ...
+        'option_single',1, ...
+        'option_memmapdata',0, ...
+        'option_computeica',0, ...
+        'option_saveversion6',1, ...
+        'option_scaleicarms',1, ...
+        'option_rememberfolder',1);
     SLURM_POOL_SIZE = 1;
 end
 %% FINAL PRINTS
@@ -218,7 +216,8 @@ function [p] = unix_genpath(d)
              ~strcmp( dirname,'private')    && ...
              ~strcmp( dirname,'resources') && ...
              ~strcmp( dirname,'__archive') && ...
-             ~strcmp( dirname,'_compiles')
+             ~strcmp( dirname,'_compiles') && ...
+             ~strcmp( dirname,'_mcc_funcs')
           p = [p genpath([d filesep dirname])]; % recursive calling of this function.
        end
     end

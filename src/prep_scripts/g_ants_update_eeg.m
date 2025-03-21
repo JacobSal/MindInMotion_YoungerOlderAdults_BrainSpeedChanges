@@ -4,20 +4,23 @@
 %   Summary: 
 
 %- run script
-% sbatch /blue/dferris/jsalminen/GitHub/par_EEGProcessing/src/1_PREPROC/mim/run_g_ants_update_eeg.sh
+% sbatch /blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdult_KinEEGCorrs/src/prep_scripts/run_prep_g_ants_update_eeg.sh
 
 %% SET WORKSPACE ======================================================= %%
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
+ADD_ALL_SUBMODS = true;
 %## Determine Working Directories
 if ~ispc
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
-        SRC_DIR = fileparts(SCRIPT_DIR);
+        STUDY_DIR = fileparts(SCRIPT_DIR); % change this if in sub folder
+        SRC_DIR = STUDY_DIR;
     catch e
         fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
+        STUDY_DIR = getenv('STUDY_DIR');
         SCRIPT_DIR = getenv('SCRIPT_DIR');
         SRC_DIR = getenv('SRC_DIR');
     end
@@ -30,25 +33,24 @@ else
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
-    SRC_DIR = fileparts(SCRIPT_DIR);
+    STUDY_DIR = fileparts(SCRIPT_DIR); % change this if in sub folder
+    SRC_DIR = STUDY_DIR;
 end
 %## Add Study, Src, & Script Paths
 addpath(SRC_DIR);
+addpath(STUDY_DIR);
 cd(SRC_DIR);
 fprintf(1,'Current folder: %s\n',SRC_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
 set_workspace
 %% (DATASET INFORMATION) =============================================== %%
-[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa');
-subj_names = [SUBJ_PICS{:}];
+[SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca_speed');
+subj_chars = [SUBJ_PICS{:}];
+% SUBJ_PICS = {{'NH3105'}}; %'H2090','H2095','H2111','H2117','H3029','H3034','H3039','H3053'}};
+% subj_chars = [SUBJ_PICS{:}];
 %% ===================================================================== %%
 %## MRI TEMPLATE FOR SOURCE DEPTH
-HIRES_TEMPLATE = 'M:\jsalminen\GitHub\par_EEGProcessing\src\_data\_resources\mni_icbm152_nlin_sym_09a\mni_icbm152_t1_tal_nlin_sym_09a.nii';
-if ~ispc
-    HIRES_TEMPLATE = convertPath2UNIX(HIRES_TEMPLATE);
-else
-    HIRES_TEMPLATE = convertPath2Drive(HIRES_TEMPLATE);
-end
+HIRES_TEMPLATE = [PATHS.data_dir filesep '_resources' filesep 'mni_icbm152_nlin_sym_09a' filesep 'mni_icbm152_t1_tal_nlin_sym_09a.nii'];
 %- assign hires_template default
 tmp = strsplit(HIRES_TEMPLATE,filesep);
 fpath = strjoin(tmp(1:end-1),filesep);
@@ -63,28 +65,22 @@ try
 catch
     vol = vol.mesh;
 end
-%## hard define
-%- datset name
+
+%## DIPOLE PARAMS
 THRESHOLD_RV_BRAIN = 0.15;
+DEPTH_ERROR = 15; % +/-15mm (30 mm sphere)
+%% (PATHS) ============================================================= %%
 DATA_SET = 'MIM_dataset';
-DEPTH_ERROR = 15; % +/-30mm 
-%- eeglab_cluster.m spectral params
-% OA_PREP_FPATH = '05192023_YAN33_OAN79_prep_verified'; % JACOB,SAL(04/10/2023)
-% OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p4_changparams'; % JACOB,SAL(09/26/2023)
-% OA_PREP_FPATH = '08202023_OAN82_iccRX0p65_iccREMG0p3_newparams'; % JACOB,SAL(09/26/2023)
-% OA_PREP_FPATH = '08202023_OAN82_iccRX0p60_iccREMG0p3_newparams'; 
-OA_PREP_FPATH = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
-% OA_PREP_FPATH = '01132024_antsnorm_iccREEG0p65_iccREMG0p4_skull0p0042';
+STUDY_DNAME = '02212025_YAOAN117_iccR0p65_iccREMG0p4_chanrej_samprej';
 %## soft define
-DATA_DIR = [PATHS.src_dir filesep '_data'];
-STUDIES_DIR = [DATA_DIR filesep DATA_SET filesep '_studies'];
-OUTSIDE_DATA_DIR = [DATA_DIR filesep DATA_SET filesep '_studies' filesep OA_PREP_FPATH]; % JACOB,SAL(02/23/2023)
-parfor (subj_i = 1:length(subj_names),floor(length(subj_names)/2))
-% for subj_i = 1:length(subj_names)
-    subj_name = subj_names{subj_i};
-    mri_path = [DATA_DIR filesep DATA_SET filesep subj_name filesep 'MRI'];
-    in_fpath = [OUTSIDE_DATA_DIR filesep subj_name filesep 'head_model'];
-    out_fpath = [OUTSIDE_DATA_DIR filesep subj_name filesep 'clean'];
+ica_data_dir = [PATHS.data_dir filesep DATA_SET filesep '_studies' filesep STUDY_DNAME]; % JACOB,SAL(02/23/2023)
+%%
+parfor subj_i = 1:length(subj_chars)
+% for subj_i = 1:length(subj_chars)
+    subj_name = subj_chars{subj_i};
+    mri_path = [PATHS.data_dir filesep DATA_SET filesep subj_name filesep 'MRI'];
+    in_fpath = [ica_data_dir filesep subj_name filesep 'head_model'];
+    out_fpath = [ica_data_dir filesep subj_name filesep 'clean'];
     try
         %- load transformed dipole pos & convert to RAS from LPS
         norm_pos = readtable([in_fpath filesep 'dip_pos_outf.csv']);

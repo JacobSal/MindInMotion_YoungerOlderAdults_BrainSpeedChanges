@@ -16,15 +16,17 @@ clearvars
 % opengl('dsave', 'software') % might be needed to plot dipole plots?
 %## TIME
 tic
-ADD_CLEANING_SUBMODS = false;
+ADD_ALL_SUBMODS = false;
 %## Determine Working Directories
 if ~ispc
     try
         SCRIPT_DIR = matlab.desktop.editor.getActiveFilename;
         SCRIPT_DIR = fileparts(SCRIPT_DIR);
-        SRC_DIR = fileparts(SRC_DIR);
+        STUDY_DIR = fileparts(SCRIPT_DIR); % change this if in sub folder
+        SRC_DIR = STUDY_DIR;
     catch e
         fprintf('ERROR. PWD_DIR couldn''t be set...\n%s',getReport(e))
+        STUDY_DIR = getenv('STUDY_DIR');
         SCRIPT_DIR = getenv('SCRIPT_DIR');
         SRC_DIR = getenv('SRC_DIR');
     end
@@ -37,10 +39,12 @@ else
         SCRIPT_DIR = dir(['.' filesep]);
         SCRIPT_DIR = SCRIPT_DIR(1).folder;
     end
-    SRC_DIR = fileparts(SCRIPT_DIR);    
+    STUDY_DIR = fileparts(SCRIPT_DIR); % change this if in sub folder
+    SRC_DIR = STUDY_DIR;
 end
 %## Add Study, Src, & Script Paths
 addpath(SRC_DIR);
+addpath(STUDY_DIR);
 cd(SRC_DIR);
 fprintf(1,'Current folder: %s\n',SRC_DIR);
 %## Set PWD_DIR, EEGLAB path, _functions path, and others...
@@ -50,14 +54,13 @@ set_workspace
 [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('yaoa_spca_speed');
 % [SUBJ_PICS,GROUP_NAMES,SUBJ_ITERS,~,~,~,~] = mim_dataset_information('ya');
 %% (PARAMETERS) ======================================================== %%
-%## hard define
-%- study group and saving
+%-- high level sets
 SESSION_CHAR = '1';
 SAVE_ALLEEG = false;
-%- epoching params
 RECALC_ICA_STUDY = true;
-%## EPOCH PARAMS
+DO_RELOAD_ICA = true;
 SUFFIX_PATH_EPOCHED = 'GAIT_EPOCHED';
+%## EPOCH PARAMS
 DEF_EPOCH_STRUCT = struct('epoch_method','timewarp',...
     'percent_overlap',0,...
     'epoch_event_char','RHS',...
@@ -69,11 +72,10 @@ DEF_EPOCH_STRUCT = struct('epoch_method','timewarp',...
     'cond_field','cond',...
     'appx_cond_len',3*60,...
     'slide_cond_chars',{{}},...
-    'gait_trial_chars',{{'0p25','0p5','0p75','1p0','flat','low','med','high'}},...
+    'gait_trial_chars',{{'0p25','0p5','0p75','1p0','flat','high','low','med'}},... % 'flat','low','med','high'
     'rest_trial_char',{{}},...
     'do_recalc_epoch',true,...
     'do_combine_trials',true);
-DO_RELOAD_ICA = true;
 DEF_LOAD_STRUCT = struct('do_bem_dipfit',false,...
     'do_load_dipfit',true,...
     'dipfit_fpath',{''},...
@@ -101,32 +103,31 @@ REJ_STRUCT = struct( ...
     'ica_rv_thresh',0.15, ...
     'plot_save_dir',{''});
 CHK_STRUCT = struct( ...
-    'do_rmv_comps',false, ...
     'brain_thresh_int',8, ...
     'brain_exempt_int',9, ...
     'cond_chk',struct('do_reject',true, ...
-        'conds',{{'0p25','0p5','0p75','1p0','rest'}}), ... % ,'flat','high','low','med'
+        'conds',{{'rest','0p25','0p5','0p75','1p0','flat','high','low','med'}}), ... % ,'flat','high','low','med'
     'ic_cut_off',5);
 
-%% (PATHS) ============================================================= %%
+%% (PATHS) ========================================================== %%
 %- datset name
 DATA_SET = 'MIM_dataset';
-%- study name
-% STUDY_DNAME = '04232024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej';
-STUDY_DNAME = '01102025_mim_yaoa_spca_calcs';
+%- Study Name
+STUDY_DNAME = '02202025_mim_yaoa_spca_calcs';
+% STUDY_DNAME = 'dummy_study';
 %- Subject Directory information
-ICA_DIR_FNAME = '11262023_YAOAN104_iccRX0p65_iccREMG0p4_changparams';
-STUDY_FNAME_GAIT = 'spca_gait_epoch_study';
-STUDY_FNAME_REST = 'spca_rest_slide_study';
+ICA_DIR_FNAME = '02212025_YAOAN117_iccR0p65_iccREMG0p4_chanrej_samprej';
+STUDY_FNAME_GAIT = 'spca_gait_epoch_study_all';
+STUDY_FNAME_REST = 'spca_rest_slide_study_all';
 %## soft define
-studies_dir = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies'];
-ica_data_dir = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep '_studies' filesep ICA_DIR_FNAME]; % JACOB,SAL(02/23/2023)
+studies_dir = [PATHS.data_dir filesep DATA_SET filesep '_studies'];
+ica_data_dir = [studies_dir filesep ICA_DIR_FNAME]; % JACOB,SAL(02/23/2023)
 save_dir = [studies_dir filesep sprintf('%s',STUDY_DNAME)];
 %- create new study directory
 if ~exist(save_dir,'dir')
     mkdir(save_dir);
 end
-%% Store fNames and eeg_fpaths
+%% Store fNames and fPaths
 group_cats = {'H1000','H2000','H3000'};
 ICA_REGEXP = '%s_cleanEEG_EMG_HP3std_iCC0p65_iCCEMG0p4_ChanRej0p7_TimeRej0p4_winTol10.set';
 %-
@@ -151,15 +152,15 @@ for subj_i = 1:length(subj_chars)
     vals = regexp(subj_chars{subj_i},'[nN]?[hH](\d)\d*','tokens');
     group_chars(subj_i) = group_cats(double(string(vals{1})));
     %## GET DIPFIT
-    %- eeg fpath
+    %-- eeg fpath
     eeg_fpaths{subj_i} = [ica_data_dir filesep subj_chars{subj_i} filesep 'clean'];
     eeg_fnames{subj_i} = sprintf(ICA_REGEXP,subj_chars{subj_i});
-    %- test existence of variables
+    %-- test existence of variables
     if exist([eeg_fpaths{subj_i} filesep eeg_fnames{subj_i}],'file')
-        %- Chanlocs eeg_fpaths
+        %-- Chanlocs fPaths
         chanlocs_fpaths{subj_i} = [PATHS.src_dir filesep '_data' filesep DATA_SET filesep subj_chars{subj_i} filesep 'MRI' filesep 'CustomElectrodeLocations.mat'];
         dipfit_norm_fpaths{subj_i} = [eeg_fpaths{subj_i} filesep 'dipfit_fem_norm_ants.mat'];
-        %- Prints
+        %-- Prints
         chk1 = exist([eeg_fpaths{subj_i} filesep eeg_fnames{subj_i}],'file') && exist([eeg_fpaths{subj_i} filesep 'W'],'file');
         chk2 = exist(dipfit_norm_fpaths{subj_i},'file');
         chk3 = exist(chanlocs_fpaths{subj_i},'file');
@@ -167,8 +168,8 @@ for subj_i = 1:length(subj_chars)
         fprintf('Normalized dipfit exists: %i\n',chk2);
         fprintf('Chanlocs exists: %i\n',chk3);
         %## ADD ADDITIONAL IDENTIFIERS
-        tmp = join(DEF_EPOCH_STRUCT.gait_trial_chars,'_'); 
-        cond_chars{subj_i} = tmp{:};
+        ALLEEG = join(DEF_EPOCH_STRUCT.gait_trial_chars,'_'); 
+        cond_chars{subj_i} = ALLEEG{:};
         sess_chars{subj_i} = SESSION_CHAR;
     end
     %-
@@ -190,7 +191,6 @@ sess_chars = sess_chars(keep_inds);
 group_chars = group_chars(keep_inds);
 cond_chars = cond_chars(keep_inds);
 subj_chars = subj_chars(keep_inds);
-
 %% ================================================================== %%
 %## GENERATE EPOCH MAIN FUNC
 ICLABEL_EYE_CUTOFF = 0.75;
@@ -215,9 +215,7 @@ parfor subj_i = 1:length(eeg_fpaths)
     fprintf('%s) Loading EEG data...\n',subj_chars{subj_i});    
     % tmp_struct.chanloc_fpath = chanlocs_fpaths{subj_i}; 
     %(01/05/2025) JS, technically don't need anymore
-    if ~exist(tmp_save_dir,'dir')
-        mkdir(tmp_save_dir)
-    end
+    mkdir(tmp_save_dir);
     try
         %## LOAD ICA DATA
         EEG = mim_load_one_subj(eeg_fnames{subj_i},eeg_fpaths{subj_i},...
@@ -244,7 +242,7 @@ parfor subj_i = 1:length(eeg_fpaths)
             'REJ_STRUCT',tmp_rej_struct)
         par_save(ic_rej_out,tmp_save_dir,sprintf('%s_ICRej.mat',EEG.subject));
         %- perform rejections and log them
-        [EEG,rej_struct_out,rmv_subj_flag] = mim_reject_subj_ics(EEG,ic_rej_out, ...
+        [~,rej_struct_out,rmv_subj_flag] = mim_reject_subj_ics(EEG,ic_rej_out, ...
             'CHK_STRUCT',tmp_chk_struct);
         tmp_rej_crit_out{subj_i} = rej_struct_out;
 
@@ -299,7 +297,8 @@ parfor subj_i = 1:length(eeg_fpaths)
                 end
             end
             %## EPOCHsubj_chars
-            [tmp_eeg,timewarp_struct] = mim_parse_trials(EEG,'EPOCH_PARAMS',tmp_epoch_struct);
+            [tmp_eeg,timewarp_struct] = mim_parse_trials(EEG, ...
+                'EPOCH_PARAMS',tmp_epoch_struct);
             %## SAVE EEG's AS INDIVIDUAL FILES (CONNECTIVITY)
             cond_files = struct('fPath',[],'fName',[]);
             % if SAVE_ALLEEG
@@ -349,6 +348,8 @@ parfor subj_i = 1:length(eeg_fpaths)
             tmp_eeg = eeg_checkset(tmp_eeg);
             tmp_eeg = eeg_checkamica(tmp_eeg);
             %- save
+            tmp_eeg.filepath = epoch_fpath;
+            tmp_eeg.filename = epoch_fname;
             [tmp_eeg] = pop_saveset(tmp_eeg,'savemode','twofiles',...
                     'filename',epoch_fname,...
                     'filepath',epoch_fpath,...
@@ -383,6 +384,8 @@ parfor subj_i = 1:length(eeg_fpaths)
                  'error. %s\n',...
                  'error. on subject %s\n',...
                  'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
+        ALLEEG_REST{subj_i} = [];
+        ALLEEG_GAIT{subj_i} = [];
     end
 end
 %- save reject table
@@ -398,7 +401,7 @@ ALLEEG_REST = ALLEEG_REST(~cellfun(@isempty,ALLEEG_REST));
 %## BOOKKEEPING (i.e., ADD fields not similar across EEG structures)
 ALLEEG_REST = util_resolve_struct(ALLEEG_REST);
 %##
-[STUDY, ALLEEG_REST] = std_editset([],ALLEEG_REST,...
+[STUDY, ALLEEG] = std_editset([],ALLEEG_REST,...
                                 'updatedat','off',...
                                 'savedat','off',...
                                 'name',STUDY_FNAME_REST,...
@@ -406,8 +409,8 @@ ALLEEG_REST = util_resolve_struct(ALLEEG_REST);
                                 'filepath',save_dir);
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
 %-- epoch params
-STUDY.etc.a_epoch_process.epoch_params = DEF_EPOCH_PARAMS;
-%-- save
+STUDY.etc.a_epoch_process.epoch_params = DEF_EPOCH_STRUCT;
+%--
 [~,~] = parfunc_save_study(STUDY,ALLEEG,...
                                         STUDY.filename,STUDY.filepath,...
                                         'RESAVE_DATASETS','on');
@@ -427,8 +430,7 @@ ALLEEG_GAIT = util_resolve_struct(ALLEEG_GAIT);
                                 'filepath',save_dir);
 [STUDY,ALLEEG] = std_checkset(STUDY,ALLEEG);
 %- epoch params
-STUDY.etc.a_epoch_process.epoch_params = DEF_EPOCH_PARAMS;
-% STUDY.etc.a_epoch_process.epoch_alleeg_fpaths = alleeg_fpaths;
+STUDY.etc.a_epoch_process.epoch_params = DEF_EPOCH_STRUCT;
 %## TIMEWARP TIMINGS
 warptos = nan(length(ALLEEG),length(ALLEEG(1).etc.timewarp_by_cond(1).warpto));
 %- subject based timings

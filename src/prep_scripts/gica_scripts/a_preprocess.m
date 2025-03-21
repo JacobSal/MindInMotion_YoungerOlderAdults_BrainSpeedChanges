@@ -122,19 +122,18 @@ parfor subj_i = 1:length(eeg_fpaths)
     end
 end
 
-%% (AMICA PARAM FILE RECOVERY)
-%{
-preprocess_pipeline = 'cleanEEG_EMG_HP3std_iCC0p65_iCCEMG0p4_ChanRej0p7_TimeRej0p4_winTol10';
-for subj_i = 1:length(eeg_fpaths)
-    fpath = [save_dir filesep subj_chars{subj_i} filesep 'clean'];
-    float_fname = sprintf('%s_%s.fdt',subj_chars{subj_i},preprocess_pipeline);    
-    set_fname = sprintf('%s_%s.set',subj_chars{subj_i},preprocess_pipeline);
-    %-
-    EEG = pop_loadset('filepath',fpath,'filename',set_fname);
-    %-
-    [EEG,amica_cmd] = mim_prep_hpg_amica(EEG, ...
-        [fpath filesep float_fname], ...
-        fpath, ...
-        'jsalminen@ufl.edu');
-end
-%}
+%% (AMICA PARAM FILE RECOVERY) 
+% preprocess_pipeline = 'EMG_HP3std_iCC0p65_iCCEMG0p4_ChanRej0p7_TimeRej0p4_winTol10';
+% for subj_i = 1:length(eeg_fpaths)
+%     fpath = [save_dir filesep subj_chars{subj_i} filesep 'clean'];
+%     float_fname = sprintf('%s_cleanEEG_%s.fdt',subj_chars{subj_i},preprocess_pipeline);    
+%     set_fname = sprintf('%s_cleanEEG_%s.set',subj_chars{subj_i},preprocess_pipeline);
+%     %-
+%     EEG = pop_loadset('filepath',fpath,'filename',set_fname);
+%     %-
+%     [EEG,amica_cmd] = mim_prep_hpg_amica(EEG, ...
+%         [fpath filesep float_fname], ...
+%         fpath, ...
+%         'jsalminen@ufl.edu', ...
+%         1);
+% end

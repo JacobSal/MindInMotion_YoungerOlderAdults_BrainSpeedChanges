@@ -2,7 +2,7 @@
 %
 %   Code Designer: Jacob salminen
 %## SBATCH (SLURM KICKOFF SCRIPT)
-% sbatch /blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdult_KinEEGCorrs/src/_bash_sh_files/run_b_cluster_ics.sh
+% sbatch /blue/dferris/jsalminen/GitHub/MIND_IN_MOTION_PRJ/MindInMotion_YoungerOlderAdult_KinEEGCorrs/src/run_b_cluster_ics.sh
 
 %{
 %## RESTORE MATLAB
@@ -107,7 +107,7 @@ CLUSTER_STRUCT = struct('algorithm','kmeans',...
     'clust_k_replicates',1000,...
     'clust_k_repeat_iters',1,...
     'clust_k_repeat_std',3,... % (inf | INT), INT uses robust_kmeans_CL
-    'clust_k_robust_maxiter',10,... % how many times to redo kmean clustering with removal of unmatching IC's
+    'clust_k_robust_maxiter',3,... % how many times to redo kmean clustering with removal of unmatching IC's
     'clust_k_empty_action','drop',...
     'do_eval_clusters',true);
 %{
@@ -123,23 +123,26 @@ CLUSTER_STRUCT = struct('algorithm','kmeans',...
     'clust_k_empty_action','drop',...
     'do_eval_clusters',true);
 %}
-%-
+%--
 STUDY_DESI_PARAMS = {{'subjselect',{},...
             'variable2','cond','values2',{'flat','low','med','high'},...
             'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}},...
             {'subjselect',{},...
             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
             'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}}};
-%- custom params
+% STUDY_DESI_PARAMS = {{'subjselect',{},...
+%             'variable2','cond','values2',{'0p25','0p5','0p75','1p0'},...
+%             'variable1','group','values1',{'H1000''s','H2000''s','H3000''s'}}};
+%-- custom params
 STD_PRECLUST_COMMAND = {'dipoles','weight',1};
 %% (PATHS) ============================================================= %%
 %- datetime override
 % STUDY_DNAME = '10172024_MIM_YAOAN89_antsnorm_dipfix_iccREMG0p4_powpow0p3_skull0p01_15mmrej_speed';
-STUDY_DNAME = '01192025_mim_yaoa_nopowpow_crit_speed';
+STUDY_DNAME = '02202025_mim_yaoa_powpow0p3_crit_speed';
 STUDY_FNAME = 'epoch_study';
 %## soft define
 studies_dir = [PATHS.data_dir filesep DATA_SET filesep '_studies'];
-save_dir = [studies_dir filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_kmeansalt_rb3'];
+save_dir = [studies_dir filesep sprintf('%s',STUDY_DNAME) filesep '__iclabel_cluster_allcond_rb3'];
 load_dir = [studies_dir filesep sprintf('%s',STUDY_DNAME)];
 %- create new study directory
 if ~exist(save_dir,'dir')
@@ -147,15 +150,21 @@ if ~exist(save_dir,'dir')
 end
 %% ===================================================================== %%
 %## LOAD STUDIES && ALLEEGS
-%- Create STUDY & ALLEEG structs
-if ~exist([load_dir filesep STUDY_FNAME '.study'],'file')
-    error('ERROR. study file does not exist');
+%-- test load
+%{
+if ~ispc
+    tmp = load('-mat',[load_dir filesep sprintf('%s_UNIX.study',STUDY_FNAME)]);
+    STUDY = tmp.STUDY;
 else
-    if ~ispc
-        [STUDY,ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME '_UNIX.study'],'filepath',load_dir);
-    else
-        [STUDY,ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME '.study'],'filepath',load_dir);
-    end
+    tmp = load('-mat',[load_dir filesep sprintf('%s.study',STUDY_FNAME)]);
+    STUDY = tmp.STUDY;
+end
+%}
+%-- Create STUDY & ALLEEG structs
+if ~ispc
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME '_UNIX.study'],'filepath',load_dir);
+else
+    [STUDY,ALLEEG] = pop_loadstudy('filename',[STUDY_FNAME '.study'],'filepath',load_dir);
 end
 %% (SET PARAMS) ======================================================== %%
 STUDY = pop_erspparams(STUDY,'subbaseline',ERSP_PARAMS.subbaseline,...
@@ -312,6 +321,9 @@ for i = 1:length(MIN_ICS_SUBJ)
         % 
         % end
         %}
+        %## UPDATE DIPOLES
+        cluster_update = cluster_comp_dipole(TMP_ALLEEG,TMP_STUDY.cluster);
+        TMP_STUDY.cluster = cluster_update;
         %## ANATOMY CALCULATION
         CALC_STRUCT = struct('cluster_inds',(2:length(TMP_STUDY.cluster)),...
             'save_inf',false,...
@@ -319,7 +331,9 @@ for i = 1:length(MIN_ICS_SUBJ)
         [TMP_STUDY,dipfit_structs,topo_cells] = eeglab_get_topodip(TMP_STUDY,...
             'CALC_STRUCT',CALC_STRUCT,...
             'ALLEEG',TMP_ALLEEG);
-        ANATOMY_STRUCT = struct('atlas_fpath',{{[path_aal3 filesep 'AAL3v1.nii']}},...
+        % [path_aal3 filesep 'ROI_MNI_V7_1mm.nii']
+        ANATOMY_STRUCT = struct('atlas_fpath',{{[path_aal3 filesep 'AAL3v1_1mm.nii'], ...
+                [path_aal3 filesep 'ROI_MNI_V7_1mm.nii']}},...
             'group_chars',{unique({TMP_STUDY.datasetinfo.group})},...
             'cluster_inds',3:length(TMP_STUDY.cluster),...
             'anatomy_calcs',{{'all aggregate','all centroid'}},... % ('all calcs','group centroid','all centroid','group aggregate','all aggregate')
@@ -327,12 +341,14 @@ for i = 1:length(MIN_ICS_SUBJ)
             'save_inf',true);
         %(01/16/2025) JS, 'all centroid' option has a bug where indexing
         %doesn't seem to want to work on line 535 in poi_box
-        [TMP_STUDY,anat_struct,~,~,txt_out] = eeglab_get_anatomy(TMP_STUDY,...
-            'ALLEEG',TMP_ALLEEG,...
+        %(03/05/2025) JS, this seems to be fixed after some exception
+        %handling changes
+        [TMP_STUDY,anat_struct,~,~,txt_out] = eeglab_get_anatomy(TMP_STUDY, ...
+            'ALLEEG',TMP_ALLEEG, ...
             'ANATOMY_STRUCT',ANATOMY_STRUCT);
         %-
         cl_tmp = TMP_STUDY.cluster;
-        atlas_char = 'AAL3v1.nii';
+        atlas_char = 'AAL3v1_1mm.nii';
         inds = strcmp({anat_struct.atlas_label},atlas_char) & strcmp({anat_struct.calculation},'aggregate label for all');
         at_out = {anat_struct(inds).anatomy_label};
         at_ind = [anat_struct(inds).cluster];
@@ -361,3 +377,133 @@ for i = 1:length(MIN_ICS_SUBJ)
                                         TMP_STUDY.filename,TMP_STUDY.filepath,...
                                         'RESAVE_DATASETS','off');
 end
+%% ===================================================================== %%
+%{
+%--
+cluster_inds = [3,4,5,6,7,8,9,10,11,12,13];
+%--
+HIRES_TEMPLATE = [PATHS.data_dir filesep '_resources' filesep 'mni_icbm152_nlin_sym_09a' filesep 'mni_icbm152_t1_tal_nlin_sym_09a.nii'];
+%- assign hires_template default
+tmp = strsplit(HIRES_TEMPLATE,filesep);
+fpath = strjoin(tmp(1:end-1),filesep);
+fname = tmp{end};
+ext = strsplit(fname,'.');
+fname = ext{1};
+ext = ext{end};
+hires_mesh = [fpath filesep fname '_dipplotvol.mat'];
+hires_mri = [fpath filesep fname '_dipplotmri.mat'];
+mri = load(hires_mri);
+mri = mri.mri;
+vol = hires_mesh;
+DIPPLOT_STRUCT = struct('rvrange',[0,30],... % this is a value from 0 to 100 (e.g., rv = 0.15 is 15)
+        'summary','off',...
+        'mri',mri,...
+        'coordformat','MNI',...
+        'transform',[],...
+        'image','mri',...
+        'plot','on',...
+        'color',{{[0,0,1]}},...
+        'view',[1,1,1],...
+        'mesh','off',...
+        'meshdata',vol,...
+        'axistight','off',... % display the closest MRI slice to distribution
+        'gui','off',...
+        'num','off',...
+        'cornermri','on',...
+        'drawedges','off',...
+        'projimg','off',...
+        'projlines','off',...
+        'projwidth',1,...
+        'projcol',{{[0,0,1]}},...
+        'dipolesize',30,...
+        'dipolelength',0,...
+        'pointout','off',...
+        'sphere',1,...
+        'spheres','off',...
+        'normlen','off',...
+        'dipnames',{{}},...
+        'holdon','on',...
+        'camera','auto',...
+        'density','off');
+DIPPLOT_STRUCT.axistight = 'on';
+%## ALL DIPOLES FOR CLUSTERS
+[fig] = eeglab_dipplot(TMP_STUDY,TMP_ALLEEG,cluster_inds,...
+    'PLOT_TYPE','all_nogroup',...
+    'DIPPLOT_STRUCT',DIPPLOT_STRUCT);
+%}
+%% TOPO ================================================================ %%
+%{
+groups = unique({TMP_STUDY.datasetinfo.group});
+AX_HORIZ_SHIFT = 0.4;
+AX_VERT_SHIFT = 0.05;
+DIP_IM_DPI = 900;
+AX_INIT_HORIZ_TOPO = 0.085;
+AX_INIT_VERT_TOPO = 0.75;
+FIGURE_POSITION =[1,1,6.5,9];
+PG_SIZE = [6.5,9];
+FONT_NAME = 'Arial';
+TOPO_FONTSIZE = 6;
+HZ_DIM = 3;
+g_chars = unique({TMP_STUDY.datasetinfo.group});
+g_chars_topo = {'Young Adults','Older High Mobility Adults','Older Low Mobility Adults'};
+AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],...
+        'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
+% AX_H = 0.25;
+% AX_W = 0.225;
+% IM_RESIZE = 0.7;
+IM_RESIZE = 0.225;
+horiz_shift = 0;
+vert_shift = 0;
+hz = 1;
+%## TOPO PLOT
+fig = figure('color','white');
+set(fig,'Units','inches','Position',FIGURE_POSITION)
+set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
+set(gca,AXES_DEFAULT_PROPS{:});
+hold on;
+for k_i = 1:length(cluster_inds)
+    cl_i = double(string(cluster_inds(k_i)));
+    %## TOPO PLOT
+    [~,h] = std_topoplot_CL(TMP_STUDY,cl_i,'together');
+    set(h,'color','w')
+    set(h,'Units','normalized');    
+    ax = get(h,'CurrentAxes');
+    colormap(h,linspecer);   
+    pos = get(ax,'Position');
+    opos = get(ax,'OuterPosition');
+    ac = get(ax,'Children');
+    ax1 = axes('Parent',fig,...
+        'DataAspectRatio',get(ax,'DataAspectRatio'));
+    copyobj(ac,ax1);
+    set(ax1,AXES_DEFAULT_PROPS{:});
+    colormap(ax1,linspecer)
+    g_counts = cell(length(groups),1);
+    for g_i = 1:length(groups)
+        g_inds = cellfun(@(x) strcmp(x,g_chars{g_i}),{TMP_STUDY.datasetinfo(TMP_STUDY.cluster(cl_i).sets).group});
+        if length(g_chars_topo{g_i}) == 1 || ischar(g_chars_topo{g_i})
+            g_counts{g_i} =sprintf('%s N=%i',g_chars_topo{g_i},sum(g_inds));
+        else
+            g_counts{g_i} =sprintf('%s\n%s N=%i',g_chars_topo{g_i}{1},g_chars_topo{g_i}{2},sum(g_inds));
+        end
+    end
+    ax1.Title.String = g_counts; %sprintf('N=%i',length(STUDY.cluster(cl_i).sets));
+    ax1.Title.Interpreter = 'none';
+    ax1.FontSize = TOPO_FONTSIZE; %PLOT_STRUCT.font_size;
+    ax1.FontName = FONT_NAME;
+    ax1.FontWeight = 'bold';
+    ax1.OuterPosition = [0,0,1,1];
+    ax1.Units = 'Normalized';
+    pp = get(ax1,'Position');    
+    ax1.Position = [AX_INIT_HORIZ_TOPO+horiz_shift,AX_INIT_VERT_TOPO+vert_shift,pp(3)*IM_RESIZE,pp(4)*IM_RESIZE];  %[left bottom width height]
+    close(h);%##
+    if hz < HZ_DIM
+        horiz_shift = horiz_shift + pp(3)*IM_RESIZE + AX_HORIZ_SHIFT*IM_RESIZE;
+    else
+        vert_shift = vert_shift - (pp(4)*IM_RESIZE + AX_VERT_SHIFT*IM_RESIZE);
+        horiz_shift = 0;
+        hz = 0;
+    end
+    hz = hz + 1;
+end
+hold off;
+%}
