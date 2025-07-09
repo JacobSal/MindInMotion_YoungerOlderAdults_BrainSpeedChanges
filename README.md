@@ -26,8 +26,8 @@
 
 <!-- PROJECT LOGO -->
 <br />
-<div align="center">
-[![DOI](https://zenodo.org/badge/865020202.svg)](https://doi.org/10.5281/zenodo.15850384)
+<div align="center">  
+  [![DOI](https://zenodo.org/badge/865020202.svg)](https://doi.org/10.5281/zenodo.15850384)
 </div>
 <div align="center">
   <a href="https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges">
