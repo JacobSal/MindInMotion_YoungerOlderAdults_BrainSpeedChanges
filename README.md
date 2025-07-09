@@ -23,6 +23,7 @@
 [![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
 [![LinkedIn][linkedin-shield]][linkedin-url]
+[![DOI](https://zenodo.org/badge/865020202.svg)](https://doi.org/10.5281/zenodo.15850384)
 
 <!-- PROJECT LOGO -->
 <br />
