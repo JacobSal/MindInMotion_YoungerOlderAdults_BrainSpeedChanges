@@ -2,6 +2,7 @@
 *.mat
 *.set
 *.fdt
+*.html
 *.log
 **.DS_Store
 *.asv
