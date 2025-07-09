@@ -23,10 +23,12 @@
 [![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
 [![LinkedIn][linkedin-shield]][linkedin-url]
-[![DOI](https://zenodo.org/badge/865020202.svg)](https://doi.org/10.5281/zenodo.15850384)
 
 <!-- PROJECT LOGO -->
 <br />
+<div align="center">
+[![DOI](https://zenodo.org/badge/865020202.svg)](https://doi.org/10.5281/zenodo.15850384)
+</div>
 <div align="center">
   <a href="https://github.com/JacobSal/MindInMotion_YoungerOlderAdults_BrainSpeedChanges">
     <img src="images/hnl_logo.svg" alt="Logo" width = "300px">
