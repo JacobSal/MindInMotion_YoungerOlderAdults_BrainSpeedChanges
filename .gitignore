@@ -19,5 +19,6 @@ src/**/*.tiff
 **/install
 **/installer
 **/_compiles
+**/manu_figs
 **/venv
 .Rproj.user
